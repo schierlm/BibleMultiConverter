@@ -1,0 +1,17 @@
+body { font-family: Arial, sans-serif; font-size: 110%; }
+.biblehtmlcontent.prolog {color: #008000; }
+.biblehtmlcontent.footnotes {font-size: 80%; }
+.biblehtmlcontent .vn {font-weight: bold; color: #004080; font-size: 80%; }
+.biblehtmlcontent .vsep { color: #808080; }
+.biblehtmlcontent .fmt-link { color: blue; }
+.biblehtmlcontent .fmt-footnote-link { color: blue; }
+.biblehtmlcontent .fmt-divine-name { font-variant: small-caps; }
+.biblehtmlcontent .fmt-strike-through { text-decoration: line-through; }
+.biblehtmlcontent .fmt-words-of-jesus { color: red; }
+.biblehtmlcontent .var { display:none; }
+.biblehtmlcontent .var-default { display:block; }
+.biblehtmlcontent .xa-s, #biblehtmlcontent  .xa-e { display: none; }
+.biblehtmlcontent .indent { width: 4em; }
+.biblehtmlcontent .gram { font-size: 75%; }
+.biblehtmlcontent .gram .gs { color: #008000; }
+.biblehtmlcontent .gram .gr { color: #800080; }

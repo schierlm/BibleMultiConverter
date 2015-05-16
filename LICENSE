@@ -1,6 +1,6 @@
 The MIT License (MIT)
 
-Copyright (c) 2015 Michael Schierl
+Copyright (c) 2007-2015 Michael Schierl
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,3 +20,17 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+---------------------------------------------------------
+
+The "Logos Edition" contains material from <https://wiki.logos.com/Bible_Verse_Maps>
+which is
+Copyright 2009-2014 Logos Bible Software
+but assumed to be redistributable for the use of creating Logos modules.
+
+---------------------------------------------------------
+
+The Haggai-XML and Zefania-XML schema definitions are licensed under GNU General
+Public License v3, see <http://www.gnu.org/licenses/gpl.html>.
+
+The XSD schema source code can be found inside the
+lib\biblemulticonverter-schemas.jar file.

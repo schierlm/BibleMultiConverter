@@ -1,0 +1,7 @@
+target
+bin
+.classpath
+.project
+.settings
+private
+/biblemulticonverter-logos/src/main/resources/logos-versemap.dat

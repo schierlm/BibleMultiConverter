@@ -1,0 +1,656 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright (C) 2012-2013  Wolfgang Schultz, Stephan Kreutzer
+
+This file is part of Freie Bibel.
+
+Freie Bibel is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License version 3 or any later version,
+as published by the Free Software Foundation.
+
+Freie Bibel is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License 3 for more details.
+
+You should have received a copy of the GNU General Public License
+along with Freie Bibel. If not, see <http://www.gnu.org/licenses/>.
+-->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:annotation>
+    <xsd:documentation>
+      Copyright (C) 2012-2013  Wolfgang Schultz, Stephan Kreutzer
+
+      This file is part of Freie Bibel.
+
+      Freie Bibel is free software: you can redistribute it and/or modify
+      it under the terms of the GNU General Public License version 3 or any later version,
+      as published by the Free Software Foundation.
+
+      Freie Bibel is distributed in the hope that it will be useful,
+      but WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+      GNU General Public License 3 for more details.
+
+      You should have received a copy of the GNU General Public License
+      along with Freie Bibel. If not, see http://www.gnu.org/licenses/.
+
+      This file is based on the Zefania XML Schema published by Wolfgang Schultz
+      under GNU General Public License version 3. The complete source code
+      is available at http://www.freie-bibel.de.
+    </xsd:documentation>
+  </xsd:annotation>
+  <xsd:element name="XMLBIBLE">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Das Wurzelelement eines Haggai-XML-Bibelmoduls.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        The root element of a Haggai XML bible module.
+      </xsd:documentation>
+      <xsd:appinfo>haggai_20130620</xsd:appinfo>
+    </xsd:annotation>
+    <xsd:complexType>
+      <xsd:sequence>
+        <xsd:element ref="INFORMATION"/>
+        <xsd:element minOccurs="0" maxOccurs="1" ref="PROLOG"/>
+        <xsd:element minOccurs="0" maxOccurs="1" ref="REMARK"/>
+        <xsd:element maxOccurs="unbounded" ref="BIBLEBOOK"/>
+        <xsd:element minOccurs="0" maxOccurs="unbounded" ref="APPINFO"/>
+      </xsd:sequence>
+      <xsd:attribute name="biblename" type="xsd:string" use="required">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Vollständiger Name (Langbezeichnung) der Bibel, z.B. "Luther 1984".
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Full name of the bible, e.g. "King James Version".
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+      <xsd:attribute name="status" type="ModuleStatus" use="optional">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Status des Haggai-XML-Moduls.
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Status of the Haggai XML module.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+      <xsd:attribute name="version" type="xsd:string" use="optional">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Version des korrespondierenden Haggai XML Bible Markup Language Schemas, z.B. "haggai_3.0.0.9.1".
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Version of the corresponding Haggai XML Bible Markup Language Schema, e.g. "haggai_3.0.0.9.1".
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+      <xsd:attribute name="revision" type="xsd:integer" use="optional">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Revisions-Nummer der vorliegenden Haggai-XML-Moduldatei.
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Revisions number of the present Haggai XML module file.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element name="APPINFO" type="xsd:anyType"/>
+  <xsd:element name="BIBLEBOOK">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Umschließt ein einzelnes Bibelbuch.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        Encloses a single book of the bible.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType>
+      <xsd:choice maxOccurs="unbounded">
+        <xsd:element minOccurs="0" maxOccurs="1" ref="CAPTION"/>
+        <xsd:element minOccurs="0" maxOccurs="1" ref="PROLOG"/>
+        <xsd:element minOccurs="0" maxOccurs="1" ref="REMARK"/>
+        <xsd:element maxOccurs="unbounded" ref="CHAPTER"/>
+      </xsd:choice>
+      <xsd:attribute name="bnumber" type="xsd:positiveInteger" use="required">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Eine Nummer, die das Buch eindeutig identifiziert, z.B. "40" für das 40. Buch dieser Bibel.
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Unique number to identify the current book, e.g. "40" for the 40th. book of this bible.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+      <xsd:attribute name="bname" type="xsd:string" use="optional">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Der Name des Buches in Langform, z.B. "Genesis" oder "1. Mose".
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Name of the book in long form, e.g. "Genesis" oder "1. Mose".
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+      <xsd:attribute name="bsname" type="xsd:string" use="optional">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Abkürzung des Buches, z.B. "Gen" oder "1. Mo.".
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Abbreviation of the book, e.g. "Gen" oder "1. Mo.".
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element name="CHAPTER">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Umschließt ein einzelnes Kapitel.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        Encloses a single chapter.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType>
+      <xsd:choice maxOccurs="unbounded">
+        <xsd:element minOccurs="0" maxOccurs="1" ref="CAPTION"/>
+        <xsd:element minOccurs="0" maxOccurs="unbounded" ref="PARAGRAPH"/>
+        <xsd:element maxOccurs="unbounded" ref="VERSE"/>
+        <xsd:element minOccurs="0" maxOccurs="1" ref="PROLOG"/>
+        <xsd:element minOccurs="0" maxOccurs="1" ref="REMARK"/>
+        <xsd:element minOccurs="0" maxOccurs="unbounded" ref="XREF"/>
+      </xsd:choice>
+      <xsd:attribute name="cnumber" type="xsd:positiveInteger" use="required">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Eine Nummer, die das Kapitel innerhalb des Bibelbuches eindeutig identifiziert, z.B. "40" für das 40. Kapitel dieses Buches.
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Unique number to identify the current chapter within the bible book, e.g. "40" for the 40th. chapter of this book.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element name="VERSE">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Umschließt einen einzelnen Bibelvers.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        Encloses a single bible verse.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType mixed="true">
+      <xsd:choice minOccurs="0" maxOccurs="unbounded">
+        <xsd:element minOccurs="0" ref="GRAM"/>
+        <xsd:element minOccurs="0" ref="STYLE"/>
+        <xsd:element minOccurs="0" ref="REMARK"/>
+        <xsd:element minOccurs="0" ref="NOTE"/>
+        <xsd:element minOccurs="0" ref="BR"/>
+        <xsd:element minOccurs="0" ref="XREF"/>
+      </xsd:choice>
+      <xsd:attribute name="vnumber" type="xsd:positiveInteger" use="optional">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Eine Nummer, die den Vers innerhalb des Kapitels eindeutig identifiziert, z.B. "40" für den 40. Vers dieses Kapitels.
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Unique number to identify the current verse within the chapter, e.g. "40" for the 40th. verse of this chapter.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element name="PROLOG">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Ein Vorwort.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        A prologue.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType mixed="true">
+      <xsd:choice  minOccurs="0" maxOccurs="unbounded">
+        <xsd:element minOccurs="0" ref="STYLE"/>
+        <xsd:element minOccurs="0" ref="BR"/>
+        <xsd:element minOccurs="0" ref="GRAM"/>
+        <xsd:element minOccurs="0" maxOccurs="unbounded" ref="XREF"/>
+      </xsd:choice>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element name="CAPTION">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Eine Überschrift.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        A caption.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType mixed="true">
+      <xsd:choice minOccurs="0" maxOccurs="unbounded">
+        <xsd:element minOccurs="0" ref="STYLE"/>
+        <xsd:element minOccurs="0" ref="BR"/>
+      </xsd:choice>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element name="REMARK">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Eine (inhaltliche) Anmerkung.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        A remark (regarding the content).
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType mixed="true">
+      <xsd:choice minOccurs="0" maxOccurs="unbounded">
+        <xsd:element minOccurs="0" ref="STYLE"/>
+        <xsd:element minOccurs="0" ref="BR"/>
+        <xsd:element minOccurs="0" ref="GRAM"/>
+        <xsd:element minOccurs="0" maxOccurs="unbounded" ref="XREF"/>
+      </xsd:choice>
+      <xsd:attribute name="type" type="xsd:string" use="optional"/>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element name="PARAGRAPH">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Ein Sinnabschnitt.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        A paragraph.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType>
+      <xsd:choice minOccurs="0" maxOccurs="unbounded">
+        <xsd:element minOccurs="0" maxOccurs="1" ref="CAPTION"/>
+        <xsd:element minOccurs="0" maxOccurs="1" ref="PROLOG"/>
+        <xsd:element minOccurs="0" maxOccurs="1" ref="REMARK"/>
+        <xsd:element minOccurs="1" maxOccurs="unbounded" ref="VERSE"/>
+        <xsd:element minOccurs="0" maxOccurs="unbounded" ref="XREF"/>
+      </xsd:choice>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element name="NOTE">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Eine Fußnote.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        A footnote.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType mixed="true">
+      <xsd:choice minOccurs="0" maxOccurs="unbounded">
+        <xsd:element minOccurs="0" maxOccurs="unbounded" ref="STYLE"/>
+        <xsd:element minOccurs="0" ref="BR"/>
+        <xsd:element minOccurs="0" maxOccurs="unbounded" ref="GRAM"/>
+        <xsd:element minOccurs="0" maxOccurs="unbounded" ref="XREF"/>
+        <xsd:element minOccurs="0" maxOccurs="unbounded" ref="NOTE"/>
+      </xsd:choice>
+      <xsd:attribute name="type" type="TNotesFix" use="optional"/>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element name="XREF">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Ein Querverweis (Parallelstelle).
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        A cross reference.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType mixed="true">
+      <xsd:attribute name="fscope" type="xsd:string" use="optional">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Vollständig ausgeschriebene Bezeichnung des Verweises.
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Name of the reference in full.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element name="GRAM">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Grammatische Information.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        Grammatical Information.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType mixed="true">
+      <xsd:choice minOccurs="0" maxOccurs="unbounded">
+        <xsd:element ref="STYLE"/>
+        <xsd:element minOccurs="0" ref="BR"/>
+      </xsd:choice>
+      <xsd:attribute name="str" type="xsd:string" use="optional">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Strongnummer.
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Strong number.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+      <xsd:attribute name="rmac" type="xsd:string" use="optional">
+        <xsd:annotation>
+          <xsd:documentation>
+            Robinsons Morphological Analysis Codes
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:attribute>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element abstract="false" name="STYLE">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        CSS-Formatierungen. Inline-Angaben sind nicht erlaubt, stattdessen kommen IDs und Klassen zum Einsatz.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        CSS formatting. Inline values are not permitted, instead, IDs and classes are used.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType mixed="true">
+      <xsd:choice minOccurs="0" maxOccurs="unbounded">
+        <xsd:element ref="STYLE"/>
+        <xsd:element ref="BR"/>
+      </xsd:choice>
+      <xsd:attribute name="id" type="TStyleExternClass" use="optional"/>
+      <xsd:attribute name="fs" type="TStyleFix" use="optional"/>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:element name="BR">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Zeilenumbuch innerhalb eines Textinhaltes.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        Line break within textual content.
+      </xsd:documentation>
+    </xsd:annotation>
+  </xsd:element>
+  <xsd:element name="INFORMATION">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Vergleiche http://www.dublincore.org/documents/dces/.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        See http://www.dublincore.org/documents/dces/.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexType>
+      <xsd:choice minOccurs="0" maxOccurs="unbounded">
+        <xsd:element name="title" type="xsd:string">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Anzeigename der Bibel.
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              Display name of the Bible.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+        <xsd:element name="creator" type="xsd:string">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Ersteller des Bibelmoduls. Bei mehreren Autoren/Organisationen mit Komma separiert.
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              Creator of the bible module. In case of multiple authors/organizations comma separated.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+        <xsd:element name="description" type="xsd:string">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Beschreibung des Inhalts, Beigaben, Besonderheiten.
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              Description of content, additions, specialities.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+        <xsd:element name="publisher" type="xsd:string">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Herausgeber des Bibelmoduls.
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              Publisher of the bible module.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+        <xsd:element minOccurs="0" maxOccurs="unbounded" name="contributor" type="xsd:string">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Weitere Person, die einen Beitrag geleistet hat.
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              Additional person who contributed portions.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+        <xsd:element name="date" type="xsd:date">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Das Datum der momentanen Fassung im Format YYYY-MM-DD gemäß ISO-8601.
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              The date of the current version formatted as YYYY-MM-DD according to ISO-8601.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+        <xsd:element fixed="Text" name="type" type="xsd:string">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Inhalt ist textlich orientiert.
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              Content is textual oriented.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+        <xsd:element fixed="Haggai XML Bible Markup Language" name="format" type="xsd:string">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Datentechnisches Format des Moduls.
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              Technical format of the module.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+        <xsd:element name="identifier" type="UniqueIDText">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Weltweit eindeutige Kennung, die das Modul identifiziert,
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              Globally unique ID to identify the module.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+        <xsd:element minOccurs="0" name="source" type="xsd:string">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Werk, gedruckt oder elektronisch, das dem vorliegenden Bibelmodul zugrunde liegt. Leer lassen oder Element übergehen, wenn die Bibel initial in Haggai XML veröffentlicht wurde.
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              Work, printed or electronically, on which the current bible module is based on. Leave blank or omit element, if the bible was initially released in Haggai XML.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+        <xsd:element name="language" type="xsd:string">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Sprache des Inhalts des Bibelmoduls. Falls möglich sollte der 3-stellige Sprachcode für "geschriebene Sprachen" aus ISO-639 verwendet werden, vergleiche http://www.w3.org/WAI/ER/IG/ert/iso639.htm.
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              Language of the content of the bible module. If possible the 3 digits language code for "written languages" according to ISO-639 should be used, see http://www.w3.org/WAI/ER/IG/ert/iso639.htm.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+        <xsd:element minOccurs="0" name="coverage" type="xsd:string">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Wenn unvollständig, können z.B. die enthaltenen Bibelteile aufgeführt werden.
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              If incomplete, e.g. the covered bible parts could be mentioned.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+        <xsd:element name="rights" type="xsd:string">
+          <xsd:annotation>
+            <xsd:documentation xml:lang="de">
+              Vorgesehen für den Inhalt dieses Elements ist ein Link (URL oder andere passende URI falls zutreffend) zu einem Urhebervermerk, ein "Rights-Management"-Vermerk über die rechtlichen Bedingungen oder ggf. zu einem Server, der solche Informationen dynamisch erzeugt.
+            </xsd:documentation>
+            <xsd:documentation xml:lang="en">
+              For this element a link as content is intended (URL or a matching URI as appropriate) to a copyright notice, a "rights management" notice about the legal conditions or possibly to a server that generates such information dynamically.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:element>
+      </xsd:choice>
+    </xsd:complexType>
+  </xsd:element>
+  <xsd:simpleType name="TStyleExternClass">
+    <xsd:restriction base="xsd:string">
+      <xsd:pattern value="cl:[a-zA-Z0-9]*"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="ModuleStatus">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="v">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Modul ist valide gegen das Schema.
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Module is valid against the schema.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:enumeration>
+      <xsd:enumeration value="w">
+        <xsd:annotation>
+          <xsd:documentation xml:lang="de">
+            Modul ist wohlgeformtes XML, aber nicht valide gegen das Schema.
+          </xsd:documentation>
+          <xsd:documentation xml:lang="en">
+            Module is wellformed XML, but not valid against the schema.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:enumeration>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="TStyleFix">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Aufzählung von vordefinierten Darstellungstypen.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        Enumeration of pre-defined display types.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="acrostic"/>
+      <xsd:enumeration value="bold"/>
+      <xsd:enumeration value="emphasis"/>
+      <xsd:enumeration value="illuminated"/>
+      <xsd:enumeration value="italic"/>
+      <xsd:enumeration value="line-through"/>
+      <xsd:enumeration value="normal"/>
+      <xsd:enumeration value="small-caps"/>
+      <xsd:enumeration value="sub"/>
+      <xsd:enumeration value="super"/>
+      <xsd:enumeration value="underline"/>
+      <xsd:enumeration value="overline"/>
+      <xsd:enumeration value="capitalize"/>
+      <xsd:enumeration value="uppercase"/>
+      <xsd:enumeration value="lowercase"/>
+      <xsd:enumeration value="divineName"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="TNotesFix">
+    <xsd:annotation>
+      <xsd:documentation xml:lang="de">
+        Aufzählung von vordefinierten Fußnoten-Arten.
+      </xsd:documentation>
+      <xsd:documentation xml:lang="en">
+        Enumeration of pre-defined footnote types.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="added"/>
+      <xsd:enumeration value="allusion"/>
+      <xsd:enumeration value="alternative"/>
+      <xsd:enumeration value="background"/>
+      <xsd:enumeration value="citation"/>
+      <xsd:enumeration value="crossReference"/>
+      <xsd:enumeration value="devotional"/>
+      <xsd:enumeration value="encoder"/>
+      <xsd:enumeration value="exegesis"/>
+      <xsd:enumeration value="explanation"/>
+      <xsd:enumeration value="liturgical"/>
+      <xsd:enumeration value="speaker"/>
+      <xsd:enumeration value="study"/>
+      <xsd:enumeration value="translation"/>
+      <xsd:enumeration value="variant"/>
+      <xsd:enumeration value="amplified"/>
+      <xsd:enumeration value="changed"/>
+      <xsd:enumeration value="deleted"/>
+      <xsd:enumeration value="implied"/>
+      <xsd:enumeration value="moved"/>
+      <xsd:enumeration value="tenseChange"/>
+      <xsd:enumeration value="commentary"/>
+      <xsd:enumeration value="exposition"/>
+      <xsd:enumeration value="meditation"/>
+      <xsd:enumeration value="outline"/>
+      <xsd:enumeration value="rebuttal"/>
+      <xsd:enumeration value="sermon"/>
+      <xsd:enumeration value="studyGuide"/>
+      <xsd:enumeration value="transChange"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:simpleType name="UniqueIDText">
+    <xsd:restriction base="xsd:string">
+      <xsd:pattern value="[a-zA-Z][a-zA-Z0-9_-]*"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+
+  <!--
+    Lower case representations.
+  -->
+
+  <xsd:element name="gram" substitutionGroup="GRAM"/>
+  <xsd:element name="style" substitutionGroup="STYLE"/>
+  <xsd:element name="appinfo" substitutionGroup="APPINFO"/>
+  <xsd:element name="biblebook" substitutionGroup="BIBLEBOOK"/>
+  <xsd:element name="br" substitutionGroup="BR"/>
+  <xsd:element name="caption" substitutionGroup="CAPTION"/>
+  <xsd:element name="chapter" substitutionGroup="CHAPTER"/>
+  <xsd:element name="information" substitutionGroup="INFORMATION"/>
+  <xsd:element name="note" substitutionGroup="NOTE"/>
+  <xsd:element name="prolog" substitutionGroup="PROLOG"/>
+  <xsd:element name="remark" substitutionGroup="REMARK"/>
+  <xsd:element name="paragraph" substitutionGroup="REMARK"/>
+  <xsd:element name="verse" substitutionGroup="VERSE"/>
+  <xsd:element name="xmlbible" substitutionGroup="XMLBIBLE"/>
+  <xsd:element name="xref" substitutionGroup="XREF"/>
+
+</xsd:schema>
