@@ -1,11 +1,14 @@
 package biblemulticonverter.format;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -54,6 +57,7 @@ public class OSIS implements RoundtripFormat {
 	private static final Pattern XREF_PATTERN = Pattern.compile("([A-Za-z0-9]+) ([0-9]+), ([0-9]+)");
 
 	private Set<String> printedWarnings = new HashSet<String>();
+	private Properties osisRefMap = null;
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
@@ -137,7 +141,12 @@ public class OSIS implements RoundtripFormat {
 		for (Node node = osisChapter.getFirstChild(); node != null; node = node.getNextSibling()) {
 			if (node instanceof Text) {
 				if (verse != null) {
-					verse.getAppendVisitor().visitText(node.getTextContent().replaceAll("[ \r\n\t]+", " "));
+					String text = node.getTextContent().replaceAll("[ \r\n\t]+", " ");
+					if (text.endsWith(" ") && node.getNextSibling() != null && Arrays.asList("verse", "brp", "lb").contains(node.getNextSibling().getNodeName())) {
+						printWarning("WARNING: Whitespace at end of verse");
+						text = text.substring(0, text.length() - 1);
+					}
+					verse.getAppendVisitor().visitText(text);
 				} else if (nextVerse == 1) {
 					if (prolog == null && ((Text) node).getTextContent().trim().length() == 0)
 						continue;
@@ -155,6 +164,13 @@ public class OSIS implements RoundtripFormat {
 					Headline hl = new Headline(2);
 					if (elem.getAttribute("type").equals("chapter")) {
 						hl = new Headline(1);
+					}
+					if (elem.getChildNodes().getLength() == 1 && elem.getFirstChild() instanceof Text) {
+						String text = elem.getFirstChild().getTextContent();
+						if (!text.equals(text.trim())) {
+							printWarning("WARNING: Whitespace at beginning/end of headline: '" + text + "'");
+							elem.getFirstChild().setNodeValue(text.trim());
+						}
 					}
 					parseStructuredTextChildren(hl.getAppendVisitor(), elem);
 					if (hl.getElementTypes(1).length() == 0) {
@@ -269,7 +285,12 @@ public class OSIS implements RoundtripFormat {
 		flattenChildren(textElem);
 		for (Node node = textElem.getFirstChild(); node != null; node = node.getNextSibling()) {
 			if (node instanceof Text) {
-				vv.visitText(node.getTextContent().replaceAll("[ \t\r\n]+", " "));
+				String text = node.getTextContent().replaceAll("[ \t\r\n]+", " ");
+				if (text.endsWith(" ") && node.getNextSibling() != null && Arrays.asList("brp", "lb").contains(node.getNextSibling().getNodeName())) {
+					printWarning("WARNING: Whitespace before newline");
+					text = text.substring(0, text.length() - 1);
+				}
+				vv.visitText(text);
 			} else {
 				Element elem = (Element) node;
 				parseStructuredTextElement(vv, elem);
@@ -286,14 +307,24 @@ public class OSIS implements RoundtripFormat {
 			parseStructuredTextChildren(vv.visitFormattingInstruction(FormattingInstructionKind.DIVINE_NAME), elem);
 		} else if (elem.getNodeName().equals("woj")) {
 			parseStructuredTextChildren(vv.visitFormattingInstruction(FormattingInstructionKind.WORDS_OF_JESUS), elem);
-		} else if (elem.getNodeName().equals("seg") || elem.getNodeName().equals("hi") || elem.getNodeName().equals("transChange")) {
+		} else if (elem.getNodeName().equals("hi")) {
+			FormattingInstructionKind kind;
+			if (elem.getAttribute("type").equals("italic")) {
+				kind = FormattingInstructionKind.ITALIC;
+			} else if (elem.getAttribute("type").equals("bold")) {
+				kind = FormattingInstructionKind.BOLD;
+			} else {
+				kind = null;
+				printWarning("WARNING: Invalid hi type: " + elem.getAttribute("type"));
+			}
+			if (elem.getChildNodes().getLength() != 0) {
+				Visitor<RuntimeException> vv1 = kind == null ? vv : vv.visitFormattingInstruction(kind);
+				parseStructuredTextChildren(vv1, elem);
+			}
+		} else if (elem.getNodeName().equals("seg") || elem.getNodeName().equals("transChange")) {
 			String css;
 			if (elem.getNodeName().equals("seg") && elem.getAttribute("type").equals("x-alternative")) {
 				css = "osis-style: alternative; color: gray;";
-			} else if (elem.getNodeName().equals("hi") && elem.getAttribute("type").equals("italic")) {
-				css = "font-style:italic;";
-			} else if (elem.getNodeName().equals("hi") && elem.getAttribute("type").equals("bold")) {
-				css = "font-weight:bold;";
 			} else if (elem.getNodeName().equals("transChange") && elem.getAttribute("type").equals("added")) {
 				css = "osis-style: added; font-style:italic;";
 			} else if (elem.getNodeName().equals("transChange") && elem.getAttribute("type").equals("deleted")) {
@@ -325,6 +356,9 @@ public class OSIS implements RoundtripFormat {
 						String vs = m.group(3);
 						fn.visitCrossReference(book, bookID, ch, vs, ch, vs).visitText(ref);
 					}
+				} else {
+					printWarning("WARNING: crossReference without content");
+					fn.visitText("-");
 				}
 			} else if (elem.getFirstChild() != null) {
 				Visitor<RuntimeException> v = vv.visitFootnote();
@@ -396,6 +430,14 @@ public class OSIS implements RoundtripFormat {
 			parseStructuredTextChildren(v, elem);
 		} else if (elem.getNodeName().equals("reference")) {
 			String osisRef = elem.getAttribute("osisRef");
+			if (osisRef.contains("\u00A0")) {
+				printWarning("WARNING: osisRef contains Non-Breaking spaces: '" + osisRef + "'");
+				osisRef = osisRef.replace('\u00A0', ' ');
+			}
+			if (!osisRef.equals(osisRef.trim())) {
+				printWarning("WARNING: Removed whitespace from osisRef '" + osisRef + "' - replaced by '" + osisRef.trim() + "'");
+				osisRef = osisRef.trim();
+			}
 			Matcher fixupMatcher = Utils.compilePattern("([A-Z0-9][A-Z0-9a-z]+\\.[0-9]+\\.)([0-9]+)((?:[+-][0-9]+)+)").matcher(osisRef);
 			if (fixupMatcher.matches()) {
 				osisRef = fixupMatcher.group(1) + fixupMatcher.group(2);
@@ -404,7 +446,23 @@ public class OSIS implements RoundtripFormat {
 						continue;
 					osisRef += suffix.substring(0, 1).replace('+', ' ') + fixupMatcher.group(1) + suffix.substring(1);
 				}
-				printWarning("WARNING: Replaced osisRef " + elem.getAttribute("osisRef") + " by " + osisRef);
+				printWarning("INFO: Replaced osisRef " + elem.getAttribute("osisRef") + " by " + osisRef);
+			}
+			if (osisRefMap == null) {
+				osisRefMap = new Properties();
+				String path = System.getProperty("biblemulticonverter.osisrefmap", "");
+				if (!path.isEmpty()) {
+					try (FileInputStream fis = new FileInputStream(path)) {
+						osisRefMap.load(fis);
+					} catch (IOException ex) {
+						throw new RuntimeException(ex);
+					}
+				}
+			}
+			String mappedOsisRef = osisRefMap.getProperty(osisRef);
+			if (mappedOsisRef != null) {
+				printWarning("INFO: Replaced osisRef " + osisRef + " by " + mappedOsisRef + " (based on osisRef map)");
+				osisRef = mappedOsisRef;
 			}
 			if (osisRef.matches("[^ ]+ [^ ]+") && elem.getFirstChild() instanceof Text && elem.getFirstChild().getNextSibling() == null) {
 				String value = elem.getTextContent();
@@ -452,9 +510,13 @@ public class OSIS implements RoundtripFormat {
 	}
 
 	private static void flattenChildren(Element parent) {
+		flattenChildren(parent, false);
+	}
+
+	private static void flattenChildren(Element parent, boolean recursive) {
 		// flatten quotes / foreign / line groups / lines; add <br> tags around
 		// lines
-		boolean lbTagsInserted = false;
+		boolean lbTagsInserted = false, wojTagsInserted = true;
 		for (Node node = parent.getFirstChild(); node != null; node = node.getNextSibling()) {
 			if (node.getNodeName().equals("l")) {
 				lbTagsInserted = true;
@@ -475,35 +537,24 @@ public class OSIS implements RoundtripFormat {
 				Element elem = (Element) node;
 				if (!elem.getAttribute("who").equals("Jesus")) {
 					System.out.println("WARNING: Unsupported q-who value: " + ((Element) node).getAttribute("who"));
-				} else if (!elem.getAttribute("eID").isEmpty() || elem.getAttribute("sID").isEmpty()) {
-					System.out.println("WARNING: Closing WOJ quote without opening one detected");
+				} else if (!elem.getAttribute("sID").isEmpty() && elem.getAttribute("eID").isEmpty()) {
+					// start
+					parent.insertBefore(parent.getOwnerDocument().createElement("woj"), node);
+					wojTagsInserted = true;
+				} else if (elem.getAttribute("sID").isEmpty() && !elem.getAttribute("eID").isEmpty()) {
+					// end
+					parent.insertBefore(parent.getOwnerDocument().createElement("wojEnd"), node);
+					wojTagsInserted = true;
 				} else {
-					String sID = elem.getAttribute("sID");
-					Node endNode = node.getNextSibling();
-					for (; endNode != null; endNode = endNode.getNextSibling()) {
-						if (endNode.getNodeName().equals("q")) {
-							elem = (Element) endNode;
-							if (elem.getAttribute("who").equals("Jesus") && elem.getAttribute("sID").isEmpty() && elem.getAttribute("eID").equals(sID))
-								break;
-						}
-					}
-					if (endNode == null) {
-						System.out.println("WARNING: Opening WOJ quote without closing one detected");
-					} else {
-						((Element) endNode).setAttribute("who", "");
-						Element woj = parent.getOwnerDocument().createElement("woj");
-						parent.insertBefore(woj, node.getNextSibling());
-						while (woj.getNextSibling() != endNode) {
-							woj.appendChild(woj.getNextSibling());
-						}
-						flattenChildren(woj);
-					}
+					System.out.println("WARNING: Unsupported milestone attributes for WOJ");
 				}
 			}
 			if (Arrays.asList("q", "foreign", "lg", "l", "div", "p").contains(node.getNodeName())) {
-				flattenChildren((Element) node);
+				flattenChildren((Element) node, true);
 				while (node.getFirstChild() != null) {
 					Node child = node.getFirstChild();
+					if (node.getNodeName().equals("woj") || node.getNodeName().equals("wojEnd"))
+						wojTagsInserted = true;
 					node.removeChild(child);
 					parent.insertBefore(child, node);
 				}
@@ -517,6 +568,49 @@ public class OSIS implements RoundtripFormat {
 				while (node2 != null && node1.getNodeName().equals("lb") && node2.getNodeName().equals("lb")) {
 					parent.removeChild(node2);
 					node2 = node1.getNextSibling();
+				}
+			}
+		}
+		if (wojTagsInserted && !recursive) {
+			for (Node node1 = parent.getFirstChild(); node1 != null; node1 = node1.getNextSibling()) {
+				if (node1.getNodeName().equals("woj")) {
+					Node node2 = node1.getNextSibling();
+					for (; node2 != null; node2 = node2.getNextSibling()) {
+						if (node2.getNodeName().equals("verse")) {
+							// do not create groups over verse nodes!
+							node2 = null;
+							break;
+						}
+						if (node2.getNodeName().equals("woj")) {
+							// do not create nested woj tags!
+							node2 = null;
+							break;
+						}
+						if (node2.getNodeName().equals("title")) {
+							// surround by WOJ tags
+							parent.insertBefore(parent.getOwnerDocument().createElement("wojEnd"), node2);
+							parent.insertBefore(parent.getOwnerDocument().createElement("woj"), node2.getNextSibling());
+							node2 = node2.getPreviousSibling();
+						}
+						if (node2.getNodeName().equals("wojEnd"))
+							break;
+					}
+					if (node2 == null) {
+						System.out.println("WARNING: Unclosed WOJ detected");
+						Node old = node1;
+						node1 = node1.getNextSibling();
+						parent.removeChild(old);
+					} else {
+						while (node1.getNextSibling() != node2) {
+							node1.appendChild(node1.getNextSibling());
+						}
+						parent.removeChild(node2);
+					}
+				} else if (node1.getNodeName().equals("wojEnd")) {
+					System.out.println("WARNING: Closed WOJ that was not open");
+					Node old = node1;
+					node1 = node1.getNextSibling();
+					parent.removeChild(old);
 				}
 			}
 		}

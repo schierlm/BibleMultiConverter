@@ -84,6 +84,8 @@ public class FormattedText {
 	public void trimWhitespace() {
 		if (finished)
 			throw new IllegalStateException();
+		if (Boolean.getBoolean("biblemulticonverter.keepwhitespace"))
+			return;
 		boolean trimmed = false;
 		for (int i = 0; i < elements.size(); i++) {
 			if (elements.get(i) instanceof FormattedText)
