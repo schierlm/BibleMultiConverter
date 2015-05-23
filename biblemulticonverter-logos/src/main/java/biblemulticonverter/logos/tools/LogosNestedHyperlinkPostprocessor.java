@@ -104,6 +104,8 @@ public class LogosNestedHyperlinkPostprocessor implements Tool {
 						if (!value.startsWith("|") || !value.contains("||"))
 							continue;
 						String[] parts = value.split("\\|\\|", 2);
+						if (parts[1].contains("||"))
+							System.out.println("WARNING: link target contains pipes; probably preprocessing bug: " + parts[1]);
 						text.setNodeValue(parts[1]);
 						parts = parts[0].split("\\|");
 						Element style = doc.createElementNS(NS_URI_W, "w:rStyle");

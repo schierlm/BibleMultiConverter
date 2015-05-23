@@ -131,7 +131,9 @@ public class LogosHTML implements ExportFormat {
 	}
 
 	private int footnoteCounter = 0;
+	private int footnoteNumber = 0;
 	private int grammarCounter = 0;
+	private String lineSeparator;
 
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
@@ -149,14 +151,18 @@ public class LogosHTML implements ExportFormat {
 		grammarCounter = 0;
 		String title = bible.getName();
 		String verseSeparator = "<br />";
-		if (exportArgs.length > 2 && exportArgs[2].equals("-inline"))
+		lineSeparator = "<br />";
+		if (exportArgs.length > 2 && exportArgs[2].equals("-inline")) {
 			verseSeparator = " ";
+			lineSeparator = "<br />&nbsp;&nbsp;&nbsp;&nbsp; ";
+		}
 		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(exportArgs[0])), StandardCharsets.UTF_8))) {
 			bw.write("<html><head>\n" +
 					"<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />\n" +
 					"<style>" +
 					"body, h1, h2, h3, h4, h5, h6 { font-family: \"Times New Roman\";}\n" +
 					"a { color: black; text-decoration: none;}\n" +
+					"a.sdfootnotesym, a.sdendnotesym { font-style: italic;}\n" +
 					"</style>\n" +
 					"</head><body lang=\"de-DE\">\n" +
 					"<h1>" + title.replace("&", "&amp").replace("<", "&lt;").replace(">", "&gt;") + "</h1>\n");
@@ -184,6 +190,7 @@ public class LogosHTML implements ExportFormat {
 							}
 						}
 						bw.write(book.getLongName() + "</h2>\n");
+						footnoteNumber = 0;
 						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, versemap));
 						bw.write("\n<br/>\n");
 						continue;
@@ -199,8 +206,9 @@ public class LogosHTML implements ExportFormat {
 					cnumber++;
 					String chapterRef = "@" + versemap + ":" + babbr + " " + cnumber;
 					if (book.getChapters().size() > 1) {
-						bw.write("<h3>[[" + chapterRef + "]]" + book.getAbbr() + " " + cnumber + "</h3>\n");
+						bw.write("<h3>[[" + chapterRef + "]]{{~ " + book.getAbbr() + " " + cnumber + " }}</h3>\n");
 					}
+					footnoteNumber = 0;
 					if (chapter.getProlog() != null) {
 						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap));
 						bw.write("\n<br/>\n");
@@ -386,6 +394,15 @@ public class LogosHTML implements ExportFormat {
 		}
 
 		@Override
+		public boolean visitEnd() throws IOException {
+			if (suffixStack.get(suffixStack.size() - 1).equals("\1")) {
+				suffixStack.set(suffixStack.size() - 1, "");
+				grammarFlag = true;
+			}
+			return super.visitEnd();
+		}
+
+		@Override
 		public Visitor<IOException> visitHeadline(int depth) throws IOException {
 			int level = depth < 3 ? depth + 3 : 6;
 			writer.write("<h" + level + ">");
@@ -398,8 +415,10 @@ public class LogosHTML implements ExportFormat {
 			if (footnoteWriter == null)
 				throw new IllegalStateException("Footnote inside footnote not supported");
 			footnoteCounter++;
+			footnoteNumber++;
+
 			footnoteWriter.write("<DIV ID=\"sdfootnote" + footnoteCounter + "\">");
-			writer.write("<A CLASS=\"sdfootnoteanc\" HREF=\"#sdfootnote" + footnoteCounter + "sym\">" + footnoteCounter + "</A>");
+			writer.write("<A CLASS=\"sdfootnoteanc\" HREF=\"#sdfootnote" + footnoteCounter + "sym\" sdfixed><sup>" + footnoteNumber + "</sup></A>");
 			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, versemap);
 		}
 
@@ -418,7 +437,8 @@ public class LogosHTML implements ExportFormat {
 
 		@Override
 		public void visitLineBreak(LineBreakKind kind) throws IOException {
-			writer.write("<br />");
+			grammarFlag = false;
+			writer.write(lineSeparator);
 		}
 
 		@Override
@@ -472,16 +492,16 @@ public class LogosHTML implements ExportFormat {
 					if (grammarFlag) {
 						// avoid </strike><strike> in HTML, which would be
 						// ignored by LibreOffice
+						System.out.println("WARNING: Added whitespace between adjacent grammar tags");
 						writer.write(" ");
 					}
-					grammarFlag = true;
 					links.add(0, firstLink);
 					StringBuilder altPrefix = new StringBuilder("<strike>|");
 					for (String link : links) {
 						altPrefix.append(link + "|");
 					}
 					altPrefix.append("|");
-					pushSuffix("");
+					pushSuffix("\1");
 					return new GrammarHackVisitor(this, writer, prefix, suffix.toString(), altPrefix.toString(), "</strike>");
 				}
 			}
