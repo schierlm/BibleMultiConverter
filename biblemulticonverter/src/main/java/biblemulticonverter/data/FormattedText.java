@@ -412,7 +412,7 @@ public class FormattedText {
 		SUBSCRIPT('s', "sub", "font-size: .83em; vertical-align: sub;"),
 		SUPERSCRIPT('p', "sup", "font-size: .83em; vertical-align: super;"),
 		DIVINE_NAME('d', null, "font-variant: small-caps;"),
-		STRIKE_THROUGH('s', null, "text-decoration: line-through;"),
+		STRIKE_THROUGH('t', null, "text-decoration: line-through;"),
 		WORDS_OF_JESUS('w', null, "color: red;");
 
 		private final char code;
