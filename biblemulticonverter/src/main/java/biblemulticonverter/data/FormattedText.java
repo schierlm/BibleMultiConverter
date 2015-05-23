@@ -859,14 +859,18 @@ public class FormattedText {
 
 		@Override
 		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) {
+			if (context.ordinal() >= ValidationContext.LINK.ordinal())
+				throw new IllegalArgumentException("Invalid nested link");
 			visitInlineElement();
-			return new ValidatingVisitor(bible, danglingReferences, context);
+			return new ValidatingVisitor(bible, danglingReferences, ValidationContext.LINK);
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) throws RuntimeException {
+			if (context.ordinal() >= ValidationContext.LINK.ordinal())
+				throw new IllegalArgumentException("Invalid nested link");
 			visitInlineElement();
-			return new ValidatingVisitor(bible, danglingReferences, context);
+			return new ValidatingVisitor(bible, danglingReferences, ValidationContext.LINK);
 		}
 
 		@Override
@@ -1018,5 +1022,6 @@ public class FormattedText {
 		HEADLINE,
 		FOOTNOTE,
 		XREF,
+		LINK,
 	}
 }
