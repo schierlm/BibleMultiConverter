@@ -28,7 +28,7 @@ public class ESwordHTML implements ExportFormat {
 	public static final String[] HELP_TEXT = {
 			"HTML Export format for E-Sword",
 			"",
-			"Usage: LogosHTML <outfile> [<marker>]",
+			"Usage: ESwordHTML <outfile> [<marker>]",
 			"",
 			"This export format will export two files, <basename>.bblx.HTM and <basename>.cmtx.HTM.",
 			"They can be imported in E-Sword ToolTip Tool NT (2.51) and exported as .bblx or .cmtx,",

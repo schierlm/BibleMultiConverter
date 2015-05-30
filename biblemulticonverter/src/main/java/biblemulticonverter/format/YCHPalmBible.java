@@ -21,7 +21,7 @@ import biblemulticonverter.data.VirtualVerse;
 public class YCHPalmBible implements ExportFormat {
 
 	public static final String[] HELP_TEXT = {
-			"Import format for YCHBibleConverter for PalmBible+"
+			"Export format for YCHBibleConverter for PalmBible+"
 	};
 
 	private static final String CHAPTER_NAME = "Kapitel";
