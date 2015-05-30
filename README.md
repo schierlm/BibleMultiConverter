@@ -49,6 +49,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **ZefaniaXML**: import and export (There are two import filters and three export
   filters available that focus on different subsets/features of this quite diverse
   format)
+- **TheWord**: import and export
 - **PalmBible+**: export only
 - **MobiPocket**: export only
 
@@ -80,8 +81,7 @@ options for that.
 Planned formats
 ---------------
 
-I intend to add importer and exporter for theWord Bibles (export is currently possible
-by importing Zefania XML in theWord), and an importer for SWORD bibles (export is 
+I intend to add an importer for SWORD bibles (export is
 currently already possible via OSIS export and osis2mod).
 
 I also plan lossless import and export to ODT, to make manual editing of the Bible text
