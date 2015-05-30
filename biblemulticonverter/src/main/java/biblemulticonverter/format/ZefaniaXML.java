@@ -126,6 +126,7 @@ public class ZefaniaXML implements RoundtripFormat {
 			if (value.length() != 0)
 				metadata.setValue(elem.getName().getLocalPart(), value);
 		}
+		metadata.finished();
 		if (metadata.getKeys().size() > 0)
 			result.getBooks().add(metadata.getBook());
 		Set<String> abbrs = new HashSet<String>();
