@@ -24,23 +24,23 @@ public class Chapter {
 		this.verses = new ArrayList<Verse>();
 	}
 
-	public void validate(Bible bible, List<String> danglingReferences) {
+	public void validate(Bible bible, String bookAbbr, int cnumber, List<String> danglingReferences) {
 		// chapters may have no verses, if not yet translated but a later
 		// chapter is.
 		if (prolog != null)
-			prolog.validate(bible, danglingReferences);
+			prolog.validate(bible, bookAbbr + " " + cnumber + ":Prolog", danglingReferences);
 		Set<String> verseNumbers = new HashSet<String>();
 		for (Verse verse : verses) {
 			if (!verseNumbers.add(verse.getNumber()))
 				throw new IllegalStateException("Duplicate verse number " + verse.getNumber());
-			verse.validate(bible, danglingReferences);
+			verse.validate(bible, bookAbbr + " " + cnumber + ":" + verse.getNumber(), danglingReferences);
 		}
 		int lastVerse = 0;
 		for (VirtualVerse vv : createVirtualVerses()) {
 			if (vv.getNumber() <= lastVerse)
-				throw new IllegalStateException("Invalid order of virtual verses");
+				throw new IllegalStateException("Invalid order of virtual verses: " + vv.getNumber() + " after " + lastVerse);
 			lastVerse = vv.getNumber();
-			vv.validate(bible, danglingReferences);
+			vv.validate(bible, bookAbbr, cnumber, danglingReferences);
 		}
 	}
 

@@ -51,7 +51,7 @@ public class Bible {
 			}
 			if (book.getId() == BookID.DICTIONARY_ENTRY) {
 				if (book.getChapters().size() != 1 || book.getChapters().get(0).getProlog() == null || !book.getChapters().get(0).getVerses().isEmpty()) {
-					throw new IllegalStateException("Malformed dictionary entry");
+					throw new IllegalStateException("Malformed dictionary entry: " + book.getAbbr());
 				}
 			} else if (!bookIDs.add(book.getId())) {
 				throw new IllegalStateException("Ambiguous book id " + book.getId());

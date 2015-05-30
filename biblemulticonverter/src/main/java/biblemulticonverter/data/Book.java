@@ -23,12 +23,14 @@ public class Book {
 
 	public void validate(Bible bible, List<String> danglingReferences) {
 		if (chapters.size() == 0)
-			throw new IllegalStateException("Book has no chapters");
+			throw new IllegalStateException("Book has no chapters: " + getAbbr());
 		Chapter lastChapter = chapters.get(chapters.size() - 1);
 		if (lastChapter.getVerses().size() == 0 && lastChapter.getProlog() == null)
 			throw new IllegalStateException("Last chapter has neither prolog nor verses");
+		int cnumber = 0;
 		for (Chapter chapter : chapters) {
-			chapter.validate(bible, danglingReferences);
+			cnumber++;
+			chapter.validate(bible, getAbbr(), cnumber, danglingReferences);
 		}
 	}
 

@@ -75,10 +75,14 @@ public class FormattedText {
 		return result;
 	}
 
-	public void validate(Bible bible, List<String> danglingReferences) {
+	public void validate(Bible bible, String location, List<String> danglingReferences) {
 		if (!finished)
-			throw new IllegalStateException("Formatted text not marked as finished - this may dramatically increase memory usage!");
-		accept(new ValidatingVisitor(bible, danglingReferences, this instanceof Verse ? ValidationContext.VERSE : ValidationContext.NORMAL_TEXT));
+			throw new IllegalStateException("Formatted text " + location + " not marked as finished - this may dramatically increase memory usage!");
+		try {
+			accept(new ValidatingVisitor(bible, danglingReferences, this instanceof Verse ? ValidationContext.VERSE : ValidationContext.NORMAL_TEXT));
+		} catch (RuntimeException ex) {
+			throw new RuntimeException("Validation error at " + location, ex);
+		}
 	}
 
 	public void trimWhitespace() {
@@ -802,7 +806,7 @@ public class FormattedText {
 			if (context.ordinal() >= ValidationContext.HEADLINE.ordinal())
 				throw new IllegalArgumentException("Invalid nested headline");
 			if (depth <= lastHeadlineDepth)
-				throw new IllegalStateException("Invalid headline depth order");
+				throw new IllegalStateException("Invalid headline depth order: " + depth + " after " + lastHeadlineDepth);
 			if (trailingWhitespaceFound)
 				throw new IllegalStateException("No whitespace allowed before headlines");
 			leadingWhitespaceAllowed = false;

@@ -23,19 +23,20 @@ public class VirtualVerse {
 		this.number = Utils.validateNumber("number", number, 1, Integer.MAX_VALUE);
 	}
 
-	public void validate(Bible bible, List<String> danglingReferences) {
+	public void validate(Bible bible, String bookAbbr, int cnumber, List<String> danglingReferences) {
 		int lastHeadlineDepth = 0;
+		String location = bookAbbr + " " + cnumber + ":v" + getNumber();
 		for (Headline headline : headlines) {
 			if (headline.getDepth() <= lastHeadlineDepth)
-				throw new IllegalStateException("Invalid headline depth order");
+				throw new IllegalStateException("Invalid headline depth order at " + location + ": " + headline.getDepth() + " after " + lastHeadlineDepth);
 			lastHeadlineDepth = headline.getDepth() == 9 ? 8 : headline.getDepth();
-			headline.validate(bible, danglingReferences);
+			headline.validate(bible, location + ":Headline", danglingReferences);
 		}
 		Set<String> verseNumbers = new HashSet<String>();
 		for (Verse verse : verses) {
 			if (!verseNumbers.add(verse.getNumber()))
 				throw new IllegalStateException("Duplicate verse number");
-			verse.validate(bible, danglingReferences);
+			verse.validate(bible, location + ":" + verse.getNumber(), danglingReferences);
 		}
 	}
 
