@@ -26,7 +26,7 @@ public class Book {
 			throw new IllegalStateException("Book has no chapters: " + getAbbr());
 		Chapter lastChapter = chapters.get(chapters.size() - 1);
 		if (lastChapter.getVerses().size() == 0 && lastChapter.getProlog() == null)
-			throw new IllegalStateException("Last chapter has neither prolog nor verses");
+			throw new IllegalStateException("Last chapter has neither prolog nor verses: " + getAbbr());
 		int cnumber = 0;
 		for (Chapter chapter : chapters) {
 			cnumber++;
