@@ -4,13 +4,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.Headline;
+import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.format.ExportFormat;
 
@@ -29,24 +35,25 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
 		VersificationScheme[] schemes = loadSchemes();
-		int totalVerseCount = 0;
+		Set<String> totalVerses = new HashSet<String>();
+		boolean includeXref = exportArgs.length > 0 && exportArgs[0].equals("-xref");
+		XrefCountVisitor xcv = includeXref ? new XrefCountVisitor(schemes, totalVerses) : null;
 
 		// fill missing verses
-		BitSet[] emptyBitSetArray = new BitSet[0];
 		for (Book book : bible.getBooks()) {
 			for (int cc = 0; cc < book.getChapters().size(); cc++) {
 				Chapter chapter = book.getChapters().get(cc);
+				if (includeXref && chapter.getProlog() != null) {
+					chapter.getProlog().accept(xcv);
+				}
 				for (VirtualVerse v : chapter.createVirtualVerses()) {
-					totalVerseCount++;
-					for (VersificationScheme scheme : schemes) {
-						BitSet[] bookInfo = scheme.getCoveredBooks().get(book.getId());
-						if (bookInfo == null)
-							bookInfo = emptyBitSetArray;
-						if (cc >= bookInfo.length) {
-							if (!scheme.getMissingChapters().contains(book.getAbbr() + " " + (cc + 1)))
-								scheme.getMissingChapters().add(book.getAbbr() + " " + (cc + 1));
-						} else if (!bookInfo[cc].get(v.getNumber())) {
-							scheme.getMissingVerses().add(book.getAbbr() + " " + (cc + 1) + ":" + v.getNumber());
+					countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), cc + 1, v.getNumber());
+					if (includeXref) {
+						for (Headline hl : v.getHeadlines()) {
+							hl.accept(xcv);
+						}
+						for (Verse vv : v.getVerses()) {
+							vv.accept(xcv);
 						}
 					}
 				}
@@ -58,6 +65,7 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 
 		// print them
 		System.out.print("Best match:  ");
+		int totalVerseCount = totalVerses.size();
 		printScheme(schemes[0], totalVerseCount);
 
 		System.out.println();
@@ -70,10 +78,10 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 		}
 
 		// print selected schemes
-		if (exportArgs.length > 0) {
+		if (exportArgs.length > (includeXref ? 1 : 0)) {
 			System.out.println();
 			System.out.println("Selected schemes:");
-			for (int i = 0; i < exportArgs.length; i++) {
+			for (int i = includeXref ? 1 : 0; i < exportArgs.length; i++) {
 				boolean found = false;
 				for (VersificationScheme scheme : schemes) {
 					if (scheme.getName().equals(exportArgs[i])) {
@@ -88,10 +96,25 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 		}
 	}
 
+	protected void countVerse(VersificationScheme[] schemes, Set<String> totalVerses, String bookAbbr, BookID bookID, int cnum, int vnum) {
+		totalVerses.add(bookAbbr + " " + cnum + ":" + vnum);
+		for (VersificationScheme scheme : schemes) {
+			BitSet[] bookInfo = scheme.getCoveredBooks().get(bookID);
+			if (bookInfo == null)
+				bookInfo = new BitSet[0];
+			if (cnum - 1 >= bookInfo.length) {
+				if (!scheme.getMissingChapters().contains(bookAbbr + " " + cnum))
+					scheme.getMissingChapters().add(bookAbbr + " " + cnum);
+			} else if (!bookInfo[cnum - 1].get(vnum)) {
+				scheme.getMissingVerses().add(bookAbbr + " " + cnum + ":" + vnum);
+			}
+		}
+	}
+
 	private void printScheme(VersificationScheme scheme, int totalVerseCount) {
 		if (scheme.getMissingChapters().size() > 0)
-			System.out.println(scheme.getName() + " (Missing chapters+verses: " + scheme.getMissingChapters().size() + "+" + scheme.getMissingVerses() + " " + scheme.getMissingChapters() + " " + scheme.getMissingVerses());
-		if (scheme.getMissingVerses().size() > 0)
+			System.out.println(scheme.getName() + " (Missing chapters+verses: " + scheme.getMissingChapters().size() + "+" + scheme.getMissingVerses().size() + " " + scheme.getMissingChapters() + " " + scheme.getMissingVerses());
+		else if (scheme.getMissingVerses().size() > 0)
 			System.out.println(scheme.getName() + " (Missing verses: " + scheme.getMissingVerses().size() + " " + scheme.getMissingVerses() + ")");
 		else
 			System.out.println(scheme.getName() + " (All verses covered, and " + (scheme.getVerseCount() - totalVerseCount) + " more)");
@@ -144,6 +167,32 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 			if (result == 0)
 				result = Integer.compare(verseCount, other.verseCount);
 			return result;
+		}
+	}
+
+	private class XrefCountVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
+		private final VersificationScheme[] schemes;
+		private final Set<String> totalVerses;
+
+		public XrefCountVisitor(VersificationScheme[] schemes, Set<String> totalVerses) {
+			super(null);
+			this.schemes = schemes;
+			this.totalVerses = totalVerses;
+		}
+
+		@Override
+		protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
+			return this;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+			try {
+				countVerse(schemes, totalVerses, bookAbbr, book, firstChapter, Integer.parseInt(firstVerse));
+				countVerse(schemes, totalVerses, bookAbbr, book, lastChapter, Integer.parseInt(lastVerse));
+			} catch (NumberFormatException ex) {
+			}
+			return this;
 		}
 	}
 }
