@@ -191,7 +191,7 @@ public class LogosHTML implements ExportFormat {
 						}
 						bw.write(book.getLongName() + "</h2>\n");
 						footnoteNumber = 0;
-						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, versemap));
+						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, versemap, scheme));
 						bw.write("\n<br/>\n");
 						continue;
 					}
@@ -210,7 +210,7 @@ public class LogosHTML implements ExportFormat {
 					}
 					footnoteNumber = 0;
 					if (chapter.getProlog() != null) {
-						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap));
+						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme));
 						bw.write("\n<br/>\n");
 					}
 					BitSet allowedVerses = chapterVerses != null && cnumber <= chapterVerses.length ? chapterVerses[cnumber - 1] : null;
@@ -220,7 +220,7 @@ public class LogosHTML implements ExportFormat {
 						for (Headline hh : vv.getHeadlines()) {
 							int depth = hh.getDepth() < 3 ? hh.getDepth() + 3 : 6;
 							bw.write("<h" + depth + ">");
-							hh.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap));
+							hh.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme));
 							bw.write("</h" + depth + ">\n");
 						}
 
@@ -236,7 +236,7 @@ public class LogosHTML implements ExportFormat {
 								bw.write(verseSeparator);
 							first = false;
 							bw.write("<b>" + v.getNumber() + "</b> {{field-on:bible}}");
-							v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap));
+							v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme));
 							bw.write("{{field-off:bible}}\n");
 						}
 					}
@@ -377,13 +377,15 @@ public class LogosHTML implements ExportFormat {
 		private StringWriter footnoteWriter;
 		private boolean nt;
 		private String versemap;
+		VersificationScheme scheme;
 		private boolean grammarFlag;
 
-		protected LogosVisitor(Writer writer, String suffix, StringWriter footnoteWriter, boolean nt, String versemap) {
+		protected LogosVisitor(Writer writer, String suffix, StringWriter footnoteWriter, boolean nt, String versemap, VersificationScheme scheme) {
 			super(writer, suffix);
 			this.footnoteWriter = footnoteWriter;
 			this.nt = nt;
 			this.versemap = versemap;
+			this.scheme = scheme;
 		}
 
 		@Override
@@ -419,11 +421,16 @@ public class LogosHTML implements ExportFormat {
 
 			footnoteWriter.write("<DIV ID=\"sdfootnote" + footnoteCounter + "\">");
 			writer.write("<A CLASS=\"sdfootnoteanc\" HREF=\"#sdfootnote" + footnoteCounter + "sym\" sdfixed><sup>" + footnoteNumber + "</sup></A>");
-			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, versemap);
+			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, versemap, scheme);
 		}
 
 		@Override
 		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+			if (!isVerseCovered(book, firstChapter, firstVerse) || !isVerseCovered(book, lastChapter, lastVerse)) {
+				writer.write("<sup>");
+				pushSuffix("</sup>");
+				return this;
+			}
 			writer.write("<sup>[[ ");
 			String ref = firstChapter + ":" + firstVerse;
 			if (firstChapter != lastChapter) {
@@ -433,6 +440,19 @@ public class LogosHTML implements ExportFormat {
 			}
 			pushSuffix(" &gt;&gt; " + versemap + ":" + LOGOS_BOOKS.get(book) + " " + ref + "]]</sup>");
 			return this;
+		}
+
+		private boolean isVerseCovered(BookID book, int chapter, String verse) {
+			BitSet[] chapterVerses = scheme.getCoveredBooks().get(book);
+			if (chapterVerses == null || chapter > chapterVerses.length)
+				return false;
+			BitSet allowedVerses = chapterVerses[chapter - 1];
+			try {
+				int verseNum = Integer.parseInt(verse);
+				return allowedVerses.get(verseNum);
+			} catch (NumberFormatException ex) {
+				return false;
+			}
 		}
 
 		@Override
