@@ -58,6 +58,7 @@ public class OSIS implements RoundtripFormat {
 
 	private Set<String> printedWarnings = new HashSet<String>();
 	private Properties osisRefMap = null;
+	private String warningContext = "";
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
@@ -88,6 +89,7 @@ public class OSIS implements RoundtripFormat {
 	}
 
 	private void parseBook(String bookName, Element osisBook, Book bibleBook) {
+		warningContext = bookName;
 		for (Node node = osisBook.getFirstChild(); node != null; node = node.getNextSibling()) {
 			if (node instanceof Text) {
 				if (((Text) node).getTextContent().trim().length() > 0)
@@ -111,7 +113,9 @@ public class OSIS implements RoundtripFormat {
 						while (bibleBook.getChapters().size() < cnumber) {
 							bibleBook.getChapters().add(new Chapter());
 						}
+						warningContext = chapterName;
 						parseChapter(chapterName, elem, bibleBook.getChapters().get(cnumber - 1));
+						warningContext = bookName;
 					}
 				} else {
 					printWarning("WARNING: invalid book level tag: " + elem.getNodeName());
@@ -237,6 +241,7 @@ public class OSIS implements RoundtripFormat {
 						}
 						String vnumber = sID.substring(chapterName.length() + 1);
 						verse = new Verse(vnumber);
+						warningContext = sID;
 						for (Headline hl : headlines) {
 							hl.accept(verse.getAppendVisitor().visitHeadline(hl.getDepth()));
 						}
@@ -255,6 +260,7 @@ public class OSIS implements RoundtripFormat {
 								printWarning("WARNING: Empty verse " + eID);
 								chapter.getVerses().remove(verse);
 							}
+							warningContext += " (after closing)";
 							verse = null;
 						}
 					} else {
@@ -281,6 +287,8 @@ public class OSIS implements RoundtripFormat {
 	}
 
 	private void printWarning(String warning) {
+		if (Boolean.getBoolean("biblemulticonverter.osis.warningcontext"))
+			warning += " [" + warningContext + "]";
 		if (printedWarnings.add(warning)) {
 			System.out.println(warning);
 		}
@@ -430,7 +438,7 @@ public class OSIS implements RoundtripFormat {
 				}
 				v = v.visitGrammarInformation(strong, rmac, idx);
 			} else if (rmac != null || idx != null) {
-				printWarning("WARNING: Skipping rmac/idx because strongs missing");
+				printWarning("INFO: Skipping rmac/idx because strongs missing");
 			}
 			parseStructuredTextChildren(v, elem);
 		} else if (elem.getNodeName().equals("reference")) {
