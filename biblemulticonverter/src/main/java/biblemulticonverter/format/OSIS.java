@@ -142,11 +142,16 @@ public class OSIS implements RoundtripFormat {
 			if (node instanceof Text) {
 				if (verse != null) {
 					String text = node.getTextContent().replaceAll("[ \r\n\t]+", " ");
-					if (text.endsWith(" ") && node.getNextSibling() != null && Arrays.asList("verse", "brp", "lb").contains(node.getNextSibling().getNodeName())) {
-						printWarning("WARNING: Whitespace at end of verse");
+					if (text.startsWith(" ") && node.getPreviousSibling() != null && Arrays.asList("verse", "brp", "lb", "title").contains(node.getPreviousSibling().getNodeName())) {
+						printWarning("WARNING: Whitespace at beginning of verse or after title/newline");
+						text = text.substring(1);
+					}
+					if (text.endsWith(" ") && node.getNextSibling() != null && Arrays.asList("verse", "brp", "lb", "title").contains(node.getNextSibling().getNodeName())) {
+						printWarning("WARNING: Whitespace at end of verse or after title/newline");
 						text = text.substring(0, text.length() - 1);
 					}
-					verse.getAppendVisitor().visitText(text);
+					if (text.length() > 0)
+						verse.getAppendVisitor().visitText(text);
 				} else if (nextVerse == 1) {
 					if (prolog == null && ((Text) node).getTextContent().trim().length() == 0)
 						continue;
@@ -511,6 +516,7 @@ public class OSIS implements RoundtripFormat {
 
 	private static void flattenChildren(Element parent) {
 		flattenChildren(parent, false);
+		parent.normalize();
 	}
 
 	private static void flattenChildren(Element parent, boolean recursive) {
