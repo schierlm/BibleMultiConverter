@@ -126,6 +126,13 @@ that covers (hopefully) all verses of your Bible. Then run **LogosHTML** to prod
 a HTML file, which you can open in LibreOffice (HTML Writer format) and save as .docx
 (Office 2007 XML format).
 
+In case your bible contains cross references to books/verses that are not covered
+by your bible itself, don't forget to pass the `-xref` option to the versification
+detector, as Logos will not render datatype links to cross references that do not
+exist in the verse map (In case you do not get a match that covers both your verses
+and your xrefs, but there is a match that covers all verses, use that one, as it is
+better to lose datatype links for your cross references, than to lose some verses).
+
 As LibreOffice has some limitations in exporting of hyperlinks, if your original bible
 contained Grammar information (Strongs or Morphology tags), you will have to run the
 resulting DOCX file through **LogosNestedHyperlinkPostprocessor** or the Grammar
