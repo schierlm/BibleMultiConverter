@@ -230,6 +230,16 @@ public class OSIS implements RoundtripFormat {
 					String eID = elem.getAttribute("eID");
 					if (eID.isEmpty())
 						eID = null;
+					if (osisID != null && sID == null && eID == null) {
+						// convert to milestoned form
+						sID = osisID;
+						Element endVerse = osisChapter.getOwnerDocument().createElement("verse");
+						endVerse.setAttribute("eID", osisID);
+						osisChapter.insertBefore(endVerse, elem.getNextSibling());
+						while (elem.getFirstChild() != null) {
+							osisChapter.insertBefore(elem.getFirstChild(), endVerse);
+						}
+					}
 					if (osisID != null && sID != null && eID == null && osisID.equals(sID)) {
 						if (!sID.startsWith(chapterName + "."))
 							throw new IllegalStateException("Invalid verse " + sID + " in chapter " + chapterName);
@@ -354,7 +364,25 @@ public class OSIS implements RoundtripFormat {
 			if (elem.getAttribute("type").equals("crossReference")) {
 				Visitor<RuntimeException> fn = vv.visitFootnote();
 				fn.visitText(FormattedText.XREF_MARKER);
-				if (elem.getTextContent().length() > 0) {
+				if (elem.getFirstChild() != null && elem.getFirstChild().getNodeName().equals("reference")) {
+					for(Node n = elem.getFirstChild(); n != null; n = n.getNextSibling()) {
+						if (n instanceof Text) {
+							fn.visitText(n.getTextContent());
+							continue;
+						}
+						Element e = (Element) n;
+						String[] ref = e.getAttribute("osisRef").split("\\.");
+						if (ref.length != 3) {
+							printWarning("WARNING: Invalid reference target: "+e.getAttribute("osisRef"));
+							fn.visitText(e.getTextContent());
+							continue;
+						}
+						BookID bookID = BookID.fromOsisId(ref[0]);
+						int ch = Integer.parseInt(ref[1]);
+						String vs = ref[2];
+						fn.visitCrossReference(ref[0], bookID, ch, vs, ch, vs).visitText(e.getTextContent());
+					}
+				} else if (elem.getTextContent().length() > 0) {
 					boolean first = true;
 					for (String ref : elem.getTextContent().split("\\|")) {
 						Matcher m = XREF_PATTERN.matcher(ref);

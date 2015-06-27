@@ -32,7 +32,7 @@ public class Chapter {
 		Set<String> verseNumbers = new HashSet<String>();
 		for (Verse verse : verses) {
 			if (!verseNumbers.add(verse.getNumber()))
-				throw new IllegalStateException("Duplicate verse number " + verse.getNumber());
+				throw new IllegalStateException("Duplicate verse number " + bookAbbr + " " + cnumber + ":" + verse.getNumber());
 			verse.validate(bible, bookAbbr + " " + cnumber + ":" + verse.getNumber(), danglingReferences);
 		}
 		int lastVerse = 0;
