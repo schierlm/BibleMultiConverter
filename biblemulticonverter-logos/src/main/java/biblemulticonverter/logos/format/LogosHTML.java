@@ -1,9 +1,12 @@
 package biblemulticonverter.logos.format;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -24,6 +27,7 @@ import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
+import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
@@ -37,13 +41,16 @@ public class LogosHTML implements ExportFormat {
 	public static final String[] HELP_TEXT = {
 			"HTML Export format for Logos Bible Software",
 			"",
-			"Usage: LogosHTML <outfile> [<versemap> [-inline]]",
+			"Usage: LogosHTML <outfile> [<versemap> [<template> [-inline|-nochapter]]]",
 			"",
 			"Open the resulting HTML file in LibreOffice 4.4 (as Writer, not as Writer/Web), and",
 			"save as MS Office 2007 .docx format. The resulting file can be imported in Logos",
 			"as a personal book.",
 			"In case no verse map is given, the default verse map, 'Bible', is used.",
-			"Use the -inline option to add more than one verse on the same line."
+			"Use a template in case you want to add a header text (like copyright) automatically.",
+			"Use the -inline option to add more than one verse on the same line, or the -nochapter",
+			"option to additionally not write headlines for chapters (if the book has a different",
+			"headline structure). In that case you can give the template as '-' to use none."
 	};
 
 	private static Map<BookID, String> LOGOS_BOOKS = new EnumMap<>(BookID.class);
@@ -152,9 +159,14 @@ public class LogosHTML implements ExportFormat {
 		String title = bible.getName();
 		String verseSeparator = "<br />";
 		lineSeparator = "<br />";
-		if (exportArgs.length > 2 && exportArgs[2].equals("-inline")) {
+		boolean noChapterHeadings = false;
+		if (exportArgs.length > 3 && exportArgs[3].equals("-inline")) {
 			verseSeparator = " ";
 			lineSeparator = "<br />&nbsp;&nbsp;&nbsp;&nbsp; ";
+		} else if (exportArgs.length > 3 && exportArgs[3].equals("-nochapter")) {
+			verseSeparator = " ";
+			lineSeparator = "<br />&nbsp;&nbsp;&nbsp;&nbsp; ";
+			noChapterHeadings = true;
 		}
 		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(exportArgs[0])), StandardCharsets.UTF_8))) {
 			bw.write("<html><head>\n" +
@@ -163,9 +175,35 @@ public class LogosHTML implements ExportFormat {
 					"body, h1, h2, h3, h4, h5, h6 { font-family: \"Times New Roman\";}\n" +
 					"a { color: black; text-decoration: none;}\n" +
 					"a.sdfootnotesym, a.sdendnotesym { font-style: italic;}\n" +
+					"h1 {font-size: 24pt;}\n" +
+					"h2 {font-size: 22pt;}\n" +
+					"h3 {font-size: 20pt;}\n" +
+					"h4 {font-size: 18pt;}\n" +
+					"h5 {font-size: 16pt;}\n" +
+					"h6 {font-size: 14pt;}\n" +
 					"</style>\n" +
-					"</head><body lang=\"de-DE\">\n" +
-					"<h1>" + title.replace("&", "&amp").replace("<", "&lt;").replace(">", "&gt;") + "</h1>\n");
+					"</head><body lang=\"de-DE\">\n");
+
+			if (exportArgs.length > 2 && !exportArgs[2].equals("-")) {
+				StringWriter sw = new StringWriter();
+				try(BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(exportArgs[2]), StandardCharsets.UTF_8))) {
+					char[] buffer = new char[4096];
+					int len;
+					while ((len = br.read(buffer)) != -1)
+						sw.write(buffer, 0, len);
+				}
+				String template = sw.toString();
+				template = template.replace("${name}", bible.getName());
+				MetadataBook mb = bible.getMetadataBook();
+				if (mb != null) {
+					bible.getBooks().remove(0);
+					for(String key : mb.getKeys())
+						template = template.replace("${"+key+"}", mb.getValue(key));
+				}
+				bw.write(template);
+			} else {
+				bw.write("<h1>" + title.replace("&", "&amp").replace("<", "&lt;").replace(">", "&gt;") + "</h1>\n");
+			}
 
 			StringWriter footnotes = new StringWriter();
 			for (Book book : bible.getBooks()) {
@@ -205,8 +243,15 @@ public class LogosHTML implements ExportFormat {
 				for (Chapter chapter : book.getChapters()) {
 					cnumber++;
 					String chapterRef = "@" + versemap + ":" + babbr + " " + cnumber;
+					boolean writeChapterNumber = false;
+					int usedHeadlines = 2;
 					if (book.getChapters().size() > 1) {
-						bw.write("<h3>[[" + chapterRef + "]]{{~ " + book.getAbbr() + " " + cnumber + " }}</h3>\n");
+						if (noChapterHeadings) {
+							writeChapterNumber = true;
+						} else {
+							usedHeadlines = 3;
+							bw.write("<h3>[[" + chapterRef + "]]{{~ " + book.getAbbr() + " " + cnumber + " }}</h3>\n");
+						}
 					}
 					footnoteNumber = 0;
 					if (chapter.getProlog() != null) {
@@ -218,7 +263,7 @@ public class LogosHTML implements ExportFormat {
 						allowedVerses = null;
 					for (VirtualVerse vv : chapter.createVirtualVerses(allowedVerses)) {
 						for (Headline hh : vv.getHeadlines()) {
-							int depth = hh.getDepth() < 3 ? hh.getDepth() + 3 : 6;
+							int depth = hh.getDepth() + usedHeadlines < 6 ? hh.getDepth() + usedHeadlines : 6;
 							bw.write("<h" + depth + ">");
 							hh.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme));
 							bw.write("</h" + depth + ">\n");
@@ -229,6 +274,10 @@ public class LogosHTML implements ExportFormat {
 
 						int vnumber = vv.getNumber();
 						bw.write(verseSeparator);
+						if (writeChapterNumber) {
+							bw.write("<b style=\"font-size: 20pt\">[[" + chapterRef + "]]" + cnumber + "</b>"+verseSeparator);
+							writeChapterNumber = false;
+						}
 						bw.write("[[" + chapterRef + ":" + vnumber + "]]");
 						boolean first = true;
 						for (Verse v : vv.getVerses()) {

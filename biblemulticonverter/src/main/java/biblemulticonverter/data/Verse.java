@@ -5,7 +5,7 @@ package biblemulticonverter.data;
  */
 public class Verse extends FormattedText {
 
-	public final String number;
+	private final String number;
 
 	public Verse(String number) {
 		this.number = Utils.validateString("number", number, Utils.VERSE_REGEX);

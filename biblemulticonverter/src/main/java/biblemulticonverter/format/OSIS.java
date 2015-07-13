@@ -40,6 +40,8 @@ import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.MetadataBook.MetadataBookKey;
+import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.Verse;
 
 /**
@@ -67,6 +69,19 @@ public class OSIS implements RoundtripFormat {
 		XPath xpath = javax.xml.xpath.XPathFactory.newInstance().newXPath();
 		Document osisDoc = docBuilder.parse(inputFile);
 		Bible result = new Bible(xpath.evaluate("/osis/osisText/header/work/title/text()", osisDoc));
+		String description = xpath.evaluate("/osis/osisText/header/work/description/text()", osisDoc);
+		String rights = xpath.evaluate("/osis/osisText/header/work/rights/text()", osisDoc);
+		if (!description.isEmpty() || !rights.isEmpty()) {
+			String date = xpath.evaluate("/osis/osisText/header/work/date/text()", osisDoc);
+			String titleDesc =  xpath.evaluate("/osis/osisText/titlePage/description/text()", osisDoc);
+			MetadataBook mb = new MetadataBook();
+			mb.setValue(MetadataBookKey.description, description);
+			mb.setValue(MetadataBookKey.rights, rights);
+			mb.setValue(MetadataBookKey.date, date);
+			mb.setValue("description@titlePage", titleDesc);
+			mb.finished();
+			result.getBooks().add(mb.getBook());
+		}
 		NodeList osisBooks = (NodeList) xpath.evaluate("/osis/osisText/div[@type='book']", osisDoc, XPathConstants.NODESET);
 		for (int bookIndex = 0; bookIndex < osisBooks.getLength(); bookIndex++) {
 			Element osisBook = (Element) osisBooks.item(bookIndex);
@@ -183,7 +198,7 @@ public class OSIS implements RoundtripFormat {
 					}
 					parseStructuredTextChildren(hl.getAppendVisitor(), elem);
 					if (hl.getElementTypes(1).length() == 0) {
-						printWarning("WARNING: Empty headline in " + chapterName + (verse == null ? "" : "." + verse.number));
+						printWarning("WARNING: Empty headline in " + chapterName + (verse == null ? "" : "." + verse.getNumber()));
 					} else if (verse != null) {
 						hl.accept(verse.getAppendVisitor().visitHeadline(hl.getDepth()));
 					} else {
