@@ -155,7 +155,12 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 
 						@Override
 						public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
-							throw new RuntimeException("Cross references in prologs are not supported");
+							System.out.println("WARNING: Cross references in prologs are not supported");
+							STYLE s = f.createSTYLE();
+							s.setCss("-zef-dummy: true");
+							targetStack.get(0).add(new JAXBElement<STYLE>(new QName("STYLE"), STYLE.class, s));
+							targetStack.add(0, s.getContent());
+							return this;
 						}
 
 						@Override

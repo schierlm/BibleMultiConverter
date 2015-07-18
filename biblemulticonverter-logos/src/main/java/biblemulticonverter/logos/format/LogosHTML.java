@@ -483,14 +483,14 @@ public class LogosHTML implements ExportFormat {
 				pushSuffix("</sup>");
 				return this;
 			}
-			writer.write("<sup>[[ ");
+			writer.write("[[ ");
 			String ref = firstChapter + ":" + firstVerse;
 			if (firstChapter != lastChapter) {
 				ref += "-" + lastChapter + ":" + lastVerse;
 			} else if (!firstVerse.equals(lastVerse)) {
 				ref += "-" + lastVerse;
 			}
-			pushSuffix(" &gt;&gt; " + versemap + ":" + LOGOS_BOOKS.get(book) + " " + ref + "]]</sup>");
+			pushSuffix(" &gt;&gt; " + versemap + ":" + LOGOS_BOOKS.get(book) + " " + ref + "]]");
 			return this;
 		}
 

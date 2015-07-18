@@ -881,7 +881,7 @@ public class FormattedText {
 		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID bookID, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
 			if (context.ordinal() >= ValidationContext.XREF.ordinal())
 				throw new IllegalArgumentException("Invalid nested cross reference");
-			if (context.ordinal() < ValidationContext.FOOTNOTE.ordinal())
+			if (context != ValidationContext.NORMAL_TEXT && context.ordinal() < ValidationContext.FOOTNOTE.ordinal())
 				throw new IllegalArgumentException("cross references may only appear inside footnotes");
 			visitInlineElement();
 			Book book = bible.getBook(bookAbbr, bookID);
