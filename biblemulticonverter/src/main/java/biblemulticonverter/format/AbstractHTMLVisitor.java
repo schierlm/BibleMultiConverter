@@ -89,7 +89,7 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 
 	@Override
 	public void visitRawHTML(RawHTMLMode mode, String raw) throws IOException {
-		if (!mode.equals(RawHTMLMode.ONLINE)) {
+		if (!mode.equals(Boolean.getBoolean("rawhtml.online") ? RawHTMLMode.OFFLINE : RawHTMLMode.ONLINE)) {
 			writer.write(raw);
 		}
 	}

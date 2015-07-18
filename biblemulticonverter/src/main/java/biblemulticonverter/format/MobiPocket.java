@@ -297,12 +297,6 @@ public class MobiPocket implements ExportFormat {
 			}
 
 			@Override
-			public void visitRawHTML(RawHTMLMode mode, String raw) throws IOException {
-				if (mode != RawHTMLMode.ONLINE)
-					writer.write(raw);
-			}
-
-			@Override
 			public Visitor<IOException> visitVariationText(String[] variations) throws IOException {
 				throw new UnsupportedOperationException("Variations not supported");
 			}
