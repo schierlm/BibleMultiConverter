@@ -53,6 +53,10 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 							hl.accept(xcv);
 						}
 						for (Verse vv : v.getVerses()) {
+							if (vv.getNumber().matches("[0-9]+,[0-9]+")) {
+								String[] parts = vv.getNumber().split(",");
+								countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+							}
 							vv.accept(xcv);
 						}
 					}

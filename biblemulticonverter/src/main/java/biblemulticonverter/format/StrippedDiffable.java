@@ -38,6 +38,9 @@ public class StrippedDiffable implements ExportFormat {
 		} else if (exportArgs.length == 2 && exportArgs[1].equals("ExtractFootnotes")) {
 			extractFootnotes(bible);
 			System.out.println("Footnotes extracted.");
+		} else if (exportArgs.length == 2 && exportArgs[1].equals("RearrangeChapterBoundaries")) {
+			rearrangeChapterBoundaries(bible);
+			System.out.println("Chapter boundaries rearranged.");
 		} else if (exportArgs.length == 3 && exportArgs[1].equals("SelectVariation")) {
 			selectVariation(bible, exportArgs[2]);
 			System.out.println("Variation " + exportArgs[2] + " kept.");
@@ -225,6 +228,31 @@ public class StrippedDiffable implements ExportFormat {
 			});
 		}
 		return result;
+	}
+
+	protected void rearrangeChapterBoundaries(Bible bible) {
+		for (Book book : bible.getBooks()) {
+			for (int i = 0; i < book.getChapters().size(); i++) {
+				Chapter chap = book.getChapters().get(i);
+				while (chap.getVerses().size() >= 2) {
+					if (i >= 1 && chap.getVerses().get(0).getNumber().startsWith(i + ",")) {
+						Verse v = chap.getVerses().remove(0);
+						Verse nv = new Verse(v.getNumber().substring((i + ",").length()));
+						v.accept(nv.getAppendVisitor());
+						nv.finished();
+						book.getChapters().get(i - 1).getVerses().add(nv);
+					} else if (i < book.getChapters().size() - 1 && chap.getVerses().get(chap.getVerses().size() - 1).getNumber().startsWith((i + 2) + ",")) {
+						Verse v = chap.getVerses().remove(chap.getVerses().size() - 1);
+						Verse nv = new Verse(v.getNumber().substring(((i + 2) + ",").length()));
+						v.accept(nv.getAppendVisitor());
+						nv.finished();
+						book.getChapters().get(i + 1).getVerses().add(0, nv);
+					} else {
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	private void selectVariation(Bible bible, String variation) {

@@ -283,6 +283,9 @@ public class LogosHTML implements ExportFormat {
 						for (Verse v : vv.getVerses()) {
 							if (!first)
 								bw.write(verseSeparator);
+							if (!first && v.getNumber().matches("[0-9]+,[0-9]+")) {
+								bw.write("[[" + "@" + versemap + ":" + babbr + " " + v.getNumber().replace(',', ':') + "]]");
+							}
 							first = false;
 							bw.write("<b>" + v.getNumber() + "</b> {{field-on:bible}}");
 							v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme));
