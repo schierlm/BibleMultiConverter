@@ -43,6 +43,7 @@
 		<module>biblemulticonverter-schemas</module>
 		<module>biblemulticonverter</module>
 		<module>biblemulticonverter-logos</module>
+		<module>neue-bibel-heute-parser</module>
 	</modules>
 	<prerequisites>
 		<maven>3.0</maven>

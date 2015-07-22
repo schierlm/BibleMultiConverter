@@ -1,0 +1,82 @@
+01 unterwegs.html
+Fasten"\.¶
+Fasten".<br />¶
+
+3jo.html
+<p><p><a href="#top">
+<p><a href="#top">
+
+4mo.html
+<h4 id="20">Nach 40 Jahren an der Grenze des Landes</h4>¶<h4>Das Wasser von Meriba</h4>
+<h4 id="20">Nach 40 Jahren an der Grenze des Landes: Das Wasser von Meriba</h4>
+
+dan.html
+(<div class="fn">12,7: .*?</div>¶)(<div class="fn">12,5: .*?</div>¶)
+$2$1
+
+hes.html
+mo\.html#l
+mo.html#1
+\*</h4>
+</h4>
+<span class="vers">1</span> Am Jahresanfang
+<span class="vers">1</span>* Am Jahresanfang
+<div class="fn">Kapitel 40-48: (.*?) <a href="Hesekiels Tempel\.gif" target="_blank">(.*?)</a>\.
+<div class="fn">40,1: Kapitel 40-48: $1 $2 im Anhang.
+und Freudenopfer\* bestimmt
+und Freudenopfer bestimmt
+
+hos.html
+<span class="kap">7</span>&nbsp;
+<span class="kap">7</span></a>&nbsp;
+Signalhorn\*
+Signalhorn
+
+jer.html
+</span N
+</span> N
+
+jes.html
+"fn">11\.10:
+"fn">11,10:
+
+lk.html
+"fn">22,43:
+"fn">22,44:
+
+mi.html
+<h2 id="vo">6-7:</a>
+<h2 id="vo">6-7:
+
+mk.html
+>,20\)\.¶</div>
+>,20).</div>
+
+nah.html
+<h2 id="be">3:</a>
+<h2 id="be">3:
+
+neh.html
+<p><a href="#top"><span class="kap">8</span></a>&nbsp; ([^¶]*)
+<p>$1 </p>¶<p><a href="#top"><span class="kap">8</span></a>&nbsp;
+
+phm.html
+<p id="1">
+<h2>(Inhalt)</h2>¶<p id="1">
+
+ps.html
+Chor\.¶</div>
+Chor.</div>
+\*</h4>
+</h4>
+\Q"kap">119</span></a>&nbsp;<span class="u2"> I &Aacute;lef*</span>\E¶<p class="poet">¶   <span class="vers">1</span> Wie([^<>]*)</span></a>&nbsp;\*
+"kap">119</span></a>&nbsp;¶<span class="vers">1</span>*<span class="u2"> I &Aacute;lef*</span></p>¶<p class="poet">¶   Wie$1*
+<div class="fn">Psalm 119
+<div class="fn">119,1: Psalm 119
+<div class="fn">132,6 <em>von ihr</em>. Gemeint ist die Bundeslade.</div>¶<div
+<div
+
+spr.html
+<p class="poet" id="16">
+<h4 id="16">(Sprichw&ouml;rter Salomos)</h4>¶<p class="poet" id="16">
+
