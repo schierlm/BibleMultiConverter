@@ -1,0 +1,428 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema version="1.0" xmlns="http://www.w3.org/2001/XMLSchema" xmlns:tns="urn:BibleMultiConverter.RoundtripXML" targetNamespace="urn:BibleMultiConverter.RoundtripXML" elementFormDefault="qualified">
+	<annotation>
+		<documentation>XML Schema for BibleMultiConverter's RoundtripXML format.</documentation>
+	</annotation>
+
+	<simpleType name="NormalizedStringType">
+		<restriction base="string">
+			<pattern value="\S+( \S+)*"></pattern>
+		</restriction>
+	</simpleType>
+
+	<simpleType name="AbbrType">
+		<restriction base="string">
+			<pattern value="[A-Z0-9][A-Z0-9a-z.äöü]+"></pattern>
+		</restriction>
+	</simpleType>
+
+	<simpleType name="VerseNumberType">
+		<restriction base="string">
+			<pattern value="[1-9][0-9,/.-]*[a-zG]?"></pattern>
+		</restriction>
+	</simpleType>
+
+	<simpleType name="RMACType">
+		<restriction base="string">
+			<pattern value="(ADV|CONJ|COND|PRT|PREP|INJ|ARAM|HEB|N-PRI|A-NUI|N-LI|N-OI|[NARCDTKIXQFSP](-[123]?[NVGDA][SP][MFN]?)?)(-(S|C|ABB|I|N|K|ATT))?|V-([PIFARLX]|2[FARL])[AMPEDON][ISOMNP](-([123][SP]|[NGDAV][SPD][MFN]))?(-ATT)?"></pattern>
+		</restriction>
+	</simpleType>
+
+	<simpleType name="LineBreakKindType">
+		<restriction base="string">
+			<enumeration value="paragraph" />
+			<enumeration value="newline" />
+			<enumeration value="newlineWithIndent" />
+		</restriction>
+	</simpleType>
+
+	<simpleType name="RawHTMLModeType">
+		<restriction base="string">
+			<enumeration value="online"></enumeration>
+			<enumeration value="offline"></enumeration>
+			<enumeration value="both"></enumeration>
+		</restriction>
+	</simpleType>
+
+	<simpleType name="ExtraAttributePrioType">
+		<restriction base="string">
+			<enumeration value="keepContent"></enumeration>
+			<enumeration value="skip"></enumeration>
+			<enumeration value="error"></enumeration>
+		</restriction>
+	</simpleType>
+
+	<simpleType name="FormattingInstructionKindType">
+		<restriction base="string">
+			<enumeration value="bold" />
+			<enumeration value="italic" />
+			<enumeration value="underline" />
+			<enumeration value="link" />
+			<enumeration value="footnoteLink" />
+			<enumeration value="subscript" />
+			<enumeration value="superscript" />
+			<enumeration value="divineName" />
+			<enumeration value="strikeThrough" />
+			<enumeration value="wordsOfJesus" />
+		</restriction>
+	</simpleType>
+
+	<simpleType name="positiveIntType">
+		<restriction base="int">
+			<minInclusive value="1"></minInclusive>
+		</restriction>
+	</simpleType>
+
+	<simpleType name="BookIDType">
+		<!-- Unique constraints cannot exclude some values; therefore, allow a pattern for dictionary entries. As patterns cannot be combined with enum values directly, use a union here. -->
+		<union>
+			<simpleType>
+				<restriction base="string">
+					<enumeration value="x-Meta" />
+					<enumeration value="x-Intr" />
+					<enumeration value="x-IntrOT" />
+					<enumeration value="x-IntrNT" />
+					<enumeration value="x-App" />
+					<enumeration value="x-Dict" />
+
+					<enumeration value="Gen" />
+					<enumeration value="Exod" />
+					<enumeration value="Lev" />
+					<enumeration value="Num" />
+					<enumeration value="Deut" />
+					<enumeration value="Josh" />
+					<enumeration value="Judg" />
+					<enumeration value="Ruth" />
+					<enumeration value="1Sam" />
+					<enumeration value="2Sam" />
+					<enumeration value="1Kgs" />
+					<enumeration value="2Kgs" />
+					<enumeration value="1Chr" />
+					<enumeration value="2Chr" />
+					<enumeration value="Ezra" />
+					<enumeration value="Neh" />
+					<enumeration value="Esth" />
+					<enumeration value="Job" />
+					<enumeration value="Ps" />
+					<enumeration value="Prov" />
+					<enumeration value="Eccl" />
+					<enumeration value="Song" />
+					<enumeration value="Isa" />
+					<enumeration value="Jer" />
+					<enumeration value="Lam" />
+					<enumeration value="Ezek" />
+					<enumeration value="Dan" />
+					<enumeration value="Hos" />
+					<enumeration value="Joel" />
+					<enumeration value="Amos" />
+					<enumeration value="Obad" />
+					<enumeration value="Jonah" />
+					<enumeration value="Mic" />
+					<enumeration value="Nah" />
+					<enumeration value="Hab" />
+					<enumeration value="Zeph" />
+					<enumeration value="Hag" />
+					<enumeration value="Zech" />
+					<enumeration value="Mal" />
+
+					<enumeration value="Matt" />
+					<enumeration value="Mark" />
+					<enumeration value="Luke" />
+					<enumeration value="John" />
+					<enumeration value="Acts" />
+					<enumeration value="Rom" />
+					<enumeration value="1Cor" />
+					<enumeration value="2Cor" />
+					<enumeration value="Gal" />
+					<enumeration value="Eph" />
+					<enumeration value="Phil" />
+					<enumeration value="Col" />
+					<enumeration value="1Thess" />
+					<enumeration value="2Thess" />
+					<enumeration value="1Tim" />
+					<enumeration value="2Tim" />
+					<enumeration value="Titus" />
+					<enumeration value="Phlm" />
+					<enumeration value="Heb" />
+					<enumeration value="Jas" />
+					<enumeration value="1Pet" />
+					<enumeration value="2Pet" />
+					<enumeration value="1John" />
+					<enumeration value="2John" />
+					<enumeration value="3John" />
+					<enumeration value="Jude" />
+					<enumeration value="Rev" />
+
+					<enumeration value="Jdt" />
+					<enumeration value="Wis" />
+					<enumeration value="Tob" />
+					<enumeration value="Sir" />
+					<enumeration value="Bar" />
+					<enumeration value="1Macc" />
+					<enumeration value="2Macc" />
+					<enumeration value="AddDan" />
+					<enumeration value="AddEsth" />
+					<enumeration value="PrMan" />
+					<enumeration value="3Macc" />
+					<enumeration value="4Macc" />
+					<enumeration value="EpJer" />
+					<enumeration value="1Esd" />
+					<enumeration value="2Esd" />
+					<enumeration value="Odes" />
+					<enumeration value="PssSol" />
+					<enumeration value="EpLao" />
+					<enumeration value="1En" />
+					<enumeration value="x-kGen" />
+					<enumeration value="Sus" />
+					<enumeration value="Bel" />
+					<enumeration value="AddPs" />
+				</restriction>
+			</simpleType>
+			<simpleType>
+				<restriction base="string">
+					<pattern value="x-Dict-[0-9]+" />
+				</restriction>
+			</simpleType>
+		</union>
+	</simpleType>
+
+	<complexType name="FormattedTextType" mixed="true">
+		<choice maxOccurs="unbounded" minOccurs="0">
+			<element name="headline">
+				<complexType>
+					<complexContent>
+						<extension base="tns:FormattedTextType">
+							<attribute name="depth" use="required">
+								<simpleType>
+									<restriction base="int">
+										<minInclusive value="1"></minInclusive>
+										<maxInclusive value="9"></maxInclusive>
+									</restriction>
+								</simpleType>
+							</attribute>
+						</extension>
+					</complexContent>
+				</complexType>
+			</element>
+			<element name="footnote">
+				<complexType>
+					<complexContent>
+						<extension base="tns:FormattedTextType" />
+					</complexContent>
+				</complexType>
+			</element>
+			<element name="crossReference">
+				<complexType>
+					<complexContent>
+						<extension base="tns:FormattedTextType">
+							<attribute name="bookAbbr" type="tns:AbbrType" use="required" />
+							<attribute name="book" type="tns:BookIDType" use="required" />
+							<attribute name="firstChapter" type="tns:positiveIntType" use="required" />
+							<attribute name="firstVerse" type="tns:VerseNumberType" use="required" />
+							<attribute name="lastChapter" type="tns:positiveIntType" use="required" />
+							<attribute name="lastVerse" type="tns:VerseNumberType" use="required" />
+						</extension>
+					</complexContent>
+				</complexType>
+			</element>
+			<element name="formattingInstruction">
+				<complexType>
+					<complexContent>
+						<extension base="tns:FormattedTextType">
+							<attribute name="kind" type="tns:FormattingInstructionKindType" use="required"></attribute>
+						</extension>
+					</complexContent>
+				</complexType>
+			</element>
+			<element name="cssFormatting">
+				<complexType>
+					<complexContent>
+						<extension base="tns:FormattedTextType">
+							<attribute name="css" type="string" use="required" />
+						</extension>
+					</complexContent>
+				</complexType>
+			</element>
+			<element name="verseSeparator">
+				<complexType></complexType>
+			</element>
+			<element name="lineBreak">
+				<complexType>
+					<attribute name="kind" type="tns:LineBreakKindType" use="required" />
+				</complexType>
+			</element>
+			<element name="grammarInformation">
+				<complexType>
+					<complexContent>
+						<extension base="tns:FormattedTextType">
+							<attribute name="strongs" use="required">
+								<simpleType>
+									<list itemType="tns:positiveIntType" />
+								</simpleType>
+							</attribute>
+							<attribute name="rmac" use="optional">
+								<simpleType>
+									<list itemType="string" />
+								</simpleType>
+							</attribute>
+							<attribute name="sourceIndices" use="optional">
+								<simpleType>
+									<list>
+										<simpleType>
+											<restriction base="int">
+												<minInclusive value="1"></minInclusive>
+												<maxInclusive value="99"></maxInclusive>
+											</restriction>
+										</simpleType>
+									</list>
+								</simpleType>
+							</attribute>
+						</extension>
+					</complexContent>
+				</complexType>
+			</element>
+			<element name="dictionaryEntry">
+				<complexType>
+					<complexContent>
+						<extension base="tns:FormattedTextType">
+							<attribute name="dictionary" use="required">
+								<simpleType>
+									<restriction base="string">
+										<pattern value="[A-Za-z0-9]+"></pattern>
+									</restriction>
+								</simpleType>
+							</attribute>
+							<attribute name="entry" use="required">
+								<simpleType>
+									<restriction base="string">
+										<pattern value="[A-Za-z0-9-]+"></pattern>
+									</restriction>
+								</simpleType>
+							</attribute>
+						</extension>
+					</complexContent>
+				</complexType>
+			</element>
+			<element name="rawHTML">
+				<complexType>
+					<simpleContent>
+						<extension base="string">
+							<attribute name="mode" type="tns:RawHTMLModeType" use="required" />
+						</extension>
+					</simpleContent>
+				</complexType>
+			</element>
+			<element name="variation">
+				<complexType>
+					<complexContent>
+						<extension base="tns:FormattedTextType">
+							<attribute name="variations" use="required">
+								<simpleType>
+									<list>
+										<simpleType>
+											<restriction base="string">
+												<pattern value="[A-Za-z0-9-]+"></pattern>
+											</restriction>
+										</simpleType>
+									</list>
+								</simpleType>
+							</attribute>
+						</extension>
+					</complexContent>
+				</complexType>
+			</element>
+			<element name="extraAttribute">
+				<complexType>
+					<complexContent>
+						<extension base="tns:FormattedTextType">
+							<attribute name="prio" type="tns:ExtraAttributePrioType" use="required" />
+							<attribute name="category" use="required">
+								<simpleType>
+									<restriction base="string">
+										<pattern value="[a-z0-9]+"></pattern>
+									</restriction>
+								</simpleType>
+							</attribute>
+							<attribute name="key" use="required">
+								<simpleType>
+									<restriction base="string">
+										<pattern value="[a-z0-9-]+"></pattern>
+									</restriction>
+								</simpleType>
+							</attribute>
+							<attribute name="value" use="required">
+								<simpleType>
+									<restriction base="string">
+										<pattern value="[A-Za-z0-9-]+"></pattern>
+									</restriction>
+								</simpleType>
+							</attribute>
+						</extension>
+					</complexContent>
+				</complexType>
+			</element>
+		</choice>
+	</complexType>
+
+	<complexType name="BibleType">
+		<sequence>
+			<element name="book" minOccurs="1" maxOccurs="unbounded">
+				<complexType>
+					<sequence>
+						<element name="chapter" minOccurs="1" maxOccurs="unbounded">
+							<complexType>
+								<sequence>
+									<element name="prolog" maxOccurs="1" minOccurs="0">
+										<complexType>
+											<complexContent>
+												<extension base="tns:FormattedTextType" />
+											</complexContent>
+										</complexType>
+									</element>
+									<element name="verse" maxOccurs="unbounded" minOccurs="0">
+										<complexType>
+											<complexContent>
+												<extension base="tns:FormattedTextType">
+													<attribute name="number" type="tns:VerseNumberType" use="required"></attribute>
+
+												</extension>
+											</complexContent>
+										</complexType>
+									</element>
+								</sequence>
+							</complexType>
+							<unique name="UniqueVerseNumber">
+								<selector xpath="tns:verse" />
+								<field xpath="@number" />
+							</unique>
+						</element>
+					</sequence>
+					<attribute name="abbr" type="tns:AbbrType" use="required"></attribute>
+					<attribute name="id" type="tns:BookIDType" use="required"></attribute>
+					<attribute name="shortName" type="tns:NormalizedStringType" use="required"></attribute>
+					<attribute name="longName" type="tns:NormalizedStringType" use="required"></attribute>
+				</complexType>
+			</element>
+		</sequence>
+		<attribute name="name" type="tns:NormalizedStringType" use="required"></attribute>
+	</complexType>
+
+	<element name="bible" type="tns:BibleType">
+		<unique name="UniqueBookAbbr">
+			<selector xpath="tns:book" />
+			<field xpath="@abbr" />
+		</unique>
+		<unique name="UniqueBookID">
+			<selector xpath="tns:book" />
+			<field xpath="@id" />
+		</unique>
+		<unique name="UniqueBookShortName">
+			<selector xpath="tns:book" />
+			<field xpath="@shortName" />
+		</unique>
+		<unique name="UniqueBookLongName">
+			<selector xpath="tns:book" />
+			<field xpath="@longName" />
+		</unique>
+	</element>
+</schema>

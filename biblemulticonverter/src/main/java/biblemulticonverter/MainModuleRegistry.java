@@ -34,6 +34,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<RoundtripFormat>("Compact", "A text-format that is small and well-compressible.", Compact.HELP_TEXT, Compact.class));
 		result.add(new Module<RoundtripFormat>("Diffable", "A VPL-like text-format that can be diffed easily.", Diffable.HELP_TEXT, Diffable.class));
 		result.add(new Module<RoundtripFormat>("RoundtripHTML", "Roundtrip HTML Export", RoundtripHTML.HELP_TEXT, RoundtripHTML.class));
+		result.add(new Module<RoundtripFormat>("RoundtripXML", "Roundtrip XML Export", RoundtripXML.HELP_TEXT, RoundtripXML.class));
 		result.add(new Module<RoundtripFormat>("ZefaniaXML", "Zefania XML - well known bible format.", ZefaniaXML.HELP_TEXT, ZefaniaXML.class));
 		result.add(new Module<RoundtripFormat>("ZefaniaXMLRoundtrip", "Zefania XML - well known bible format (Roundtrip converter).", ZefaniaXMLRoundtrip.HELP_TEXT, ZefaniaXMLRoundtrip.class));
 		result.add(new Module<RoundtripFormat>("HaggaiXML", "Haggai XML - used by Free Scriptures project.", HaggaiXML.HELP_TEXT, HaggaiXML.class));

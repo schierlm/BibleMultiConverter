@@ -54,6 +54,19 @@
 							<generatePackage>biblemulticonverter.schema.haggai</generatePackage>
 						</configuration>
 					</execution>
+					<execution>
+						<id>generate4</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<generateDirectory>target/generated-sources/xjc4</generateDirectory>
+							<schemaIncludes>
+								<include>RoundtripXML.xsd</include>
+							</schemaIncludes>
+							<generatePackage>biblemulticonverter.schema.roundtripxml</generatePackage>
+						</configuration>
+					</execution>
 				</executions>
 				<configuration>
 					<locale>en</locale>
