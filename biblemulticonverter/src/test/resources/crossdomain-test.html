@@ -1,0 +1,153 @@
+<html><head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<title>Test page for crossdomain.html</title>
+<script type="text/javascript">
+
+// callback handler
+if (window.location.hash.contains("&")) {
+	var parts = window.location.hash.split("&");
+	if (parts[0] == "#getmeta") {
+		eval(decodeURIComponent(parts[1]));
+		parent.pushMeta(biblename, metadata);
+	} else if (parts[0] == "#getchapter") {
+		window.onload = function() {
+			document.getElementById("iframe").contentDocument.write(decodeURIComponent(parts[1]).replace(/<head>[^]*?<\/head>/, ""));
+			var verses = document.getElementById("iframe").contentDocument.getElementById("verses").children;
+			var parsed = {};
+			for (var i = 0; i < verses.length; i++) {
+				parsed[verses[i].id.substring(1)] = verses[i].innerHTML;
+			}
+			parent.pushChapter(parsed);
+		}
+	}
+}
+
+// main logic
+var gUrls, gMeta, gNames, gChapter, gVerses;
+function setUrls() {
+	gUrls = document.getElementById("urls").value.split(/[\r\n]+/);
+	gMeta = {};
+	gNames = [];
+	pollMeta();
+}
+
+function pollMeta() {
+	document.getElementById("iframe").src=gUrls[gNames.length]+"crossdomain.html#getmeta##metadata.js##"+location.href;
+}
+
+function pushMeta(name, meta) {
+	gNames[gNames.length] = name;
+	var newMeta = {};
+	for(var i = 0; i < meta.length; i++) {
+		newMeta[meta[i].type+"/"+meta[i].abbr] = [meta[i].osis, meta[i].chapters];
+	}
+	if (gNames.length == 1) {
+		gMeta = newMeta;
+	} else {
+		for(var book in gMeta) {
+			if (!newMeta[book] || gMeta[book][0] != newMeta[book][0]) {
+				delete gMeta[book];
+			} else if (newMeta[book][1] < gMeta[book][1]) {
+				gMeta[book][1] = newMeta[book][1];
+			}
+		}
+	}
+	if (gNames.length == gUrls.length) {
+		var books = document.getElementById("book");
+		books.options[0].innerHTML = "(please select)";
+		for (var book in gMeta) {
+			var option = document.createElement("option");
+			option.value = book;
+			option.appendChild(document.createTextNode(book));
+			books.appendChild(option);
+		}
+	} else {
+		pollMeta();
+	}
+}
+
+function setBook() {
+	var book = document.getElementById("book").value;
+	var chaps = document.getElementById("chapter");
+	chaps.options.length = 1;
+	if (book == "") {
+		chaps.options[0].innerHTML = "(select book first)";
+	} else {
+		chaps.options[0].innerHTML = "(please select)";
+		for (var i = 1; i <= gMeta[book][1]; i++) {
+			var option = document.createElement("option");
+			option.appendChild(document.createTextNode("" + i));
+			chaps.appendChild(option);
+		}
+	}
+	setChapter();
+}
+
+function setChapter() {
+	var chap = document.getElementById("chapter").value;
+	var target = document.getElementById("result");
+	if (chap == "") {
+		result.innerHTML="(nothing selected)";
+	} else {
+		result.innerHTML = "(loading...)";
+		gChapter = document.getElementById("book").value+"_"+chap+".html";
+		gVerses = [];
+		pollChapter();
+	}
+}
+
+function pollChapter() {
+	document.getElementById("iframe").src=gUrls[gVerses.length]+"crossdomain.html#getchapter##"+gChapter+"##"+location.href;
+}
+
+function pushChapter(verses) {
+	gVerses[gVerses.length] = verses;
+	if (gVerses.length == gUrls.length) {
+		var target = document.getElementById("result");
+		target.innerHTML="<table border><tr><th>#</th></tr></table>";
+		var vnums = [];
+		for (var i=0; i < gUrls.length; i++) {
+			var th = document.createElement("th");
+			th.appendChild(document.createTextNode(gNames[i]));
+			target.firstChild.firstChild.firstChild.appendChild(th);
+			for (var vn in gVerses[i]) {
+				if (vnums.indexOf(vn) == -1) {
+					vnums[vnums.length] = vn;
+				}
+			}
+		}
+		for (var i = 0; i < vnums.length; i++) {
+			var tr = document.createElement("tr");
+			target.firstChild.appendChild(tr);
+			var td = document.createElement("td");
+			tr.appendChild(td);
+			td.appendChild(document.createTextNode(vnums[i]));
+			for ( var j=0; j < gUrls.length; j++) {
+				td = document.createElement("td");
+				tr.appendChild(td);
+				td.innerHTML = gVerses[j][vnums[i]] || '-';
+			}
+		}
+	} else {
+		pollChapter();
+	}
+}
+</script>
+</head>
+<body>
+<h1>Test page for crossdomain.html</h1>
+URLs:
+<textarea id="urls" cols=100 rows=5>http://www.example.org/kjv/
+http://www.example.net/esv/</textarea>
+<input type="button" onclick="setUrls();" value="Set">
+</div>
+<div>
+<select id="book" onchange="setBook();"><option value="">(set URLs first)</option></select>
+<select id="chapter" onchange="setChapter();"><option value="">(select book first)</option></select>
+</div>
+<iframe id="iframe" style="display:none" width=100 height=5 src="about:blank"></iframe>
+<div id="result">
+Results will show here.
+</div>
+</body>
+</html>

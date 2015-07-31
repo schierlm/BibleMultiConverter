@@ -1,0 +1,15 @@
+<html><head><meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<script type="text/javascript">
+    var parts = location.hash.split("##");
+    if (parts.length == 3 && /^([a-z]+\/)?[A-Z0-9a-z.äöü_]+\.(html|js)$/.test(parts[1])) {
+        var oReq = new XMLHttpRequest();
+        oReq.onload = function() {
+            location.href = parts[2] + encodeURI(parts[0] + "&" + encodeURIComponent(this.responseText));
+        };
+        oReq.open("get", parts[1], true);
+        oReq.send();
+    }
+</script></head><body>
+<h1>This page is used to include parts of this bible in websites hosted on different domains.</h1>
+<p><a href="index.html">Continue to this bible</a></p>
+</body></html>

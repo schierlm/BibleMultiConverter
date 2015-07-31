@@ -194,7 +194,7 @@ public class RoundtripHTML implements RoundtripFormat {
 		}
 
 		// static files
-		for (String staticFile : Arrays.asList("script.js", "style.css")) {
+		for (String staticFile : Arrays.asList("script.js", "style.css", "crossdomain.html")) {
 			try (BufferedWriter bw = createWriter(directory, filenames, staticFile)) {
 				Reader r = new InputStreamReader(RoundtripHTML.class.getResourceAsStream("/RoundtripHTML/" + staticFile), StandardCharsets.UTF_8);
 				char[] buf = new char[4096];
