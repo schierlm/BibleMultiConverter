@@ -49,6 +49,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<Tool>("help", "Show help about an import format, export format or tool.", HelpTool.HELP_TEXT, HelpTool.class));
 		result.add(new Module<Tool>("MobiPocketTOCBuilder", "Create MobiPocket TOC file from multiple bibles", MobiPocketTOCBuilder.HELP_TEXT, MobiPocketTOCBuilder.class));
 		result.add(new Module<Tool>("ESwordRTFPostprocessor", "Postprocess RTF for exporting to E-Sword", ESwordRTFPostprocessor.HELP_TEXT, ESwordRTFPostprocessor.class));
+		result.add(new Module<Tool>("ValidateXML", "Validate one or more XML files according to a XSD schema.", ValidateXML.HELP_TEXT, ValidateXML.class));
 		return result;
 	}
 }

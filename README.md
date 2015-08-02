@@ -77,6 +77,12 @@ bible file, and **StrippedDiffable** exports a Diffable, but removes certain fea
 certain books automatically, have a look at the **Diffable** importer, which provides
 options for that.
 
+The *ValidateXML* tool can be used to validate an input XML file against a XSD schema.
+The schema can be given as a file, as an URL or one of the embedded schema names `OSIS`,
+`ZefaniaXML`, `HaggaiXML`, `RoundtripXML` or `ZefDic`. This is useful as in case of an
+invalid XML input file, the schema usually provides better error messages than what is
+provided by the import modules.
+
 
 Planned formats
 ---------------

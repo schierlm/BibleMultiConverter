@@ -1,0 +1,1937 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema targetNamespace="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" xml:lang="en">
+	<xs:import namespace="http://www.w3.org/XML/1998/namespace" schemaLocation="http://www.w3.org/2001/xml.xsd"/>
+	<xs:annotation>
+		<xs:documentation>
+			<p>The OSIS 2.1.1 schema was issued March 5, 2006 with the
+			following comments.</p>
+			<p>Welcome to the OSIS 2.1.1 schema for encoding biblical literature! A number of changes, which are detailed in the Users Manual, were made to accomodate publishing needs more easily.</p>
+			<p>The OSIS family of schemas is definitely a work in progress and is supported by both the American Bible Society and the Society of Biblical Literature, with additional contributions from the United Bible Societies and SIL International, as well as tireless efforts of numerous volunteers. While freely available for all purposes, it is requested that use of the schemas be acknowledged as appropriate and that problems or suggestions for improvements be forwarded to the project.</p>
+			<p>The OSIS schemas were written by a small core of technical and content experts who volunteered large blocks of time for this project: Steve DeRose (sderose@acm.org), chair of the Bible Technologies Group (co-sponsored by the ABS and SBL), Kees De Blois (kdeblois@solcon.nl), vice-chair of the Bible Technologies Group, Troy Griffitts (scribe@crosswire.org), Chris Little (chrislit@crosswire.org), Todd Tillinghast (todd@contentframeworks.com), Harry Plantinga (hplantin@calvin.edu), Kirk Lowery (klowery@wts.edu), and Patrick Durusau (Patrick@durusau.net), Technical Lead.</p>
+			<p>Outside of the core technical team, special thanks go to Adina Hamik (ABS), Bob Hodgson (ABS), John Walter (ABS) and Mike Perez (eABS) for their organization of both domestic and international meetings of the OSIS project and their unflagging support for its efforts.</p>
+			<p>While the history of the OSIS project is ongoing, users should be aware of the pivotal role of Dennis Drescher (Dennis_Drescher@sil.org) in his organization of a breakfast meeting at XML 2000 on Bible encoding that lead to the formation of the Bible Technologies Group and hence the OSIS project. Other contributors from SIL include, Eric Albright (eric-allison_albright@sil.org), Peter Constable (peter_constable@sil.org), John Edwards (John_Edwards@sil.org), Darrell Eppler (Darrell_Eppler@sil.org), Nathan Miles (Nathan_Miles@sil.org), and, Jim DeVries (jim_devries@sil.org).</p>
+			<p>The fundamental goal of the OSIS project is to provide a common format that supports multiple visions of and purposes for Bibles and related texts. By pooling the interests of the wide variety of communities interested in biblical texts, the OSIS project seeks to provide the basis for tools and texts that will benefit all of these diverse communities.</p>
+			<p>The lastest version of the OSIS schema and user documentation can always be found at: http://www.bibletechnologies.org and comments can be forewarded to the OSIS Technical Editors, Patrick Durusau, Patrick@durusau.net or Steve DeRose, sderose@acm.org.</p>
+		</xs:documentation>
+	</xs:annotation>
+	<xs:element name="osis" type="osisCT"/>
+	<xs:complexType name="osisCT">
+		<xs:choice>
+			<xs:element name="osisCorpus" type="osisCorpusCT" minOccurs="0"/>
+			<xs:element name="osisText" type="osisTextCT" minOccurs="0"/>
+		</xs:choice>
+		<xs:attribute name="TEIform" fixed="TEI.2"/>
+	</xs:complexType>
+	<xs:complexType name="osisCorpusCT">
+		<xs:sequence>
+			<xs:element name="header" type="corpusHeaderCT" minOccurs="0"/>
+			<xs:element name="titlePage" type="titlePageCT" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="osisText" type="osisTextCT" minOccurs="1" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="TEIform" fixed="teiCorpus.2"/>
+	</xs:complexType>
+	<xs:complexType name="corpusHeaderCT">
+		<xs:sequence>
+			<xs:element name="revisionDesc" type="revisionDescCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="work" type="workCT" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="TEIform" fixed="teiHeader"/>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional" default="false"/>
+	</xs:complexType>
+
+	<xs:complexType name="osisTextCT">
+		<xs:sequence>
+			<xs:element name="header" type="headerCT"/>
+			<xs:element name="titlePage" type="titlePageCT" minOccurs="0" maxOccurs="1"/>
+			<xs:element name="div" type="divCT" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="annotateRef" type="annotateRefType" use="optional"/>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional" default="true"/>
+		<xs:attribute name="ID" type="xs:ID" use="optional"/>
+		<xs:attribute name="osisID" type="osisIDType" use="optional"/>
+		<xs:attribute name="osisIDWork" type="osisWorkType" use="required"/>
+		<xs:attribute name="osisRefWork" type="osisWorkType" use="optional" default="Bible"/>
+		<xs:attribute name="type" type="attributeExtension" use="optional"/>
+		<xs:attribute name="subType" type="attributeExtension" use="optional"/>
+		<xs:attribute ref="xml:lang" use="required"/>
+		<xs:attribute ref="xml:space" default="default"/>
+		<xs:attribute name="TEIform" fixed="text"/>
+	</xs:complexType>
+	<xs:complexType name="headerCT">
+		<xs:sequence>
+			<xs:element name="revisionDesc" type="revisionDescCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="work" type="workCT" maxOccurs="unbounded"/>
+			<xs:element name="workPrefix" type="workPrefixCT" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="TEIform" fixed="teiHeader"/>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional" default="false"/>
+	</xs:complexType>
+	<!-- elements for header, with exceptions of title and head which are found with regular OSIS elements -->
+	<xs:complexType name="actorCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="who" type="xs:string" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="actor"/>
+	</xs:complexType>
+	<xs:complexType name="castGroupCT">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="head" type="headCT"/>
+			<xs:element name="castItem" type="castItemCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="castGroup"/>
+	</xs:complexType>
+	<xs:complexType name="castItemCT">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="actor" type="actorCT"/>
+			<xs:element name="role" type="roleCT"/>
+			<xs:element name="roleDesc" type="roleDescCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="castItem"/>
+	</xs:complexType>
+	<xs:complexType name="castListCT">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="castGroup" type="castGroupCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="castList"/>
+	</xs:complexType>
+	<xs:complexType name="contributorCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attribute name="file-as" type="xs:string" use="optional"/>
+				<xs:attribute name="role" type="roleType" use="optional"/>
+				<xs:attributeGroup ref="globalWithType"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="coverageCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="creatorCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="role" type="roleType" use="optional"/>
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="descriptionCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attributeGroup ref="globalWithoutType"/>
+				<xs:attribute name="type" type="descriptionType" use="optional"/>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="formatCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="identifierCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attributeGroup ref="globalWithoutType"/>
+				<xs:attribute name="type" type="identifierType"/>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<!-- The type attribute on identifierCT is used to identify the system that specifies the meaning and syntax of the identifier element content. A list of some of the better known identifier systems has been enumerated for this value. Those are: Dewey (Dewey Decimal System); DOI (Digital Object Identifier); ISBN (International Standard Book Number); ISSN (Internation Standard Serial Number); LCCN (Library of Congress Control Number); OSIS (a system for constructing identifiers for texts encoded in OSIS markup); SICI (Serial Item and Contribution Identifier), URI (Uniform Resource Identifier); and, URL (Uniform Resource Locator). Or, listed without comment, the valid values are: Dewey, DOI, ISBN, ISSN, LCCN, OSIS, SICI, URI, URL, URN. Note that if a system not listed here is used, the value in type must be preceded by "x-", thus: "x-Durusau" as the type for an identifier from the Durusau System of Universal Identifiers (a non-existent and never to be built system). -->
+	<xs:complexType name="languageCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="type" type="languageType"/>
+				<xs:attribute name="use" type="languageUsage"/>
+				<xs:attributeGroup ref="globalWithoutType"/>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="publisherCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="refSystemCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="relationCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="revisionDescCT">
+		<xs:sequence>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="p" type="pCT" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="revisionDesc"/>
+	</xs:complexType>
+	<xs:complexType name="rightsCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="roleCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="role"/>
+	</xs:complexType>
+	<xs:complexType name="roleDescCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="roleDesc"/>
+	</xs:complexType>
+	<xs:complexType name="subjectCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attribute name="type" type="subjectType" use="optional"/>
+				<xs:attributeGroup ref="globalWithoutType"/>
+			</xs:extension>
+		</xs:simpleContent>
+		<!-- The type attribute on subjectCT is used to identify the system that specifies the meaning and syntax of the subject element content. A list of some of the better known subject classification systems has been enumerated for this value. Those are: ATLA (American Theological Libraries Association); BILDI (Biblewissenschaftliche Literaturdokumentation Innsbruck); DBC (Dutch Basic Classification); DDC (Dewey Decimal Classification); EUT (Estonian Universal Thesaurus); FGT (Finnish General Thesaurus); LCSH (Library of Congress Subject Heading); MeSH (Medical Subject Headings); NLSH (National Library Subject Headings (National Library of Poland)); RSWK (Regeln f&uuml;r den Schlagwortkatalog); SEARS (Sears List of Subject Headings); SOG (Soggettario); SWD_RSWK (Swiss National Library); UDC (Universal Decimal Classification); and, VAT (Vatican Library). Or, listed without comment, the valid values are: ATLA, BILDI, DBC, DDC, EUT, FGT, LCSH, MeSH, NLSH, RSWK, SEARS, SOG, SWD_RSWK, UDC, VAT. Note that if a system not listed here is used, the value in type must be preceded by "x-", thus: "x-Durusau" as the type for subject from the Durusau System of Universal Subject (a non-existent and never to be built system). -->
+	</xs:complexType>
+	<xs:complexType name="sourceCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attributeGroup ref="globalWithType"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="scopeCT">
+		<xs:simpleContent>
+			<xs:extension base="osisRefType">
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attributeGroup ref="globalWithType"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="teiHeaderCT" mixed="true">
+		<xs:sequence>
+			<xs:any processContents="skip" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="TEIform" fixed="teiHeader"/>
+	</xs:complexType>
+	<xs:complexType name="typeCT">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attribute name="type" type="typeType" use="optional"/>
+				<xs:attributeGroup ref="globalWithoutType"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="workCT">
+		<xs:sequence>
+			<xs:element name="title" type="titleCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="contributor" type="contributorCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="creator" type="creatorCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="subject" type="subjectCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="date" type="dateCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="description" type="descriptionCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="publisher" type="publisherCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="type" type="typeCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="format" type="formatCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="identifier" type="identifierCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="source" type="sourceCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="language" type="languageCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="relation" type="relationCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="coverage" type="coverageCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="rights" type="rightsCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="scope" type="scopeCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="castList" type="castListCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element name="teiHeader" type="teiHeaderCT" minOccurs="0"/>
+			<xs:element name="refSystem" type="refSystemCT" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="osisWork" type="osisWorkType" use="required"/>
+		<xs:attributeGroup ref="globalWithType"/>
+	</xs:complexType>
+	<xs:complexType name="workPrefixCT">
+		<xs:attribute name="path" type="osisWorkPrefix" use="required"/>
+		<xs:attribute name="osisWork" type="osisWorkType" use="required"/>
+		<xs:attributeGroup ref="globalWithoutType"/>
+	</xs:complexType>
+	<!-- end of header elements -->
+	<!-- beginning of elements that occur within <div>, the main OSIS container element under <osisText> -->
+	<xs:complexType name="aCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="index" type="indexCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="href" type="xs:string" use="required"/>
+		<xs:attributeGroup ref="globalWithType"/>
+	</xs:complexType>
+	<xs:complexType name="abbrCT" mixed="true">
+		<xs:complexContent mixed="true">
+			<xs:extension base="milestoneable">
+				<xs:choice minOccurs="0" maxOccurs="unbounded">
+					<xs:element name="a" type="aCT"/>
+					<xs:element name="divineName" type="divineNameCT"/>
+					<xs:element name="foreign" type="foreignCT"/>
+					<xs:element name="index" type="indexCT"/>
+					<xs:element name="name" type="nameCT"/>
+					<xs:element name="note" type="noteCT"/>
+					<xs:element name="reference" type="referenceCT"/>
+					<xs:element name="w" type="wCT"/>
+				</xs:choice>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attribute name="expansion" type="xs:string" use="optional"/>
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="TEIform" fixed="abbr"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="captionCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="q" type="qCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="TEIform" fixed="figDesc"/>
+	</xs:complexType>
+	<xs:complexType name="catchWordCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="inscription" type="inscriptionCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="list" type="listCT"/>
+			<xs:element name="mentioned" type="mentionedCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+			<xs:element name="milestoneStart" type="milestoneStartCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="q" type="qCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="speaker" type="speakerCT"/>
+			<xs:element name="title" type="titleCT"/>
+			<xs:element name="transChange" type="transChangeCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="osisRef" type="osisRefType" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+	</xs:complexType>
+	<xs:complexType name="cellCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="closer" type="closerCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="figure" type="figureCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="inscription" type="inscriptionCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="lg" type="lgCT"/>
+			<xs:element name="list" type="listCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+			<xs:element name="milestoneStart" type="milestoneStartCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="p" type="pCT"/>
+			<xs:element name="q" type="qCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="salute" type="saluteCT"/>
+			<xs:element name="seq" type="segCT"/>
+			<xs:element name="signed" type="signedCT"/>
+			<xs:element name="speaker" type="speakerCT"/>
+			<xs:element name="speech" type="speechCT"/>
+			<xs:element name="table" type="tableCT"/>
+			<xs:element name="title" type="titleCT"/>
+			<xs:element name="transChange" type="transChangeCT"/>
+			<xs:element name="verse" type="verseCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="role" type="tableRole" use="optional" default="data"/>
+		<xs:attribute name="align" type="osisCellAlign" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="cell"/>
+	</xs:complexType>
+	<xs:complexType name="chapterCT" mixed="true">
+		<xs:complexContent mixed="true">
+			<xs:extension base="milestoneable">
+				<xs:choice minOccurs="0" maxOccurs="unbounded">
+					<xs:element name="a" type="aCT"/>
+					<xs:element name="abbr" type="abbrCT"/>
+					<xs:element name="closer" type="closerCT"/>
+					<xs:element name="date" type="dateCT"/>
+					<xs:element name="div" type="divCT"/>
+					<xs:element name="divineName" type="divineNameCT"/>
+					<xs:element name="figure" type="figureCT"/>
+					<xs:element name="foreign" type="foreignCT"/>
+					<xs:element name="hi" type="hiCT"/>
+					<xs:element name="index" type="indexCT"/>
+					<xs:element name="inscription" type="inscriptionCT"/>
+					<xs:element name="lb" type="lbCT"/>
+					<xs:element name="lg" type="lgCT"/>
+					<xs:element name="list" type="listCT"/>
+					<xs:element name="mentioned" type="mentionedCT"/>
+					<xs:element name="milestone" type="milestoneCT"/>
+					<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+					<xs:element name="milestoneStart" type="milestoneStartCT"/>
+					<xs:element name="name" type="nameCT"/>
+					<xs:element name="note" type="noteCT"/>
+					<xs:element name="p" type="pCT"/>
+					<xs:element name="q" type="qCT"/>
+					<xs:element name="reference" type="referenceCT"/>
+					<xs:element name="salute" type="saluteCT"/>
+					<xs:element name="seg" type="segCT"/>
+					<xs:element name="signed" type="signedCT"/>
+					<xs:element name="speaker" type="speakerCT"/>
+					<xs:element name="speech" type="speechCT"/>
+					<xs:element name="table" type="tableCT"/>
+					<xs:element name="title" type="titleCT"/>
+					<xs:element name="transChange" type="transChangeCT"/>
+					<xs:element name="verse" type="verseCT"/>
+					<xs:element name="w" type="wCT"/>
+				</xs:choice>
+				<xs:attribute name="chapterTitle" type="xs:string" use="optional"/>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attribute name="osisRef" type="osisRefType" use="optional"/>
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="TEIform" fixed="div"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="closerCT" mixed="true">
+		<xs:complexContent mixed="true">
+			<xs:extension base="milestoneable">
+				<xs:choice minOccurs="0" maxOccurs="unbounded">
+					<xs:element name="a" type="aCT"/>
+					<xs:element name="abbr" type="abbrCT"/>
+					<xs:element name="date" type="dateCT"/>
+					<xs:element name="divineName" type="divineNameCT"/>
+					<xs:element name="foreign" type="foreignCT"/>
+					<xs:element name="hi" type="hiCT"/>
+					<xs:element name="index" type="indexCT"/>
+					<xs:element name="lb" type="lbCT"/>
+					<xs:element name="lg" type="lgCT"/>
+					<xs:element name="list" type="listCT"/>
+					<xs:element name="mentioned" type="mentionedCT"/>
+					<xs:element name="milestone" type="milestoneCT"/>
+					<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+					<xs:element name="milestoneStart" type="milestoneStartCT"/>
+					<xs:element name="name" type="nameCT"/>
+					<xs:element name="note" type="noteCT"/>
+					<xs:element name="p" type="pCT"/>
+					<xs:element name="q" type="qCT"/>
+					<xs:element name="reference" type="referenceCT"/>
+					<xs:element name="seg" type="segCT"/>
+					<xs:element name="signed" type="signedCT"/>
+					<xs:element name="speaker" type="speakerCT"/>
+					<xs:element name="transChange" type="transChangeCT"/>
+					<xs:element name="verse" type="verseCT"/>
+					<xs:element name="w" type="wCT"/>
+				</xs:choice>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="TEIform" fixed="closer"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="dateCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="event" type="eventType" use="optional"/>
+		<xs:attribute name="type" type="calendar" use="optional" default="ISO"/>
+		<xs:attributeGroup ref="globalWithoutType"/>
+		<xs:attribute name="TEIform" fixed="date"/>
+	</xs:complexType>
+	<xs:complexType name="divCT" mixed="true">
+		<xs:complexContent mixed="true">
+			<xs:extension base="milestoneable">
+				<xs:sequence>
+					<xs:element name="titlePage" type="titlePageCT" minOccurs="0" maxOccurs="1"/>
+					<xs:choice minOccurs="0" maxOccurs="unbounded">
+						<xs:element name="a" type="aCT"/>
+						<xs:element name="abbr" type="abbrCT"/>
+						<xs:element name="chapter" type="chapterCT"/>
+						<xs:element name="closer" type="closerCT"/>
+						<xs:element name="date" type="dateCT"/>
+						<xs:element name="div" type="divCT"/>
+						<xs:element name="divineName" type="divineNameCT"/>
+						<xs:element name="figure" type="figureCT"/>
+						<xs:element name="foreign" type="foreignCT"/>
+						<xs:element name="hi" type="hiCT"/>
+						<xs:element name="index" type="indexCT"/>
+						<xs:element name="inscription" type="inscriptionCT"/>
+						<xs:element name="lb" type="lbCT"/>
+						<xs:element name="lg" type="lgCT"/>
+						<xs:element name="list" type="listCT"/>
+						<xs:element name="mentioned" type="mentionedCT"/>
+						<xs:element name="milestone" type="milestoneCT"/>
+						<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+						<xs:element name="milestoneStart" type="milestoneStartCT"/>
+						<xs:element name="name" type="nameCT"/>
+						<xs:element name="note" type="noteCT"/>
+						<xs:element name="p" type="pCT"/>
+						<xs:element name="q" type="qCT"/>
+						<xs:element name="reference" type="referenceCT"/>
+						<xs:element name="salute" type="saluteCT"/>
+						<xs:element name="seg" type="segCT"/>
+						<xs:element name="signed" type="signedCT"/>
+						<xs:element name="speaker" type="speakerCT"/>
+						<xs:element name="speech" type="speechCT"/>
+						<xs:element name="table" type="tableCT"/>
+						<xs:element name="title" type="titleCT"/>
+						<xs:element name="transChange" type="transChangeCT"/>
+						<xs:element name="verse" type="verseCT"/>
+						<xs:element name="w" type="wCT"/>
+					</xs:choice>
+				</xs:sequence>
+				<xs:attribute name="canonical" type="xs:boolean" default="false" use="optional"/>
+				<xs:attribute name="osisRef" type="osisRefType" use="optional"/>
+				<xs:attribute name="scope" type="osisRefType" use="optional"/>
+				<xs:attribute name="type" type="divType" use="optional"/>
+				<xs:attributeGroup ref="globalWithoutType"/>
+				<xs:attribute name="TEIform" fixed="div"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="divineNameCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+	</xs:complexType>
+	<xs:complexType name="figureCT">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="caption" type="captionCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+		</xs:choice>
+		<xs:attribute name="alt" type="xs:string" use="optional"/>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="catalog" type="xs:string" use="optional"/>
+		<xs:attribute name="location" type="xs:string" use="optional"/>
+		<xs:attribute name="osisRef" type="osisRefType" use="optional"/>
+		<xs:attribute name="rights" type="xs:string" use="optional"/>
+		<xs:attribute name="size" type="xs:string" use="optional"/>
+		<xs:attribute name="src" type="xs:string"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="figure"/>
+	</xs:complexType>
+	<xs:complexType name="foreignCT" mixed="true">
+		<xs:complexContent mixed="true">
+			<xs:extension base="milestoneable">
+				<xs:choice minOccurs="0" maxOccurs="unbounded">
+					<xs:element name="a" type="aCT"/>
+					<xs:element name="abbr" type="abbrCT"/>
+					<xs:element name="date" type="dateCT"/>
+					<xs:element name="divineName" type="divineNameCT"/>
+					<xs:element name="foreign" type="foreignCT"/>
+					<xs:element name="hi" type="hiCT"/>
+					<xs:element name="index" type="indexCT"/>
+					<xs:element name="lb" type="lbCT"/>
+					<xs:element name="milestone" type="milestoneCT"/>
+					<xs:element name="name" type="nameCT"/>
+					<xs:element name="note" type="noteCT"/>
+					<xs:element name="reference" type="referenceCT"/>
+					<xs:element name="seg" type="segCT"/>
+					<xs:element name="title" type="titleCT"/>
+					<xs:element name="w" type="wCT"/>
+				</xs:choice>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="TEIform" fixed="foreign"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="headCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="head" type="headCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+			<xs:element name="milestoneStart" type="milestoneStartCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="q" type="qCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="head"/>
+	</xs:complexType>
+	<xs:complexType name="hiCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+			<xs:element name="milestoneStart" type="milestoneStartCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="type" type="hiType" use="optional"/>
+		<xs:attributeGroup ref="globalWithoutType"/>
+		<xs:attribute name="TEIform" fixed="hi"/>
+	</xs:complexType>
+	<xs:complexType name="indexCT">
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="index" type="xs:string" use="required"/>
+		<xs:attribute name="level1" type="xs:string" use="required"/>
+		<xs:attribute name="level2" type="xs:string" use="optional"/>
+		<xs:attribute name="level3" type="xs:string" use="optional"/>
+		<xs:attribute name="level4" type="xs:string" use="optional"/>
+		<xs:attribute name="see" type="xs:string" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="index"/>
+	</xs:complexType>
+	<xs:complexType name="inscriptionCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+			<xs:element name="milestoneStart" type="milestoneStartCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="q" type="qCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="speaker" type="speakerCT"/>
+			<xs:element name="speech" type="speechCT"/>
+			<xs:element name="title" type="titleCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+	</xs:complexType>
+	<xs:complexType name="itemCT" mixed="true">
+		<xs:sequence minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="label" type="labelCT" minOccurs="0"/>
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element name="a" type="aCT"/>
+				<xs:element name="abbr" type="abbrCT"/>
+				<xs:element name="date" type="dateCT"/>
+				<xs:element name="divineName" type="divineNameCT"/>
+				<xs:element name="foreign" type="foreignCT"/>
+				<xs:element name="hi" type="hiCT"/>
+				<xs:element name="index" type="indexCT"/>
+				<xs:element name="lg" type="lgCT"/>
+				<xs:element name="list" type="listCT"/>
+				<xs:element name="lb" type="lbCT"/>
+				<xs:element name="milestone" type="milestoneCT"/>
+				<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+				<xs:element name="milestoneStart" type="milestoneStartCT"/>
+				<xs:element name="name" type="nameCT"/>
+				<xs:element name="note" type="noteCT"/>
+				<xs:element name="p" type="pCT"/>
+				<xs:element name="q" type="qCT"/>
+				<xs:element name="reference" type="referenceCT"/>
+				<xs:element name="seg" type="segCT"/>
+				<xs:element name="title" type="titleCT"/>
+				<xs:element name="transChange" type="transChangeCT"/>
+				<xs:element name="verse" type="verseCT"/>
+				<xs:element name="w" type="wCT"/>
+			</xs:choice>
+		</xs:sequence>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="role" type="xs:string" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="item"/>
+	</xs:complexType>
+	<xs:complexType name="labelCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+			<xs:element name="milestoneStart" type="milestoneStartCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="q" type="qCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="transChange" type="transChangeCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="role" type="xs:string" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="label"/>
+	</xs:complexType>
+	<xs:complexType name="lCT" mixed="true">
+		<xs:complexContent mixed="true">
+			<xs:extension base="milestoneable">
+				<xs:choice minOccurs="0" maxOccurs="unbounded">
+					<xs:element name="a" type="aCT"/>
+					<xs:element name="abbr" type="abbrCT"/>
+					<xs:element name="chapter" type="chapterCT"/>
+					<xs:element name="date" type="dateCT"/>
+					<xs:element name="divineName" type="divineNameCT"/>
+					<xs:element name="foreign" type="foreignCT"/>
+					<xs:element name="hi" type="hiCT"/>
+					<xs:element name="index" type="indexCT"/>
+					<xs:element name="lb" type="lbCT"/>
+					<xs:element name="mentioned" type="mentionedCT"/>
+					<xs:element name="milestone" type="milestoneCT"/>
+					<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+					<xs:element name="milestoneStart" type="milestoneStartCT"/>
+					<xs:element name="name" type="nameCT"/>
+					<xs:element name="note" type="noteCT"/>
+					<xs:element name="q" type="qCT"/>
+					<xs:element name="reference" type="referenceCT"/>
+					<xs:element name="seg" type="segCT"/>
+					<xs:element name="speaker" type="speakerCT"/>
+					<xs:element name="transChange" type="transChangeCT"/>
+					<xs:element name="verse" type="verseCT"/>
+					<xs:element name="w" type="wCT"/>
+				</xs:choice>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attribute name="level" type="xs:positiveInteger" use="optional"/>
+				<xs:attribute name="type" type="lineType" use="optional"/>
+				<xs:attributeGroup ref="globalWithoutType"/>
+				<xs:attribute name="TEIform" fixed="l"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="lbCT">
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="milestone"/>
+	</xs:complexType>
+	<xs:complexType name="lgCT" mixed="false">
+		<xs:complexContent>
+			<xs:extension base="milestoneable">
+				<xs:choice minOccurs="0" maxOccurs="unbounded">
+					<xs:element name="chapter" type="chapterCT"/>
+					<xs:element name="index" type="indexCT"/>
+					<xs:element name="l" type="lCT"/>
+					<xs:element name="lb" type="lbCT"/>
+					<xs:element name="lg" type="lgCT"/>
+					<xs:element name="milestone" type="milestoneCT"/>
+					<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+					<xs:element name="milestoneStart" type="milestoneStartCT"/>
+					<xs:element name="q" type="qCT"/>
+					<xs:element name="verse" type="verseCT"/>
+				</xs:choice>
+				<xs:attribute name="canonical"
+				type="xs:boolean" use="optional"/>
+				<xs:attribute name="type" type="lineGroupType" use="optional"/>
+				<xs:attributeGroup ref="globalWithoutType"/>
+				<xs:attribute name="TEIform" fixed="lg"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="listCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="chapter" type="chapterCT"/>
+			<xs:element name="head" type="headCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="item" type="itemCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+			<xs:element name="milestoneStart" type="milestoneStartCT"/>
+			<xs:element name="q" type="qCT"/>
+			<xs:element name="verse" type="verseCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="list"/>
+	</xs:complexType>
+	<xs:complexType name="mentionedCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+			<xs:element name="milestoneStart" type="milestoneStartCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="q" type="qCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="transChange" type="transChangeCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="mentioned"/>
+	</xs:complexType>
+	<xs:complexType name="milestoneCT">
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="type" type="milestonePt"/>
+		<xs:attributeGroup ref="globalWithoutType"/>
+		<xs:attribute name="marker" type="xs:string" default="DEFAULT" use="optional"/>
+		<xs:attribute name="TEIform" fixed="milestone"/>
+	</xs:complexType>
+	<xs:complexType name="milestoneEndCT">
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="type" type="milestoneSe"/>
+		<xs:attribute name="start" type="xs:string" use="required"/>
+		<xs:attributeGroup ref="globalWithoutType"/>
+		<xs:attribute name="TEIform" fixed="milestone"/>
+	</xs:complexType>
+	<xs:complexType name="milestoneStartCT">
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="end" type="xs:string" use="required"/>
+		<xs:attribute name="type" type="milestoneSe"/>
+		<xs:attributeGroup ref="globalWithoutType"/>
+		<xs:attribute name="TEIform" fixed="milestone"/>
+	</xs:complexType>
+	<xs:complexType name="nameCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="regular" type="xs:string" use="optional"/>
+		<xs:attribute name="type" type="nameType" use="optional"/>
+		<xs:attributeGroup ref="globalWithoutType"/>
+		<xs:attribute name="TEIform" fixed="name"/>
+	</xs:complexType>
+	<xs:complexType name="noteCT" mixed="true">
+		<xs:sequence>
+			<xs:element name="note" type="noteCT" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element name="a" type="aCT"/>
+				<xs:element name="abbr" type="abbrCT"/>
+				<xs:element name="catchWord" type="catchWordCT"/>
+				<xs:element name="date" type="dateCT"/>
+				<xs:element name="divineName" type="divineNameCT"/>
+				<xs:element name="figure" type="figureCT"/>
+				<xs:element name="foreign" type="foreignCT"/>
+				<xs:element name="hi" type="hiCT"/>
+				<xs:element name="index" type="indexCT"/>
+				<xs:element name="inscription" type="inscriptionCT"/>
+				<xs:element name="lb" type="lbCT"/>
+				<xs:element name="lg" type="lgCT"/>
+				<xs:element name="list" type="listCT"/>
+				<xs:element name="mentioned" type="mentionedCT"/>
+				<xs:element name="milestone" type="milestoneCT"/>
+				<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+				<xs:element name="milestoneStart" type="milestoneStartCT"/>
+				<xs:element name="name" type="nameCT"/>
+				<xs:element name="p" type="pCT"/>
+				<xs:element name="q" type="qCT"/>
+				<xs:element name="rdg" type="rdgCT"/>
+				<xs:element name="rdgGrp" type="rdgGrpCT"/>
+				<xs:element name="reference" type="referenceCT"/>
+				<xs:element name="seg" type="segCT"/>
+				<xs:element name="table" type="tableCT"/>
+				<xs:element name="title" type="titleCT"/>
+				<xs:element name="verse" type="verseCT"/>
+				<xs:element name="w" type="wCT"/>
+			</xs:choice>
+		</xs:sequence>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional" default="false"/>
+		<xs:attribute name="osisRef" type="osisRefType" use="optional"/>
+		<xs:attribute name="placement" type="notePlacement" use="optional"/>
+		<xs:attribute name="type" type="noteType" use="optional"/>
+		<xs:attributeGroup ref="globalWithoutType"/>
+		<xs:attribute name="TEIform" fixed="note"/>
+	</xs:complexType>
+	<xs:complexType name="pCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="catchWord" type="catchWordCT"/>
+			<xs:element name="chapter" type="chapterCT"/>
+			<xs:element name="closer" type="closerCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="figure" type="figureCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="inscription" type="inscriptionCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="lg" type="lgCT"/>
+			<xs:element name="list" type="listCT"/>
+			<xs:element name="mentioned" type="mentionedCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+			<xs:element name="milestoneStart" type="milestoneStartCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="q" type="qCT"/>
+			<xs:element name="rdg" type="rdgCT"/>
+			<xs:element name="rdgGrp" type="rdgGrpCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="salute" type="saluteCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="signed" type="signedCT"/>
+			<xs:element name="speaker" type="speakerCT"/>
+			<xs:element name="speech" type="speechCT"/>
+			<xs:element name="table" type="tableCT"/>
+			<xs:element name="title" type="titleCT"/>
+			<xs:element name="transChange" type="transChangeCT"/>
+			<xs:element name="verse" type="verseCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="p"/>
+	</xs:complexType>
+	<xs:complexType name="qCT" mixed="true">
+		<xs:complexContent mixed="true">
+			<xs:extension base="milestoneable">
+				<xs:choice minOccurs="0" maxOccurs="unbounded">
+					<xs:element name="a" type="aCT"/>
+					<xs:element name="abbr" type="abbrCT"/>
+					<xs:element name="closer" type="closerCT"/>
+					<xs:element name="date" type="dateCT"/>
+					<xs:element name="divineName" type="divineNameCT"/>
+					<xs:element name="foreign" type="foreignCT"/>
+					<xs:element name="hi" type="hiCT"/>
+					<xs:element name="index" type="indexCT"/>
+					<xs:element name="inscription" type="inscriptionCT"/>
+					<xs:element name="lb" type="lbCT"/>
+					<xs:element name="lg" type="lgCT"/>
+					<xs:element name="list" type="listCT"/>
+					<xs:element name="mentioned" type="mentionedCT"/>
+					<xs:element name="milestone" type="milestoneCT"/>
+					<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+					<xs:element name="milestoneStart" type="milestoneStartCT"/>
+					<xs:element name="name" type="nameCT"/>
+					<xs:element name="note" type="noteCT"/>
+					<xs:element name="p" type="pCT"/>
+					<xs:element name="q" type="qCT"/>
+					<xs:element name="reference" type="referenceCT"/>
+					<xs:element name="salute" type="saluteCT"/>
+					<xs:element name="seg" type="segCT"/>
+					<xs:element name="signed" type="signedCT"/>
+					<xs:element name="speaker" type="speakerCT"/>
+					<xs:element name="transChange" type="transChangeCT"/>
+					<xs:element name="verse" type="verseCT"/>
+					<xs:element name="w" type="wCT"/>
+				</xs:choice>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attribute name="level" type="xs:string" use="optional"/>
+				<xs:attribute name="marker" type="xs:string" default="DEFAULT" use="optional"/>
+				<xs:attribute name="osisRef" type="osisRefType" use="optional"/>
+				<xs:attribute name="type" type="quoteType" use="optional"/>
+				<xs:attribute name="who" type="xs:string" use="optional"/>
+				<xs:attributeGroup ref="globalWithoutType"/>
+				<xs:attribute name="TEIform" fixed="q"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="rdgCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="lg" type="lgCT"/>
+			<xs:element name="list" type="listCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+			<xs:element name="milestoneStart" type="milestoneStartCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="p" type="pCT"/>
+			<xs:element name="q" type="qCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="transChange" type="transChangeCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="witness" type="osisRefType" use="optional"/>
+		<xs:attribute name="type" type="rdgType" use="optional"/>
+		<xs:attributeGroup ref="globalWithoutType"/>
+		<xs:attribute name="TEIform" fixed="rdg"/>
+	</xs:complexType>
+	<xs:complexType name="rdgGrpCT" mixed="false">
+		<xs:sequence>
+			<xs:element name="rdg" type="rdgCT" minOccurs="1" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="rdgGrp"/>
+	</xs:complexType>
+	<xs:complexType name="referenceCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+			<xs:element name="milestoneStart" type="milestoneStartCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="title" type="titleCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional" default="false"/>
+		<xs:attribute name="osisRef" type="osisRefType" use="optional"/>
+		<xs:attribute name="type" type="referenceType" use="optional"/>
+		<xs:attributeGroup ref="globalWithoutType"/>
+	</xs:complexType>
+	<xs:complexType name="rowCT">
+		<xs:sequence>
+			<xs:element name="cell" type="cellCT" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="role" type="tableRole" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="row"/>
+	</xs:complexType>
+		<xs:complexType name="saluteCT" mixed="true">
+		<xs:complexContent mixed="true">
+			<xs:extension base="milestoneable">
+				<xs:choice minOccurs="0" maxOccurs="unbounded">
+					<xs:element name="a" type="aCT"/>
+					<xs:element name="abbr" type="abbrCT"/>
+					<xs:element name="date" type="dateCT"/>
+					<xs:element name="divineName" type="divineNameCT"/>
+					<xs:element name="foreign" type="foreignCT"/>
+					<xs:element name="hi" type="hiCT"/>
+					<xs:element name="index" type="indexCT"/>
+					<xs:element name="lb" type="lbCT"/>
+					<xs:element name="lg" type="lgCT"/>
+					<xs:element name="list" type="listCT"/>
+					<xs:element name="mentioned" type="mentionedCT"/>
+					<xs:element name="milestone" type="milestoneCT"/>
+					<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+					<xs:element name="milestoneStart" type="milestoneStartCT"/>
+					<xs:element name="name" type="nameCT"/>
+					<xs:element name="note" type="noteCT"/>
+					<xs:element name="p" type="pCT"/>
+					<xs:element name="q" type="qCT"/>
+					<xs:element name="reference" type="referenceCT"/>
+					<xs:element name="seg" type="segCT"/>
+					<xs:element name="speaker" type="speakerCT"/>
+					<xs:element name="transChange" type="transChangeCT"/>
+					<xs:element name="verse" type="verseCT"/>
+					<xs:element name="w" type="wCT"/>
+				</xs:choice>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="TEIform" fixed="salute"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="segCT" mixed="true">
+		<xs:complexContent mixed="true">
+			<xs:extension base="milestoneable">
+				<xs:choice minOccurs="0" maxOccurs="unbounded">
+					<xs:element name="a" type="aCT"/>
+					<xs:element name="abbr" type="abbrCT"/>
+					<xs:element name="date" type="dateCT"/>
+					<xs:element name="divineName" type="divineNameCT"/>
+					<xs:element name="foreign" type="foreignCT"/>
+					<xs:element name="hi" type="hiCT"/>
+					<xs:element name="index" type="indexCT"/>
+					<xs:element name="lb" type="lbCT"/>
+					<xs:element name="milestone" type="milestoneCT"/>
+					<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+					<xs:element name="milestoneStart" type="milestoneStartCT"/>
+					<xs:element name="name" type="nameCT"/>
+					<xs:element name="note" type="noteCT"/>
+					<xs:element name="q" type="qCT"/>
+					<xs:element name="reference" type="referenceCT"/>
+					<xs:element name="seg" type="segCT"/>
+					<xs:element name="transChange" type="transChangeCT"/>
+					<xs:element name="w" type="wCT"/>
+				</xs:choice>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attribute name="type" type="segType" use="optional"/>
+				<xs:attributeGroup ref="globalWithoutType"/>
+				<xs:attribute name="TEIform" fixed="seg"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="signedCT" mixed="true">
+		<xs:complexContent mixed="true">
+			<xs:extension base="milestoneable">
+				<xs:choice minOccurs="0" maxOccurs="unbounded">
+					<xs:element name="a" type="aCT"/>
+					<xs:element name="abbr" type="abbrCT"/>
+					<xs:element name="divineName" type="divineNameCT"/>
+					<xs:element name="foreign" type="foreignCT"/>
+					<xs:element name="hi" type="hiCT"/>
+					<xs:element name="index" type="indexCT"/>
+					<xs:element name="lb" type="lbCT"/>
+					<xs:element name="milestone" type="milestoneCT"/>
+					<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+					<xs:element name="milestoneStart" type="milestoneStartCT"/>
+					<xs:element name="name" type="nameCT"/>
+					<xs:element name="note" type="noteCT"/>
+					<xs:element name="reference" type="referenceCT"/>
+					<xs:element name="seg" type="segCT"/>
+					<xs:element name="w" type="wCT"/>
+				</xs:choice>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="TEIform" fixed="signed"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="speakerCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="who" type="xs:string" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="sp"/>
+	</xs:complexType>
+	<xs:complexType name="speechCT" mixed="true">
+		<xs:complexContent mixed="true">
+			<xs:extension base="milestoneable">
+				<xs:sequence>
+					<xs:element name="speech" type="speechCT" minOccurs="0" maxOccurs="unbounded"/>
+					<xs:choice minOccurs="0" maxOccurs="unbounded">
+						<xs:element name="a" type="aCT"/>
+						<xs:element name="abbr" type="abbrCT"/>
+						<xs:element name="chapter" type="chapterCT"/>
+						<xs:element name="closer" type="closerCT"/>
+						<xs:element name="date" type="dateCT"/>
+						<xs:element name="divineName" type="divineNameCT"/>
+						<xs:element name="foreign" type="foreignCT"/>
+						<xs:element name="hi" type="hiCT"/>
+						<xs:element name="index" type="indexCT"/>
+						<xs:element name="inscription" type="inscriptionCT"/>
+						<xs:element name="lb" type="lbCT"/>
+						<xs:element name="lg" type="lgCT"/>
+						<xs:element name="list" type="listCT"/>
+						<xs:element name="mentioned" type="mentionedCT"/>
+						<xs:element name="milestone" type="milestoneCT"/>
+						<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+						<xs:element name="milestoneStart" type="milestoneStartCT"/>
+						<xs:element name="name" type="nameCT"/>
+						<xs:element name="note" type="noteCT"/>
+						<xs:element name="p" type="pCT"/>
+						<xs:element name="q" type="qCT"/>
+						<xs:element name="reference" type="referenceCT"/>
+						<xs:element name="salute" type="saluteCT"/>
+						<xs:element name="seg" type="segCT"/>
+						<xs:element name="signed" type="signedCT"/>
+						<xs:element name="speaker" type="speakerCT"/>
+						<xs:element name="table" type="tableCT"/>
+						<xs:element name="title" type="titleCT"/>
+						<xs:element name="transChange" type="transChangeCT"/>
+						<xs:element name="verse" type="verseCT"/>
+						<xs:element name="w" type="wCT"/>
+					</xs:choice>
+				</xs:sequence>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+				<xs:attributeGroup ref="globalWithType"/>
+				<xs:attribute name="marker" type="xs:string" default="DEFAULT" use="optional"/>
+				<xs:attribute name="TEIform" fixed="speech"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="tableCT">
+		<xs:sequence>
+			<xs:element name="head" type="headCT" minOccurs="0"/>
+			<xs:element name="row" type="rowCT" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="cols" type="xs:positiveInteger" use="optional"/>
+		<xs:attribute name="rows" type="xs:positiveInteger" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="table"/>
+	</xs:complexType>
+	<xs:complexType name="titleCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="figure" type="figureCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="inscription" type="inscriptionCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="lg" type="lgCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="q" type="qCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="title" type="titleCT"/>
+			<xs:element name="transChange" type="transChangeCT"/>
+			<xs:element name="verse" type="verseCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional" default="false"/>
+                <xs:attribute name="level" type="xs:integer" use="optional"/>
+		<xs:attribute name="placement" type="titlePlacement" use="optional"/>
+		<xs:attribute name="short" type="xs:string" use="optional"/>
+		<xs:attribute name="type" type="osisTitleType" use="optional"/>
+		<xs:attributeGroup ref="globalWithoutType"/>
+		<xs:attribute name="TEIform" fixed="title"/>
+	</xs:complexType>
+	<xs:complexType name="titlePageCT">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="title" type="titleCT"/>
+			<xs:element name="contributor" type="contributorCT"/>
+			<xs:element name="creator" type="creatorCT"/>
+			<xs:element name="subject" type="subjectCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="description" type="descriptionCT"/>
+			<xs:element name="publisher" type="publisherCT"/>
+			<xs:element name="type" type="typeCT"/>
+			<xs:element name="format" type="formatCT"/>
+			<xs:element name="identifier" type="identifierCT"/>
+			<xs:element name="source" type="sourceCT"/>
+			<xs:element name="language" type="languageCT"/>
+			<xs:element name="relation" type="relationCT"/>
+			<xs:element name="coverage" type="coverageCT"/>
+			<xs:element name="p" type="pCT"/>
+			<xs:element name="figure" type="figureCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional" default="false"/>
+		<xs:attributeGroup ref="globalWithType"/>
+	</xs:complexType>
+	<xs:complexType name="transChangeCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="abbr" type="abbrCT"/>
+			<xs:element name="date" type="dateCT"/>
+			<xs:element name="divineName" type="divineNameCT"/>
+			<xs:element name="foreign" type="foreignCT"/>
+			<xs:element name="hi" type="hiCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="lb" type="lbCT"/>
+			<xs:element name="milestone" type="milestoneCT"/>
+			<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+			<xs:element name="milestoneStart" type="milestoneStartCT"/>
+			<xs:element name="name" type="nameCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="q" type="qCT"/>
+			<xs:element name="reference" type="referenceCT"/>
+			<xs:element name="seg" type="segCT"/>
+			<xs:element name="w" type="wCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="type" type="changeType" use="optional"/>
+		<xs:attributeGroup ref="globalWithoutType"/>
+	</xs:complexType>
+	<xs:complexType name="verseCT" mixed="true">
+		<xs:complexContent mixed="true">
+			<xs:extension base="milestoneable">
+				<xs:choice minOccurs="0" maxOccurs="unbounded">
+					<xs:element name="a" type="aCT"/>
+					<xs:element name="abbr" type="abbrCT"/>
+					<xs:element name="date" type="dateCT"/>
+					<xs:element name="divineName" type="divineNameCT"/>
+					<xs:element name="foreign" type="foreignCT"/>
+					<xs:element name="hi" type="hiCT"/>
+					<xs:element name="index" type="indexCT"/>
+					<xs:element name="inscription" type="inscriptionCT"/>
+					<xs:element name="lb" type="lbCT"/>
+					<xs:element name="list" type="listCT"/>
+					<xs:element name="mentioned" type="mentionedCT"/>
+					<xs:element name="milestone" type="milestoneCT"/>
+					<xs:element name="milestoneEnd" type="milestoneEndCT"/>
+					<xs:element name="milestoneStart" type="milestoneStartCT"/>
+					<xs:element name="name" type="nameCT"/>
+					<xs:element name="note" type="noteCT"/>
+					<xs:element name="q" type="qCT"/>
+					<xs:element name="reference" type="referenceCT"/>
+					<xs:element name="seg" type="segCT"/>
+					<xs:element name="speaker" type="speakerCT"/>
+					<xs:element name="title" type="titleCT"/>
+					<xs:element name="transChange" type="transChangeCT"/>
+					<xs:element name="w" type="wCT"/>
+				</xs:choice>
+				<xs:attribute name="canonical" type="xs:boolean" use="optional" default="true"/>
+				<xs:attributeGroup ref="globalWithType"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+	<xs:complexType name="wCT" mixed="true">
+		<xs:choice minOccurs="0" maxOccurs="unbounded">
+			<xs:element name="a" type="aCT"/>
+			<xs:element name="index" type="indexCT"/>
+			<xs:element name="note" type="noteCT"/>
+			<xs:element name="seg" type="segCT"/>
+		</xs:choice>
+		<xs:attribute name="canonical" type="xs:boolean" use="optional"/>
+		<xs:attribute name="gloss" type="xs:string" use="optional"/>
+		<xs:attribute name="lemma" type="osisGenType" use="optional"/>
+		<xs:attribute name="morph" type="osisGenType" use="optional"/>
+		<xs:attribute name="POS" type="osisGenType" use="optional"/>
+		<xs:attribute name="src" type="xs:string" use="optional"/>
+		<xs:attribute name="xlit" type="xs:string" use="optional"/>
+		<xs:attributeGroup ref="globalWithType"/>
+		<xs:attribute name="TEIform" fixed="w"/>
+	</xs:complexType>
+	<!-- attributes -->
+	<xs:attributeGroup name="globalWithType">
+		<xs:attribute name="annotateRef" type="annotateRefType" use="optional"/>
+		<xs:attribute name="annotateWork" type="xs:string" use="optional"/>
+		<xs:attribute name="annotateType" type="annotationType" use="optional"/>
+		<xs:attribute name="editions" type="xs:NMTOKENS" use="optional"/>
+		<xs:attribute name="ID" type="xs:ID" use="optional"/>
+		<xs:attribute name="osisID" type="osisIDType" use="optional"/>
+		<xs:attribute name="resp" type="xs:string" use="optional"/>
+		<xs:attribute name="type" type="attributeExtension" use="optional"/>
+		<xs:attribute name="subType" type="attributeExtension" use="optional"/>
+		<xs:attribute name="n" type="xs:string" use="optional"/>
+		<xs:attribute ref="xml:lang" use="optional"/>
+		<xs:attribute ref="xml:space" use="optional"/>
+		<xs:attribute name="script" type="osisScripts" use="optional"/>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="globalWithoutType">
+		<xs:attribute name="annotateRef" type="annotateRefType" use="optional"/>
+		<xs:attribute name="annotateWork" type="xs:string" use="optional"/>
+		<xs:attribute name="annotateType" type="annotationType" use="optional"/>
+		<xs:attribute name="editions" type="xs:NMTOKENS" use="optional"/>
+		<xs:attribute name="ID" type="xs:ID" use="optional"/>
+		<xs:attribute name="osisID" type="osisIDType" use="optional"/>
+		<xs:attribute name="resp" type="xs:string" use="optional"/>
+		<xs:attribute name="subType" type="attributeExtension" use="optional"/>
+		<xs:attribute name="n" type="xs:string" use="optional"/>
+		<xs:attribute ref="xml:lang" use="optional"/>
+		<xs:attribute ref="xml:space" use="optional"/>
+		<xs:attribute name="script" type="osisScripts" use="optional"/>
+	</xs:attributeGroup>
+	<!-- complex types -->
+	<xs:complexType name="milestoneable">
+		<xs:attribute name="sID" type="xs:string" use="optional"/>
+		<xs:attribute name="eID" type="xs:string" use="optional"/>
+	</xs:complexType>
+	<!-- OSIS regexes -->
+	<xs:simpleType name="osisGenRegex">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="((((\p{L}|\p{N}|_)+)(\.(\p{L}|\p{N}|_))*:)?([^:\s])+)"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisIDRegex">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisRefRegex">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?(\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisScripts">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="([A-Z][a-z]{3}|x-[A-Za-z0-9]+)"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="osisWorkPrefix">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="((//((\p{L}|\p{N}|_|-|\.|:)+))(/(\p{L}|\p{N}|_|-|\.|:)+)?(/@(\p{L}|\p{N}|_|-|\.|:)+))"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="osisWorkType">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<!-- simple types -->
+	<xs:simpleType name="annotateRefType">
+		<xs:list itemType="osisAnnotateRefType"/>
+	</xs:simpleType>
+	<xs:simpleType name="annotationType">
+		<xs:union memberTypes="osisAnnotation attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="attributeExtension">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="x-([^\s])+"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="calendar">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="Chinese"/>
+			<xs:enumeration value="Gregorian"/>
+			<xs:enumeration value="Islamic"/>
+			<xs:enumeration value="ISO"/>
+			<xs:enumeration value="Jewish"/>
+			<xs:enumeration value="Julian"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="changeType">
+		<xs:union memberTypes="osisChanges attributeExtension"/>
+	</xs:simpleType>
+		<xs:simpleType name="descriptionType">
+		<xs:union memberTypes="osisDescription attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="divType">
+		<xs:union memberTypes="osisDivs attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="eventType">
+		<xs:union memberTypes="osisEvents attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="hiType">
+		<xs:union memberTypes="osisHi attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="identifierType">
+		<xs:union memberTypes="osisIdentifier attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="languageType">
+		<xs:union memberTypes="osisLanguage attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="languageUsage">
+		<xs:union memberTypes="osisLanguageUsage attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="lineType">
+		<xs:union memberTypes="osisLine attributeExtension xs:string"/>
+	</xs:simpleType>
+		<xs:simpleType name="lineGroupType">
+		<xs:union memberTypes="osisLineGroup attributeExtension xs:string"/>
+	</xs:simpleType>
+	<xs:simpleType name="milestonePt">
+		<xs:union memberTypes="osisMilestonePt attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="milestoneSe">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="abbr"/>
+			<xs:enumeration value="chapter"/>
+			<xs:enumeration value="closer"/>
+			<xs:enumeration value="div"/>
+			<xs:enumeration value="foreign"/>
+			<xs:enumeration value="l"/>
+			<xs:enumeration value="lg"/>
+			<xs:enumeration value="q"/>
+			<xs:enumeration value="salute"/>
+			<xs:enumeration value="seg"/>
+			<xs:enumeration value="signed"/>
+			<xs:enumeration value="speech"/>
+			<xs:enumeration value="verse"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="nameType">
+		<xs:union memberTypes="osisNames attributeExtension"/>
+	</xs:simpleType>
+		<xs:simpleType name="notePlacement">
+		<xs:union memberTypes="osisPlacementNote attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="noteType">
+		<xs:union memberTypes="osisNotes attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="quoteType">
+		<xs:union memberTypes="osisQuotes attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="referenceType">
+		<xs:union memberTypes="osisReferences attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="rdgType">
+		<xs:union memberTypes="osisRdg attributeExtension xs:string"/>
+	</xs:simpleType>
+	<xs:simpleType name="segType">
+		<xs:union memberTypes="osisSegs attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="subjectType">
+		<xs:union memberTypes="osisSubjects attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="titlePlacement">
+		<xs:union memberTypes="osisPlacementTitle attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="typeType">
+		<xs:union memberTypes="osisType attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="osisAnnotateRefType">
+		<xs:union memberTypes="osisRefRegex osisGenRegex"/>
+	</xs:simpleType>
+	<xs:simpleType name="osisAnnotation">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="commentary"/>
+			<xs:enumeration value="exposition"/>
+			<xs:enumeration value="meditation"/>
+			<xs:enumeration value="outline"/>
+			<xs:enumeration value="rebuttal"/>
+			<xs:enumeration value="sermon"/>
+			<xs:enumeration value="studyGuide"/>
+			<xs:enumeration value="translation"/>
+		</xs:restriction>
+	</xs:simpleType>
+		<xs:simpleType name="osisCellAlign">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="left"/>
+			<xs:enumeration value="right"/>
+			<xs:enumeration value="center"/>
+			<xs:enumeration value="justify"/>
+			<xs:enumeration value="start"/>
+			<xs:enumeration value="end"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisChanges">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="added"/>
+			<xs:enumeration value="amplified"/>
+			<xs:enumeration value="changed"/>
+			<xs:enumeration value="deleted"/>
+			<xs:enumeration value="implied"/>
+			<xs:enumeration value="moved"/>
+			<xs:enumeration value="tenseChange"/>
+		</xs:restriction>
+	</xs:simpleType>
+		<xs:simpleType name="osisDescription">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="usfm"/>
+		</xs:restriction>
+	</xs:simpleType>
+<!-- id, ide, rem, restore, spine and any other values can be placed
+		on subtype with x- -->
+
+	<xs:simpleType name="osisDivs">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="acknowledgement"/>
+			<xs:enumeration value="afterword"/>
+			<xs:enumeration value="annotant"/>
+			<xs:enumeration value="appendix"/>
+			<xs:enumeration value="article"/>
+			<xs:enumeration value="back"/>
+			<xs:enumeration value="bibliography"/>
+			<xs:enumeration value="body"/>
+			<xs:enumeration value="book"/>
+			<xs:enumeration value="bookGroup"/>
+			<xs:enumeration value="bridge"/>
+			<xs:enumeration value="chapter"/>
+			<xs:enumeration value="colophon"/>
+			<xs:enumeration value="commentary"/>
+			<xs:enumeration value="concordance"/>
+			<xs:enumeration value="coverPage"/>
+			<xs:enumeration value="dedication"/>
+			<xs:enumeration value="devotional"/>
+			<xs:enumeration value="entry"/>
+			<xs:enumeration value="front"/>
+			<xs:enumeration value="gazetteer"/>
+			<xs:enumeration value="glossary"/>
+			<xs:enumeration value="imprimatur"/>
+			<xs:enumeration value="index"/>
+			<xs:enumeration value="introduction"/>
+			<xs:enumeration value="majorSection"/>
+			<xs:enumeration value="map"/>
+			<xs:enumeration value="outline"/>
+			<xs:enumeration value="paragraph"/>
+			<xs:enumeration value="part"/>
+			<xs:enumeration value="preface"/>
+			<xs:enumeration value="publicationData"/>
+			<xs:enumeration value="section"/>
+			<xs:enumeration value="subSection"/>
+			<xs:enumeration value="summary"/>
+			<xs:enumeration value="tableofContents"/>
+			<xs:enumeration value="titlePage"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisEvents">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="edition"/>
+			<xs:enumeration value="eversion"/>
+			<xs:enumeration value="imprint"/>
+			<xs:enumeration value="original"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisGenType">
+		<xs:list itemType="osisGenRegex"/>
+	</xs:simpleType>
+	<xs:simpleType name="osisHi">
+		<xs:restriction base="xs:string">
+		        <xs:enumeration value="acrostic"/>
+			<xs:enumeration value="bold"/>
+			<xs:enumeration value="emphasis"/>
+			<xs:enumeration value="illuminated"/>
+			<xs:enumeration value="italic"/>
+			<xs:enumeration value="line-through"/>
+			<xs:enumeration value="normal"/>
+			<xs:enumeration value="small-caps"/>
+			<xs:enumeration value="sub"/>
+			<xs:enumeration value="super"/>
+			<xs:enumeration value="underline"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisIdentifier">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="Dewey"/>
+			<xs:enumeration value="DOI"/>
+			<xs:enumeration value="ISBN"/>
+			<xs:enumeration value="ISSN"/>
+			<xs:enumeration value="LCCN"/>
+			<xs:enumeration value="OSIS"/>
+			<xs:enumeration value="SICI"/>
+			<xs:enumeration value="URI"/>
+			<xs:enumeration value="URL"/>
+			<xs:enumeration value="URN"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisIDType">
+		<xs:list itemType="osisIDRegex"/>
+	</xs:simpleType>
+	<xs:simpleType name="osisLanguage">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="IANA"/>
+			<xs:enumeration value="IETF"/>
+			<xs:enumeration value="ISO-639-1"/>
+			<xs:enumeration value="ISO-639-2"/>
+			<xs:enumeration value="ISO-639-2-B"/>
+			<xs:enumeration value="ISO-639-2-T"/>
+			<xs:enumeration value="LINGUIST"/>
+			<xs:enumeration value="other"/>
+			<xs:enumeration value="SIL"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisLanguageUsage">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="base"/>
+			<xs:enumeration value="didactic"/>
+			<xs:enumeration value="interlinear"/>
+			<xs:enumeration value="original"/>
+			<xs:enumeration value="quotation"/>
+			<xs:enumeration value="source"/>
+			<xs:enumeration value="target"/>
+			<xs:enumeration value="translation"/>
+		</xs:restriction>
+	</xs:simpleType>
+		<xs:simpleType name="osisLine">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="refrain"/>
+	                <xs:enumeration value="doxology"/>
+			<xs:enumeration value="selah"/>
+			<xs:enumeration value="attribution"/>
+		</xs:restriction>
+	</xs:simpleType>
+		<xs:simpleType name="osisLineGroup">
+		<xs:restriction base="xs:string">
+	<!--		<xs:enumeration value="doxology"/> -->
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisMilestonePt">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="column"/>
+			<xs:enumeration value="cQuote"/>
+			<xs:enumeration value="footer"/>
+			<xs:enumeration value="halfLine"/>
+			<xs:enumeration value="header"/>
+			<xs:enumeration value="line"/>
+			<xs:enumeration value="pb"/>
+			<xs:enumeration value="screen"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisNames">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="geographic"/>
+			<xs:enumeration value="holiday"/>
+			<xs:enumeration value="nonhuman"/>
+			<xs:enumeration value="person"/>
+			<xs:enumeration value="ritual"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisNotes">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="allusion"/>
+			<xs:enumeration value="alternative"/>
+			<xs:enumeration value="background"/>
+			<xs:enumeration value="citation"/>
+			<xs:enumeration value="crossReference"/>
+			<xs:enumeration value="devotional"/>
+			<xs:enumeration value="encoder"/>
+			<xs:enumeration value="exegesis"/>
+			<xs:enumeration value="explanation"/>
+			<xs:enumeration value="liturgical"/>
+			<xs:enumeration value="speaker"/>
+			<xs:enumeration value="study"/>
+			<xs:enumeration value="translation"/>
+			<xs:enumeration value="variant"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisPlacementNote">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="foot"/>
+			<xs:enumeration value="end"/>
+			<xs:enumeration value="inline"/>
+			<xs:enumeration value="left"/>
+			<xs:enumeration value="right"/>
+			<xs:enumeration value="interlinear"/>
+			<xs:enumeration value="apparatus"/>
+		</xs:restriction>
+	</xs:simpleType>
+		<xs:simpleType name="osisPlacementTitle">
+		<xs:restriction base="xs:string">
+                        <xs:enumeration value="leftHead"/>
+			<xs:enumeration value="centerHead"/>
+			<xs:enumeration value="rightHead"/>
+			<xs:enumeration value="insideHead"/>
+			<xs:enumeration value="outsideHead"/>
+			<xs:enumeration value="leftFoot"/>
+			<xs:enumeration value="centerFoot"/>
+			<xs:enumeration value="rightFoot"/>
+			<xs:enumeration value="insideFoot"/>
+			<xs:enumeration value="outsideFoot"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisQuotes">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="block"/>
+			<xs:enumeration value="citation"/>
+			<xs:enumeration value="embedded"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisReferences">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="annotateRef"/>
+			<xs:enumeration value="parallel"/>
+			<xs:enumeration value="source"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisRdg">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="alternate"/>
+			<xs:enumeration value="variant"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisRefType">
+		<xs:list itemType="osisRefRegex"/>
+	</xs:simpleType>
+	<xs:simpleType name="osisRoles">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="adp"/>
+			<xs:enumeration value="ann"/>
+			<xs:enumeration value="art"/>
+			<xs:enumeration value="aut"/>
+			<xs:enumeration value="aqt"/>
+			<xs:enumeration value="aft"/>
+			<xs:enumeration value="aui"/>
+			<xs:enumeration value="bnd"/>
+			<xs:enumeration value="bdd"/>
+			<xs:enumeration value="bkd"/>
+			<xs:enumeration value="bkp"/>
+			<xs:enumeration value="bjd"/>
+			<xs:enumeration value="bpd"/>
+			<xs:enumeration value="ctg"/>
+			<xs:enumeration value="clb"/>
+			<xs:enumeration value="cmm"/>
+			<xs:enumeration value="cwt"/>
+			<xs:enumeration value="com"/>
+			<xs:enumeration value="ctb"/>
+			<xs:enumeration value="cre"/>
+			<xs:enumeration value="edt"/>
+			<xs:enumeration value="encoder"/>
+			<xs:enumeration value="ilu"/>
+			<xs:enumeration value="ill"/>
+			<xs:enumeration value="pbl"/>
+			<xs:enumeration value="trl"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisSegs">
+		<xs:restriction base="xs:string">
+		        <xs:enumeration value="alluded"/>
+			<xs:enumeration value="keyword"/>
+			<xs:enumeration value="otPassage"/>
+			<xs:enumeration value="verseNumber"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisSubjects">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="ATLA"/>
+			<xs:enumeration value="BILDI"/>
+			<xs:enumeration value="DBC"/>
+			<xs:enumeration value="DDC"/>
+			<xs:enumeration value="EUT"/>
+			<xs:enumeration value="FGT"/>
+			<xs:enumeration value="LCC"/>
+			<xs:enumeration value="LCSH"/>
+			<xs:enumeration value="MeSH"/>
+			<xs:enumeration value="NLSH"/>
+			<xs:enumeration value="RSWK"/>
+			<xs:enumeration value="SEARS"/>
+			<xs:enumeration value="SOG"/>
+			<xs:enumeration value="SWD_RSWK"/>
+			<xs:enumeration value="UDC"/>
+			<xs:enumeration value="VAT"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="roleType">
+		<xs:union memberTypes="osisRoles attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="osisTitles">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="acrostic"/>
+			<xs:enumeration value="chapter"/>
+			<xs:enumeration value="continued"/>
+			<xs:enumeration value="main"/>
+			<xs:enumeration value="parallel"/>
+			<xs:enumeration value="psalm"/>
+			<xs:enumeration value="runningHead"/>
+			<xs:enumeration value="scope"/>
+			<xs:enumeration value="sub"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="osisTitleType">
+		<xs:union memberTypes="osisTitles attributeExtension"/>
+	</xs:simpleType>
+	<xs:simpleType name="osisType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="OSIS"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="tableRole">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="label"/>
+			<xs:enumeration value="data"/>
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>
