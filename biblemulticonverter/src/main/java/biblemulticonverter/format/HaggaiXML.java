@@ -63,6 +63,7 @@ import biblemulticonverter.schema.haggai.STYLE;
 import biblemulticonverter.schema.haggai.TStyleFix;
 import biblemulticonverter.schema.haggai.VERSE;
 import biblemulticonverter.schema.haggai.XMLBIBLE;
+import biblemulticonverter.tools.ValidateXML;
 
 /**
  * Importer and exporter for Haggai XML.
@@ -91,6 +92,7 @@ public class HaggaiXML implements RoundtripFormat {
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
+		ValidateXML.validateFileBeforeParsing(getSchema(), inputFile);
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
 		Unmarshaller u = ctx.createUnmarshaller();
 		XMLBIBLE doc = (XMLBIBLE) ((JAXBElement<?>) u.unmarshal(inputFile)).getValue();

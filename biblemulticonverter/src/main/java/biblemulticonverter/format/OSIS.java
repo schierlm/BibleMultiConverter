@@ -13,11 +13,13 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+import javax.xml.validation.SchemaFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 
@@ -41,6 +43,8 @@ import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.MetadataBook.MetadataBookKey;
+import biblemulticonverter.schema.roundtripxml.ObjectFactory;
+import biblemulticonverter.tools.ValidateXML;
 import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.Verse;
 
@@ -64,6 +68,7 @@ public class OSIS implements RoundtripFormat {
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
+		ValidateXML.validateFileBeforeParsing(SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI).newSchema(ObjectFactory.class.getResource("/osisCore.2.1.1.xsd")), inputFile);
 		printedWarnings.clear();
 		DocumentBuilder docBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 		XPath xpath = javax.xml.xpath.XPathFactory.newInstance().newXPath();

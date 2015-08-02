@@ -65,6 +65,7 @@ import biblemulticonverter.schema.zef2005.STYLE;
 import biblemulticonverter.schema.zef2005.VERS;
 import biblemulticonverter.schema.zef2005.XMLBIBLE;
 import biblemulticonverter.schema.zef2005.XREF;
+import biblemulticonverter.tools.ValidateXML;
 
 /**
  * Importer and exporter for Zefania XML. This version may skip unknown features
@@ -101,6 +102,7 @@ public class ZefaniaXML implements RoundtripFormat {
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
+		ValidateXML.validateFileBeforeParsing(getSchema(), inputFile);
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
 		Unmarshaller u = ctx.createUnmarshaller();
 		XMLBIBLE doc = (XMLBIBLE) u.unmarshal(inputFile);

@@ -36,6 +36,7 @@ import biblemulticonverter.schema.roundtripxml.FormattedTextType.CssFormatting;
 import biblemulticonverter.schema.roundtripxml.FormattedTextType.LineBreak;
 import biblemulticonverter.schema.roundtripxml.FormattedTextType.RawHTML;
 import biblemulticonverter.schema.roundtripxml.FormattedTextType.Variation;
+import biblemulticonverter.tools.ValidateXML;
 import biblemulticonverter.schema.roundtripxml.FormattingInstructionKindType;
 import biblemulticonverter.schema.roundtripxml.LineBreakKindType;
 import biblemulticonverter.schema.roundtripxml.ObjectFactory;
@@ -51,6 +52,7 @@ public class RoundtripXML implements RoundtripFormat {
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
+		ValidateXML.validateFileBeforeParsing(getSchema(), inputFile);
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
 		Unmarshaller u = ctx.createUnmarshaller();
 		u.setSchema(getSchema());
