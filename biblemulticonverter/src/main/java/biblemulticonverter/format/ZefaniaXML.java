@@ -344,12 +344,12 @@ public class ZefaniaXML implements RoundtripFormat {
 						}
 					} else if (e3 instanceof VERS) {
 						VERS vers = (VERS) e3;
-						int vnumber = vers.getVnumber().intValue();
+						int vnumber = vers.getVnumber() == null ? 0 : vers.getVnumber().intValue();
 						if (vnumber == 0)
 							vnumber = chapter.getVerses().size() + 1;
 						String verseNumber = vnumber + (vers.getAix() == null ? "" : vers.getAix());
+						String infix = "";
 						while (chapter.getVerseIndex(verseNumber) != -1) {
-							String infix = "";
 							for (char ch = 'a'; ch <= 'z'; ch++) {
 								if (chapter.getVerseIndex(vnumber + infix + ch) == -1) {
 									verseNumber = vnumber + infix + ch;
