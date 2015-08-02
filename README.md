@@ -38,6 +38,8 @@ both for import and for export:
 
 - **Compact**: Designed for creating small text files that compress well
 - **Diffable**: Designed to make comparing different bibles easier
+- **RoundtripXML**: Useful for interchange of modules with converters written
+  in other programming languages (that prefer XML binding to plaintext parsing)
 - **RoundtripHTML**: HTML format that can be read back if desired (originally
   intended for publishing on free website hosters, but with the advent of free
   file hosters this feature is pretty much obsolete).
@@ -99,6 +101,35 @@ be added in the future.
 EPUB export is also planned (but not high priority at the moment).
 
 If you want to see any other formats, feel free to open an issue (or a pull request :-D).
+
+
+Reporting exporter bugs
+-----------------------
+
+In case you are trying to export a module, but the exporter throws an error message you
+do not understand, I'd prefer if you could share a **Diffable** version of the module
+with me. However, I understand that this is not always possible, e.g. due to copyright
+restrictions. In that case, you can try if the bug can still be reproduced after 
+exporting export the module using the **ScrambledDiffable** export format; this format
+is designed to leave the structure of the document intact but scramble all the (Greek
+and Latin) letters and digits are scrambled beyond repair (or repairable with a password
+if you prefer).
+
+Try using `=23` as argument first, which should replace all letters by 'X', resulting in
+a well compressible file. In case that one does not reproduce the bug, use without
+arguments (random numbers). In case you want to share a Bible where others are able to
+compare if their verses are the same, use '#SHA-1' as argument; that way, the same verse
+will scramble to the same 'ciphertext', so the resulting files are still diffable although
+unreadable. In case you have to be able to reverse the scrambling (if the whole file is
+unchanged), you can use '+Password' for initial scrambling and '-Password' for later
+decrypting. To verify if two bible were scrambled from the same source (using different
+parameters), scramble them again in constant mode, and diff the results. Note that since
+'encrypting' uses a stream cipher, if you use the same password for more than one file, an
+attacker with cryptanalysis background that knows only this piece of information can use it
+for correlation attacks to get the plain text. Therefore, use different passwords for
+multiple bibles (like, add the bible name to them), or better, use real encryption like AES
+instead.
+
 
 E-Sword export
 --------------
