@@ -3,7 +3,7 @@ BibleMultiConverter
 
 Converter written in Java to convert between different Bible program formats
 
-Copyright (c) 2007-2015 Michael Schierl
+Copyright (c) 2007-2015 Michael Schierl   
 Licensed unter MIT License; for details, see the LICENSE file.
 
 Usage
@@ -114,7 +114,8 @@ can be divided into two broad categories (or paradigms).
 structural elements. As a consequence, formattings/styles cannot span verse boundaries,
 and paragraph separators are always inside (or often at the end of) verses.
 
-Zefania XML, Haggai XML, TheWord, PalmBible+, e-Sword, and also the commercial MfChi
+Zefania XML, Haggai XML, TheWord, PalmBible+, e-Sword, SWORD, most online bible
+websites, and also the commercial MfChi
 format follow this category. Therefore, the format internally used by this converter
 follows this category.
 
