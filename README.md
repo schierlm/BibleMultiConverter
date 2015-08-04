@@ -103,6 +103,43 @@ EPUB export is also planned (but not high priority at the moment).
 If you want to see any other formats, feel free to open an issue (or a pull request :-D).
 
 
+Limitations
+-----------
+
+
+When comparing the bible formats that are currently used (both free and commercial), they
+can be divided into two broad categories (or paradigms).
+
+**The first category** uses books, prologs, chapters, verses and head-lines as primary
+structural elements. As a consequence, formattings/styles cannot span verse boundaries,
+and paragraph separators are always inside (or often at the end of) verses.
+
+Zefania XML, Haggai XML, TheWord, PalmBible+, e-Sword, and also the commercial MfChi
+format follow this category. Therefore, the format internally used by this converter
+follows this category.
+
+**The other category**, which covers popular formats like Logos Bible Software or
+USFM, treats formattings and paragraphs as primary structural elements. Within these
+formattings, so-called milestone markers are used to denote the beginning and end of
+chapters and verses. Prologs, appendixes, or headlines are a concept that does not
+exist (and neither is required) for this paradigm - text that is inside a chapter
+but before the first verse happens to be a chapter prolog, for example.
+
+Non-bible-specific Export formats like MobiPocket, HTML or ePub can also handle
+these formats quite well, by skipping all the milestone markers.
+
+**OSIS** is some kind of hybrid format, as the creator can decide whether formatting
+or structural elements are represented as nested tags; the other type is then
+represented as milestones.
+
+**As this converter internally uses the first category**, conversions between
+different second-category formats (like from verse-milestoned OSIS to Logos) will
+always lose more information than needed; if you want to convert this way, perhaps
+another converter tool is more appropriate for your needs. As soon as either the
+input or the output format is of first category, this converter probably outperforms
+other converters easily.
+
+
 Reporting exporter bugs
 -----------------------
 
