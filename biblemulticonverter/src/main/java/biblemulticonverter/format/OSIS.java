@@ -23,6 +23,7 @@ import javax.xml.validation.SchemaFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 
+import org.w3c.dom.Comment;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -35,18 +36,18 @@ import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
-import biblemulticonverter.data.FormattedText.RawHTMLMode;
-import biblemulticonverter.data.Utils;
-import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
+import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.MetadataBook.MetadataBookKey;
+import biblemulticonverter.data.Utils;
+import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.schema.roundtripxml.ObjectFactory;
 import biblemulticonverter.tools.ValidateXML;
-import biblemulticonverter.data.MetadataBook;
-import biblemulticonverter.data.Verse;
 
 /**
  * Very rudimentary importer/exporter for OSIS. This does not use JAXB as most
@@ -65,6 +66,7 @@ public class OSIS implements RoundtripFormat {
 	private Set<String> printedWarnings = new HashSet<String>();
 	private Properties osisRefMap = null;
 	private String warningContext = "";
+	private int milestoneIndex = 0;
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
@@ -73,21 +75,28 @@ public class OSIS implements RoundtripFormat {
 		DocumentBuilder docBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 		XPath xpath = javax.xml.xpath.XPathFactory.newInstance().newXPath();
 		Document osisDoc = docBuilder.parse(inputFile);
-		Bible result = new Bible(xpath.evaluate("/osis/osisText/header/work/title/text()", osisDoc));
+		String name = xpath.evaluate("/osis/osisText/header/work/title/text()", osisDoc);
+		if (name.isEmpty())
+			name = "OSIS Bible";
+		Bible result = new Bible(name);
 		String description = xpath.evaluate("/osis/osisText/header/work/description/text()", osisDoc);
 		String rights = xpath.evaluate("/osis/osisText/header/work/rights/text()", osisDoc);
 		if (!description.isEmpty() || !rights.isEmpty()) {
 			String date = xpath.evaluate("/osis/osisText/header/work/date/text()", osisDoc);
-			String titleDesc =  xpath.evaluate("/osis/osisText/titlePage/description/text()", osisDoc);
+			String titleDesc = xpath.evaluate("/osis/osisText/titlePage/description/text()", osisDoc);
 			MetadataBook mb = new MetadataBook();
-			mb.setValue(MetadataBookKey.description, description);
-			mb.setValue(MetadataBookKey.rights, rights);
-			mb.setValue(MetadataBookKey.date, date);
-			mb.setValue("description@titlePage", titleDesc);
+			if (!description.isEmpty())
+				mb.setValue(MetadataBookKey.description, description.trim());
+			if (!rights.isEmpty())
+				mb.setValue(MetadataBookKey.rights, rights.trim());
+			if (!date.isEmpty())
+				mb.setValue(MetadataBookKey.date, date);
+			if (!titleDesc.isEmpty())
+				mb.setValue("description@titlePage", titleDesc.trim());
 			mb.finished();
 			result.getBooks().add(mb.getBook());
 		}
-		NodeList osisBooks = (NodeList) xpath.evaluate("/osis/osisText/div[@type='book']", osisDoc, XPathConstants.NODESET);
+		NodeList osisBooks = (NodeList) xpath.evaluate("/osis/osisText//div[@type='book']", osisDoc, XPathConstants.NODESET);
 		for (int bookIndex = 0; bookIndex < osisBooks.getLength(); bookIndex++) {
 			Element osisBook = (Element) osisBooks.item(bookIndex);
 			String bookOsisID = osisBook.getAttribute("osisID");
@@ -98,7 +107,7 @@ public class OSIS implements RoundtripFormat {
 				titleElem = titleElem.getNextSibling();
 			if (titleElem instanceof Element && titleElem.getNodeName().equals("title")) {
 				Element titleElement = (Element) titleElem;
-				if (titleElement.getAttribute("type").equals("main"))
+				if (titleElement.getAttribute("type").equals("main") && titleElement.getChildNodes().getLength() > 0)
 					title = titleElement.getTextContent();
 			}
 			Book bibleBook = new Book(bookOsisID, bookID, title, title);
@@ -108,12 +117,200 @@ public class OSIS implements RoundtripFormat {
 		return result;
 	}
 
+	protected void convertToMilestoned(Element root) {
+		// convert everything to milestoned form
+		for (Node node = root.getFirstChild(); node != null; node = node.getNextSibling()) {
+			if (node instanceof Element && node.getFirstChild() != null) {
+				Element startNode = (Element) node;
+				if (!startNode.getAttribute("sID").isEmpty() || !startNode.getAttribute("eID").isEmpty())
+					throw new RuntimeException("Element " + node.getNodeName() + " has milestone and child nodes!");
+				String milestone = "BibleMultiConverter-Milestone-" + (++milestoneIndex);
+				startNode.setAttribute("sID", milestone);
+				Element endNode = root.getOwnerDocument().createElement(node.getNodeName());
+				endNode.setAttribute("eID", milestone);
+				if (!startNode.getAttribute("who").isEmpty())
+					endNode.setAttribute("who", startNode.getAttribute("who"));
+				root.insertBefore(endNode, node.getNextSibling());
+				while (node.getFirstChild() != null) {
+					root.insertBefore(node.getFirstChild(), endNode);
+				}
+			}
+		}
+		// flatten quotes / foreign / line groups / lines; add <br> tags around
+		// lines
+		boolean lbTagsInserted = false, wojTagsInserted = true;
+		for (Node node = root.getFirstChild(); node != null; node = node.getNextSibling()) {
+			if (!(node instanceof Element))
+				continue;
+			Element elem = (Element) node;
+			if (elem.getNodeName().equals("l")) {
+				lbTagsInserted = true;
+				root.insertBefore(root.getOwnerDocument().createElement("lb"), node);
+			} else if (elem.getNodeName().equals("p") && !elem.getAttribute("eID").isEmpty()) {
+				Node before = elem;
+				if (before.getPreviousSibling() != null && before.getPreviousSibling().getNodeName().equals("verse"))
+					before = before.getPreviousSibling();
+				root.insertBefore(root.getOwnerDocument().createElement("brp"), before);
+			}
+			if (node.getNodeName().equals("q") && !elem.getAttribute("who").isEmpty()) {
+				if (!elem.getAttribute("who").equals("Jesus")) {
+					System.out.println("WARNING: Unsupported q-who value: " + ((Element) node).getAttribute("who"));
+				} else {
+					// start
+					Element woj = root.getOwnerDocument().createElement("woj");
+					woj.setAttribute("sID", elem.getAttribute("sID"));
+					woj.setAttribute("eID", elem.getAttribute("eID"));
+					root.insertBefore(woj, node);
+					wojTagsInserted = true;
+				}
+			}
+			if (Arrays.asList("q", "foreign", "lg", "l", "div", "p").contains(node.getNodeName())) {
+				if (node.getFirstChild() != null) {
+					throw new IllegalStateException("Children have been already flattened!");
+				}
+				Node nextNode = node.getPreviousSibling();
+				root.removeChild(node);
+				node = nextNode != null ? nextNode : root.getFirstChild();
+			}
+		}
+		// join <lb> tags
+		if (lbTagsInserted) {
+			for (Node node1 = root.getFirstChild(); node1 != null; node1 = node1.getNextSibling()) {
+				Node node2 = node1.getNextSibling();
+				while (node2 != null && node1.getNodeName().equals("lb") && node2.getNodeName().equals("lb")) {
+					root.removeChild(node2);
+					node2 = node1.getNextSibling();
+				}
+			}
+		}
+		// unmilestone title, verse, chapter
+		for (String tagName : Arrays.asList("title", "verse", "chapter")) {
+			for (Node node = root.getFirstChild(); node != null; node = node.getNextSibling()) {
+				if (!(node instanceof Element) || !node.getNodeName().equals(tagName))
+					continue;
+				Element elem = (Element) node;
+				String sID = elem.getAttribute("sID");
+				if (sID.isEmpty())
+					continue;
+				boolean found = false;
+				while (node.getNextSibling() != null) {
+					Node n = node.getNextSibling();
+					if (n instanceof Element && n.getNodeName().equals(tagName) && ((Element) n).getAttribute("eID").equals(sID)) {
+						found = true;
+						root.removeChild(n);
+						break;
+					}
+					node.appendChild(n);
+				}
+				elem.removeAttribute("sID");
+				if (!found)
+					printWarning("WARNING: Unclosed " + tagName + " with sID=" + sID);
+			}
+		}
+		// wrap woj around titles
+		if (wojTagsInserted) {
+			String inWOJ = null;
+			for (Node node1 = root.getFirstChild(); node1 != null; node1 = node1.getNextSibling()) {
+				if (!(node1 instanceof Element))
+					continue;
+				Element elem = (Element) node1;
+				if (node1.getNodeName().equals("woj") && !elem.getAttribute("sID").isEmpty()) {
+					inWOJ = elem.getAttribute("sID");
+				} else if (node1.getNodeName().equals("woj") && !elem.getAttribute("eID").isEmpty()) {
+					inWOJ = null;
+				} else if (inWOJ != null && elem.getNodeName().equals("title")) {
+					Element newElem = root.getOwnerDocument().createElement("woj");
+					newElem.setAttribute("eID", inWOJ);
+					root.insertBefore(newElem, elem);
+					newElem = root.getOwnerDocument().createElement("woj");
+					newElem.setAttribute("sID", inWOJ);
+					root.insertBefore(newElem, elem.getNextSibling());
+				}
+			}
+		}
+	}
+
+	private static final Set<String> REWRAPPABLE_MILESTONED_ELEMENTS = new HashSet<>(Arrays.asList("woj", "hi", "seg", "divineName", "transChange"));
+	private static final Set<String> FIXED_MILESTONED_ELEMENTS = new HashSet<>(Arrays.asList("note", "w", "reference", "variation"));
+
+	protected void convertFromMilestoned(Element root, List<Element> unclosedElements) {
+		// unmilestone all supported milestoned elements
+		Element tempContainer = root.getOwnerDocument().createElement("tempContainer");
+		Element targetContainer = tempContainer;
+		for (Element unclosed : unclosedElements) {
+			root.insertBefore(unclosed, root.getFirstChild());
+		}
+		unclosedElements.clear();
+		for (Node node = root.getFirstChild(); node != null;) {
+			Node nextNode = node.getNextSibling();
+			targetContainer.appendChild(node);
+			if (node instanceof Element) {
+				Element elem = (Element) node;
+				if (!elem.getAttribute("sID").isEmpty()) {
+					if (!REWRAPPABLE_MILESTONED_ELEMENTS.contains(elem.getNodeName()) && !FIXED_MILESTONED_ELEMENTS.contains(elem.getNodeName())) {
+						printWarning("WARNING: Ignoring unsupported milestoned element: " + elem.getNodeName());
+					} else {
+						targetContainer = elem;
+					}
+				} else if (!elem.getAttribute("eID").isEmpty()) {
+					if (!REWRAPPABLE_MILESTONED_ELEMENTS.contains(elem.getNodeName()) && !FIXED_MILESTONED_ELEMENTS.contains(elem.getNodeName())) {
+						printWarning("WARNING: Ignoring unsupported milestoned element: " + elem.getNodeName());
+					} else {
+						targetContainer.removeChild(elem);
+						Element foundContainer = targetContainer;
+						while (foundContainer != null) {
+							if (foundContainer.getAttribute("sID").equals(elem.getAttribute("eID")) && foundContainer.getNodeName().equals(elem.getNodeName()))
+								break;
+							foundContainer = (Element) foundContainer.getParentNode();
+						}
+						if (foundContainer != null) {
+							// close (and potentially reopen) parent elements
+							while (targetContainer != foundContainer) {
+								if (REWRAPPABLE_MILESTONED_ELEMENTS.contains(targetContainer.getNodeName())) {
+									nextNode = root.insertBefore(targetContainer.cloneNode(false), nextNode);
+								} else {
+									printWarning("WARNING: Implicitly closed milestoned element: " + targetContainer.getNodeName() + "[" + targetContainer.getAttribute("sID") + "]");
+								}
+								targetContainer.removeAttribute("sID");
+								targetContainer = (Element) targetContainer.getParentNode();
+							}
+							// finally close the found element
+							targetContainer.removeAttribute("sID");
+							targetContainer = (Element) targetContainer.getParentNode();
+						} else {
+							printWarning("WARNING: Ignoring unopened milestoned element: " + elem.getNodeName() + "[" + elem.getAttribute("eID") + "]");
+						}
+					}
+				}
+			}
+			node = nextNode;
+		}
+		while (targetContainer != tempContainer) {
+			if (REWRAPPABLE_MILESTONED_ELEMENTS.contains(targetContainer.getNodeName())) {
+				unclosedElements.add((Element) targetContainer.cloneNode(false));
+			} else {
+				printWarning("WARNING: Implicitly closed milestoned element: " + targetContainer.getNodeName() + "[" + targetContainer.getAttribute("sID") + "]");
+			}
+			targetContainer.removeAttribute("sID");
+			targetContainer = (Element) targetContainer.getParentNode();
+		}
+		if (root.getFirstChild() != null)
+			throw new IllegalStateException();
+		while (targetContainer.getFirstChild() != null) {
+			root.appendChild(targetContainer.getFirstChild());
+		}
+	}
+
 	private void parseBook(String bookName, Element osisBook, Book bibleBook) {
 		warningContext = bookName;
+		convertToMilestoned(osisBook);
+		List<Element> unclosedElements = new ArrayList<Element>();
 		for (Node node = osisBook.getFirstChild(); node != null; node = node.getNextSibling()) {
 			if (node instanceof Text) {
 				if (((Text) node).getTextContent().trim().length() > 0)
 					printWarning("WARNING: Non-whitespace text at book level");
+			} else if (node instanceof Comment) {
+				continue;
 			} else {
 				Element elem = (Element) node;
 				if (elem.getNodeName().equals("title")) {
@@ -126,6 +323,10 @@ public class OSIS implements RoundtripFormat {
 					}
 				} else if (elem.getNodeName().equals("chapter")) {
 					String chapterName = elem.getAttribute("osisID");
+					if (chapterName.contains("-")) {
+						chapterName = chapterName.substring(0, chapterName.indexOf("-"));
+						printWarning("WARNING: Invalid chapter OSIS reference: "+elem.getAttribute("osisID")+", using "+chapterName);
+					}
 					if (!chapterName.startsWith(bookName + ".")) {
 						throw new IllegalStateException("Invalid chapter " + chapterName + " of book " + bookName);
 					} else {
@@ -134,13 +335,20 @@ public class OSIS implements RoundtripFormat {
 							bibleBook.getChapters().add(new Chapter());
 						}
 						warningContext = chapterName;
-						parseChapter(chapterName, elem, bibleBook.getChapters().get(cnumber - 1));
+						parseChapter(chapterName, elem, bibleBook.getChapters().get(cnumber - 1), unclosedElements);
 						warningContext = bookName;
 					}
 				} else {
 					printWarning("WARNING: invalid book level tag: " + elem.getNodeName());
 				}
 			}
+		}
+		if (unclosedElements.size() > 0) {
+			StringBuilder message = new StringBuilder("WARNING: Unclosed milestoned elements:");
+			for (Element elem : unclosedElements) {
+				message.append(" " + elem.getNodeName() + "[" + elem.getAttribute("sID") + "]");
+			}
+			printWarning(message.toString());
 		}
 	}
 
@@ -156,37 +364,136 @@ public class OSIS implements RoundtripFormat {
 		return result.toString().replaceAll("[\r\n\t ]+", " ").trim();
 	}
 
-	private void parseChapter(String chapterName, Element osisChapter, Chapter chapter) {
-		Verse verse = null;
-		FormattedText prolog = null;
-		flattenChildren(osisChapter);
-		int nextVerse = 1;
+	private void parseChapter(String chapterName, Element osisChapter, Chapter chapter, List<Element> unclosedElements) {
+		int lastVerse = -1;
 		List<Headline> headlines = new ArrayList<Headline>();
 		for (Node node = osisChapter.getFirstChild(); node != null; node = node.getNextSibling()) {
+			boolean startProlog = false;
 			if (node instanceof Text) {
-				if (verse != null) {
-					String text = node.getTextContent().replaceAll("[ \r\n\t]+", " ");
-					if (text.startsWith(" ") && node.getPreviousSibling() != null && Arrays.asList("verse", "brp", "lb", "title").contains(node.getPreviousSibling().getNodeName())) {
-						printWarning("WARNING: Whitespace at beginning of verse or after title/newline");
-						text = text.substring(1);
-					}
-					if (text.endsWith(" ") && node.getNextSibling() != null && Arrays.asList("verse", "brp", "lb", "title").contains(node.getNextSibling().getNodeName())) {
-						printWarning("WARNING: Whitespace at end of verse or after title/newline");
-						text = text.substring(0, text.length() - 1);
-					}
-					if (text.length() > 0)
-						verse.getAppendVisitor().visitText(text);
-				} else if (nextVerse == 1) {
-					if (prolog == null && ((Text) node).getTextContent().trim().length() == 0)
-						continue;
-					if (prolog == null) {
-						prolog = new FormattedText();
-						chapter.setProlog(prolog);
-					}
-					prolog.getAppendVisitor().visitText(node.getTextContent().replaceAll("[ \r\n\t]+", " "));
-				} else if (((Text) node).getTextContent().trim().length() > 0) {
+				if (node.getTextContent().trim().length() == 0)
+					continue;
+				if (lastVerse == -1) {
+					startProlog = true;
+				} else {
 					printWarning("WARNING: Non-whitespace at chapter level: " + node.getTextContent());
 				}
+			} else if (node instanceof Element) {
+				Element elem = (Element) node;
+				if (elem.getNodeName().equals("title")) {
+					Headline hl = new Headline(2);
+					if (elem.getAttribute("type").equals("chapter")) {
+						hl = new Headline(1);
+					}
+					if (elem.getChildNodes().getLength() == 1 && elem.getFirstChild() instanceof Text) {
+						String text = elem.getFirstChild().getTextContent();
+						if (!text.equals(text.trim())) {
+							printWarning("WARNING: Whitespace at beginning/end of headline: '" + text + "'");
+							elem.getFirstChild().setNodeValue(text.trim());
+						}
+					}
+					convertFromMilestoned(elem, unclosedElements);
+					parseFormattedText(null, elem, hl);
+					if (hl.getElementTypes(1).length() == 0) {
+						printWarning("WARNING: Empty headline in " + chapterName);
+					} else {
+						headlines.add(hl);
+					}
+				} else if (elem.getNodeName().equals("verse")) {
+					String osisID = elem.getAttribute("osisID");
+					if (!elem.getAttribute("sID").isEmpty() || !elem.getAttribute("sID").isEmpty())
+						throw new IllegalArgumentException("verse should have been de-milestoned already.");
+					if (osisID.isEmpty())
+						throw new IllegalStateException("Verse without osisID");
+					if (!osisID.startsWith(chapterName + "."))
+						throw new IllegalStateException("Invalid verse " + osisID + " in chapter " + chapterName);
+					String vnumber = osisID.substring(chapterName.length() + 1);
+					if (osisID.contains(" ")) {
+						vnumber = vnumber.substring(0, vnumber.indexOf(' '));
+						lastVerse = Integer.parseInt(vnumber);
+						int nextInRange = lastVerse + 1;
+						boolean first = true;
+						for (String part : osisID.split(" ")) {
+							if (first) {
+								first = false;
+								continue;
+							}
+							if (!part.startsWith(chapterName + "."))
+								throw new IllegalStateException("Invalid verse " + osisID + " in chapter " + chapterName);
+							String partNumber = part.substring(chapterName.length() + 1);
+							vnumber = vnumber + "." + partNumber;
+							if (partNumber.equals(""+nextInRange)) {
+								nextInRange++;
+							} else {
+								nextInRange = -1; 
+							}
+						}
+						if (nextInRange != -1) {
+							vnumber = lastVerse+"-"+(nextInRange-1);
+						}
+					} else {
+						lastVerse = Integer.parseInt(vnumber);
+					}
+					Verse verse = new Verse(vnumber);
+					warningContext = osisID;
+					for (Headline hl : headlines) {
+						hl.accept(verse.getAppendVisitor().visitHeadline(hl.getDepth()));
+					}
+					headlines.clear();
+					chapter.getVerses().add(verse);
+					convertFromMilestoned(elem, unclosedElements);
+					parseFormattedText(osisID, elem, verse);
+					verse.trimWhitespace();
+					verse.finished();
+					if (verse.getElementTypes(1).length() == 0) {
+						printWarning("WARNING: Empty verse " + osisID);
+						chapter.getVerses().remove(verse);
+					}
+					warningContext += " (after closing)";
+				} else if (lastVerse == -1) {
+					startProlog = true;
+				} else {
+					printWarning("WARNING: " + elem.getNodeName() + " at invalid location");
+				}
+			}
+			if (startProlog) {
+				Element holder = osisChapter.getOwnerDocument().createElement("prolog");
+				osisChapter.insertBefore(holder, node);
+				while (holder.getNextSibling() != null && !holder.getNextSibling().getNodeName().equals("verse")) {
+					holder.appendChild(holder.getNextSibling());
+				}
+				lastVerse = 0;
+				FormattedText prolog = new FormattedText();
+				chapter.setProlog(prolog);
+				for (Headline hl : headlines) {
+					hl.accept(prolog.getAppendVisitor().visitHeadline(hl.getDepth()));
+				}
+				headlines.clear();
+				convertFromMilestoned(holder, unclosedElements);
+				parseFormattedText(null, holder, prolog);
+				prolog.trimWhitespace();
+				prolog.finished();
+				node = holder;
+			}
+		}
+		if (headlines.size() > 0)
+			printWarning("WARNING: Unused headlines: " + headlines.size());
+	}
+
+	protected void parseFormattedText(String verseName, Element root, FormattedText ft) {
+		root.normalize();
+		for (Node node = root.getFirstChild(); node != null; node = node.getNextSibling()) {
+			if (node instanceof Text) {
+				String text = node.getTextContent().replaceAll("[ \r\n\t]+", " ");
+				if (text.startsWith(" ") && (node.getPreviousSibling() == null || Arrays.asList("brp", "lb", "title").contains(node.getPreviousSibling().getNodeName()))) {
+					printWarning("WARNING: Whitespace at beginning of verse or after title/newline");
+					text = text.substring(1);
+				}
+				if (text.endsWith(" ") && (node.getNextSibling() == null || Arrays.asList("brp", "lb", "title").contains(node.getNextSibling().getNodeName()))) {
+					printWarning("WARNING: Whitespace at end of verse or after title/newline");
+					text = text.substring(0, text.length() - 1);
+				}
+				if (text.length() > 0)
+					ft.getAppendVisitor().visitText(text);
 			} else {
 				Element elem = (Element) node;
 				if (elem.getNodeName().equals("title")) {
@@ -203,117 +510,15 @@ public class OSIS implements RoundtripFormat {
 					}
 					parseStructuredTextChildren(hl.getAppendVisitor(), elem);
 					if (hl.getElementTypes(1).length() == 0) {
-						printWarning("WARNING: Empty headline in " + chapterName + (verse == null ? "" : "." + verse.getNumber()));
-					} else if (verse != null) {
-						hl.accept(verse.getAppendVisitor().visitHeadline(hl.getDepth()));
+						printWarning("WARNING: Empty headline in " + verseName);
 					} else {
-						headlines.add(hl);
-					}
-				} else if (elem.getNodeName().equals("lb")) {
-					if (verse != null) {
-						verse.getAppendVisitor().visitLineBreak(LineBreakKind.NEWLINE);
-					}
-				} else if (elem.getNodeName().equals("brp")) {
-					if (verse != null) {
-						verse.getAppendVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
-					}
-				} else if (elem.getNodeName().equals("divineName")) {
-					FormattedText parent = nextVerse == 1 ? prolog : verse;
-					if (parent == null)
-						throw new IllegalStateException("divineName at invalid location");
-					parseStructuredTextElement(parent.getAppendVisitor(), elem);
-				} else if (elem.getNodeName().equals("note")) {
-					if (elem.getAttribute("type").equals("crossReference")) {
-						if (verse != null) {
-							parseStructuredTextElement(verse.getAppendVisitor(), elem);
-						} else {
-							throw new IllegalStateException("note tag of type crossReference at invalid location");
-						}
-					} else if (verse != null) {
-						parseStructuredTextElement(verse.getAppendVisitor(), elem);
-					} else if (nextVerse == 1) {
-						if (prolog == null) {
-							prolog = new FormattedText();
-							chapter.setProlog(prolog);
-						}
-						parseStructuredTextElement(prolog.getAppendVisitor(), elem);
-					} else {
-						printWarning("WARNING: note tag at invalid location");
-					}
-				} else if (elem.getNodeName().equals("verse")) {
-					String osisID = elem.getAttribute("osisID");
-					if (osisID.isEmpty())
-						osisID = null;
-					String sID = elem.getAttribute("sID");
-					if (sID.isEmpty())
-						sID = null;
-					String eID = elem.getAttribute("eID");
-					if (eID.isEmpty())
-						eID = null;
-					if (osisID != null && sID == null && eID == null) {
-						// convert to milestoned form
-						sID = osisID;
-						Element endVerse = osisChapter.getOwnerDocument().createElement("verse");
-						endVerse.setAttribute("eID", osisID);
-						osisChapter.insertBefore(endVerse, elem.getNextSibling());
-						while (elem.getFirstChild() != null) {
-							osisChapter.insertBefore(elem.getFirstChild(), endVerse);
-						}
-					}
-					if (osisID != null && sID != null && eID == null && osisID.equals(sID)) {
-						if (!sID.startsWith(chapterName + "."))
-							throw new IllegalStateException("Invalid verse " + sID + " in chapter " + chapterName);
-						if (verse != null) {
-							printWarning("WARNING: Opening verse " + sID + " while verse " + verse.getNumber() + " is open");
-							verse.trimWhitespace();
-							verse.finished();
-							verse = null;
-						}
-						String vnumber = sID.substring(chapterName.length() + 1);
-						verse = new Verse(vnumber);
-						warningContext = sID;
-						for (Headline hl : headlines) {
-							hl.accept(verse.getAppendVisitor().visitHeadline(hl.getDepth()));
-						}
-						headlines.clear();
-						chapter.getVerses().add(verse);
-						nextVerse = Integer.parseInt(verse.getNumber()) + 1;
-					} else if (osisID == null && sID == null && eID != null) {
-						if (verse == null) {
-							printWarning("WARNING: Closing verse " + eID + " that is not open");
-						} else if (!eID.equals(chapterName + "." + verse.getNumber())) {
-							throw new IllegalStateException("Closing verse " + eID + " but open is " + verse.getNumber());
-						} else {
-							verse.trimWhitespace();
-							verse.finished();
-							if (verse.getElementTypes(1).length() == 0) {
-								printWarning("WARNING: Empty verse " + eID);
-								chapter.getVerses().remove(verse);
-							}
-							warningContext += " (after closing)";
-							verse = null;
-						}
-					} else {
-						throw new IllegalStateException("Invalid combination of verse IDs:" + osisID + "/" + sID + "/" + eID);
+						hl.accept(ft.getAppendVisitor().visitHeadline(hl.getDepth()));
 					}
 				} else {
-					if (verse == null)
-						printWarning("WARNING: " + elem.getNodeName() + " at invalid location");
-					else
-						parseStructuredTextElement(verse.getAppendVisitor(), elem);
+					parseStructuredTextElement(ft.getAppendVisitor(), elem);
 				}
 			}
 		}
-		if (prolog != null) {
-			prolog.trimWhitespace();
-			prolog.finished();
-		}
-		if (verse != null) {
-			verse.finished();
-			printWarning("WARNING: Unclosed verse: " + chapterName + "." + verse.getNumber());
-		}
-		if (headlines.size() > 0)
-			printWarning("WARNING: Unused headlines: " + headlines.size());
 	}
 
 	private void printWarning(String warning) {
@@ -325,7 +530,6 @@ public class OSIS implements RoundtripFormat {
 	}
 
 	public void parseStructuredTextChildren(Visitor<RuntimeException> vv, Element textElem) {
-		flattenChildren(textElem);
 		for (Node node = textElem.getFirstChild(); node != null; node = node.getNextSibling()) {
 			if (node instanceof Text) {
 				String text = node.getTextContent().replaceAll("[ \t\r\n]+", " ");
@@ -385,7 +589,7 @@ public class OSIS implements RoundtripFormat {
 				Visitor<RuntimeException> fn = vv.visitFootnote();
 				fn.visitText(FormattedText.XREF_MARKER);
 				if (elem.getFirstChild() != null && elem.getFirstChild().getNodeName().equals("reference")) {
-					for(Node n = elem.getFirstChild(); n != null; n = n.getNextSibling()) {
+					for (Node n = elem.getFirstChild(); n != null; n = n.getNextSibling()) {
 						if (n instanceof Text) {
 							fn.visitText(n.getTextContent());
 							continue;
@@ -393,7 +597,7 @@ public class OSIS implements RoundtripFormat {
 						Element e = (Element) n;
 						String[] ref = e.getAttribute("osisRef").split("\\.");
 						if (ref.length != 3) {
-							printWarning("WARNING: Invalid reference target: "+e.getAttribute("osisRef"));
+							printWarning("WARNING: Invalid reference target: " + e.getAttribute("osisRef"));
 							fn.visitText(e.getTextContent());
 							continue;
 						}
@@ -423,7 +627,6 @@ public class OSIS implements RoundtripFormat {
 				}
 			} else if (elem.getFirstChild() != null) {
 				Visitor<RuntimeException> v = vv.visitFootnote();
-				flattenChildren(elem);
 				parseStructuredTextChildren(v, elem);
 			}
 		} else if (elem.getNodeName().equals("w")) {
@@ -570,114 +773,6 @@ public class OSIS implements RoundtripFormat {
 		}
 	}
 
-	private static void flattenChildren(Element parent) {
-		flattenChildren(parent, false);
-		parent.normalize();
-	}
-
-	private static void flattenChildren(Element parent, boolean recursive) {
-		// flatten quotes / foreign / line groups / lines; add <br> tags around
-		// lines
-		boolean lbTagsInserted = false, wojTagsInserted = true;
-		for (Node node = parent.getFirstChild(); node != null; node = node.getNextSibling()) {
-			if (node.getNodeName().equals("l")) {
-				lbTagsInserted = true;
-				parent.insertBefore(parent.getOwnerDocument().createElement("lb"), node);
-				if (node.getNextSibling() == null)
-					parent.appendChild(parent.getOwnerDocument().createElement("lb"));
-				else
-					parent.insertBefore(parent.getOwnerDocument().createElement("lb"), node.getNextSibling());
-			}
-			if (node.getNodeName().equals("p")) {
-				if (node.getLastChild() instanceof Element && node.getLastChild().getNodeName().equals("verse")) {
-					node.insertBefore(parent.getOwnerDocument().createElement("brp"), node.getLastChild());
-				} else {
-					node.appendChild(parent.getOwnerDocument().createElement("brp"));
-				}
-			}
-			if (node.getNodeName().equals("q") && !((Element) node).getAttribute("who").isEmpty()) {
-				Element elem = (Element) node;
-				if (!elem.getAttribute("who").equals("Jesus")) {
-					System.out.println("WARNING: Unsupported q-who value: " + ((Element) node).getAttribute("who"));
-				} else if (!elem.getAttribute("sID").isEmpty() && elem.getAttribute("eID").isEmpty()) {
-					// start
-					parent.insertBefore(parent.getOwnerDocument().createElement("woj"), node);
-					wojTagsInserted = true;
-				} else if (elem.getAttribute("sID").isEmpty() && !elem.getAttribute("eID").isEmpty()) {
-					// end
-					parent.insertBefore(parent.getOwnerDocument().createElement("wojEnd"), node);
-					wojTagsInserted = true;
-				} else {
-					System.out.println("WARNING: Unsupported milestone attributes for WOJ");
-				}
-			}
-			if (Arrays.asList("q", "foreign", "lg", "l", "div", "p").contains(node.getNodeName())) {
-				flattenChildren((Element) node, true);
-				while (node.getFirstChild() != null) {
-					Node child = node.getFirstChild();
-					if (node.getNodeName().equals("woj") || node.getNodeName().equals("wojEnd"))
-						wojTagsInserted = true;
-					node.removeChild(child);
-					parent.insertBefore(child, node);
-				}
-				parent.removeChild(node);
-				node = parent.getFirstChild();
-			}
-		}
-		if (lbTagsInserted) {
-			for (Node node1 = parent.getFirstChild(); node1 != null; node1 = node1.getNextSibling()) {
-				Node node2 = node1.getNextSibling();
-				while (node2 != null && node1.getNodeName().equals("lb") && node2.getNodeName().equals("lb")) {
-					parent.removeChild(node2);
-					node2 = node1.getNextSibling();
-				}
-			}
-		}
-		if (wojTagsInserted && !recursive) {
-			for (Node node1 = parent.getFirstChild(); node1 != null; node1 = node1.getNextSibling()) {
-				if (node1.getNodeName().equals("woj")) {
-					Node node2 = node1.getNextSibling();
-					for (; node2 != null; node2 = node2.getNextSibling()) {
-						if (node2.getNodeName().equals("verse")) {
-							// do not create groups over verse nodes!
-							node2 = null;
-							break;
-						}
-						if (node2.getNodeName().equals("woj")) {
-							// do not create nested woj tags!
-							node2 = null;
-							break;
-						}
-						if (node2.getNodeName().equals("title")) {
-							// surround by WOJ tags
-							parent.insertBefore(parent.getOwnerDocument().createElement("wojEnd"), node2);
-							parent.insertBefore(parent.getOwnerDocument().createElement("woj"), node2.getNextSibling());
-							node2 = node2.getPreviousSibling();
-						}
-						if (node2.getNodeName().equals("wojEnd"))
-							break;
-					}
-					if (node2 == null) {
-						System.out.println("WARNING: Unclosed WOJ detected");
-						Node old = node1;
-						node1 = node1.getNextSibling();
-						parent.removeChild(old);
-					} else {
-						while (node1.getNextSibling() != node2) {
-							node1.appendChild(node1.getNextSibling());
-						}
-						parent.removeChild(node2);
-					}
-				} else if (node1.getNodeName().equals("wojEnd")) {
-					System.out.println("WARNING: Closed WOJ that was not open");
-					Node old = node1;
-					node1 = node1.getNextSibling();
-					parent.removeChild(old);
-				}
-			}
-		}
-	}
-
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
 		Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
@@ -765,8 +860,7 @@ public class OSIS implements RoundtripFormat {
 		return false;
 	}
 
-	private static class OSISVisitor implements Visitor<RuntimeException>
-	{
+	private static class OSISVisitor implements Visitor<RuntimeException> {
 		private final Element target;
 		private boolean nt;
 
