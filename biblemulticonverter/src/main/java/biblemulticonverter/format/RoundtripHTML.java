@@ -488,8 +488,8 @@ public class RoundtripHTML implements RoundtripFormat {
 						childVisitor = visitor.visitCSSFormatting(line.substring(pos + 25, endPos - 1));
 					} else if (line.startsWith("<span class=\"fmt-", pos)) {
 						childVisitor = visitor.visitFormattingInstruction(FormattingInstructionKind.valueOf(line.substring(pos + 17, endPos - 1).replace('-', '_').toUpperCase()));
-					} else if (line.startsWith("<span class\"var", pos)) {
-						childVisitor = visitor.visitVariationText(line.substring(pos + 20, endPos - 1).split(" var-"));
+					} else if (line.startsWith("<span class=\"var", pos)) {
+						childVisitor = visitor.visitVariationText(line.substring(pos + 21, endPos - 1).split(" var-"));
 					} else if (line.startsWith("<span class=\"xa xa-", pos)) {
 						String tagContent = line.substring(pos, endPos + 1);
 						Matcher m = Utils.compilePattern("<span class=\"xa xa-([eks])\" style=\"-bmc-xa-([a-z0-9]+)-([a-z0-9-]+): ([A-Za-z0-9-]+);\">").matcher(tagContent);
@@ -600,7 +600,7 @@ public class RoundtripHTML implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitVariationText(String[] variations) throws IOException {
-			writer.write("<span class\"var");
+			writer.write("<span class=\"var");
 			for (String var : variations) {
 				writer.write(" var-" + var);
 			}
