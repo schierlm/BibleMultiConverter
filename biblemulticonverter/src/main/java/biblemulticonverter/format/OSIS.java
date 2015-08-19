@@ -143,14 +143,21 @@ public class OSIS implements RoundtripFormat {
 			if (!(node instanceof Element))
 				continue;
 			Element elem = (Element) node;
+			Node insertPoint = elem;
+			for (String hoistTag : Arrays.asList("chapter", "verse")) {
+				Node pointToCheck = insertPoint.getPreviousSibling();
+				while (pointToCheck instanceof Text && pointToCheck.getTextContent().trim().isEmpty()) {
+					pointToCheck = pointToCheck.getPreviousSibling();
+				}
+				if (pointToCheck != null && pointToCheck.getNodeName().equals(hoistTag)
+						&& !((Element) pointToCheck).getAttribute("eID").isEmpty())
+					insertPoint = pointToCheck;
+			}
 			if (elem.getNodeName().equals("l")) {
 				lbTagsInserted = true;
-				root.insertBefore(root.getOwnerDocument().createElement("lb"), node);
+				root.insertBefore(root.getOwnerDocument().createElement("lb"), insertPoint);
 			} else if (elem.getNodeName().equals("p") && !elem.getAttribute("eID").isEmpty()) {
-				Node before = elem;
-				if (before.getPreviousSibling() != null && before.getPreviousSibling().getNodeName().equals("verse"))
-					before = before.getPreviousSibling();
-				root.insertBefore(root.getOwnerDocument().createElement("brp"), before);
+				root.insertBefore(root.getOwnerDocument().createElement("brp"), insertPoint);
 			}
 			if (node.getNodeName().equals("q") && !elem.getAttribute("who").isEmpty()) {
 				if (!elem.getAttribute("who").equals("Jesus")) {
@@ -325,7 +332,7 @@ public class OSIS implements RoundtripFormat {
 					String chapterName = elem.getAttribute("osisID");
 					if (chapterName.contains("-")) {
 						chapterName = chapterName.substring(0, chapterName.indexOf("-"));
-						printWarning("WARNING: Invalid chapter OSIS reference: "+elem.getAttribute("osisID")+", using "+chapterName);
+						printWarning("WARNING: Invalid chapter OSIS reference: " + elem.getAttribute("osisID") + ", using " + chapterName);
 					}
 					if (!chapterName.startsWith(bookName + ".")) {
 						throw new IllegalStateException("Invalid chapter " + chapterName + " of book " + bookName);
@@ -421,14 +428,14 @@ public class OSIS implements RoundtripFormat {
 								throw new IllegalStateException("Invalid verse " + osisID + " in chapter " + chapterName);
 							String partNumber = part.substring(chapterName.length() + 1);
 							vnumber = vnumber + "." + partNumber;
-							if (partNumber.equals(""+nextInRange)) {
+							if (partNumber.equals("" + nextInRange)) {
 								nextInRange++;
 							} else {
-								nextInRange = -1; 
+								nextInRange = -1;
 							}
 						}
 						if (nextInRange != -1) {
-							vnumber = lastVerse+"-"+(nextInRange-1);
+							vnumber = lastVerse + "-" + (nextInRange - 1);
 						}
 					} else {
 						lastVerse = Integer.parseInt(vnumber);
