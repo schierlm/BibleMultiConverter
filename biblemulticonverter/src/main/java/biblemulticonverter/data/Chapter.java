@@ -42,6 +42,14 @@ public class Chapter {
 			lastVerse = vv.getNumber();
 			vv.validate(bible, bookAbbr, cnumber, danglingReferences);
 		}
+		List<VerseRange> ranges = createVerseRanges();
+		for (VerseRange vr : ranges) {
+			for (VerseRange vr2 : ranges) {
+				if (vr != vr2 && vr.overlaps(vr2))
+					throw new IllegalStateException("Overlapping verse ranges: " + vr.getMinVerse() + "-" + vr.getMaxVerse() + " and " + vr2.getMinVerse() + "-" + vr2.getMaxVerse());
+			}
+			vr.validate(bible, bookAbbr, cnumber, danglingReferences);
+		}
 	}
 
 	public FormattedText getProlog() {
@@ -245,6 +253,61 @@ public class Chapter {
 				result.set(i, vv);
 			}
 			lastNumber = vv.getNumber();
+		}
+		return result;
+	}
+
+	public List<VerseRange> createVerseRanges() {
+
+		// create individual verse range for every verse
+		final List<VerseRange> individualRanges = new ArrayList<>();
+		for (final Verse verse : verses) {
+			int chapter = 0, minVerse = Integer.MAX_VALUE, maxVerse = -1;
+			for (String part : verse.getNumber().split("[/.a-zG-]+")) {
+				int cc, vv;
+				if (part.matches("[0-9]+,[0-9]+")) {
+					String[] subparts = part.split(",");
+					cc = Integer.parseInt(subparts[0]);
+					vv = Integer.parseInt(subparts[1]);
+				} else {
+					cc = 0;
+					vv = Integer.parseInt(part);
+				}
+				if (cc != chapter) {
+					if (chapter == 0 && minVerse == Integer.MAX_VALUE) {
+						// no (main) verses seen yet, use this extra verse:
+						chapter = cc;
+						minVerse = maxVerse = vv;
+					} else if (cc == 0) {
+						// main verse beats extra verse
+						chapter = 0;
+						minVerse = maxVerse = vv;
+					} else {
+						// ignore other extra verses
+						continue;
+					}
+				}
+				minVerse = Math.min(minVerse, vv);
+				maxVerse = Math.max(maxVerse, vv);
+			}
+			individualRanges.add(new VerseRange(chapter, minVerse, maxVerse, verse));
+		}
+
+		// find overlapping verse ranges and combine them
+		final List<VerseRange> result = new ArrayList<>();
+		for (VerseRange current : individualRanges) {
+			// do checking backwards: Consider ranges 2, 5, 1, 3, 4.6 for example 
+			for (int i = result.size() - 1; i >= 0; i--) {
+				VerseRange r2 = result.get(i);
+				if (current.overlaps(r2)) {
+					// merge all ranges up to that point
+					while (result.size() > i) {
+						current = new VerseRange(result.remove(result.size() - 1), current);
+					}
+				}
+				// and continue checking the rest
+			}
+			result.add(current);
 		}
 		return result;
 	}

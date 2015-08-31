@@ -23,14 +23,13 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
-import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
-import biblemulticonverter.data.VirtualVerse;
+import biblemulticonverter.data.VerseRange;
 import biblemulticonverter.format.AbstractHTMLVisitor;
 import biblemulticonverter.format.ExportFormat;
 import biblemulticonverter.logos.tools.LogosVersificationDetector;
@@ -229,7 +228,7 @@ public class LogosHTML implements ExportFormat {
 						}
 						bw.write(book.getLongName() + "</h2>\n");
 						footnoteNumber = 0;
-						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, versemap, scheme));
+						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, versemap, scheme, null, 2));
 						bw.write("\n<br/>\n");
 						continue;
 					}
@@ -255,41 +254,37 @@ public class LogosHTML implements ExportFormat {
 					}
 					footnoteNumber = 0;
 					if (chapter.getProlog() != null) {
-						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme));
+						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, null, usedHeadlines));
 						bw.write("\n<br/>\n");
 					}
-					BitSet allowedVerses = chapterVerses != null && cnumber <= chapterVerses.length ? chapterVerses[cnumber - 1] : null;
-					if (allowedVerses != null && allowedVerses.isEmpty())
-						allowedVerses = null;
-					for (VirtualVerse vv : chapter.createVirtualVerses(allowedVerses)) {
-						for (Headline hh : vv.getHeadlines()) {
-							int depth = hh.getDepth() + usedHeadlines < 6 ? hh.getDepth() + usedHeadlines : 6;
-							bw.write("<h" + depth + ">");
-							hh.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme));
-							bw.write("</h" + depth + ">\n");
-						}
-
-						if (vv.getVerses().size() == 0)
-							continue;
-
-						int vnumber = vv.getNumber();
-						bw.write(verseSeparator);
+					for (VerseRange vr : chapter.createVerseRanges()) {
+						String versePrefix = "";
 						if (writeChapterNumber) {
-							bw.write("<b style=\"font-size: 20pt\">[[" + chapterRef + "]]" + cnumber + "</b>"+verseSeparator);
+							versePrefix = "<b style=\"font-size: 20pt\">[[" + chapterRef + "]]" + cnumber + "</b>" + verseSeparator;
 							writeChapterNumber = false;
 						}
-						bw.write("[[" + chapterRef + ":" + vnumber + "]]");
-						boolean first = true;
-						for (Verse v : vv.getVerses()) {
-							if (!first)
-								bw.write(verseSeparator);
-							if (!first && v.getNumber().matches("[0-9]+,[0-9]+")) {
-								bw.write("[[" + "@" + versemap + ":" + babbr + " " + v.getNumber().replace(',', ':') + "]]");
+
+						int vcnumber = vr.getChapter() == 0 ? cnumber : vr.getChapter();
+						BitSet allowedVerses = chapterVerses != null && vcnumber <= chapterVerses.length ? chapterVerses[vcnumber - 1] : null;
+						boolean printMilestone = allowedVerses != null && !allowedVerses.isEmpty();
+						if (printMilestone) {
+							int minVerse = vr.getMinVerse(), maxVerse = vr.getMaxVerse();
+							while (maxVerse >= minVerse && !allowedVerses.get(maxVerse))
+								maxVerse--;
+							while (minVerse <= maxVerse && !allowedVerses.get(minVerse))
+								minVerse++;
+							if (minVerse == maxVerse) {
+								versePrefix += "[[@" + versemap + ":" + babbr + " " + vcnumber + ":" + minVerse + "]]";
+							} else if (minVerse < maxVerse) {
+								versePrefix += "[[@" + versemap + ":" + babbr + " " + vcnumber + ":" + minVerse + "-" + maxVerse + "]]";
 							}
-							first = false;
-							bw.write("<b>" + v.getNumber() + "</b> {{field-on:bible}}");
-							v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme));
-							bw.write("{{field-off:bible}}\n");
+						}
+
+						for (Verse v : vr.getVerses()) {
+							bw.write(verseSeparator);
+							v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, versePrefix + "<b>" + v.getNumber() + "</b> ", usedHeadlines));
+							versePrefix = "";
+							bw.write("\n");
 						}
 					}
 				}
@@ -431,13 +426,26 @@ public class LogosHTML implements ExportFormat {
 		private String versemap;
 		VersificationScheme scheme;
 		private boolean grammarFlag;
+		private final String fieldPrefix;
+		private boolean fieldOn = false;
+		private final int usedHeadlines;
 
-		protected LogosVisitor(Writer writer, String suffix, StringWriter footnoteWriter, boolean nt, String versemap, VersificationScheme scheme) {
+		protected LogosVisitor(Writer writer, String suffix, StringWriter footnoteWriter, boolean nt, String versemap, VersificationScheme scheme, String fieldPrefix, int usedHeadlines) {
 			super(writer, suffix);
 			this.footnoteWriter = footnoteWriter;
 			this.nt = nt;
 			this.versemap = versemap;
 			this.scheme = scheme;
+			this.fieldPrefix = fieldPrefix;
+			this.usedHeadlines = usedHeadlines;
+		}
+
+		@Override
+		public void visitStart() throws IOException {
+			if (fieldPrefix != null && suffixStack.size() == 1) {
+				fieldOn = true;
+				writer.write(fieldPrefix + "{{field-on:bible}}");
+			}
 		}
 
 		@Override
@@ -453,14 +461,23 @@ public class LogosHTML implements ExportFormat {
 				suffixStack.set(suffixStack.size() - 1, "");
 				grammarFlag = true;
 			}
+			if (fieldPrefix != null && suffixStack.size() == 1) {
+				writer.write("{{field-off:bible}}");
+				fieldOn = false;
+			}
 			return super.visitEnd();
 		}
 
 		@Override
 		public Visitor<IOException> visitHeadline(int depth) throws IOException {
-			int level = depth < 3 ? depth + 3 : 6;
+			int level = depth + usedHeadlines < 6 ? depth + usedHeadlines : 6;
+			String suffix = "</h" + level + ">\n";
+			if (fieldOn) {
+				writer.write("{{field-off:bible}}");
+				suffix += "{{field-on:bible}}";
+			}
 			writer.write("<h" + level + ">");
-			pushSuffix("</h" + level + ">\n");
+			pushSuffix(suffix);
 			return this;
 		}
 
@@ -473,7 +490,7 @@ public class LogosHTML implements ExportFormat {
 
 			footnoteWriter.write("<DIV ID=\"sdfootnote" + footnoteCounter + "\">");
 			writer.write("<A CLASS=\"sdfootnoteanc\" HREF=\"#sdfootnote" + footnoteCounter + "sym\" sdfixed><sup>" + footnoteNumber + "</sup></A>");
-			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, versemap, scheme);
+			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, versemap, scheme, null, usedHeadlines);
 		}
 
 		@Override

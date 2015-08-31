@@ -63,4 +63,9 @@ public class LogosVersificationDetector extends AbstractVersificationDetector {
 		}
 		return result;
 	}
+
+	@Override
+	protected boolean useVerseRanges() {
+		return true;
+	}
 }
