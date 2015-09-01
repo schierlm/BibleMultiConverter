@@ -2,7 +2,6 @@ package biblemulticonverter.format;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -11,7 +10,6 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
-import javax.xml.bind.annotation.XmlEnumValue;
 import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
@@ -23,9 +21,6 @@ import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.Text;
 import org.xml.sax.SAXException;
 
 import biblemulticonverter.data.Bible;
@@ -50,6 +45,7 @@ import biblemulticonverter.schema.zefdic1.SeeType;
 import biblemulticonverter.schema.zefdic1.TEnumDicType;
 import biblemulticonverter.schema.zefdic1.TItem;
 import biblemulticonverter.schema.zefdic1.TParagraph;
+import biblemulticonverter.schema.zefdic1.TStyle;
 
 /**
  * Importer and exporter for Zefania Dictionaries.
@@ -265,8 +261,6 @@ public class ZefDic implements RoundtripFormat {
 		Marshaller m = ctx.createMarshaller();
 		m.setSchema(getSchema());
 		m.marshal(xmlbible, doc);
-		doc.normalize();
-		shiftWhitespaceNodes(doc.getDocumentElement());
 		Transformer transformer = TransformerFactory.newInstance().newTransformer();
 		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
 		transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
@@ -356,6 +350,10 @@ public class ZefDic implements RoundtripFormat {
 					target = parent.getContent();
 				}
 
+				private LevelVisitor(TStyle parent) {
+					target = parent.getContent();
+				}
+
 				@Override
 				public int visitElementTypes(String elementTypes) throws RuntimeException {
 					return 0;
@@ -412,9 +410,7 @@ public class ZefDic implements RoundtripFormat {
 						tag = "sub";
 						break;
 					default:
-						tag = "em";
-						System.out.println("WARNING: Unsupported formatting: " + kind);
-						break;
+						return visitCSSFormatting(kind.getCss());
 					}
 					MyAnyType mat = of.createMyAnyType();
 					target.add(new JAXBElement<MyAnyType>(new QName(tag), MyAnyType.class, mat));
@@ -423,8 +419,10 @@ public class ZefDic implements RoundtripFormat {
 
 				@Override
 				public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
-					System.out.println("WARNING: Css formatting not supported");
-					return null;
+					TStyle style = of.createTStyle();
+					style.setCss(css);
+					target.add(of.createTStyleSTYLE(style));
+					return new LevelVisitor(style);
 				}
 
 				@Override
@@ -526,8 +524,7 @@ public class ZefDic implements RoundtripFormat {
 
 				@Override
 				public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
-					System.out.println("WARNING: Css formatting not supported");
-					return null;
+					return new LevelVisitor(state).visitCSSFormatting(css);
 				}
 
 				@Override
@@ -642,46 +639,6 @@ public class ZefDic implements RoundtripFormat {
 		MyAnyType mat = new MyAnyType();
 		mat.getContent().add(value);
 		itm.getContent().add(new JAXBElement<MyAnyType>(new QName(tag), MyAnyType.class, mat));
-	}
-
-	private static void shiftWhitespaceNodes(Element elem) {
-		// first check direct children
-		for (int i = 0; i < elem.getChildNodes().getLength(); i++) {
-			Node n = elem.getChildNodes().item(i);
-			if (n instanceof Text && n.getNodeValue().length() > 0 && n.getNodeValue().trim().length() == 0) {
-				Node left = i == 0 ? null : elem.getChildNodes().item(i - 1);
-				Node right = i == elem.getChildNodes().getLength() - 1 ? null : elem.getChildNodes().item(i + 1);
-				if (left instanceof Element && (left.getNodeName().equals("STYLE") || left.getNodeName().equals("gr") || left.getNodeName().equals("strong"))) {
-					left.appendChild(elem.getOwnerDocument().createTextNode(" "));
-					left.normalize();
-					elem.insertBefore(elem.getOwnerDocument().createComment("sL"), n);
-					elem.removeChild(n);
-				} else if (right instanceof Element && right.getNodeName().equals("STYLE")) {
-					right.insertBefore(elem.getOwnerDocument().createTextNode(" "), right.getFirstChild());
-					right.normalize();
-					elem.insertBefore(elem.getOwnerDocument().createComment("sR"), n);
-					elem.removeChild(n);
-				} else if (left instanceof Element && left.getNodeName().equals("DIV")) {
-					elem.insertBefore(elem.getOwnerDocument().createComment("sW"), n);
-					elem.insertBefore(n, left);
-					elem.normalize();
-					i = 0;
-				} else if (elem.getNodeName().equals("VERS") && (left == null || (left instanceof Element && left.getNodeName().equals("BR"))) && right instanceof Element && right.getNodeName().equals("BR")) {
-					// we can ignore this one
-					elem.insertBefore(elem.getOwnerDocument().createComment("iG"), n);
-					elem.removeChild(n);
-				} else {
-					System.out.println(elem.getNodeName() + "/" + n.getNodeValue() + "/" + left + "/" + right);
-				}
-			}
-		}
-
-		// then recurse
-		for (int i = 0; i < elem.getChildNodes().getLength(); i++) {
-			Node n = elem.getChildNodes().item(i);
-			if (n instanceof Element)
-				shiftWhitespaceNodes((Element) n);
-		}
 	}
 
 	@Override
