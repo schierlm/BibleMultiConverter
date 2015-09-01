@@ -9,7 +9,7 @@ body { font-family: Arial, sans-serif; font-size: 110%; }
 .biblehtmlcontent .fmt-strike-through { text-decoration: line-through; }
 .biblehtmlcontent .fmt-words-of-jesus { color: red; }
 .biblehtmlcontent .var { display:none; }
-.biblehtmlcontent .var-default { display:block; }
+.biblehtmlcontent .var-default { display:inline; }
 .biblehtmlcontent .xa-s, #biblehtmlcontent  .xa-e { display: none; }
 .biblehtmlcontent .indent { width: 4em; }
 .biblehtmlcontent .gram { font-size: 75%; }

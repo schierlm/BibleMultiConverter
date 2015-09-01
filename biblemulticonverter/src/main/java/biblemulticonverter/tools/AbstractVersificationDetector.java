@@ -14,9 +14,9 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
-import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.VerseRange;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.format.ExportFormat;
 
@@ -46,19 +46,20 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 				if (includeXref && chapter.getProlog() != null) {
 					chapter.getProlog().accept(xcv);
 				}
-				for (VirtualVerse v : chapter.createVirtualVerses()) {
-					countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), cc + 1, v.getNumber());
-					if (includeXref) {
-						for (Headline hl : v.getHeadlines()) {
-							hl.accept(xcv);
-						}
-						for (Verse vv : v.getVerses()) {
-							if (vv.getNumber().matches("[0-9]+,[0-9]+")) {
-								String[] parts = vv.getNumber().split(",");
-								countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
-							}
-							vv.accept(xcv);
-						}
+				if (useVerseRanges()) {
+					for (VerseRange vr : chapter.createVerseRanges()) {
+						int cnumber = vr.getChapter() == 0 ? cc + 1 : vr.getChapter();
+						countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), cnumber, vr.getMinVerse());
+						countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), cnumber, vr.getMaxVerse());
+					}
+				} else {
+					for (VirtualVerse v : chapter.createVirtualVerses()) {
+						countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), cc + 1, v.getNumber());
+					}
+				}
+				if (includeXref) {
+					for (Verse vv : chapter.getVerses()) {
+						vv.accept(xcv);
 					}
 				}
 			}
@@ -113,6 +114,10 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 				scheme.getMissingVerses().add(bookAbbr + " " + cnum + ":" + vnum);
 			}
 		}
+	}
+
+	protected boolean useVerseRanges() {
+		return false;
 	}
 
 	private void printScheme(VersificationScheme scheme, int totalVerseCount) {
