@@ -27,6 +27,7 @@ import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
+import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
@@ -247,6 +248,18 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 							@Override
 							protected void beforeVisit() throws RuntimeException {
 								throw new IllegalStateException();
+							}
+
+							@Override
+							public Visitor<RuntimeException> visitFormattingInstruction(FormattingInstructionKind kind) throws RuntimeException {
+								System.out.println("WARNING: Formatting instructions in captions are not supported (stripped)");
+								return this;
+							}
+
+							@Override
+							public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+								System.out.println("WARNING: Footnotes in captions are not supported (stripped)");
+								return null;
 							}
 
 							public void visitText(String text) throws RuntimeException {
@@ -564,7 +577,7 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 		docc.getDocumentElement().setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
 		docc.getDocumentElement().setAttribute("xsi:noNamespaceSchemaLocation", "zef2005.xsd");
 		docc.normalize();
-		shiftWhitespaceNodes(docc.getDocumentElement());
+		maskWhitespaceNodes(docc.getDocumentElement());
 		try (FileOutputStream fos = new FileOutputStream(exportArgs[0])) {
 			Transformer transformer = TransformerFactory.newInstance().newTransformer();
 			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
@@ -573,58 +586,14 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 		}
 	}
 
-	private static void shiftWhitespaceNodes(Element elem) {
-		// remove dummy styles (<STYLE css="-zef-dummy: true">)
-		for (int i = 0; i < elem.getChildNodes().getLength(); i++) {
-			Node n = elem.getChildNodes().item(i);
-			if (n instanceof Element && n.getNodeName().equals("STYLE")) {
-				if (((Element) n).getAttribute("css").equals("-zef-dummy: true")) {
-					while (n.getFirstChild() != null) {
-						elem.insertBefore(n.getFirstChild(), n);
-					}
-					elem.removeChild(n);
-					i--;
-				}
-			}
-		}
-
-		// first check direct children
+	private static void maskWhitespaceNodes(Element elem) {
 		for (int i = 0; i < elem.getChildNodes().getLength(); i++) {
 			Node n = elem.getChildNodes().item(i);
 			if (n instanceof Text && n.getNodeValue().length() > 0 && n.getNodeValue().trim().length() == 0) {
-				Node left = i == 0 ? null : elem.getChildNodes().item(i - 1);
-				Node right = i == elem.getChildNodes().getLength() - 1 ? null : elem.getChildNodes().item(i + 1);
-				if (left instanceof Element && (left.getNodeName().equals("STYLE") || left.getNodeName().equals("gr") || left.getNodeName().equals("strong"))) {
-					left.appendChild(elem.getOwnerDocument().createTextNode(" "));
-					left.normalize();
-					elem.insertBefore(elem.getOwnerDocument().createComment("sL"), n);
-					elem.removeChild(n);
-				} else if (right instanceof Element && right.getNodeName().equals("STYLE")) {
-					right.insertBefore(elem.getOwnerDocument().createTextNode(" "), right.getFirstChild());
-					right.normalize();
-					elem.insertBefore(elem.getOwnerDocument().createComment("sR"), n);
-					elem.removeChild(n);
-				} else if (left instanceof Element && left.getNodeName().equals("DIV")) {
-					elem.insertBefore(elem.getOwnerDocument().createComment("sW"), n);
-					elem.insertBefore(n, left);
-					elem.normalize();
-					i = 0;
-				} else if (elem.getNodeName().equals("VERS") && (left == null || (left instanceof Element && left.getNodeName().equals("BR"))) && right instanceof Element && right.getNodeName().equals("BR")) {
-					// we can ignore this one
-					elem.insertBefore(elem.getOwnerDocument().createComment("iG"), n);
-					elem.removeChild(n);
-				} else {
-					System.out.println(elem.getNodeName() + "/" + n.getNodeValue() + "/" + left + "/" + right);
-				}
+				n.setNodeValue(n.getNodeValue() + "\uFEFF");
+			} else if (n instanceof Element) {
+				maskWhitespaceNodes((Element) n);
 			}
 		}
-
-		// then recurse
-		for (int i = 0; i < elem.getChildNodes().getLength(); i++) {
-			Node n = elem.getChildNodes().item(i);
-			if (n instanceof Element)
-				shiftWhitespaceNodes((Element) n);
-		}
 	}
-
 }
