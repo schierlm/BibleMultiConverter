@@ -3,7 +3,9 @@ package biblemulticonverter.format;
 import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
@@ -102,6 +104,29 @@ public class ZefDicMyBible implements ExportFormat {
 		doc.setINFORMATION(of.createTINFORMATION());
 		doc.getINFORMATION().getTitleOrCreatorOrDescription().add(of.createTINFORMATIONTitle(bible.getName()));
 
+		Map<String, String> xrefMap = new HashMap<String, String>();
+		if (!idfields[0].equals("abbr")) {
+			for (Book bk : bible.getBooks()) {
+				String value;
+				switch (idfields[0].toLowerCase()) {
+				case "abbr":
+					value = bk.getAbbr();
+					break;
+				case "short":
+					value = bk.getShortName();
+					break;
+				case "long":
+					value = bk.getLongName();
+					break;
+				default:
+					value = null;
+				}
+				if (value != null && !value.equals(bk.getAbbr())) {
+					xrefMap.put(bk.getAbbr(), value);
+				}
+			}
+		}
+
 		for (Book bk : bible.getBooks()) {
 			if (bk.getId().equals(BookID.METADATA))
 				continue;
@@ -151,7 +176,7 @@ public class ZefDicMyBible implements ExportFormat {
 			doc.getItem().add(item);
 			TParagraph description = of.createTParagraph();
 			item.getContent().add(of.createTParagraphDescription(description));
-			bk.getChapters().get(0).getProlog().accept(new ZefDicVisitor(description.getContent()));
+			bk.getChapters().get(0).getProlog().accept(new ZefDicVisitor(description.getContent(), xrefMap));
 		}
 		return doc;
 	}
@@ -162,8 +187,11 @@ public class ZefDicMyBible implements ExportFormat {
 
 		private final List<Serializable> target;
 
-		public ZefDicVisitor(List<Serializable> target) {
+		private final Map<String, String> xrefMap;
+
+		public ZefDicVisitor(List<Serializable> target, Map<String, String> xrefMap) {
 			this.target = target;
+			this.xrefMap = xrefMap;
 		}
 
 		@Override
@@ -178,7 +206,7 @@ public class ZefDicMyBible implements ExportFormat {
 			MyAnyType holder = of.createMyAnyType();
 			target.add(of.createTParagraphQ(holder));
 			addRaw("</" + tagName + ">");
-			return new ZefDicVisitor(holder.getContent());
+			return new ZefDicVisitor(holder.getContent(), xrefMap);
 		}
 
 		@Override
@@ -202,11 +230,11 @@ public class ZefDicMyBible implements ExportFormat {
 			if (firstChapter != lastChapter) {
 				Visitor<RuntimeException> firstVisitor = visitCrossReference(bookAbbr, book, firstChapter, firstVerse, firstChapter, "999");
 				visitText(" ");
-				for(int i=firstChapter+1; i <lastChapter; i++) {
-					visitCrossReference(bookAbbr, book, i, "1", i, "999").visitText("["+i+"]");
+				for (int i = firstChapter + 1; i < lastChapter; i++) {
+					visitCrossReference(bookAbbr, book, i, "1", i, "999").visitText("[" + i + "]");
 					visitText(" ");
 				}
-				visitCrossReference(bookAbbr, book, lastChapter, "1", lastChapter, lastVerse).visitText("["+lastChapter+"]");
+				visitCrossReference(bookAbbr, book, lastChapter, "1", lastChapter, lastVerse).visitText("[" + lastChapter + "]");
 				return firstVisitor;
 			}
 			MyAnyType link = of.createMyAnyType();
@@ -216,7 +244,7 @@ public class ZefDicMyBible implements ExportFormat {
 			rl.setMscope(book.getZefID() + ";" + firstChapter + ";" + firstVerse + (firstVerse.equals(lastVerse) ? "" : "-" + lastVerse));
 			link.getContent().add(of.createTItemReflink(rl));
 			link.getContent().add(new JAXBElement<MyAnyType>(new QName("linklabel"), MyAnyType.class, label));
-			return new ZefDicVisitor(label.getContent());
+			return new ZefDicVisitor(label.getContent(), xrefMap);
 		}
 
 		@Override
@@ -229,7 +257,7 @@ public class ZefDicMyBible implements ExportFormat {
 			TStyle style = of.createTStyle();
 			style.setCss(css);
 			target.add(new JAXBElement<TStyle>(new QName("style"), TStyle.class, style));
-			return new ZefDicVisitor(style.getContent());
+			return new ZefDicVisitor(style.getContent(), xrefMap);
 		}
 
 		@Override
@@ -252,6 +280,8 @@ public class ZefDicMyBible implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) throws RuntimeException {
+			if (xrefMap.containsKey(entry))
+				entry = xrefMap.get(entry);
 			MyAnyType link = of.createMyAnyType();
 			MyAnyType label = of.createMyAnyType();
 			target.add(new JAXBElement<MyAnyType>(new QName("labeledlink"), MyAnyType.class, link));
@@ -260,7 +290,7 @@ public class ZefDicMyBible implements ExportFormat {
 			see.setContent(entry);
 			link.getContent().add(of.createSee(see));
 			link.getContent().add(new JAXBElement<MyAnyType>(new QName("linklabel"), MyAnyType.class, label));
-			return new ZefDicVisitor(label.getContent());
+			return new ZefDicVisitor(label.getContent(), xrefMap);
 		}
 
 		@Override
