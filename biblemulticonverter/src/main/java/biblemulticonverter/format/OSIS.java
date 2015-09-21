@@ -652,7 +652,7 @@ public class OSIS implements RoundtripFormat {
 				rawStrong = lemma.substring(8).replace(" strong:H", "-");
 			}
 			if (rawStrong != null) {
-				if (rawStrong.matches("[0-9]+(-[0-9]+)*")) {
+				if (rawStrong.matches("0*[1-9][0-9]*(-0*[1-9][0-9]*)*")) {
 					String[] strs = rawStrong.split("-");
 					strong = new int[strs.length];
 					for (int i = 0; i < strs.length; i++) {

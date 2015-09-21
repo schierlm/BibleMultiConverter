@@ -54,6 +54,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **TheWord**: import and export
 - **PalmBible+**: export only
 - **MobiPocket**: export only
+- **SWORD modules**: import only (see below for details)
 
 In combination with third party tools, other export formats are available:
 
@@ -89,14 +90,16 @@ provided by the import modules.
 Planned formats
 ---------------
 
-I intend to add an importer for SWORD bibles (export is
-currently already possible via OSIS export and osis2mod).
+I may add an importer and exporter for USFM format (Unified Standard Format Markers).
 
 I also plan lossless import and export to ODT, to make manual editing of the Bible text
 easier. But no guarantees here, I don't know how hard ODT import will be at the end.
+[This is currently blocked by the fact that OpenOffice/LibreOffice is very slow in loading
+documents that contain very many small spans using the same style, which will inevitably
+happen when exporting a bible with lots of formatting]
 
 Dictionary support will be improved; at least import and export of ZefDic format will
-be added in the future.
+be added in the future. [Currently avaiable in a separate branch]
 
 EPUB export is also planned (but not high priority at the moment).
 
@@ -167,6 +170,22 @@ attacker with cryptanalysis background that knows only this piece of information
 for correlation attacks to get the plain text. Therefore, use different passwords for
 multiple bibles (like, add the bible name to them), or better, use real encryption like AES
 instead.
+
+
+SWORD import
+------------
+
+As the SWORD format is quite complex, I'm using a third party library JSword for parsing it.
+That library adds quite some footprint to the application (almost 20MB) so SWORD import is
+only available in a special SWORD edition, which is available as a separate download (but
+in the same source repository).
+
+SWORD is special in the sense that you do not have a file to import, but a module
+directory and some bibles in there to import (specified by initials). Just separate those
+by a slash, and use this as the filename.
+
+In case you do not have a SWORD module directory locally, you can use the **SWORDDownloader**
+tool to download some bibles from a SWORD http repository into a new module directory.
 
 
 E-Sword export
