@@ -134,6 +134,8 @@ public class LogosHTML implements ExportFormat {
 		LOGOS_BOOKS.put(BookID.BOOK_EpJer, "LetJer");
 		LOGOS_BOOKS.put(BookID.BOOK_1Esd, "1Esd");
 		LOGOS_BOOKS.put(BookID.BOOK_2Esd, "2Esd");
+		LOGOS_BOOKS.put(BookID.BOOK_PrAzar, "Pr Az");
+		LOGOS_BOOKS.put(BookID.BOOK_EsthGr, "EsG");
 	}
 
 	private int footnoteCounter = 0;

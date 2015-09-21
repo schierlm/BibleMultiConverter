@@ -58,7 +58,7 @@ public class LogosVerseMapDownloader {
 			"Lamentations=Lam", "Ezekiel=Ezek", "Daniel=Dan", "Hosea=Hos", "Joel=Joel", "Amos=Amos", "Obadiah=Obad",
 			"Jonah=Jonah", "Micah=Mic", "Nahum=Nah", "Habakkuk=Hab", "Zephaniah=Zeph", "Haggai=Hag", "Zechariah=Zech",
 			"Malachi=Mal", "Tobit=Tob", "Judith=Jdt", "Additions to Esther=AddEsth", "Wisdom of Solomon=Wis",
-			"Sirach=Sir", "Baruch=Bar", "Letter of Jeremiah=EpJer", "Song of Three Youths=-", "Susanna=Sus",
+			"Sirach=Sir", "Baruch=Bar", "Letter of Jeremiah=EpJer", "Song of Three Youths=PrAza", "Susanna=Sus",
 			"Bel and the Dragon=Bel", "1 Maccabees=1Macc", "2 Maccabees=2Macc", "1 Esdras=1Esd",
 			"Prayer of Manasseh=PrMan", "Additional Psalm=AddPs", "3 Maccabees=3Macc", "2 Esdras=2Esd",
 			"4 Maccabees=4Macc", "Ode=Odes", "Psalms of Solomon=PssSol", "Epistle to the Laodiceans=EpLao",

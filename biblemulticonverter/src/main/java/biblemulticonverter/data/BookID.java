@@ -104,6 +104,9 @@ public enum BookID {
 	BOOK_Bel("Bel", false, 88, "Bel and the Dragon", "Bel"),
 	BOOK_AddPs("AddPs", false, 89, "Psalm 151", "Ps2"),
 
+	BOOK_PrAzar("PrAzar", false, 901, "Prayer of Azariah", "Aza"),
+	BOOK_EsthGr("EsthGr", false, 902, "Greek Esther", "EsG"),
+
 	APPENDIX("x-App", true, -6, "Appendix", "App"),
 
 	DICTIONARY_ENTRY("x-Dict", true, -5, "Dictionary Entry", "Dct");
