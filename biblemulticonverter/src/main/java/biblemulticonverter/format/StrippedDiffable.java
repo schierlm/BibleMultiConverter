@@ -2,8 +2,15 @@ package biblemulticonverter.format;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
@@ -15,6 +22,7 @@ import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.Verse;
 
 public class StrippedDiffable implements ExportFormat {
@@ -55,6 +63,19 @@ public class StrippedDiffable implements ExportFormat {
 				}
 			}
 			System.out.println("Book " + exportArgs[2] + " renamed to " + exportArgs[3]);
+		} else if (exportArgs.length >= 2 && exportArgs[1].equals("OptimizeFormatting")) {
+			Map<String, String[]> mappings = new HashMap<>();
+			for (int i = 2; i < exportArgs.length; i++) {
+				int pos = exportArgs[i].indexOf("->");
+				if (pos == -1) {
+					System.out.println("WARNING: Skipped malformed formatting mapping " + exportArgs[i]);
+					continue;
+				}
+				String key = exportArgs[i].substring(0, pos).trim();
+				String[] values = exportArgs[i].substring(pos + 2).split("&");
+				mappings.put(key, values);
+			}
+			optimizeFormatting(bible, mappings);
 		} else {
 			EnumSet<Feature> chosenFeeatures = EnumSet.noneOf(Feature.class);
 			for (int i = 1; i < exportArgs.length; i++) {
@@ -75,6 +96,37 @@ public class StrippedDiffable implements ExportFormat {
 		}
 		bible.getBooks().removeAll(booksToRemove);
 		new Diffable().doExport(bible, new String[] { outputFile });
+	}
+
+	private void optimizeFormatting(Bible bible, Map<String, String[]> mappings) {
+		CountFormattingVisitor oldCount = new CountFormattingVisitor();
+		CountFormattingVisitor newCount = new CountFormattingVisitor();
+		for (Book book : bible.getBooks()) {
+			for (Chapter chap : book.getChapters()) {
+				if (chap.getProlog() != null) {
+					chap.getProlog().accept(oldCount);
+					FormattedText newProlog = new FormattedText();
+					chap.getProlog().accept(new OptimizeFormattingVisitor(newProlog.getAppendVisitor(), mappings));
+					newProlog.finished();
+					newProlog.accept(newCount);
+					chap.setProlog(newProlog);
+				}
+				for (int j = 0; j < chap.getVerses().size(); j++) {
+					Verse v = chap.getVerses().get(j);
+					v.accept(oldCount);
+					Verse nv = new Verse(v.getNumber());
+					v.accept(new OptimizeFormattingVisitor(nv.getAppendVisitor(), mappings));
+					nv.finished();
+					nv.accept(newCount);
+					chap.getVerses().set(j, nv);
+				}
+			}
+		}
+		System.out.println("Formatting instructions before optimizing:");
+		oldCount.printSummary();
+		System.out.println();
+		System.out.println("Formatting instructions after optimizing:");
+		newCount.printSummary();
 	}
 
 	private void extractPrologs(Bible bible) {
@@ -551,6 +603,189 @@ public class StrippedDiffable implements ExportFormat {
 		@Override
 		public boolean visitEnd() throws RuntimeException {
 			return false;
+		}
+	}
+
+	private class CountFormattingVisitor extends VisitorAdapter<RuntimeException> {
+		Map<String, AtomicInteger> counts = new HashMap<>();
+
+		public CountFormattingVisitor() throws RuntimeException {
+			super(null);
+		}
+
+		@Override
+		protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
+			return this;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
+			count("C=" + css);
+			return this;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitFormattingInstruction(FormattingInstructionKind kind) throws RuntimeException {
+			count("F=" + kind.name());
+			return this;
+		}
+
+		private void count(String key) {
+			if (!counts.containsKey(key))
+				counts.put(key, new AtomicInteger(0));
+			counts.get(key).incrementAndGet();
+		}
+
+		public void printSummary() {
+			List<String> keys = new ArrayList<>(counts.keySet());
+			Collections.sort(keys);
+			for (String key : keys) {
+				System.out.println("\t" + key + ": " + counts.get(key));
+			}
+		}
+	}
+
+	private static class OptimizeFormattingVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
+
+		private final Map<String, String[]> mappings;
+		private Visitor<RuntimeException> next;
+		private final FormattingSetList formattingSets;
+		private final Set<String> currentFormattings;
+
+		public OptimizeFormattingVisitor(Visitor<RuntimeException> next, Map<String, String[]> mappings) {
+			super(null);
+			this.next = next;
+			this.mappings = mappings;
+			this.formattingSets = new FormattingSetList();
+			this.currentFormattings = new HashSet<>();
+		}
+
+		private OptimizeFormattingVisitor(OptimizeFormattingVisitor parent, String newFormatting) {
+			super(null);
+			this.next = null;
+			this.mappings = parent.mappings;
+			this.formattingSets = parent.formattingSets;
+			this.currentFormattings = new HashSet<>(parent.currentFormattings);
+			if (mappings.containsKey(newFormatting)) {
+				for (String value : mappings.get(newFormatting)) {
+					if (value.trim().length() > 0) {
+						currentFormattings.add(value.trim());
+					}
+				}
+			} else {
+				currentFormattings.add(newFormatting);
+			}
+		}
+
+		@Override
+		protected Visitor<RuntimeException> getVisitor() throws RuntimeException {
+			return formattingSets.getVisitor(currentFormattings);
+		}
+
+		@Override
+		protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
+			return new OptimizeFormattingVisitor(childVisitor, mappings);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitFormattingInstruction(FormattingInstructionKind kind) throws RuntimeException {
+			return new OptimizeFormattingVisitor(this, "F=" + kind.name());
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
+			return new OptimizeFormattingVisitor(this, "C=" + css);
+		}
+
+		@Override
+		public boolean visitEnd() throws RuntimeException {
+			if (next != null) {
+				formattingSets.accept(next);
+				next.visitEnd();
+			}
+			return false;
+		}
+	}
+
+	private static class FormattingSetList {
+
+		private List<FormattingSet> formattingSets = new ArrayList<>();
+
+		public Visitor<RuntimeException> getVisitor(Set<String> formattings) {
+			FormattingSet current = formattingSets.size() > 0 ? formattingSets.get(formattingSets.size() - 1) : null;
+			if (current == null || !current.formattings.equals(formattings)) {
+				current = new FormattingSet(formattings);
+				formattingSets.add(current);
+			}
+			return current.content.getAppendVisitor();
+		}
+
+		public <T extends Throwable> void accept(Visitor<T> next) throws T {
+			List<String> activeFormattings = new ArrayList<>();
+			List<Visitor<T>> visitorStack = new ArrayList<>();
+			visitorStack.add(next);
+			for (int i = 0; i < formattingSets.size(); i++) {
+				FormattingSet set = formattingSets.get(i);
+				if (set.content.getElementTypes(1).length() == 0)
+					continue;
+
+				// close formattings that are no longer valid
+				for (int j = 0; j < activeFormattings.size(); j++) {
+					if (!set.formattings.contains(activeFormattings.get(j))) {
+						while (activeFormattings.size() > j) {
+							activeFormattings.remove(activeFormattings.size() - 1);
+							visitorStack.remove(visitorStack.size() - 1);
+						}
+					}
+				}
+
+				// find formattings to open
+				List<String> formattingsToOpen = new ArrayList<>(set.formattings);
+				formattingsToOpen.removeAll(activeFormattings);
+
+				// sort them based on the number of sets that will use it
+				final Map<String, Integer> formattingLengths = new HashMap<>();
+				for (String formatting : formattingsToOpen) {
+					int count = 1;
+					for (int j = i + 1; j < formattingSets.size(); j++) {
+						if (!formattingSets.get(j).formattings.contains(formatting))
+							break;
+						count++;
+					}
+					formattingLengths.put(formatting, count);
+				}
+				Collections.sort(formattingsToOpen, new Comparator<String>() {
+					public int compare(String s1, String s2) {
+						return Integer.compare(formattingLengths.get(s2), formattingLengths.get(s1));
+					}
+				});
+
+				// open
+				Visitor<T> v = visitorStack.get(visitorStack.size() - 1);
+				for (String formatting : formattingsToOpen) {
+					if (formatting.startsWith("F=")) {
+						v = v.visitFormattingInstruction(FormattingInstructionKind.valueOf(formatting.substring(2)));
+					} else if (formatting.startsWith("C=")) {
+						v = v.visitCSSFormatting(formatting.substring(2));
+					} else {
+						throw new IllegalArgumentException("Unknown formatting: " + formatting);
+					}
+					activeFormattings.add(formatting);
+					visitorStack.add(v);
+				}
+
+				// visit content
+				set.content.accept(v);
+			}
+		}
+
+		private static class FormattingSet {
+			private final Set<String> formattings;
+			private final FormattedText content = new FormattedText();
+
+			private FormattingSet(Set<String> formattings) {
+				this.formattings = formattings;
+			}
 		}
 	}
 }
