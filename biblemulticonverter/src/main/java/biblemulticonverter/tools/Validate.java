@@ -1,37 +1,133 @@
 package biblemulticonverter.tools;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
+import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.format.Diffable;
 import biblemulticonverter.format.ExportFormat;
 
 public class Validate implements ExportFormat {
 
 	public static final String[] HELP_TEXT = {
-			"Usage: Validate [PrintSpecialVerseSummary|PrintHeadlines]",
 			"Validate bible for inconsistencies",
+			"",
+			"Usage: Validate [PrintSpecialVerseSummary|PrintHeadlines]",
+			"       Validate IncludeExternalRefs [<ref> [...]]",
 			"",
 			"Use this module to find inconsistencies, or XREFs that refer to nonexistant verses.",
 			"With an extra argument 'PrintSpecialVerseSummary', additionally print a summary of special",
 			"(non-numeric or reordered) verses. With an extra argument 'PrintHeadlines' print all",
 			"headlines and their depths, separated by verse ranges between them, for validating",
-			"headline depths."
+			"headline depths.",
+			"With extra argeument 'IncludeExternalRefs', external references to Strongs and dictionaries",
+			"are validated, too. Refs can be 'B<DiffableBibleFile>' to validate a dictionary's xrefs against",
+			"another bible, or 'S<StrongEntryList>' to validate Strongs against an entry list file,",
+			"'L<DictName>=<DictEntryList>' to validate dictionary references for a given dictionary, or",
+			"'L<DicName>' to validate dictionary references for itself, or last but not least",
+			"'X<ExportEntryList>' to export the entries of currently validated dictionary."
 	};
 
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
-
+		Map<String, Set<String>> dictionaryEntries = null;
+		if (exportArgs.length > 0 && exportArgs[0].equals("IncludeExternalRefs")) {
+			dictionaryEntries = new HashMap<String, Set<String>>();
+			for (int i = 1; i < exportArgs.length; i++) {
+				String ref = exportArgs[i];
+				if (ref.startsWith("S"))
+					ref = "Lstrongs=" + ref.substring(1);
+				if (ref.startsWith("B")) {
+					for (Book baseBook : new Diffable().doImport(new File(ref.substring(1))).getBooks()) {
+						if (baseBook.getId().getZefID() < 0)
+							continue;
+						Book book = null;
+						for (Book oldBook : bible.getBooks()) {
+							if (oldBook.getId().equals(baseBook.getId())) {
+								book = oldBook;
+								break;
+							}
+						}
+						if (book == null) {
+							book = new Book(baseBook.getAbbr(), baseBook.getId(), "$BBL$" + baseBook.getAbbr(), "$BBL$" + baseBook.getAbbr());
+							bible.getBooks().add(book);
+						}
+						for (int ch = 0; ch < baseBook.getChapters().size(); ch++) {
+							for (Verse v : baseBook.getChapters().get(ch).getVerses()) {
+								while (book.getChapters().size() <= ch)
+									book.getChapters().add(new Chapter());
+								Chapter c = book.getChapters().get(ch);
+								boolean verseFound = false;
+								for (Verse vv : c.getVerses()) {
+									if (vv.getNumber().equals(v.getNumber())) {
+										verseFound = true;
+										break;
+									}
+								}
+								if (!verseFound) {
+									Verse vv = new Verse(v.getNumber());
+									vv.getAppendVisitor().visitText("X");
+									vv.finished();
+									c.getVerses().add(vv);
+								}
+							}
+						}
+					}
+				} else if (ref.startsWith("L")) {
+					if (ref.contains("=")) {
+						int pos = ref.indexOf('=');
+						Set<String> entryList = new HashSet<>();
+						try (BufferedReader br = new BufferedReader(new FileReader(ref.substring(pos + 1)))) {
+							String line;
+							while ((line = br.readLine()) != null) {
+								entryList.add(line);
+							}
+						}
+						dictionaryEntries.put(ref.substring(1, pos), entryList);
+					} else {
+						Set<String> entryList = new HashSet<>();
+						for (Book bk : bible.getBooks()) {
+							if (bk.getId().equals(BookID.DICTIONARY_ENTRY)) {
+								entryList.add(bk.getAbbr());
+							}
+						}
+						dictionaryEntries.put(ref.substring(1), entryList);
+					}
+				} else if (ref.startsWith("X")) {
+					try (BufferedWriter bw = new BufferedWriter(new FileWriter(ref.substring(1)))) {
+						for (Book bk : bible.getBooks()) {
+							if (bk.getId().equals(BookID.DICTIONARY_ENTRY)) {
+								bw.write(bk.getAbbr());
+								bw.newLine();
+							}
+						}
+					}
+				} else {
+					System.out.println("WARNING: external reference: " + ref);
+				}
+			}
+			exportArgs = new String[0];
+		}
 		List<String> danglingReferences = new ArrayList<>();
-		bible.validate(danglingReferences);
+		bible.validate(danglingReferences, dictionaryEntries);
 		if (danglingReferences.size() > 0) {
 			System.out.println("Dangling references: ");
 			for (String reference : danglingReferences) {

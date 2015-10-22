@@ -3,6 +3,7 @@ package biblemulticonverter.data;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import biblemulticonverter.data.FormattedText.Headline;
@@ -23,20 +24,20 @@ public class VirtualVerse {
 		this.number = Utils.validateNumber("number", number, 1, Integer.MAX_VALUE);
 	}
 
-	public void validate(Bible bible, String bookAbbr, int cnumber, List<String> danglingReferences) {
+	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String,Set<String>> dictionaryEntries) {
 		int lastHeadlineDepth = 0;
 		String location = bookAbbr + " " + cnumber + ":v" + getNumber();
 		for (Headline headline : headlines) {
 			if (headline.getDepth() <= lastHeadlineDepth)
 				throw new IllegalStateException("Invalid headline depth order at " + location + ": " + headline.getDepth() + " after " + lastHeadlineDepth);
 			lastHeadlineDepth = headline.getDepth() == 9 ? 8 : headline.getDepth();
-			headline.validate(bible, location + ":Headline", danglingReferences);
+			headline.validate(bible, book, location + ":Headline", danglingReferences, dictionaryEntries);
 		}
 		Set<String> verseNumbers = new HashSet<String>();
 		for (Verse verse : verses) {
 			if (!verseNumbers.add(verse.getNumber()))
 				throw new IllegalStateException("Duplicate verse number");
-			verse.validate(bible, location + ":" + verse.getNumber(), danglingReferences);
+			verse.validate(bible, book, location + ":" + verse.getNumber(), danglingReferences, dictionaryEntries);
 		}
 	}
 

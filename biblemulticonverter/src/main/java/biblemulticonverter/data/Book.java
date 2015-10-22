@@ -2,6 +2,8 @@ package biblemulticonverter.data;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Represents a single book of the bible.
@@ -21,7 +23,7 @@ public class Book {
 		this.chapters = new ArrayList<Chapter>();
 	}
 
-	public void validate(Bible bible, List<String> danglingReferences) {
+	public void validate(Bible bible, List<String> danglingReferences, Map<String,Set<String>> dictionaryEntries) {
 		if (chapters.size() == 0)
 			throw new IllegalStateException("Book has no chapters: " + getAbbr());
 		Chapter lastChapter = chapters.get(chapters.size() - 1);
@@ -30,7 +32,7 @@ public class Book {
 		int cnumber = 0;
 		for (Chapter chapter : chapters) {
 			cnumber++;
-			chapter.validate(bible, getAbbr(), cnumber, danglingReferences);
+			chapter.validate(bible, getId(), getAbbr(), cnumber, danglingReferences, dictionaryEntries);
 		}
 	}
 

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -36,6 +37,10 @@ public class Bible {
 	}
 
 	public void validate(List<String> danglingReferences) {
+		validate(danglingReferences, null);
+	}
+
+	public void validate(List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries) {
 		Set<BookID> bookIDs = EnumSet.noneOf(BookID.class);
 		Set<String> bookAbbrs = new HashSet<String>();
 		Set<String> bookShortNames = new HashSet<String>();
@@ -43,7 +48,7 @@ public class Bible {
 		if (books.size() == 0)
 			throw new IllegalStateException("Bible does not have books");
 		for (Book book : books) {
-			book.validate(this, danglingReferences);
+			book.validate(this, danglingReferences, dictionaryEntries);
 			if (book.getId() == BookID.METADATA) {
 				if (books.size() == 1)
 					throw new IllegalStateException("Bible has only metadata book");

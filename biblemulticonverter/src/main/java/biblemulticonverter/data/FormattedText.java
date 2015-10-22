@@ -3,6 +3,8 @@ package biblemulticonverter.data;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Represents formatted text, that may contain headlines, footnotes, etc.
@@ -75,11 +77,11 @@ public class FormattedText {
 		return result;
 	}
 
-	public void validate(Bible bible, String location, List<String> danglingReferences) {
+	public void validate(Bible bible, BookID book, String location, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries) {
 		if (!finished)
 			throw new IllegalStateException("Formatted text " + location + " not marked as finished - this may dramatically increase memory usage!");
 		try {
-			accept(new ValidatingVisitor(bible, danglingReferences, this instanceof Verse ? ValidationContext.VERSE : ValidationContext.NORMAL_TEXT));
+			accept(new ValidatingVisitor(bible, book, danglingReferences, dictionaryEntries, this instanceof Verse ? ValidationContext.VERSE : ValidationContext.NORMAL_TEXT));
 		} catch (RuntimeException ex) {
 			throw new RuntimeException("Validation error at " + location, ex);
 		}
@@ -463,8 +465,7 @@ public class FormattedText {
 	public static enum ExtraAttributePriority {
 		KEEP_CONTENT, SKIP, ERROR;
 
-		public <T extends Throwable> Visitor<T> handleVisitor(String category, Visitor<T> visitor) throws T
-		{
+		public <T extends Throwable> Visitor<T> handleVisitor(String category, Visitor<T> visitor) throws T {
 			switch (this) {
 			case ERROR:
 				throw new IllegalArgumentException("Unhandled extra attribute of category " + category);
@@ -747,7 +748,9 @@ public class FormattedText {
 	private static class ValidatingVisitor implements Visitor<RuntimeException> {
 
 		private final Bible bible;
+		private final BookID book;
 		private final List<String> danglingReferences;
+		private final Map<String, Set<String>> dictionaryEntries;
 		private final ValidationContext context;
 
 		private int lastHeadlineDepth = 0;
@@ -755,10 +758,16 @@ public class FormattedText {
 		private boolean trailingWhitespaceFound = false;
 		private boolean isEmpty = true;
 
-		private ValidatingVisitor(Bible bible, List<String> danglingReferences, ValidationContext context) {
+		private ValidatingVisitor(Bible bible, BookID book, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, ValidationContext context) {
 			this.bible = bible;
+			this.book = book;
 			this.danglingReferences = danglingReferences;
+			this.dictionaryEntries = dictionaryEntries;
 			this.context = context;
+		}
+
+		private ValidatingVisitor createValidatingVisitor(ValidationContext context) {
+			return new ValidatingVisitor(bible, book, danglingReferences, dictionaryEntries, context);
 		}
 
 		@Override
@@ -812,19 +821,19 @@ public class FormattedText {
 			leadingWhitespaceAllowed = false;
 			lastHeadlineDepth = depth == 9 ? 8 : depth;
 			isEmpty = false;
-			return new ValidatingVisitor(bible, danglingReferences, ValidationContext.HEADLINE);
+			return createValidatingVisitor(ValidationContext.HEADLINE);
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitFormattingInstruction(FormattingInstructionKind kind) throws RuntimeException {
 			visitInlineElement();
-			return new ValidatingVisitor(bible, danglingReferences, context);
+			return createValidatingVisitor(context);
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
 			visitInlineElement();
-			return new ValidatingVisitor(bible, danglingReferences, context);
+			return createValidatingVisitor(context);
 		}
 
 		@Override
@@ -832,7 +841,7 @@ public class FormattedText {
 			if (context.ordinal() >= ValidationContext.FOOTNOTE.ordinal())
 				throw new IllegalArgumentException("Invalid nested footnote");
 			visitInlineElement();
-			return new ValidatingVisitor(bible, danglingReferences, ValidationContext.FOOTNOTE);
+			return createValidatingVisitor(ValidationContext.FOOTNOTE);
 		}
 
 		@Override
@@ -840,7 +849,7 @@ public class FormattedText {
 			isEmpty = false;
 			if (prio == ExtraAttributePriority.KEEP_CONTENT) {
 				visitInlineElement();
-				return new ValidatingVisitor(bible, danglingReferences, context);
+				return createValidatingVisitor(context);
 			} else if (prio == ExtraAttributePriority.ERROR) {
 				// no idea; therefore be as lax as possible
 				trailingWhitespaceFound = false;
@@ -858,7 +867,7 @@ public class FormattedText {
 		@Override
 		public Visitor<RuntimeException> visitVariationText(String[] variations) throws RuntimeException {
 			visitInlineElement();
-			return new ValidatingVisitor(bible, danglingReferences, context);
+			return createValidatingVisitor(context);
 		}
 
 		@Override
@@ -866,7 +875,10 @@ public class FormattedText {
 			if (context.ordinal() >= ValidationContext.LINK.ordinal())
 				throw new IllegalArgumentException("Invalid nested link");
 			visitInlineElement();
-			return new ValidatingVisitor(bible, danglingReferences, ValidationContext.LINK);
+			for (int strong : strongs) {
+				validateDictionaryEntry("strongs", (book.isNT() ? "G" : "H") + strong);
+			}
+			return createValidatingVisitor(ValidationContext.LINK);
 		}
 
 		@Override
@@ -874,7 +886,20 @@ public class FormattedText {
 			if (context.ordinal() >= ValidationContext.LINK.ordinal())
 				throw new IllegalArgumentException("Invalid nested link");
 			visitInlineElement();
-			return new ValidatingVisitor(bible, danglingReferences, ValidationContext.LINK);
+			validateDictionaryEntry(dictionary, entry);
+			return createValidatingVisitor(ValidationContext.LINK);
+		}
+
+		private void validateDictionaryEntry(String dictionary, String entry) {
+			if (dictionaryEntries != null && danglingReferences != null) {
+				Set<String> entries = dictionaryEntries.get(dictionary);
+				if (entries == null) {
+					if (!danglingReferences.contains("[" + dictionary + "]"))
+						danglingReferences.add("[" + dictionary + "]");
+				} else if (!entries.contains(entry)) {
+					danglingReferences.add("[" + dictionary + "]:" + entry);
+				}
+			}
 		}
 
 		@Override
@@ -897,7 +922,7 @@ public class FormattedText {
 				if (firstIndex > lastIndex)
 					throw new IllegalStateException("First xref verse is after last xref verse");
 			}
-			return new ValidatingVisitor(bible, danglingReferences, ValidationContext.XREF);
+			return createValidatingVisitor(ValidationContext.XREF);
 		}
 
 		@Override

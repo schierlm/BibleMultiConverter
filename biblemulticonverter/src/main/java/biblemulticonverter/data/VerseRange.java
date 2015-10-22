@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -55,13 +56,13 @@ public class VerseRange {
 		return chapter == other.chapter && maxVerse >= other.minVerse && other.maxVerse >= minVerse;
 	}
 
-	public void validate(Bible bible, String bookAbbr, int cnumber, List<String> danglingReferences) {
+	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String,Set<String>> dictionaryEntries) {
 		String location = bookAbbr + " " + cnumber + ":[" + (chapter == 0 ? "" : chapter + ",") + minVerse + "-" + maxVerse + "]";
 		Set<String> verseNumbers = new HashSet<String>();
 		for (Verse verse : verses) {
 			if (!verseNumbers.add(verse.getNumber()))
 				throw new IllegalStateException("Duplicate verse number");
-			verse.validate(bible, location + verse.getNumber(), danglingReferences);
+			verse.validate(bible, book, location + verse.getNumber(), danglingReferences, dictionaryEntries);
 		}
 	}
 

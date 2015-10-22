@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import biblemulticonverter.data.FormattedText.Headline;
@@ -24,23 +25,23 @@ public class Chapter {
 		this.verses = new ArrayList<Verse>();
 	}
 
-	public void validate(Bible bible, String bookAbbr, int cnumber, List<String> danglingReferences) {
+	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String,Set<String>> dictionaryEntries) {
 		// chapters may have no verses, if not yet translated but a later
 		// chapter is.
 		if (prolog != null)
-			prolog.validate(bible, bookAbbr + " " + cnumber + ":Prolog", danglingReferences);
+			prolog.validate(bible, book, bookAbbr + " " + cnumber + ":Prolog", danglingReferences, dictionaryEntries);
 		Set<String> verseNumbers = new HashSet<String>();
 		for (Verse verse : verses) {
 			if (!verseNumbers.add(verse.getNumber()))
 				throw new IllegalStateException("Duplicate verse number " + bookAbbr + " " + cnumber + ":" + verse.getNumber());
-			verse.validate(bible, bookAbbr + " " + cnumber + ":" + verse.getNumber(), danglingReferences);
+			verse.validate(bible, book, bookAbbr + " " + cnumber + ":" + verse.getNumber(), danglingReferences, dictionaryEntries);
 		}
 		int lastVerse = 0;
 		for (VirtualVerse vv : createVirtualVerses()) {
 			if (vv.getNumber() <= lastVerse)
 				throw new IllegalStateException("Invalid order of virtual verses: " + vv.getNumber() + " after " + lastVerse);
 			lastVerse = vv.getNumber();
-			vv.validate(bible, bookAbbr, cnumber, danglingReferences);
+			vv.validate(bible, book, bookAbbr, cnumber, danglingReferences, dictionaryEntries);
 		}
 		List<VerseRange> ranges = createVerseRanges();
 		for (VerseRange vr : ranges) {
@@ -48,7 +49,7 @@ public class Chapter {
 				if (vr != vr2 && vr.overlaps(vr2))
 					throw new IllegalStateException("Overlapping verse ranges: " + vr.getMinVerse() + "-" + vr.getMaxVerse() + " and " + vr2.getMinVerse() + "-" + vr2.getMaxVerse());
 			}
-			vr.validate(bible, bookAbbr, cnumber, danglingReferences);
+			vr.validate(bible, book, bookAbbr, cnumber, danglingReferences, dictionaryEntries);
 		}
 	}
 
