@@ -20,6 +20,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<ExportFormat>("Validate", "Validate bible for inconsistencies", Validate.HELP_TEXT, Validate.class));
 		result.add(new Module<ExportFormat>("StrippedDiffable", "Like Diffable, but with features stripped.", StrippedDiffable.HELP_TEXT, StrippedDiffable.class));
 		result.add(new Module<ExportFormat>("ZefaniaXMLMyBible", "Zefania XML - well known bible format (with MyBible optimizations).", ZefaniaXMLMyBible.HELP_TEXT, ZefaniaXMLMyBible.class));
+		result.add(new Module<ExportFormat>("ZefDicMyBible", "Zefania Dictionary exporter for MyBible.", ZefDicMyBible.HELP_TEXT, ZefDicMyBible.class));
 		result.add(new Module<ExportFormat>("YCHPalmBible", "Export format for YCHBibleConverter for PalmBible+", YCHPalmBible.HELP_TEXT, YCHPalmBible.class));
 		result.add(new Module<ExportFormat>("MobiPocket", "MobiPocket ebook format (predecessor of Kindle's format)", MobiPocket.HELP_TEXT, MobiPocket.class));
 		result.add(new Module<ExportFormat>("ESwordHTML", "HTML Export format for E-Sword", ESwordHTML.HELP_TEXT, ESwordHTML.class));
@@ -39,6 +40,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<RoundtripFormat>("RoundtripXML", "Roundtrip XML Export", RoundtripXML.HELP_TEXT, RoundtripXML.class));
 		result.add(new Module<RoundtripFormat>("ZefaniaXML", "Zefania XML - well known bible format.", ZefaniaXML.HELP_TEXT, ZefaniaXML.class));
 		result.add(new Module<RoundtripFormat>("ZefaniaXMLRoundtrip", "Zefania XML - well known bible format (Roundtrip converter).", ZefaniaXMLRoundtrip.HELP_TEXT, ZefaniaXMLRoundtrip.class));
+		result.add(new Module<RoundtripFormat>("ZefDic", "Zefania Dictionary - dictionaries for well known bible format.", ZefDic.HELP_TEXT, ZefDic.class));
 		result.add(new Module<RoundtripFormat>("HaggaiXML", "Haggai XML - used by Free Scriptures project.", HaggaiXML.HELP_TEXT, HaggaiXML.class));
 		result.add(new Module<RoundtripFormat>("OSIS", "Very rudimentary OSIS (Open Scripture Information Standard) import/export.", OSIS.HELP_TEXT, OSIS.class));
 		result.add(new Module<RoundtripFormat>("TheWord", "Bible format used by theWord", TheWord.HELP_TEXT, TheWord.class));
