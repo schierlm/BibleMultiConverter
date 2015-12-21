@@ -51,6 +51,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **ZefaniaXML**: import and export (There are two import filters and three export
   filters available that focus on different subsets/features of this quite diverse
   format)
+- **ZefDic** (Zefania's dictionary format): import and export (two export filters)
 - **TheWord**: import and export
 - **PalmBible+**: export only
 - **MobiPocket**: export only
@@ -67,8 +68,8 @@ While the focus of this tool is for bible texts, there is also limited support
 for (Strong) dictionaries.
 
 The **StrongDictionary** import filter downloads a public domain Strong dictionary
-and compiles it for exporting as HTML, MobiPocket or Logos (currently no other
-exporters support dictionaries).
+and compiles it for exporting as HTML, MobiPocket, Logos or ZefDic (currently no
+other exporters support dictionaries).
 
 The **StrongConcordance** import filter takes a Strong dictionary and a Bible and
 augments the dictionary with concordance information (i. e. links that link back
@@ -97,9 +98,6 @@ easier. But no guarantees here, I don't know how hard ODT import will be at the 
 [This is currently blocked by the fact that OpenOffice/LibreOffice is very slow in loading
 documents that contain very many small spans using the same style, which will inevitably
 happen when exporting a bible with lots of formatting]
-
-Dictionary support will be improved; at least import and export of ZefDic format will
-be added in the future. [Currently avaiable in a separate branch]
 
 EPUB export is also planned (but not high priority at the moment).
 
