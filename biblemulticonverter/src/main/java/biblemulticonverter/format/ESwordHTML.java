@@ -346,8 +346,10 @@ public class ESwordHTML implements ExportFormat {
 		@Override
 		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			StringBuilder newSuffix = new StringBuilder();
-			for (int strong : strongs) {
-				newSuffix.append("<sup class=\"str\">" + (nt ? "G" : "H") + strong + "</sup> ");
+			if (strongs != null) {
+				for (int strong : strongs) {
+					newSuffix.append("<sup class=\"str\">" + (nt ? "G" : "H") + strong + "</sup> ");
+				}
 			}
 			return new ESwordVisitor(newSuffix.toString(), this);
 		}

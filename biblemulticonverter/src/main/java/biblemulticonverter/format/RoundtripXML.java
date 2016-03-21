@@ -105,9 +105,12 @@ public class RoundtripXML implements RoundtripFormat {
 					next = visitor.visitDictionaryEntry(de.getDictionary(), de.getEntry());
 				} else if (value instanceof FormattedTextType.GrammarInformation) {
 					FormattedTextType.GrammarInformation gi = (FormattedTextType.GrammarInformation) value;
-					int[] strongs = new int[gi.getStrongs().size()];
-					for (int i = 0; i < strongs.length; i++) {
-						strongs[i] = gi.getStrongs().get(i);
+					int[] strongs = null;
+					if (!gi.getStrongs().isEmpty()) {
+						strongs = new int[gi.getStrongs().size()];
+						for (int i = 0; i < strongs.length; i++) {
+							strongs[i] = gi.getStrongs().get(i);
+						}
 					}
 					String[] rmacs = null;
 					if (!gi.getRmac().isEmpty()) {
@@ -293,8 +296,9 @@ public class RoundtripXML implements RoundtripFormat {
 		@Override
 		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			FormattedTextType.GrammarInformation gi = of.createFormattedTextTypeGrammarInformation();
-			for (int strong : strongs)
-				gi.getStrongs().add(strong);
+			if (strongs != null)
+				for (int strong : strongs)
+					gi.getStrongs().add(strong);
 			if (rmac != null)
 				gi.getRmac().addAll(Arrays.asList(rmac));
 			if (sourceIndices != null)

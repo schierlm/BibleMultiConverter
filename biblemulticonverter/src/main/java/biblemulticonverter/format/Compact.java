@@ -11,6 +11,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 
@@ -232,18 +233,28 @@ public class Compact implements RoundtripFormat {
 					int[] strongs = new int[args.length];
 					String[] rmacs = new String[args.length];
 					int[] idxs = new int[args.length];
+					int scount = 0, rcount = 0, icount = 0;
 					for (int i = 0; i < args.length; i++) {
 						String[] parts = args[i].split(":");
-						strongs[i] = Integer.parseInt(parts[0]);
-						if (parts.length > 1)
+						strongs[i] = parts[0].isEmpty() ? -1 : Integer.parseInt(parts[0]);
+						if (parts.length > 1 && !parts[1].isEmpty())
 							rmacs[i] = parts[1];
 						else
-							rmacs = null;
+							rmacs[i] = null;
 						if (parts.length > 2)
 							idxs[i] = Integer.parseInt(parts[2]);
 						else
-							idxs = null;
+							idxs[i] = -1;
+						if (strongs[i] != -1)
+							scount = i + 1;
+						if (rmacs[i] != null)
+							rcount = i + 1;
+						if (idxs[i] != -1)
+							icount = i + 1;
 					}
+					strongs = scount == 0 ? null : Arrays.copyOf(strongs, scount);
+					rmacs = rcount == 0 ? null : Arrays.copyOf(rmacs, rcount);
+					idxs = icount == 0 ? null : Arrays.copyOf(idxs, icount);
 					visitorStack.add(visitor);
 					visitor = visitor.visitGrammarInformation(strongs, rmacs, idxs);
 					break;
@@ -356,11 +367,18 @@ public class Compact implements RoundtripFormat {
 		@Override
 		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			w.write("<G");
-			for (int i = 0; i < strongs.length; i++) {
-				w.write((i > 0 ? " " : "") + strongs[i]);
-				if (rmac != null) {
-					w.write(":" + rmac[i]);
-					if (sourceIndices != null)
+			int max = Math.max(Math.max(strongs == null ? 0 : strongs.length, rmac == null ? 0 : rmac.length), sourceIndices == null ? 0 : sourceIndices.length);
+			for (int i = 0; i < max; i++) {
+				w.write(i > 0 ? " " : "");
+				boolean r = rmac != null && i < rmac.length;
+				boolean si = sourceIndices != null && i < sourceIndices.length;
+				if (strongs != null && i < strongs.length)
+					w.write("" + strongs[i]);
+				if (r || si) {
+					w.write(":");
+					if (r)
+						w.write(rmac[i]);
+					if (si)
 						w.write(":" + sourceIndices[i]);
 				}
 			}

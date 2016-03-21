@@ -552,9 +552,11 @@ public class LogosHTML implements ExportFormat {
 		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			List<String> links = new ArrayList<String>();
 			String type = nt ? "GreekStrongs:G" : "HebrewStrongs:H";
-			for (int i = 0; i < strongs.length; i++) {
-				links.add(type + strongs[i]);
-				if (rmac != null)
+			int max = Math.max(strongs == null ? 0 : strongs.length, rmac == null ? 0 : rmac.length);
+			for (int i = 0; i < max; i++) {
+				if (strongs != null && i < strongs.length)
+					links.add(type + strongs[i]);
+				if (rmac != null && i < rmac.length)
 					links.add("LogosMorphGr:" + convertMorphology(rmac[i]));
 			}
 			if (links.size() == 0) {

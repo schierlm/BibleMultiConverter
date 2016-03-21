@@ -676,8 +676,8 @@ public class OSIS implements RoundtripFormat {
 					List<String> tempList = new ArrayList<String>(Arrays.asList(rmac));
 					tempList.removeAll(Collections.singleton(null));
 					rmac = (String[]) tempList.toArray(new String[tempList.size()]);
-					if (rmac.length == 0 || rmac.length != strong.length) {
-						printWarning("WARNING: Skipped RMAC because different length!");
+					if (rmac.length == 0) {
+						printWarning("WARNING: Skipped empty RMAC!");
 						rmac = null;
 					}
 				}
@@ -689,14 +689,10 @@ public class OSIS implements RoundtripFormat {
 					idx[i] = Integer.parseInt(strs[i]);
 				}
 			}
-			if (strong != null) {
-				if (rmac == null && idx != null) {
-					printWarning("WARNING: Skipping idx because rmac missing");
-					idx = null;
-				}
+			if (strong == null && rmac == null && idx == null) {
+				printWarning("INFO: Skipped <w> tag without any usable information");
+			} else {
 				v = v.visitGrammarInformation(strong, rmac, idx);
-			} else if (rmac != null || idx != null) {
-				printWarning("INFO: Skipping rmac/idx because strongs missing");
 			}
 			parseStructuredTextChildren(v, elem);
 		} else if (elem.getNodeName().equals("reference")) {
@@ -985,13 +981,15 @@ public class OSIS implements RoundtripFormat {
 		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			Element w = target.getOwnerDocument().createElement("w");
 			target.appendChild(w);
-			StringBuilder lemma = new StringBuilder();
-			for (int strong : strongs) {
-				if (lemma.length() > 0)
-					lemma.append(' ');
-				lemma.append("strong:" + (nt ? "G" : "H") + strong);
+			if (strongs != null) {
+				StringBuilder lemma = new StringBuilder();
+				for (int strong : strongs) {
+					if (lemma.length() > 0)
+						lemma.append(' ');
+					lemma.append("strong:" + (nt ? "G" : "H") + strong);
+				}
+				w.setAttribute("lemma", lemma.toString());
 			}
-			w.setAttribute("lemma", lemma.toString());
 
 			if (rmac != null) {
 				StringBuilder morph = new StringBuilder();

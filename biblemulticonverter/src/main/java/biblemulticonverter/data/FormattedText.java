@@ -309,29 +309,31 @@ public class FormattedText {
 			this.strongs = strongs;
 			this.rmac = rmac;
 			this.sourceIndices = sourceIndices;
-			if (strongs == null || strongs.length == 0) {
-				throw new IllegalArgumentException("Strongs may not be empty");
+			if (strongs == null && rmac == null && sourceIndices == null) {
+				throw new IllegalArgumentException("At least one grammar information type is required!");
 			}
-			for (int strong : strongs) {
-				if (strong <= 0)
-					throw new IllegalArgumentException("Strongs must be positive: " + strong);
+			if (strongs != null) {
+				if (strongs.length == 0) {
+					throw new IllegalArgumentException("Strongs may not be empty");
+				}
+				for (int strong : strongs) {
+					if (strong <= 0)
+						throw new IllegalArgumentException("Strongs must be positive: " + strong);
+				}
 			}
-			if (rmac == null) {
-				if (sourceIndices != null)
-					throw new IllegalArgumentException("Source indices may not be present if rmac is missing");
-			} else {
-				if (rmac.length != strongs.length)
-					throw new IllegalArgumentException("RMAC and Strongs have to be same length");
+			if (rmac != null) {
+				if (rmac.length == 0)
+					throw new IllegalArgumentException("RMAC may not be empty");
 				for (String entry : rmac) {
 					Utils.validateString("rmac", entry, Utils.RMAC_REGEX);
 				}
-				if (sourceIndices != null) {
-					if (sourceIndices.length != strongs.length)
-						throw new IllegalArgumentException("Source indices and strongs have to be same length");
-					for (int idx : sourceIndices) {
-						if (idx <= 0 || idx > 100)
-							throw new IllegalArgumentException("Source index out of range: " + idx);
-					}
+			}
+			if (sourceIndices != null) {
+				if (sourceIndices.length == 0)
+					throw new IllegalArgumentException("Source indices may not be empty");
+				for (int idx : sourceIndices) {
+					if (idx <= 0 || idx > 100)
+						throw new IllegalArgumentException("Source index out of range: " + idx);
 				}
 			}
 		}
@@ -875,8 +877,10 @@ public class FormattedText {
 			if (context.ordinal() >= ValidationContext.LINK.ordinal())
 				throw new IllegalArgumentException("Invalid nested link");
 			visitInlineElement();
-			for (int strong : strongs) {
-				validateDictionaryEntry("strongs", (book.isNT() ? "G" : "H") + strong);
+			if (strongs != null) {
+				for (int strong : strongs) {
+					validateDictionaryEntry("strongs", (book.isNT() ? "G" : "H") + strong);
+				}
 			}
 			return createValidatingVisitor(ValidationContext.LINK);
 		}

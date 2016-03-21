@@ -521,9 +521,6 @@ public class ZefaniaXMLRoundtrip implements RoundtripFormat {
 						String rmac = gram.getRmac();
 						rmacs = rmac.split(" ");
 					}
-					if (rmacs != null && strongs == null) {
-						strongs = new int[] { 99119 };
-					}
 					strongVisitor = strongVisitor.visitGrammarInformation(strongs, rmacs, null);
 					if (!parseContent(strongVisitor, gram.getContent(), abbrMap)) {
 						visitEmptyMarker(strongVisitor);
@@ -865,8 +862,6 @@ public class ZefaniaXMLRoundtrip implements RoundtripFormat {
 					entry = "";
 				else if (entry.equals("99111"))
 					entry = "?";
-				else if (entry.equals("99119"))
-					entry = null;
 				gram.setStr(entry);
 			}
 			if (rmac != null) {

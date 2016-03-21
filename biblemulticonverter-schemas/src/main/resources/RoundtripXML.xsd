@@ -255,7 +255,7 @@
 				<complexType>
 					<complexContent>
 						<extension base="tns:FormattedTextType">
-							<attribute name="strongs" use="required">
+							<attribute name="strongs" use="optional">
 								<simpleType>
 									<list itemType="tns:positiveIntType" />
 								</simpleType>

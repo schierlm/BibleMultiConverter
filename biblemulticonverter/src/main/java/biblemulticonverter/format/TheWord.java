@@ -497,8 +497,10 @@ public class TheWord implements RoundtripFormat {
 		@Override
 		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			StringBuilder suffix = new StringBuilder();
-			for (int i = 0; i < strongs.length; i++) {
-				suffix.append("<W").append(nt ? 'G' : 'H').append(strongs[i]).append('>');
+			if (strongs != null) {
+				for (int i = 0; i < strongs.length; i++) {
+					suffix.append("<W").append(nt ? 'G' : 'H').append(strongs[i]).append('>');
+				}
 			}
 			if (rmac != null) {
 				suffix.append("<WT");

@@ -388,10 +388,14 @@ public class Volksbibel2000 implements ExportFormat {
 		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			ensureInVerse();
 			StringBuilder strongSuffix = new StringBuilder(buildTag("SUP") + buildTag("FONT color=\"#008000\""));
-			for (int i = 0; i < strongs.length; i++) {
-				strongSuffix.append(i == 0 ? "<" : " ").append(strongs[i]);
+			if (strongs != null) {
+				for (int i = 0; i < strongs.length; i++) {
+					strongSuffix.append(i == 0 ? "<" : " ").append(strongs[i]);
+				}
+				strongSuffix.append(">" + buildTag("/FONT") + buildTag("/SUP"));
+			} else {
+				strongSuffix.setLength(0);
 			}
-			strongSuffix.append(">" + buildTag("/FONT") + buildTag("/SUP"));
 			return new Vb2000Visitor(content, null, strongSuffix.toString(), escapeChar);
 		}
 

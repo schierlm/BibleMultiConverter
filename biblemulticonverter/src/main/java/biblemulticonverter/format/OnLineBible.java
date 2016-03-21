@@ -288,7 +288,7 @@ public class OnLineBible implements ExportFormat {
 		@Override
 		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			StringBuilder suffix = new StringBuilder();
-			if (includeStrongs) {
+			if (strongs != null && includeStrongs) {
 				suffix.append(" ");
 				for (int strong : strongs) {
 					suffix.append(strong).append(" ");

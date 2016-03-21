@@ -577,12 +577,6 @@ public class ZefaniaXML implements RoundtripFormat {
 						strongs = null;
 					if (rmac != null && rmac.length == 0)
 						rmac = null;
-					else if (rmac != null && strongs == null) {
-						System.out.println("WARNING: Stripping RMAC because we don't have strongs: " + Arrays.toString(rmac));
-					} else if (rmac != null && strongs != null && strongs.length != rmac.length) {
-						System.out.println("WARNING: Stripping RMAC because RMAC length is different from Strongs length");
-						rmac = null;
-					}
 					if (strongs != null)
 						strongVisitor = strongVisitor.visitGrammarInformation(strongs, rmac, null);
 					if (!parseContent(strongVisitor, gram.getContent(), abbrMap) && strongVisitor != visitor) {

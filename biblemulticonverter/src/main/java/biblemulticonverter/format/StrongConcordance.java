@@ -195,6 +195,8 @@ public class StrongConcordance implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+			if (strongs == null)
+				return this;
 			StringBuilder key = new StringBuilder();
 			for (int str : strongs) {
 				if (key.length() > 0)

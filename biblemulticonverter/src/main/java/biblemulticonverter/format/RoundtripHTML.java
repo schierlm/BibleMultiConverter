@@ -515,12 +515,16 @@ public class RoundtripHTML implements RoundtripFormat {
 								throw new IOException(part);
 							}
 						}
-						int[] strongs = new int[strongL.size()];
+						int[] strongs = strongL.size() == 0 ? null : new int[strongL.size()];
+						if (strongs != null) {
+							for (int i = 0; i < strongs.length; i++) {
+								strongs[i] = strongL.get(i);
+							}
+						}
 						String[] rmacs = rmacL.size() == 0 ? null : (String[]) rmacL.toArray(new String[rmacL.size()]);
 						int[] sourceIndices = sourceIndexL.size() == 0 ? null : new int[sourceIndexL.size()];
-						for (int i = 0; i < strongs.length; i++) {
-							strongs[i] = strongL.get(i);
-							if (sourceIndices != null && i < sourceIndices.length) {
+						if (sourceIndices != null) {
+							for (int i = 0; i < sourceIndices.length; i++) {
 								sourceIndices[i] = sourceIndexL.get(i);
 							}
 						}
@@ -669,8 +673,10 @@ public class RoundtripHTML implements RoundtripFormat {
 		@Override
 		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			writer.write("<span class=\"g");
-			for (int str : strongs) {
-				writer.write(" gs" + str);
+			if (strongs != null) {
+				for (int str : strongs) {
+					writer.write(" gs" + str);
+				}
 			}
 			if (rmac != null) {
 				for (String r : rmac) {
