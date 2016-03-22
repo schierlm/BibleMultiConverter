@@ -190,6 +190,22 @@ public class OSIS implements RoundtripFormat {
 				}
 			}
 		}
+		// merge adjacent WOJ nodes
+		if (wojTagsInserted) {
+			for (Node node1 = root.getFirstChild(); node1 != null; node1 = node1.getNextSibling()) {
+				if (!(node1 instanceof Element))
+					continue;
+				Element elem = (Element) node1;
+				if (node1.getNodeName().equals("woj") && !elem.getAttribute("eID").isEmpty()) {
+					if (node1.getNextSibling().getNodeName().equals("woj")) {
+						printWarning("WARNING: adjacent <q who=\"Jesus\"> tags merged");
+						node1 = node1.getPreviousSibling();
+						root.removeChild(node1.getNextSibling());
+						root.removeChild(node1.getNextSibling());
+					}
+				}
+			}
+		}
 		// unmilestone title, verse, chapter
 		for (String tagName : Arrays.asList("title", "verse", "chapter")) {
 			for (Node node = root.getFirstChild(); node != null; node = node.getNextSibling()) {
@@ -495,7 +511,10 @@ public class OSIS implements RoundtripFormat {
 					printWarning("WARNING: Whitespace at beginning of verse or after title/newline");
 					text = text.substring(1);
 				}
-				if (text.endsWith(" ") && (node.getNextSibling() == null || Arrays.asList("brp", "lb", "title").contains(node.getNextSibling().getNodeName()))) {
+				Node ns = node.getNextSibling();
+				while (ns != null && Arrays.asList("w", "q").contains(ns.getNodeName()) && ns.getFirstChild() == null)
+					ns = ns.getNextSibling();
+				if (text.endsWith(" ") && (ns == null || Arrays.asList("brp", "lb", "title").contains(ns.getNodeName()))) {
 					printWarning("WARNING: Whitespace at end of verse or after title/newline");
 					text = text.substring(0, text.length() - 1);
 				}
@@ -540,8 +559,14 @@ public class OSIS implements RoundtripFormat {
 		for (Node node = textElem.getFirstChild(); node != null; node = node.getNextSibling()) {
 			if (node instanceof Text) {
 				String text = node.getTextContent().replaceAll("[ \t\r\n]+", " ");
-				if (text.endsWith(" ") && node.getNextSibling() != null && Arrays.asList("brp", "lb").contains(node.getNextSibling().getNodeName())) {
+				Node ns = node.getNextSibling();
+				while (ns != null && Arrays.asList("w", "q").contains(ns.getNodeName()) && ns.getFirstChild() == null)
+					ns = ns.getNextSibling();
+				if (text.endsWith(" ") && ns != null && Arrays.asList("brp", "lb").contains(ns.getNodeName())) {
 					printWarning("WARNING: Whitespace before newline");
+					text = text.substring(0, text.length() - 1);
+				} else if (text.endsWith(" ") && ns == null) {
+					printWarning("WARNING: Whitespace at end of element");
 					text = text.substring(0, text.length() - 1);
 				}
 				vv.visitText(text);
