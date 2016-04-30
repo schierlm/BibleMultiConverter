@@ -56,6 +56,8 @@ In addition, the following other formats are supported, with varying accuracy:
 - **PalmBible+**: export only
 - **MobiPocket**: export only
 - **SWORD modules**: import only (see below for details)
+- **MyBible.Zone**: import and export (in a special edition as it requires SQLite
+  support)
 
 In combination with third party tools, other export formats are available:
 
