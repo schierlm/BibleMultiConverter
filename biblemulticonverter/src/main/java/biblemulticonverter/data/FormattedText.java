@@ -472,9 +472,9 @@ public class FormattedText {
 			case ERROR:
 				throw new IllegalArgumentException("Unhandled extra attribute of category " + category);
 			case KEEP_CONTENT:
-				return null;
-			case SKIP:
 				return visitor;
+			case SKIP:
+				return null;
 			default:
 				throw new IllegalStateException("Unsupported priority: " + this);
 			}
