@@ -22,7 +22,9 @@ public class MyBibleModuleRegistry extends ModuleRegistry {
 
 	@Override
 	public Collection<Module<ExportFormat>> getExportFormats() {
-		return Collections.emptyList();
+		List<Module<ExportFormat>> result = new ArrayList<Module<ExportFormat>>();
+		result.add(new Module<ExportFormat>("MyBibleZoneDictionary", "MyBible.zone (Bible Reader for Android) Dictionary.", MyBibleZoneDictionary.HELP_TEXT, MyBibleZoneDictionary.class));
+		return result;
 	}
 
 	@Override

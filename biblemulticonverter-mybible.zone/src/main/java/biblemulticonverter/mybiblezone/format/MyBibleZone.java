@@ -632,14 +632,17 @@ public class MyBibleZone implements RoundtripFormat {
 							protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
 								return this;
 							}
+
 							@Override
 							protected void beforeVisit() throws RuntimeException {
 								unsupportedFeatures.add("markup in headline");
 							}
+
 							@Override
 							public void visitText(String text) throws RuntimeException {
 								sb.append(text.replace('<', '〈').replace('>', '〉'));
 							}
+
 							@Override
 							public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
 								// handle this separately; we do not like
@@ -647,6 +650,7 @@ public class MyBibleZone implements RoundtripFormat {
 								unsupportedFeatures.add("footnote in headline");
 								return null;
 							}
+
 							@Override
 							public Visitor<RuntimeException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws RuntimeException {
 								unsupportedFeatures.add("extra atrribute in headline");
@@ -716,7 +720,7 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 	}
 
-	private static class MyBibleHTMLVisitor extends AbstractHTMLVisitor {
+	protected static class MyBibleHTMLVisitor extends AbstractHTMLVisitor {
 		private final Set<String> unsupportedFeatures;
 		private final String locationText;
 
@@ -754,7 +758,7 @@ public class MyBibleZone implements RoundtripFormat {
 				System.out.println("WARNING: cross reference to unknown book " + book);
 				pushSuffix("");
 			} else {
-				writer.write("<a href=\"B:" + bnum + " " + firstChapter + ":" + firstVerse + ">");
+				writer.write("<a href=\"B:" + bnum + " " + firstChapter + ":" + firstVerse + "\">");
 				pushSuffix("</a>");
 			}
 			return this;
@@ -762,6 +766,8 @@ public class MyBibleZone implements RoundtripFormat {
 
 		@Override
 		public void visitLineBreak(LineBreakKind kind) throws IOException {
+			if (kind == LineBreakKind.NEWLINE_WITH_INDENT)
+				unsupportedFeatures.add("indentation " + locationText);
 			if (kind == LineBreakKind.PARAGRAPH)
 				writer.write("<p>");
 			else
@@ -777,8 +783,8 @@ public class MyBibleZone implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitDictionaryEntry(String dictionary, String entry) throws IOException {
-			unsupportedFeatures.add("dictionary entry " + locationText);
-			pushSuffix("");
+			writer.write("<a href=\"S:[" + dictionary + "]" + entry + "\">");
+			pushSuffix("</a>");
 			return this;
 		}
 	}
@@ -790,6 +796,7 @@ public class MyBibleZone implements RoundtripFormat {
 		private final Set<String> unsupportedFeatures;
 		private final Map<String, MyBibleHTMLVisitor> footnotes;
 		private int lastFootnote = 0;
+		private int lastDictionaryFootnote = 0;
 
 		public MyBibleVerseVisitor(StringBuilder builder, Map<String, MyBibleHTMLVisitor> footnotes, Set<String> unsupportedFeatures) {
 			this.builder = builder;
@@ -872,10 +879,22 @@ public class MyBibleZone implements RoundtripFormat {
 
 		@Override
 		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
-			if (kind == LineBreakKind.PARAGRAPH)
+			String lastSuffix = suffixStack.get(suffixStack.size() - 1);
+			boolean indentClosed = false;
+			if (lastSuffix.startsWith("</t>")) {
+				builder.append("</t>");
+				lastSuffix = lastSuffix.substring(4);
+				indentClosed = true;
+			}
+			if (kind == LineBreakKind.NEWLINE_WITH_INDENT) {
+				builder.append("<t>");
+				lastSuffix = "</t>" + lastSuffix;
+			} else if (kind == LineBreakKind.PARAGRAPH) {
 				builder.append("<pb/>");
-			else
+			} else if (!indentClosed) {
 				builder.append("<br/>");
+			}
+			suffixStack.set(suffixStack.size() - 1, lastSuffix);
 		}
 
 		@Override
@@ -899,9 +918,15 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitDictionaryEntry(String dictionary, String entry) throws RuntimeException {
-			unsupportedFeatures.add("dictionary entry in verse");
-			suffixStack.add("");
+		public Visitor<IOException> visitDictionaryEntry(String dictionary, String entry) throws IOException {
+			lastDictionaryFootnote++;
+			MyBibleHTMLVisitor fnv = new MyBibleHTMLVisitor(unsupportedFeatures, "in dictionary footnote");
+			footnotes.put("[\u2197" + lastDictionaryFootnote + "]", fnv);
+			Visitor<IOException> dv = fnv.visitDictionaryEntry(dictionary, entry);
+			dv.visitText("\u2197");
+			dv.visitEnd();
+			fnv.visitEnd();
+			suffixStack.add("<f>[\u2197" + lastDictionaryFootnote + "]</f>");
 			return this;
 		}
 
