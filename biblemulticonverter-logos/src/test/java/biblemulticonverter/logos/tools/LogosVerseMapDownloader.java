@@ -1,5 +1,7 @@
 package biblemulticonverter.logos.tools;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -47,6 +49,12 @@ public class LogosVerseMapDownloader {
 			"BiblePIJIN", "BibleRAA1933", "BibleRCUV", "BibleRMNT", "BibleRST", "BibleRST2", "BibleRSV",
 			"BibleRSVCE", "BibleRV1909", "BibleRVA", "BibleRVR60", "BibleRVR95", "BibleSBLGNT", "BibleSCRIV",
 			"BibleSVV", "BibleTB", "BibleTGV", "BibleTHB1973", "BibleTISCH", "BibleTOBIBLE", "BibleTONGAN",
+			"BibleB2000", "BibleBBA", "BibleBHT", "BibleBJL", "BibleDARFR", "BibleDHS", "BibleELBER1905", "BibleESV2",
+			"BibleGENEVA", "BibleKJV2", "BibleKJV66", "BibleLC", "BibleLEB2", "BibleLP", "BibleMT", "BibleNEB",
+			"BibleNO2011", "BiblePDV", "BibleREB", "BibleSCHLACTER2000", "BibleSEM", "BibleSER", "BibleTOB2010",
+			"BibleBCP1662", "BibleBCP1928", "BibleBCP1979", "BibleCAMGT", "BibleCBG", "BibleCBL", "BibleCODEXS",
+			"BibleEOBNT", "BibleGRAIL", "BibleGUDSORD", "BibleLXXSCS", "BiblePATR", "BibleRVG",
+			"BibleSB2014", "BibleTOB-HL",
 			"BibleTSV", "BibleUBS4", "BibleUT", "BibleVPEE", "BibleVUL", "BibleVUL2", "BibleWH", "BibleWV95"
 	};
 
@@ -58,7 +66,7 @@ public class LogosVerseMapDownloader {
 			"Lamentations=Lam", "Ezekiel=Ezek", "Daniel=Dan", "Hosea=Hos", "Joel=Joel", "Amos=Amos", "Obadiah=Obad",
 			"Jonah=Jonah", "Micah=Mic", "Nahum=Nah", "Habakkuk=Hab", "Zephaniah=Zeph", "Haggai=Hag", "Zechariah=Zech",
 			"Malachi=Mal", "Tobit=Tob", "Judith=Jdt", "Additions to Esther=AddEsth", "Wisdom of Solomon=Wis",
-			"Sirach=Sir", "Baruch=Bar", "Letter of Jeremiah=EpJer", "Song of Three Youths=PrAza", "Susanna=Sus",
+			"Sirach=Sir", "Baruch=Bar", "Letter of Jeremiah=EpJer", "Song of Three Youths=PrAzar", "Susanna=Sus",
 			"Bel and the Dragon=Bel", "1 Maccabees=1Macc", "2 Maccabees=2Macc", "1 Esdras=1Esd",
 			"Prayer of Manasseh=PrMan", "Additional Psalm=AddPs", "3 Maccabees=3Macc", "2 Esdras=2Esd",
 			"4 Maccabees=4Macc", "Ode=Odes", "Psalms of Solomon=PssSol", "Epistle to the Laodiceans=EpLao",
@@ -68,6 +76,8 @@ public class LogosVerseMapDownloader {
 			"Philemon=Phlm", "Hebrews=Heb", "James=Jas", "1 Peter=1Pet", "2 Peter=2Pet", "1 John=1John", "2 John=2John",
 			"3 John=3John", "Jude=Jude", "Revelation=Rev", "Additions to Daniel=AddDan", "Plea for Deliverance=-",
 			"Apostrophe to Zion=-", "Hymn to the Creator=-", "Apostrophe to Judah=-", "David’s Compositions=-",
+			"Apocryphal Psalms=-","Psalm 151A=-", "Psalm 151B=-",
+			"Epistle of Baruch=-", "Apocalypse of Baruch=-", "Catena=-",
 			"Eschatological Hymn=-", "1 Enoch=1En", "4 Ezra=-", "2 Baruch=-"
 	};
 
@@ -87,7 +97,14 @@ public class LogosVerseMapDownloader {
 					return new InputSource(new StringReader(""));
 				}
 			});
-			parseVerseMap(builder.parse(in), w);
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			byte[] buf = new byte[4096];
+			int len;
+			while ((len = in.read(buf)) != -1)
+				baos.write(buf, 0, len);
+			String xml = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+			xml = xml.replace("o<t.length", "o t.length").replace("&&", "&amp;&amp;").replace("r<o;", "").replace("createCookie&authorizationHeader=", "");
+			parseVerseMap(builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8))), w);
 		}
 		System.out.println("Downloading Logos verse map done.");
 	}
@@ -142,13 +159,13 @@ public class LogosVerseMapDownloader {
 			for (int j = 1; j < table.get(0).size(); j++) {
 				BitSet v11ns = new BitSet();
 				for (String v11n : table.get(0).get(j).split(", ")) {
-					if (v11n.equals("b2000"))
-						continue;
 					v11ns.set(versificationMap.get(v11n));
 				}
 
 				List<BitSet> chapters = new ArrayList<>();
 				for (int k = 1; k < table.size(); k++) {
+					if (!table.get(k).get(0).matches("[0-9]+"))
+						continue;
 					int chapterNumber = Integer.parseInt(table.get(k).get(0));
 					String ranges = table.get(k).get(j);
 					if (ranges.length() > 0) {
@@ -156,6 +173,8 @@ public class LogosVerseMapDownloader {
 							chapters.add(new BitSet());
 						BitSet chapter = chapters.get(chapterNumber - 1);
 						for (String range : ranges.split(", ")) {
+							if (!range.matches("[0-9-]+"))
+								continue;
 							String[] parts = range.split("-");
 							if (parts.length == 1) {
 								chapter.set(Integer.parseInt(parts[0]));
