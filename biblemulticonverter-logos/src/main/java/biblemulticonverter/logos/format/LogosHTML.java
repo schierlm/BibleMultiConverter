@@ -138,6 +138,32 @@ public class LogosHTML implements ExportFormat {
 		LOGOS_BOOKS.put(BookID.BOOK_EsthGr, "EsG");
 	}
 
+	public static final String[] NAMED_VERSES = {
+			"title", "title 2", "title A", "title B", "title C", "prologue", "prologue 1", "prologue 2", "subscript",
+			"1a", "1b", "1c", "1d", "1e", "1f", "1g", "1h", "1i", "1k", "1l", "1m", "1n", "1o", "1p", "1q", "1r", "1s",
+			"2a", "2b", "2c", "2d", "2e", "2f", "2g", "2h", "2i", "2k", "2l", "2m", "2n", "2o", "2p",
+			"3a", "3b", "3c", "3d", "3e", "3f", "3g", "3h", "3i", "3k", "3l", "4a", "4ab", "4b", "4c", "5a", "5b", "5c", "5d", "5e",
+			"6a", "6ab", "6ac", "6b", "6c", "6d", "6e", "6f", "6g", "6h", "6i", "6j", "7a", "7b", "7c", "8a", "8b", "8c", "9a", "9b", "9c", "9d", "9e",
+			"10a", "10b", "10c", "11a", "11b", "11c", "12a", "12aa", "12b", "12bb", "12c", "12cc", "12d", "12e", "12f", "12g", "12h", "12i", "12j", "12k", "12l", "12m",
+			"12n", "12nn", "12o", "12p", "12q", "12r", "12s", "12t", "12u", "12v", "12x", "12y", "12z", "13a", "13b", "13c", "13d", "13e", "13f", "13g", "13h", "13q",
+			"14a", "14b", "14c", "14d", "14q", "15a", "15b", "15c", "15d", "15e", "15f", "15g", "15h", "15i", "15q", "16a", "16b", "16c", "16q",
+			"17a", "17aa", "17b", "17bb", "17c", "17cc", "17d", "17dd", "17e", "17ee", "17f", "17ff", "17g", "17gg", "17h", "17hh", "17i", "17ii", "17k", "17kk", "17l", "17m",
+			"17n", "17o", "17p", "17q", "17r", "17s", "17t", "17u", "17v", "17w", "17x", "17y", "17z", "18a", "18b", "18c", "18d", "18e", "18f", "18g", "18h", "18i", "18q",
+			"19a", "19b", "19c", "19d", "19q", "20a", "20b", "20c", "20d", "20e", "20f", "20g", "20h", "20i", "20j", "20k", "20l", "20q", "21a", "21b", "21c",
+			"22a", "22b", "22c", "22d", "22e", "23a", "23ab", "23b", "23c", "24a", "24b", "24c", "24d", "24e", "24f", "24g", "24h", "24i", "24k", "24l", "24m",
+			"24n", "24o", "24p", "24q", "24r", "24s", "24t", "24u", "24x", "24y", "24z", "25a", "25b", "26a", "26b", "27a", "27b",
+			"28a", "28b", "28c", "28d", "28e", "28f", "28g", "28h", "29a", "29b", "30a", "30b", "30c", "31a", "31b", "32a", "33a", "33b", "34a", "34b", "34c",
+			"35a", "35b", "35c", "35d", "35e", "35f", "35g", "35h", "35i", "35k", "35l", "35m", "35n", "35o",
+			"36a", "36b", "36p", "37a", "37b", "37c", "37p", "38a", "38b", "38p", "39a", "39p", "40a", "40ab", "40b", "40c", "40p",
+			"41a", "41p", "42a", "42b", "42c", "42d", "42p", "43a", "43b", "43p", "44a", "44p", "45a", "45p",
+			"46a", "46b", "46c", "46d", "46e", "46f", "46g", "46h", "46i", "46k", "46l", "46p", "47a", "47p", "48a", "48b", "48p", "49a", "49p",
+			"50a", "50p", "51a", "51b", "51p", "52a", "52p", "53a", "53p", "54a", "54p", "55a", "55p", "56a", "56b", "56p", "57a", "57p", "58a", "58p", "59a", "59p",
+			"60a", "60p", "61a", "61p", "62a", "62b", "62c", "62p", "63a", "63p", "64a", "64p", "65a", "65p", "66a", "66p", "67p", "68p", "69a", "69b", "69p",
+			"70a", "70p", "71a", "71p", "72a", "72b", "72p", "73a", "73p", "74a", "74p", "75a", "75p", "76a", "76p", "77a", "77p", "78a", "78p", "79a", "79p",
+			"80a", "80p", "81a", "81p", "82a", "82p", "83a", "83p", "84a", "84p", "85a", "85p", "86a", "86p", "87a", "87p", "88a", "88p", "88w", "88x", "88y", "88z",
+			"89a", "89p", "90a", "90p", "91p", "92p", "93p", "94p", "95p", "96p", "97p", "98p", "99p", "100p", "101p", "102p", "103p", "104p", "105p"
+	};
+
 	private int footnoteCounter = 0;
 	private int footnoteNumber = 0;
 	private int grammarCounter = 0;
@@ -187,7 +213,7 @@ public class LogosHTML implements ExportFormat {
 
 			if (exportArgs.length > 2 && !exportArgs[2].equals("-")) {
 				StringWriter sw = new StringWriter();
-				try(BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(exportArgs[2]), StandardCharsets.UTF_8))) {
+				try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(exportArgs[2]), StandardCharsets.UTF_8))) {
 					char[] buffer = new char[4096];
 					int len;
 					while ((len = br.read(buffer)) != -1)
@@ -198,8 +224,8 @@ public class LogosHTML implements ExportFormat {
 				MetadataBook mb = bible.getMetadataBook();
 				if (mb != null) {
 					bible.getBooks().remove(0);
-					for(String key : mb.getKeys())
-						template = template.replace("${"+key+"}", mb.getValue(key));
+					for (String key : mb.getKeys())
+						template = template.replace("${" + key + "}", mb.getValue(key));
 				}
 				bw.write(template);
 			} else {
@@ -276,7 +302,11 @@ public class LogosHTML implements ExportFormat {
 							while (minVerse <= maxVerse && !allowedVerses.get(minVerse))
 								minVerse++;
 							if (minVerse == maxVerse) {
-								versePrefix += "[[@" + versemap + ":" + babbr + " " + vcnumber + ":" + minVerse + "]]";
+								if (minVerse >= 1000 && minVerse < 1000 + NAMED_VERSES.length) {
+									versePrefix += "[[@" + versemap + ":" + babbr + " " + vcnumber + ":" + NAMED_VERSES[minVerse - 1000] + "]]";
+								} else {
+									versePrefix += "[[@" + versemap + ":" + babbr + " " + vcnumber + ":" + minVerse + "]]";
+								}
 							} else if (minVerse < maxVerse) {
 								versePrefix += "[[@" + versemap + ":" + babbr + " " + vcnumber + ":" + minVerse + "-" + maxVerse + "]]";
 							}

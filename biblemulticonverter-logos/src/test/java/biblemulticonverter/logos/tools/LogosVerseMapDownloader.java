@@ -31,6 +31,7 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import biblemulticonverter.data.BookID;
+import biblemulticonverter.logos.format.LogosHTML;
 
 public class LogosVerseMapDownloader {
 
@@ -76,7 +77,7 @@ public class LogosVerseMapDownloader {
 			"Philemon=Phlm", "Hebrews=Heb", "James=Jas", "1 Peter=1Pet", "2 Peter=2Pet", "1 John=1John", "2 John=2John",
 			"3 John=3John", "Jude=Jude", "Revelation=Rev", "Additions to Daniel=AddDan", "Plea for Deliverance=-",
 			"Apostrophe to Zion=-", "Hymn to the Creator=-", "Apostrophe to Judah=-", "David’s Compositions=-",
-			"Apocryphal Psalms=-","Psalm 151A=-", "Psalm 151B=-",
+			"Apocryphal Psalms=-", "Psalm 151A=-", "Psalm 151B=-",
 			"Epistle of Baruch=-", "Apocalypse of Baruch=-", "Catena=-",
 			"Eschatological Hymn=-", "1 Enoch=1En", "4 Ezra=-", "2 Baruch=-"
 	};
@@ -103,7 +104,7 @@ public class LogosVerseMapDownloader {
 			while ((len = in.read(buf)) != -1)
 				baos.write(buf, 0, len);
 			String xml = new String(baos.toByteArray(), StandardCharsets.UTF_8);
-			xml = xml.replace("o<t.length", "o t.length").replace("&&", "&amp;&amp;").replace("r<o;", "").replace("createCookie&authorizationHeader=", "");
+			xml = xml.replaceAll("<script type=\"text/javascript\">window.*?</script>", "").replace("createCookie&authorizationHeader=", "");
 			parseVerseMap(builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8))), w);
 		}
 		System.out.println("Downloading Logos verse map done.");
@@ -124,6 +125,11 @@ public class LogosVerseMapDownloader {
 			versificationMap.put(v11n.equals("Bible") ? "bible" : v11n.substring(5).toLowerCase(), i);
 		}
 		w.write('\n');
+
+		Map<String, Integer> namedVerseMap = new HashMap<>();
+		for (int i = 0; i < LogosHTML.NAMED_VERSES.length; i++) {
+			namedVerseMap.put(LogosHTML.NAMED_VERSES[i], i);
+		}
 
 		XPath xp = javax.xml.xpath.XPathFactory.newInstance().newXPath();
 		NodeList nl = (NodeList) xp.evaluate("//div[@class='Level2']/table", doc, XPathConstants.NODESET);
@@ -164,6 +170,8 @@ public class LogosVerseMapDownloader {
 
 				List<BitSet> chapters = new ArrayList<>();
 				for (int k = 1; k < table.size(); k++) {
+					if (table.get(k).get(0).isEmpty())
+						table.get(k).set(0, "1");
 					if (!table.get(k).get(0).matches("[0-9]+"))
 						continue;
 					int chapterNumber = Integer.parseInt(table.get(k).get(0));
@@ -173,8 +181,14 @@ public class LogosVerseMapDownloader {
 							chapters.add(new BitSet());
 						BitSet chapter = chapters.get(chapterNumber - 1);
 						for (String range : ranges.split(", ")) {
-							if (!range.matches("[0-9-]+"))
-								continue;
+							if (!range.matches("[0-9-]+")) {
+								Integer idx = namedVerseMap.get(range);
+								if (idx == null) {
+									System.out.println("SKIPPING VERSE " + range);
+									continue;
+								}
+								range = String.valueOf(idx + 1000);
+							}
 							String[] parts = range.split("-");
 							if (parts.length == 1) {
 								chapter.set(Integer.parseInt(parts[0]));
