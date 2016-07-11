@@ -89,7 +89,7 @@ public class MyBibleZoneDictionary implements ExportFormat {
 				continue;
 			}
 			String topicName = bk.getShortName();
-			if (usedTopics.contains(topicName) && !dictionaryName.equals("strongs")) {
+			if (usedTopics.contains(topicName) && !dictionaryName.equals("strong")) {
 				for (int i = 2;; i++) {
 					if (!usedTopics.contains(topicName + " (" + i + ")")) {
 						topicName += " (" + i + ")";
@@ -101,7 +101,7 @@ public class MyBibleZoneDictionary implements ExportFormat {
 				System.out.println("WARNING: Skipping duplicate topic " + topicName);
 				continue;
 			}
-			if (dictionaryName.equals("strongs")) {
+			if (dictionaryName.equals("strong")) {
 				if (!topicName.matches("[GH][1-9][0-9]*")) {
 					System.out.println("WARNING: Skipping invalid Strong number " + topicName);
 					continue;
