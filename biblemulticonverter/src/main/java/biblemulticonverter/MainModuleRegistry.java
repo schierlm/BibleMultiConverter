@@ -28,6 +28,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<ExportFormat>("ScrambledDiffable", "Like Diffable, but with scrambled text; for tests with non-free bibles.", ScrambledDiffable.HELP_TEXT, ScrambledDiffable.class));
 		result.add(new Module<ExportFormat>("Volksbibel2000", "Export format for reimporting into Volksbibel 2000", Volksbibel2000.HELP_TEXT, Volksbibel2000.class));
 		result.add(new Module<ExportFormat>("OnLineBible", "Export format for importing into OnLine Bible", OnLineBible.HELP_TEXT, OnLineBible.class));
+		result.add(new Module<ExportFormat>("BrowserBible", "Export format for The Browser Bible 3 by Digital Bible Society", BrowserBible.HELP_TEXT, BrowserBible.class));
 		return result;
 	}
 
