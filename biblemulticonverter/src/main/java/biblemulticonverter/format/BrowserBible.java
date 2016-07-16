@@ -217,7 +217,7 @@ public class BrowserBible implements ExportFormat {
 						bw.write("\t");
 						for (Verse v : vv.getVerses()) {
 							if (!autoNumber) {
-								bw.write("<span class=\"v-num\">" + v.getNumber() + "&nbsp;</span>");
+								bw.write("<span class=\"verse-num\">" + v.getNumber() + "&nbsp;</span>");
 							}
 							autoNumber = false;
 							bbv.nextVerse();

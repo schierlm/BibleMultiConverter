@@ -55,6 +55,9 @@ In addition, the following other formats are supported, with varying accuracy:
 - **TheWord**: import and export
 - **PalmBible+**: export only
 - **MobiPocket**: export only
+- **Volksbibel2000**: export only
+- **OnLineBible**: export only
+- **[BrowserBible](https://github.com/digitalbiblesociety/browserbible-3/)**: export only
 - **SWORD modules**: import only (see below for details)
 - **MyBible.Zone**: import and export (in a special edition as it requires SQLite
   support)
