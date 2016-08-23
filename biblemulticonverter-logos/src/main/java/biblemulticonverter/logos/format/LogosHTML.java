@@ -132,10 +132,12 @@ public class LogosHTML implements ExportFormat {
 		LOGOS_BOOKS.put(BookID.BOOK_3Macc, "3Mac");
 		LOGOS_BOOKS.put(BookID.BOOK_4Macc, "4Mac");
 		LOGOS_BOOKS.put(BookID.BOOK_EpJer, "LetJer");
+		LOGOS_BOOKS.put(BookID.BOOK_Sus, "Sus");
 		LOGOS_BOOKS.put(BookID.BOOK_1Esd, "1Esd");
 		LOGOS_BOOKS.put(BookID.BOOK_2Esd, "2Esd");
 		LOGOS_BOOKS.put(BookID.BOOK_PrAzar, "Pr Az");
 		LOGOS_BOOKS.put(BookID.BOOK_EsthGr, "EsG");
+		LOGOS_BOOKS.put(BookID.BOOK_PssSol, "PssSol");
 	}
 
 	public static final String[] NAMED_VERSES = {
@@ -269,60 +271,81 @@ public class LogosHTML implements ExportFormat {
 				int cnumber = 0;
 				for (Chapter chapter : book.getChapters()) {
 					cnumber++;
-					String chapterRef = "@" + versemap + ":" + babbr + " " + cnumber;
-					boolean writeChapterNumber = false;
-					int usedHeadlines = 2;
-					if (book.getChapters().size() > 1) {
-						if (noChapterHeadings) {
-							writeChapterNumber = true;
-						} else {
-							usedHeadlines = 3;
-							bw.write("<h3>[[" + chapterRef + "]]{{~ " + book.getAbbr() + " " + cnumber + " }}</h3>\n");
+					if (!chapter.getVerses().isEmpty() && chapter.getVerses().get(0).getNumber().endsWith(".p")) {
+						Chapter prologue = new Chapter();
+						BitSet prologueVerses = new BitSet(100);
+						prologueVerses.set(1, 100);
+						while (!chapter.getVerses().isEmpty() && chapter.getVerses().get(0).getNumber().endsWith(".p")) {
+							Verse v = chapter.getVerses().remove(0);
+							Verse vv = new Verse(v.getNumber().replace(".p", ""));
+							v.accept(vv.getAppendVisitor());
+							vv.finished();
+							prologue.getVerses().add(vv);
 						}
+						exportChapter("Prologue", prologue, versemap, scheme, verseSeparator, noChapterHeadings, bw, footnotes, book, chapterVerses, prologueVerses, babbr);
 					}
-					footnoteNumber = 0;
-					if (chapter.getProlog() != null) {
-						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, null, usedHeadlines));
-						bw.write("\n<br/>\n");
-					}
-					for (VerseRange vr : chapter.createVerseRanges()) {
-						String versePrefix = "";
-						if (writeChapterNumber) {
-							versePrefix = "<b style=\"font-size: 20pt\">[[" + chapterRef + "]]" + cnumber + "</b>" + verseSeparator;
-							writeChapterNumber = false;
-						}
-
-						int vcnumber = vr.getChapter() == 0 ? cnumber : vr.getChapter();
-						BitSet allowedVerses = chapterVerses != null && vcnumber <= chapterVerses.length ? chapterVerses[vcnumber - 1] : null;
-						boolean printMilestone = allowedVerses != null && !allowedVerses.isEmpty();
-						if (printMilestone) {
-							int minVerse = vr.getMinVerse(), maxVerse = vr.getMaxVerse();
-							while (maxVerse >= minVerse && !allowedVerses.get(maxVerse))
-								maxVerse--;
-							while (minVerse <= maxVerse && !allowedVerses.get(minVerse))
-								minVerse++;
-							if (minVerse == maxVerse) {
-								if (minVerse >= 1000 && minVerse < 1000 + NAMED_VERSES.length) {
-									versePrefix += "[[@" + versemap + ":" + babbr + " " + vcnumber + ":" + NAMED_VERSES[minVerse - 1000] + "]]";
-								} else {
-									versePrefix += "[[@" + versemap + ":" + babbr + " " + vcnumber + ":" + minVerse + "]]";
-								}
-							} else if (minVerse < maxVerse) {
-								versePrefix += "[[@" + versemap + ":" + babbr + " " + vcnumber + ":" + minVerse + "-" + maxVerse + "]]";
-							}
-						}
-
-						for (Verse v : vr.getVerses()) {
-							bw.write(verseSeparator);
-							v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, versePrefix + "<b>" + v.getNumber() + "</b> ", usedHeadlines));
-							versePrefix = "";
-							bw.write("\n");
-						}
-					}
+					BitSet thisChapterVerses = chapterVerses != null && cnumber <= chapterVerses.length ? chapterVerses[cnumber - 1] : null;
+					exportChapter(""+cnumber, chapter, versemap, scheme, verseSeparator, noChapterHeadings, bw, footnotes, book, chapterVerses, thisChapterVerses, babbr);
 				}
 			}
 			bw.write(footnotes.toString());
 			bw.write("</body></html>");
+		}
+	}
+
+	protected void exportChapter(String cname, Chapter chapter, String versemap, VersificationScheme scheme, String verseSeparator, boolean noChapterHeadings, BufferedWriter bw, StringWriter footnotes, Book book, BitSet[] chapterVerses, BitSet thisChapterVerses, String babbr) throws IOException {
+		String chapterRef = "@" + versemap + ":" + babbr + " " + cname;
+		boolean writeChapterNumber = false;
+		int usedHeadlines = 2;
+		if (book.getChapters().size() > 1) {
+			if (noChapterHeadings) {
+				writeChapterNumber = true;
+			} else {
+				usedHeadlines = 3;
+				bw.write("<h3>[[" + chapterRef + "]]{{~ " + book.getAbbr() + " " + cname + " }}</h3>\n");
+			}
+		}
+		footnoteNumber = 0;
+		if (chapter.getProlog() != null) {
+			chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, null, usedHeadlines));
+			bw.write("\n<br/>\n");
+		}
+		for (VerseRange vr : chapter.createVerseRanges()) {
+			String versePrefix = "";
+			if (writeChapterNumber) {
+				versePrefix = "<b style=\"font-size: 20pt\">[[" + chapterRef + "]]" + cname + "</b>" + verseSeparator;
+				writeChapterNumber = false;
+			}
+			BitSet allowedVerses = thisChapterVerses;
+			String vcname = cname;
+			if (vr.getChapter() != 0) {
+				allowedVerses = chapterVerses != null && vr.getChapter() <= chapterVerses.length ? chapterVerses[vr.getChapter() - 1] : null;
+				vcname = "" + vr.getChapter();
+			}
+			boolean printMilestone = allowedVerses != null && !allowedVerses.isEmpty();
+			if (printMilestone) {
+				int minVerse = vr.getMinVerse(), maxVerse = vr.getMaxVerse();
+				while (maxVerse >= minVerse && !allowedVerses.get(maxVerse))
+					maxVerse--;
+				while (minVerse <= maxVerse && !allowedVerses.get(minVerse))
+					minVerse++;
+				if (minVerse == maxVerse) {
+					if (minVerse >= 1000 && minVerse < 1000 + NAMED_VERSES.length) {
+						versePrefix += "[[@" + versemap + ":" + babbr + " " + vcname + ":" + NAMED_VERSES[minVerse - 1000] + "]]";
+					} else {
+						versePrefix += "[[@" + versemap + ":" + babbr + " " + vcname + ":" + minVerse + "]]";
+					}
+				} else if (minVerse < maxVerse) {
+					versePrefix += "[[@" + versemap + ":" + babbr + " " + vcname + ":" + minVerse + "-" + maxVerse + "]]";
+				}
+			}
+
+			for (Verse v : vr.getVerses()) {
+				bw.write(verseSeparator);
+				v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, versePrefix + "<b>" + v.getNumber() + "</b> ", usedHeadlines));
+				versePrefix = "";
+				bw.write("\n");
+			}
 		}
 	}
 
