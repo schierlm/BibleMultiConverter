@@ -6,16 +6,19 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -53,6 +56,7 @@ public class LogosHTML implements ExportFormat {
 	};
 
 	private static Map<BookID, String> LOGOS_BOOKS = new EnumMap<>(BookID.class);
+	private static final BitSet[] ALL_CHAPTER_VERSES = new BitSet[100];
 
 	static {
 		LOGOS_BOOKS.put(BookID.BOOK_Gen, "Ge");
@@ -138,6 +142,9 @@ public class LogosHTML implements ExportFormat {
 		LOGOS_BOOKS.put(BookID.BOOK_PrAzar, "Pr Az");
 		LOGOS_BOOKS.put(BookID.BOOK_EsthGr, "EsG");
 		LOGOS_BOOKS.put(BookID.BOOK_PssSol, "PssSol");
+		BitSet allVerses = new BitSet();
+		allVerses.set(1, 1000);
+		Arrays.fill(ALL_CHAPTER_VERSES, allVerses);
 	}
 
 	public static final String[] NAMED_VERSES = {
@@ -174,14 +181,25 @@ public class LogosHTML implements ExportFormat {
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
 		String versemap = exportArgs.length == 1 ? "Bible" : exportArgs[1];
-		if (!versemap.matches("Bible[A-Z0-9]*")) {
-			System.out.println("Invalid versification: " + versemap);
-			return;
-		}
-		VersificationScheme scheme = new LogosVersificationDetector().loadScheme(versemap);
-		if (scheme == null) {
-			System.out.println("Invalid versification: " + versemap);
-			return;
+		Properties bookDatatypeMap = null;
+		VersificationScheme scheme;
+		if (versemap.startsWith("author:")) {
+			bookDatatypeMap = new Properties();
+			try(InputStream in = new FileInputStream(versemap.substring(7))) {
+				bookDatatypeMap.load(in);
+			}
+			versemap = null;
+			scheme = new LogosVersificationDetector().loadScheme("Bible");
+		} else {
+			if (!versemap.matches("Bible[A-Z0-9]*")) {
+				System.out.println("Invalid versification: " + versemap);
+				return;
+			}
+			scheme = new LogosVersificationDetector().loadScheme(versemap);
+			if (scheme == null) {
+				System.out.println("Invalid versification: " + versemap);
+				return;
+			}
 		}
 		footnoteCounter = 0;
 		grammarCounter = 0;
@@ -236,9 +254,17 @@ public class LogosHTML implements ExportFormat {
 
 			StringWriter footnotes = new StringWriter();
 			for (Book book : bible.getBooks()) {
-				BitSet[] chapterVerses = scheme.getCoveredBooks().get(book.getId());
-				String babbr = LOGOS_BOOKS.get(book.getId());
-				if (babbr == null && book.getId().getZefID() < 0 && book.getChapters().size() == 1) {
+				BitSet[] chapterVerses;
+				String milestone;
+				if (bookDatatypeMap != null) {
+					milestone = bookDatatypeMap.getProperty(book.getId().getOsisID());
+					chapterVerses = milestone == null ? null : ALL_CHAPTER_VERSES;
+				} else {
+					chapterVerses = scheme.getCoveredBooks().get(book.getId());
+					String babbr = LOGOS_BOOKS.get(book.getId());
+					milestone = babbr == null ? null : (versemap + ":" + babbr+" %c:%v");
+				}
+				if (milestone == null && book.getId().getZefID() < 0 && book.getChapters().size() == 1) {
 					Chapter chapter = book.getChapters().get(0);
 					if (chapter.getVerses().size() == 0 && chapter.getProlog() != null) {
 						// prolog only book
@@ -263,11 +289,11 @@ public class LogosHTML implements ExportFormat {
 						continue;
 					}
 				}
-				if (babbr == null) {
+				if (milestone == null) {
 					System.out.println("WARNING: Skipping book " + book.getId());
 					continue;
 				}
-				bw.write("<h2>[[@" + versemap + ":" + babbr + "]]" + book.getLongName() + " (" + book.getAbbr() + ")</h2>\n");
+				bw.write("<h2>[[@" + formatMilestone(milestone, "", "") + "]]" + book.getLongName() + " (" + book.getAbbr() + ")</h2>\n");
 				int cnumber = 0;
 				for (Chapter chapter : book.getChapters()) {
 					cnumber++;
@@ -282,10 +308,10 @@ public class LogosHTML implements ExportFormat {
 							vv.finished();
 							prologue.getVerses().add(vv);
 						}
-						exportChapter("Prologue", prologue, versemap, scheme, verseSeparator, noChapterHeadings, bw, footnotes, book, chapterVerses, prologueVerses, babbr);
+						exportChapter(milestone, "Prologue", prologue, versemap, scheme, verseSeparator, noChapterHeadings, bw, footnotes, book, chapterVerses, prologueVerses);
 					}
 					BitSet thisChapterVerses = chapterVerses != null && cnumber <= chapterVerses.length ? chapterVerses[cnumber - 1] : null;
-					exportChapter(""+cnumber, chapter, versemap, scheme, verseSeparator, noChapterHeadings, bw, footnotes, book, chapterVerses, thisChapterVerses, babbr);
+					exportChapter(milestone, ""+cnumber, chapter, versemap, scheme, verseSeparator, noChapterHeadings, bw, footnotes, book, chapterVerses, thisChapterVerses);
 				}
 			}
 			bw.write(footnotes.toString());
@@ -293,8 +319,8 @@ public class LogosHTML implements ExportFormat {
 		}
 	}
 
-	protected void exportChapter(String cname, Chapter chapter, String versemap, VersificationScheme scheme, String verseSeparator, boolean noChapterHeadings, BufferedWriter bw, StringWriter footnotes, Book book, BitSet[] chapterVerses, BitSet thisChapterVerses, String babbr) throws IOException {
-		String chapterRef = "@" + versemap + ":" + babbr + " " + cname;
+	protected void exportChapter(String milestone, String cname, Chapter chapter, String versemap, VersificationScheme scheme, String verseSeparator, boolean noChapterHeadings, BufferedWriter bw, StringWriter footnotes, Book book, BitSet[] chapterVerses, BitSet thisChapterVerses) throws IOException {
+		String chapterRef = "@" + formatMilestone(milestone, cname, "");
 		boolean writeChapterNumber = false;
 		int usedHeadlines = 2;
 		if (book.getChapters().size() > 1) {
@@ -331,12 +357,12 @@ public class LogosHTML implements ExportFormat {
 					minVerse++;
 				if (minVerse == maxVerse) {
 					if (minVerse >= 1000 && minVerse < 1000 + NAMED_VERSES.length) {
-						versePrefix += "[[@" + versemap + ":" + babbr + " " + vcname + ":" + NAMED_VERSES[minVerse - 1000] + "]]";
+						versePrefix += "[[@" + formatMilestone(milestone, vcname, NAMED_VERSES[minVerse - 1000]) + "]]";
 					} else {
-						versePrefix += "[[@" + versemap + ":" + babbr + " " + vcname + ":" + minVerse + "]]";
+						versePrefix += "[[@" + formatMilestone(milestone, vcname, ""+minVerse) + "]]";
 					}
 				} else if (minVerse < maxVerse) {
-					versePrefix += "[[@" + versemap + ":" + babbr + " " + vcname + ":" + minVerse + "-" + maxVerse + "]]";
+					versePrefix += "[[@" + formatMilestone(milestone, vcname, minVerse + "-" + maxVerse) + "]]";
 				}
 			}
 
@@ -347,6 +373,10 @@ public class LogosHTML implements ExportFormat {
 				bw.write("\n");
 			}
 		}
+	}
+
+	private static String formatMilestone(String milestone, String chapter, String verse) {
+		return milestone.replace("%c", chapter).replace("%v", verse).replaceAll("[ .,:;]+$", "");
 	}
 
 	private static final Pattern NO_GREEK_OR_HEBREW = Pattern.compile("[\\P{IsGreek}&&\\P{IsHebrew}]*+");
@@ -498,8 +528,11 @@ public class LogosHTML implements ExportFormat {
 		@Override
 		public void visitStart() throws IOException {
 			if (fieldPrefix != null && suffixStack.size() == 1) {
-				fieldOn = true;
-				writer.write(fieldPrefix + "{{field-on:bible}}");
+				writer.write(fieldPrefix);
+				if (versemap != null) {
+					fieldOn = true;
+					writer.write("{{field-on:bible}}");
+				}
 			}
 		}
 
@@ -516,7 +549,7 @@ public class LogosHTML implements ExportFormat {
 				suffixStack.set(suffixStack.size() - 1, "");
 				grammarFlag = true;
 			}
-			if (fieldPrefix != null && suffixStack.size() == 1) {
+			if (fieldPrefix != null && suffixStack.size() == 1 && versemap != null) {
 				writer.write("{{field-off:bible}}");
 				fieldOn = false;
 			}
@@ -562,7 +595,7 @@ public class LogosHTML implements ExportFormat {
 			} else if (!firstVerse.equals(lastVerse)) {
 				ref += "-" + lastVerse;
 			}
-			pushSuffix(" &gt;&gt; " + versemap + ":" + LOGOS_BOOKS.get(book) + " " + ref + "]]");
+			pushSuffix(" &gt;&gt; " + (versemap == null ? "Bible" : versemap) + ":" + LOGOS_BOOKS.get(book) + " " + ref + "]]");
 			return this;
 		}
 
