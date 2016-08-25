@@ -1,7 +1,3 @@
-01 unterwegs.html
-Fasten"\.¶
-Fasten".<br />¶
-
 3jo.html
 <p><p><a href="#top">
 <p><a href="#top">
@@ -39,10 +35,14 @@ jer.html
 jes.html
 "fn">11\.10:
 "fn">11,10:
+<p class="poet" id="64"><a href="#top"><span class="kap">64</span></a> ([^¶]*)
+<p class="poet">$1</p>¶<p class="poet" id="64"><a href="#top"><span class="kap">64</span></a>&nbsp;
 
 lk.html
 "fn">22,43:
 "fn">22,44:
+href="3mo.html#10"
+href="3mo.html#25"
 
 mi.html
 <h2 id="vo">6-7:</a>
@@ -51,6 +51,8 @@ mi.html
 mk.html
 >,20\)\.¶</div>
 >,20).</div>
+Viertel der
+Viertel* der
 
 nah.html
 <h2 id="be">3:</a>
@@ -61,8 +63,8 @@ neh.html
 <p>$1 </p>¶<p><a href="#top"><span class="kap">8</span></a>&nbsp;
 
 phm.html
-<p id="1">
-<h2>(Inhalt)</h2>¶<p id="1">
+¶¶<p id="1">
+¶<h2>(Inhalt)</h2>¶<p id="1">
 
 ps.html
 Chor\.¶</div>
@@ -79,8 +81,8 @@ Chor.</div>
 <div
 
 spr.html
-<p class="poet" id="16">
-<h4 id="16">(Sprichw&ouml;rter Salomos)</h4>¶<p class="poet" id="16">
+¶¶<p class="poet" id="16">
+¶<h4 id="16">(Sprichw&ouml;rter Salomos)</h4>¶<p class="poet" id="16">
 
 1tim.html
 ¶<div class="fn"></div>¶
@@ -97,4 +99,16 @@ class="fn">15,18:
 off.html
 einem K&ouml;nigsvolk gemacht
 einem K&ouml;nigsvolk* gemacht
+</div><div class="fn">
+</div>¶<div class="fn">
+
+hebr.html
+19,16-19; 20,18-21</a>
+19,16-19</a>; 20,18-21
+
+mt.html
+"fn">13,23:
+"fn">13,32:
+"fn">20,6.9:
+"fn">20,6:
 

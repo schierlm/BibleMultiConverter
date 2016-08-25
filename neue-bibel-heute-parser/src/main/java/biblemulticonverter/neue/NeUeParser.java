@@ -121,7 +121,11 @@ public class NeUeParser implements ImportFormat {
 		metadata.setValue(MetadataBookKey.language, "GER");
 		bible.getBooks().add(metadata.getBook());
 
-		try (BufferedReader br = createReader(inputDirectory, "NeUe.htm")) {
+		String mainFile = "NeUe.htm";
+		if (!new File(inputDirectory, mainFile).exists())
+			mainFile = "index.htm";
+
+		try (BufferedReader br = createReader(inputDirectory, mainFile)) {
 			String line = br.readLine().trim();
 			while (!line.startsWith("<p class=\"u3\">")) {
 				if (line.contains("Textstand: ")) {
@@ -162,6 +166,7 @@ public class NeUeParser implements ImportFormat {
 			}
 			if (bookIndex != METADATA.length)
 				throw new IOException(bookIndex + " != " + METADATA.length);
+			if (jcIndex == 0) JESUS_CHRONIK = new String[0];
 			if (jcIndex != JESUS_CHRONIK.length)
 				throw new IOException(jcIndex + " != " + JESUS_CHRONIK.length);
 
@@ -441,7 +446,8 @@ public class NeUeParser implements ImportFormat {
 		vv.visitRawHTML(RawHTMLMode.ONLINE, "<br /><img src=\"http://www.alt.kh-vanheiden.de/NeUe/Bibeltexte/Hesekiels%20Tempel.gif\" width=\"640\" height=\"635\">");
 
 		// Jesus-Chronik
-		vv.visitHeadline(1).visitText("Die Jesus-Chronik");
+		if (JESUS_CHRONIK.length > 0)
+			vv.visitHeadline(1).visitText("Die Jesus-Chronik");
 		for (String name : JESUS_CHRONIK) {
 			if (!new File(inputDirectory, name + ".html").exists()) {
 				System.out.println("*** Skipping " + name + " - file not found ***");
@@ -575,7 +581,7 @@ public class NeUeParser implements ImportFormat {
 				String text = replaceEntities(html.substring(pos1 + 2, pos2).trim());
 				String verse, toVerse;
 				String linkTarget = html.substring(tagPos + 9, pos1);
-				if (linkTarget.startsWith("NeUe.htm")) {
+				if (linkTarget.startsWith("NeUe.htm") || linkTarget.startsWith("index.htm") || linkTarget.endsWith("derbibelvertrauen.de")) {
 					filename = null;
 					verse = chapter = toVerse = toChapter = null;
 				} else if (linkTarget.endsWith(".html")) {
