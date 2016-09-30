@@ -11,6 +11,7 @@ import biblemulticonverter.format.ImportFormat;
 import biblemulticonverter.format.RoundtripFormat;
 import biblemulticonverter.mybiblezone.format.MyBibleZone;
 import biblemulticonverter.mybiblezone.format.MyBibleZoneDictionary;
+import biblemulticonverter.mybiblezone.tools.SQLiteDump;
 import biblemulticonverter.tools.Tool;
 
 public class MyBibleModuleRegistry extends ModuleRegistry {
@@ -36,6 +37,8 @@ public class MyBibleModuleRegistry extends ModuleRegistry {
 
 	@Override
 	public Collection<Module<Tool>> getTools() {
-		return Collections.emptyList();
+		List<Module<Tool>> result = new ArrayList<Module<Tool>>();
+		result.add(new Module<Tool>("SQLiteDump", "Dump SQLite file as a diffable text file.", SQLiteDump.HELP_TEXT, SQLiteDump.class));
+		return result;
 	}
 }

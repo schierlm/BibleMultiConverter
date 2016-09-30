@@ -92,6 +92,10 @@ The schema can be given as a file, as an URL or one of the embedded schema names
 invalid XML input file, the schema usually provides better error messages than what is
 provided by the import modules.
 
+The *SQLiteDump* tool (part of the MyBible.Zone edition) can dump SQLite databases in a
+diffable text format; useful for diagnosing problems with Bible programs that use
+SQLite based formats or for importing MyBible.Zone bibles.
+
 
 Planned formats
 ---------------
