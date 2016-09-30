@@ -1,12 +1,20 @@
 package biblemulticonverter.format;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
+import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
@@ -18,10 +26,10 @@ import biblemulticonverter.data.MetadataBook.MetadataBookKey;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 
-public class YCHPalmBible implements ExportFormat {
+public class YCHPalmBible implements RoundtripFormat {
 
 	public static final String[] HELP_TEXT = {
-			"Export format for YCHBibleConverter for PalmBible+"
+			"YCHBibleConverter for PalmBible+"
 	};
 
 	private static final String CHAPTER_NAME = "Kapitel";
@@ -143,5 +151,160 @@ public class YCHPalmBible implements ExportFormat {
 			bw.write("</BIBLE>");
 			bw.newLine();
 		}
+	}
+
+	@Override
+	public Bible doImport(File inputFile) throws Exception {
+		String content = new String(Files.readAllBytes(inputFile.toPath()), StandardCharsets.ISO_8859_1);
+		content = content.replaceAll("[\r\n\t ]+", " ").replace(" <", "<").replaceAll("> ", ">");
+		if (!content.startsWith("<PARSERINFO "))
+			throw new IOException("Invalid file, does not start with <PARSERINFO>");
+		int pos = content.indexOf('>');
+		Map<String, String> params = parseParams(content.substring(12, pos));
+
+		String charset = params.get("DECODE");
+		if (charset == null)
+			charset = params.get("ENCODE");
+		else
+			charset = "ISO-8859-1";
+		content = new String(content.substring(pos + 1).getBytes(StandardCharsets.ISO_8859_1), charset);
+		if (!content.startsWith("<BIBLE ")) {
+			throw new IOException("Missing tag <BIBLE>");
+		}
+		pos = content.indexOf('>');
+		params = parseParams(content.substring(7, pos));
+		String name = params.get("NAME");
+		String info = params.get("INFO");
+		if (name == null || name.isEmpty())
+			name = "Untitled YCHPalmBible bible";
+		Bible bbl = new Bible(name);
+		if (info != null && !info.equals(name)) {
+			MetadataBook mb = new MetadataBook();
+			mb.setValue(MetadataBookKey.description, info);
+			bbl.getBooks().add(mb.getBook());
+		}
+		int offs = pos + 1;
+		while (content.startsWith("<BOOK ", offs)) {
+			pos = content.indexOf('>', offs);
+			params = parseParams(content.substring(offs + 6, pos));
+			offs = pos + 1;
+			String bname = params.get("NAME");
+			int bnumber = Integer.parseInt(params.get("NUMBER"));
+			String babbr = params.get("SHORTCUT");
+			BookID bid = null;
+			for (int i = 0; i < PALM_BOOK_NUMBERS.length; i++) {
+				if (PALM_BOOK_NUMBERS[i] == bnumber)
+					bid = BookID.fromZefId(i);
+			}
+			if (bid == null)
+				throw new IOException("Unsupported BOOK NUMBER: " + bnumber);
+			Book bk = new Book(babbr, bid, bname, bname);
+			while (content.startsWith("<CHAPTER>", offs)) {
+				offs += 9;
+				Chapter ch = new Chapter();
+				int vnum = 1;
+				while (content.startsWith("<VERSE>", offs)) {
+					pos = content.indexOf("</VERSE>", offs);
+					String[] verseContent = parseVerseContent(content.substring(offs + 7, pos));
+					offs = pos + 8;
+					Verse vv = new Verse("" + vnum);
+					vnum++;
+					if (verseContent.length == 1) {
+						if (verseContent[0].isEmpty())
+							continue;
+						verseContent = new String[] { "", "<VERSTEXT>", verseContent[0] };
+					}
+					if (!verseContent[0].isEmpty())
+						throw new IOException("Untagged text inside verse: " + verseContent[0]);
+					for (int i = 1; i < verseContent.length; i += 2) {
+						switch (verseContent[i]) {
+						case "<BOOKTEXT>":
+							if (bk.getChapters().size() > 0) {
+								throw new IOException("<BOOKTEXT> not in first chapter");
+							}
+							bk = new Book(babbr, bid, bname, verseContent[i + 1]);
+							break;
+						case "<CHAPTEXT>":
+							vv.getAppendVisitor().visitHeadline(1).visitText(verseContent[i + 1]);
+							break;
+						case "<DESCTEXT>":
+							vv.getAppendVisitor().visitHeadline(9).visitText(verseContent[i + 1]);
+							break;
+						case "<VERSTEXT>":
+							vv.getAppendVisitor().visitText(verseContent[i + 1]);
+							break;
+						default:
+							throw new RuntimeException("Internal error parsing verse content: " + verseContent[i]);
+						}
+					}
+
+					ch.getVerses().add(vv);
+				}
+				if (!content.startsWith("</CHAPTER>", offs))
+					throw new IOException("<CHAPTER> tag not closed: " + babbr + "/" + bname);
+				offs += 10;
+				bk.getChapters().add(ch);
+			}
+			if (!content.startsWith("</BOOK>", offs))
+				throw new IOException("<BOOK> tag not closed: " + babbr + "/" + bname);
+			offs += 7;
+			bbl.getBooks().add(bk);
+		}
+		if (!content.substring(offs).equals("</BIBLE>"))
+			throw new IOException("Unknown tag, </BIBLE> expected");
+		return bbl;
+	}
+
+	private Map<String, String> parseParams(String tagContent) throws IOException {
+		Map<String, String> result = new HashMap<>();
+		while (tagContent.length() > 1) {
+			int pos = tagContent.indexOf("=\"");
+			if (pos == -1)
+				throw new IOException("Malformed parameter: " + tagContent);
+			String name = tagContent.substring(0, pos);
+			tagContent = tagContent.substring(pos + 2);
+			pos = tagContent.indexOf('"');
+			if (pos == -1)
+				throw new IOException("Unclosed parameter value: " + tagContent);
+			String value = tagContent.substring(0, pos);
+			tagContent = tagContent.substring(pos + 1).trim();
+			if (name.matches("[A-Z]+")) {
+				result.put(name, value);
+			} else {
+				System.out.println("WARNING: Skipping unsupported attribute name: " + name);
+			}
+		}
+		return result;
+	}
+
+	private String[] parseVerseContent(String content) {
+		String[] delims = { "<BOOKTEXT>", "<CHAPTEXT>", "<DESCTEXT>", "<VERSTEXT>" };
+		List<String> result = new ArrayList<>();
+		while (true) {
+			int pos = -1;
+			for (String delim : delims) {
+				int delimPos = content.indexOf(delim);
+				if (delimPos != -1 && (pos == -1 || delimPos < pos)) {
+					pos = delimPos;
+				}
+			}
+			if (pos == -1)
+				break;
+			result.add(content.substring(0, pos));
+			result.add(content.substring(pos, pos + 10));
+			content = content.substring(pos + 10);
+		}
+		result.add(content);
+		return (String[]) result.toArray(new String[result.size()]);
+	}
+
+	@Override
+	public boolean isExportImportRoundtrip() {
+		return false;
+	}
+
+	@Override
+	public boolean isImportExportRoundtrip() {
+		return false;
 	}
 }

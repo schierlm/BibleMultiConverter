@@ -53,7 +53,7 @@ In addition, the following other formats are supported, with varying accuracy:
   format)
 - **ZefDic** (Zefania's dictionary format): import and export (two export filters)
 - **TheWord**: import and export
-- **PalmBible+**: export only
+- **PalmBible+**: import and export (for the XML-like format used to build PDBs)
 - **MobiPocket**: export only
 - **Volksbibel2000**: export only
 - **OnLineBible**: export only
