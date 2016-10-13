@@ -15,6 +15,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
@@ -146,6 +148,20 @@ public class TheWord implements RoundtripFormat {
 						line = line.replaceAll("  +", " ").trim();
 						hasVerses = true;
 						Verse v = new Verse("" + vnumber);
+						if (line.contains("<WH") || line.contains("<WG")) {
+							Matcher m = Pattern.compile("(<FI>[^<> ]*<Fi>|[^<> ]*)((<W[GH][0-9]+>)+)").matcher(line.replaceFirst("^(<W[GH][0-9]+x>)+", ""));
+							StringBuffer sb = new StringBuffer();
+							while (m.find()) {
+								String word = m.group(1);
+								String tags = m.group(2);
+								m.appendReplacement(sb, "");
+								sb.append("<S%" + tags.substring(3, tags.length() - 1).replaceAll("><W[GH]", "%") + ">");
+								sb.append(word);
+								sb.append("<s%>");
+							}
+							m.appendTail(sb);
+							line = sb.toString();
+						}
 						int pos = parseLine(v.getAppendVisitor(), line, 0, null);
 						if (pos != line.length())
 							v.getAppendVisitor().visitText(line.substring(pos));
@@ -216,6 +232,11 @@ public class TheWord implements RoundtripFormat {
 					pos = parseLine(visitor.visitFormattingInstruction(FormattingInstructionKind.WORDS_OF_JESUS), line, pos + 4, "<Fr>");
 					continue;
 				}
+			} else if (line.startsWith("<FO>", pos)) {
+				if (parseLine(garbageVisitor, line, pos + 4, "<Fo>") != -1) {
+					pos = parseLine(visitor.visitFormattingInstruction(FormattingInstructionKind.LINK), line, pos + 4, "<Fo>");
+					continue;
+				}
 			} else if (line.startsWith("<font color=\"gray\">/</font>", pos)) {
 				visitor.visitVerseSeparator();
 				pos += 27;
@@ -262,8 +283,23 @@ public class TheWord implements RoundtripFormat {
 					pos = parseLine(visitor.visitFormattingInstruction(FormattingInstructionKind.ITALIC), line, pos + 4, "<Fi>");
 					continue;
 				}
-			} else if (line.startsWith("<WG", pos) || line.startsWith("<WH", pos) || line.startsWith("<WT", pos)) {
-				// TODO parse grammar information
+			} else if (line.startsWith("<S%", pos)) {
+				int closePos = line.indexOf('>', pos);
+				if (parseLine(garbageVisitor, line, closePos + 1, "<s%>") != -1) {
+					String[] strongs = line.substring(pos + 3, closePos).split("%");
+					int[] strongNumbers = new int[strongs.length];
+					try {
+						for (int i = 0; i < strongs.length; i++) {
+							strongNumbers[i] = Integer.parseInt(strongs[i]);
+						}
+						pos = parseLine(visitor.visitGrammarInformation(strongNumbers, null, null), line, closePos + 1, "<s%>");
+						continue;
+					} catch (NumberFormatException ex) {
+						// malformed Strongs tag
+					}
+				}
+			} else if (line.startsWith("<WT", pos)) {
+				// TODO parse morph information
 			} else if (line.startsWith("<RX", pos)) {
 				// TODO parse cross references
 			} else if (line.startsWith("<CI>", pos) || line.startsWith("<PF", pos) || line.startsWith("<PI", pos)) {
