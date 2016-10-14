@@ -1,4 +1,4 @@
-package biblemulticonverter.mybiblezone.tools;
+package biblemulticonverter.sqlite.tools;
 
 import java.io.BufferedWriter;
 import java.io.File;

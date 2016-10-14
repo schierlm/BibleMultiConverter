@@ -1,4 +1,4 @@
-package biblemulticonverter.mybiblezone.format;
+package biblemulticonverter.sqlite.format;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -17,7 +17,7 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.format.ExportFormat;
-import biblemulticonverter.mybiblezone.format.MyBibleZone.MyBibleHTMLVisitor;
+import biblemulticonverter.sqlite.format.MyBibleZone.MyBibleHTMLVisitor;
 
 public class MyBibleZoneDictionary implements ExportFormat {
 

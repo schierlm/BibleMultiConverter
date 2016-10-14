@@ -59,8 +59,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **OnLineBible**: export only
 - **[BrowserBible](https://github.com/digitalbiblesociety/browserbible-3/)**: export only
 - **SWORD modules**: import only (see below for details)
-- **MyBible.Zone**: import and export (in a special edition as it requires SQLite
-  support)
+- **MyBible.Zone**: import and export (in a special SQLite edition)
 
 In combination with third party tools, other export formats are available:
 
@@ -92,7 +91,7 @@ The schema can be given as a file, as an URL or one of the embedded schema names
 invalid XML input file, the schema usually provides better error messages than what is
 provided by the import modules.
 
-The *SQLiteDump* tool (part of the MyBible.Zone edition) can dump SQLite databases in a
+The *SQLiteDump* tool (part of the SQLite edition) can dump SQLite databases in a
 diffable text format; useful for diagnosing problems with Bible programs that use
 SQLite based formats or for importing MyBible.Zone bibles.
 

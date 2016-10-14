@@ -44,7 +44,7 @@
 		<module>biblemulticonverter</module>
 		<module>biblemulticonverter-logos</module>
 		<module>biblemulticonverter-sword</module>
-		<module>biblemulticonverter-mybible.zone</module>
+		<module>biblemulticonverter-sqlite</module>
 		<module>biblemulticonverter-allinone</module>
 		<module>neue-bibel-heute-parser</module>
 	</modules>

@@ -1,4 +1,4 @@
-package biblemulticonverter.mybiblezone;
+package biblemulticonverter.sqlite;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -9,9 +9,9 @@ import biblemulticonverter.ModuleRegistry;
 import biblemulticonverter.format.ExportFormat;
 import biblemulticonverter.format.ImportFormat;
 import biblemulticonverter.format.RoundtripFormat;
-import biblemulticonverter.mybiblezone.format.MyBibleZone;
-import biblemulticonverter.mybiblezone.format.MyBibleZoneDictionary;
-import biblemulticonverter.mybiblezone.tools.SQLiteDump;
+import biblemulticonverter.sqlite.format.MyBibleZone;
+import biblemulticonverter.sqlite.format.MyBibleZoneDictionary;
+import biblemulticonverter.sqlite.tools.SQLiteDump;
 import biblemulticonverter.tools.Tool;
 
 public class MyBibleModuleRegistry extends ModuleRegistry {

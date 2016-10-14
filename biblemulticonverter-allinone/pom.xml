@@ -32,7 +32,7 @@
 		</dependency>
 		<dependency>
 			<groupId>biblemulticonverter</groupId>
-			<artifactId>BibleMultiConverter-MyBibleZoneEdition</artifactId>
+			<artifactId>BibleMultiConverter-SQLiteEdition</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 	</dependencies>
