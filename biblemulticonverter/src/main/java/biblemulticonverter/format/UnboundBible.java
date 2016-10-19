@@ -182,7 +182,7 @@ public class UnboundBible implements RoundtripFormat {
 			if (!line.equals("#columns\t" + filetype.getColumnHeader()))
 				throw new IOException(line);
 			Map<BookID, Book> books = new HashMap<>();
-			int sorting = -1;
+			int sorting = -1, lastChapter = 0;
 			String[] lastFields = new String[0];
 			while ((line = br.readLine()) != null) {
 				if (line.startsWith("#"))
@@ -202,6 +202,7 @@ public class UnboundBible implements RoundtripFormat {
 					bk = new Book(bi.id.getOsisID(), bi.id, bi.name, bi.name);
 					result.getBooks().add(bk);
 					books.put(bi.id, bk);
+					lastChapter = 0;
 				}
 				int chapter = Integer.parseInt(fields[1]);
 				String verse = "" + Integer.parseInt(fields[2]);
@@ -227,6 +228,12 @@ public class UnboundBible implements RoundtripFormat {
 						throw new IOException(subverse);
 					}
 				}
+				if (chapter < lastChapter) {
+					System.out.println("WARNING: Verses reordered across chapters detected");
+					verse = chapter+","+verse;
+					chapter = lastChapter;
+				}
+				lastChapter = chapter;
 				int sortingDiff = 0;
 				if (fields[4] == null) {
 					if (sorting != -1)
@@ -239,6 +246,8 @@ public class UnboundBible implements RoundtripFormat {
 						sortingDiff = s - (sorting == -1 ? 10 : sorting + 10);
 					}
 					sorting = s;
+					if (lastFields.length > 5 && lastFields[5].equals(fields[5]) && lastFields[2].equals(fields[2]))
+						System.out.println("WARNING: Same verse text as previous: " + line);
 				}
 				lastFields = fields;
 				String text = fields[5];
@@ -332,9 +341,11 @@ public class UnboundBible implements RoundtripFormat {
 		UnboundBibleFileType fileType = fileTypeName != null ? UnboundBibleFileType.valueOf(fileTypeName) : UnboundBibleFileType.Unmapped_BCVS;
 		Map<String, List<String[]>> mapping = new HashMap<>();
 		Map<BookID, List<String>> extraEmptyVerses = new EnumMap<>(BookID.class);
+		List<Book> allBooks = new ArrayList<>(bible.getBooks());
 		if (exportArgs.length == 2) {
 			try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(exportArgs[1]), StandardCharsets.UTF_8))) {
 				String line;
+				List<Book> nonexistingExtraEmptyVersesBooks = new ArrayList<>();
 				while ((line = br.readLine()) != null) {
 					if (line.isEmpty() || line.startsWith("#"))
 						continue;
@@ -353,6 +364,19 @@ public class UnboundBible implements RoundtripFormat {
 						if (!extraEmptyVerses.containsKey(id))
 							extraEmptyVerses.put(id, new ArrayList<String>());
 						extraEmptyVerses.get(id).add(fields[0] + "\t" + fields[1] + "\t" + fields[2] + "\t" + fields[3] + "\t" + fields[4] + "\t" + fields[5] + "\t" + fields[6] + "\t0\t");
+						Book existingBook = null;
+						for(Book bk : allBooks) {
+							if (bk.getId() == id)
+								existingBook = bk;
+						}
+						if (existingBook == null) {
+							if (nonexistingExtraEmptyVersesBooks.isEmpty() || nonexistingExtraEmptyVersesBooks.get(nonexistingExtraEmptyVersesBooks.size()-1).getId() != id)
+								nonexistingExtraEmptyVersesBooks.add(new Book(id.getOsisID(), id, id.getOsisID(), id.getOsisID()));
+						} else if (!nonexistingExtraEmptyVersesBooks.isEmpty()) {
+							int pos = allBooks.indexOf(existingBook);
+							allBooks.addAll(pos, nonexistingExtraEmptyVersesBooks);
+							nonexistingExtraEmptyVersesBooks.clear();
+						}
 					} else {
 						throw new IOException(line);
 					}
@@ -374,7 +398,7 @@ public class UnboundBible implements RoundtripFormat {
 			writeMetadata(bw, "note", mb.getValue(MetadataBookKey.description));
 			bw.write("#columns\t" + fileType.getColumnHeader() + "\r\n");
 			int[] sorting = { 0 };
-			for (Book bk : bible.getBooks()) {
+			for (Book bk : allBooks) {
 				if (bk.getId() == BookID.METADATA)
 					continue;
 				UnboundBibleBookInfo bi = BOOK_INFO_BY_ID.get(bk.getId());
@@ -393,11 +417,16 @@ public class UnboundBible implements RoundtripFormat {
 					for (Verse vv : ch.getVerses()) {
 						String vn = vv.getNumber(), svn = "";
 						int c = chapter;
-						if (c == 1 && vn.endsWith("//")) {
+						if (vn.matches("[0-9]+,.*")) {
+							int pos = vn.indexOf(',');
+							c = Integer.parseInt(vn.substring(0, pos));
+							vn = vn.substring(pos+1);
+						}
+						if (vn.equals("1-/") || vn.equals("1-//")) {
+							vn = "0";
+						} else if (c == 1 && vn.endsWith("//")) {
 							c = 0;
 							vn = vn.substring(0, vn.length() - 2);
-						} else if (vn.equals("1-/")) {
-							vn = "0";
 						} else if (vn.endsWith("/a")) {
 							vn = vn.substring(0, vn.length() - 2);
 							svn = "EndA";
