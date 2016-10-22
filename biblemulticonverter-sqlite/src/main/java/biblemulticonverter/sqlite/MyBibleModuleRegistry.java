@@ -9,6 +9,7 @@ import biblemulticonverter.ModuleRegistry;
 import biblemulticonverter.format.ExportFormat;
 import biblemulticonverter.format.ImportFormat;
 import biblemulticonverter.format.RoundtripFormat;
+import biblemulticonverter.sqlite.format.BibleAnalyzerDatabase;
 import biblemulticonverter.sqlite.format.MyBibleZone;
 import biblemulticonverter.sqlite.format.MyBibleZoneDictionary;
 import biblemulticonverter.sqlite.tools.SQLiteDump;
@@ -25,6 +26,7 @@ public class MyBibleModuleRegistry extends ModuleRegistry {
 	public Collection<Module<ExportFormat>> getExportFormats() {
 		List<Module<ExportFormat>> result = new ArrayList<Module<ExportFormat>>();
 		result.add(new Module<ExportFormat>("MyBibleZoneDictionary", "MyBible.zone (Bible Reader for Android) Dictionary.", MyBibleZoneDictionary.HELP_TEXT, MyBibleZoneDictionary.class));
+		result.add(new Module<ExportFormat>("BibleAnalyzerDatabase", "Database Export format for Bible Analyzer", BibleAnalyzerDatabase.HELP_TEXT, BibleAnalyzerDatabase.class));
 		return result;
 	}
 

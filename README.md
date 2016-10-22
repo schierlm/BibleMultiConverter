@@ -61,6 +61,8 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[BrowserBible](https://github.com/digitalbiblesociety/browserbible-3/)**: export only
 - **SWORD modules**: import only (see below for details)
 - **MyBible.Zone**: import and export (in a special SQLite edition)
+- **[Bible Analyzer](http://www.bibleanalyzer.com/)**: export only (text export for
+  bibles and dictionaries, SQLite export for bibles)
 
 In combination with third party tools, other export formats are available:
 
