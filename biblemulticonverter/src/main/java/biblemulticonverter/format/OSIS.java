@@ -86,13 +86,13 @@ public class OSIS implements RoundtripFormat {
 			String titleDesc = xpath.evaluate("/osis/osisText/titlePage/description/text()", osisDoc);
 			MetadataBook mb = new MetadataBook();
 			if (!description.isEmpty())
-				mb.setValue(MetadataBookKey.description, description.trim());
+				mb.setValue(MetadataBookKey.description, description.replaceAll("[\r\n\t ]+", " ").trim());
 			if (!rights.isEmpty())
-				mb.setValue(MetadataBookKey.rights, rights.trim());
+				mb.setValue(MetadataBookKey.rights, rights.replaceAll("[\r\n\t ]+", " ").trim());
 			if (!date.isEmpty())
 				mb.setValue(MetadataBookKey.date, date);
 			if (!titleDesc.isEmpty())
-				mb.setValue("description@titlePage", titleDesc.trim());
+				mb.setValue("description@titlePage", titleDesc.replaceAll("[\r\n\t ]+", " ").trim());
 			mb.finished();
 			result.getBooks().add(mb.getBook());
 		}
