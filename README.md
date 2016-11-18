@@ -59,6 +59,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **Volksbibel2000**: export only
 - **OnLineBible**: export only
 - **[BrowserBible](https://github.com/digitalbiblesociety/browserbible-3/)**: export only
+- **[Quick Bible](http://www.bibleforandroid.com/)**: export only
 - **SWORD modules**: import only (see below for details)
 - **MyBible.Zone**: import and export (in a special SQLite edition)
 - **[Bible Analyzer](http://www.bibleanalyzer.com/)**: export only (text export for
