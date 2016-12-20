@@ -68,10 +68,10 @@ public class LogosNestedHyperlinkPostprocessor implements Tool {
 		});
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		Map<String, String> linkIDs = new HashMap<String, String>();
-		try (ZipInputStream zis = new ZipInputStream(new FileInputStream(args[0]));
-				ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(args[1]))) {
-			ZipEntry ze, rels = null;
-			Document relsDoc = null;
+		ZipEntry rels = null;
+		Document relsDoc = null;
+		try (ZipInputStream zis = new ZipInputStream(new FileInputStream(args[0]))) {
+			ZipEntry ze ;
 			while ((ze = zis.getNextEntry()) != null) {
 				if (ze.getName().equals("word/_rels/document.xml.rels")) {
 					baos.reset();
@@ -80,6 +80,15 @@ public class LogosNestedHyperlinkPostprocessor implements Tool {
 					dbf.setNamespaceAware(false);
 					relsDoc = dbf.newDocumentBuilder().parse(new ByteArrayInputStream(baos.toByteArray()));
 					dbf.setNamespaceAware(true);
+					break;
+				}
+			}
+		}
+		try (ZipInputStream zis = new ZipInputStream(new FileInputStream(args[0]));
+				ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(args[1]))) {
+			ZipEntry ze;
+			while ((ze = zis.getNextEntry()) != null) {
+				if (ze.getName().equals("word/_rels/document.xml.rels")) {
 					// add it later
 					continue;
 				}
