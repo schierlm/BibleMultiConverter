@@ -284,7 +284,7 @@ public class LogosHTML implements ExportFormat {
 						}
 						bw.write(book.getLongName() + "</h2>\n");
 						footnoteNumber = 0;
-						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, versemap, scheme, null, 2));
+						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, versemap, scheme, null, null, null, 2));
 						bw.write("\n<br/>\n");
 						continue;
 					}
@@ -333,13 +333,15 @@ public class LogosHTML implements ExportFormat {
 		}
 		footnoteNumber = 0;
 		if (chapter.getProlog() != null) {
-			chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, null, usedHeadlines));
+			chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, null, null, null, usedHeadlines));
 			bw.write("\n<br/>\n");
 		}
 		for (VerseRange vr : chapter.createVerseRanges()) {
-			String versePrefix = "";
+			String versePrefix = "", versePrefixBeforeHeadline = "", versePrefixAfterHeadline = "";
 			if (writeChapterNumber) {
 				versePrefix = "<b style=\"font-size: 20pt\">[[" + chapterRef + "]]" + cname + "</b>" + verseSeparator;
+				versePrefixBeforeHeadline = "[[" + chapterRef + "]]";
+				versePrefixAfterHeadline = "<b style=\"font-size: 20pt\">" + cname + "</b>" + verseSeparator;
 				writeChapterNumber = false;
 			}
 			BitSet allowedVerses = thisChapterVerses;
@@ -355,21 +357,27 @@ public class LogosHTML implements ExportFormat {
 					maxVerse--;
 				while (minVerse <= maxVerse && !allowedVerses.get(minVerse))
 					minVerse++;
+				String verseMilestone = "";
 				if (minVerse == maxVerse) {
 					if (minVerse >= 1000 && minVerse < 1000 + NAMED_VERSES.length) {
-						versePrefix += "[[@" + formatMilestone(milestone, vcname, NAMED_VERSES[minVerse - 1000]) + "]]";
+						verseMilestone += "[[@" + formatMilestone(milestone, vcname, NAMED_VERSES[minVerse - 1000]) + "]]";
 					} else {
-						versePrefix += "[[@" + formatMilestone(milestone, vcname, ""+minVerse) + "]]";
+						verseMilestone += "[[@" + formatMilestone(milestone, vcname, "" + minVerse) + "]]";
 					}
 				} else if (minVerse < maxVerse) {
-					versePrefix += "[[@" + formatMilestone(milestone, vcname, minVerse + "-" + maxVerse) + "]]";
+					verseMilestone += "[[@" + formatMilestone(milestone, vcname, minVerse + "-" + maxVerse) + "]]";
 				}
+				versePrefix += verseMilestone;
+				versePrefixBeforeHeadline += verseMilestone;
 			}
 
 			for (Verse v : vr.getVerses()) {
 				bw.write(verseSeparator);
-				v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, versePrefix + "<b>" + v.getNumber() + "</b> ", usedHeadlines));
+				String verseNumber = "<b>" + v.getNumber() + "</b> ";
+				v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, versePrefix + verseNumber, versePrefixBeforeHeadline, versePrefixAfterHeadline + verseNumber, usedHeadlines));
 				versePrefix = "";
+				versePrefixBeforeHeadline = "";
+				versePrefixAfterHeadline = "";
 				bw.write("\n");
 			}
 		}
@@ -512,23 +520,28 @@ public class LogosHTML implements ExportFormat {
 		VersificationScheme scheme;
 		private boolean grammarFlag;
 		private final String fieldPrefix;
-		private boolean fieldOn = false;
+		private final String fieldPrefixBeforeHeadline;
+		private final String fieldPrefixAfterHeadline;
+		private boolean fieldOn = false, fieldPrefixBeforeHeadlineWritten = false;
 		private final int usedHeadlines;
 
-		protected LogosVisitor(Writer writer, String suffix, StringWriter footnoteWriter, boolean nt, String versemap, VersificationScheme scheme, String fieldPrefix, int usedHeadlines) {
+		protected LogosVisitor(Writer writer, String suffix, StringWriter footnoteWriter, boolean nt, String versemap, VersificationScheme scheme, String fieldPrefix, String fieldPrefixBeforeHeadline, String fieldPrefixAfterHeadline, int usedHeadlines) {
 			super(writer, suffix);
 			this.footnoteWriter = footnoteWriter;
 			this.nt = nt;
 			this.versemap = versemap;
 			this.scheme = scheme;
 			this.fieldPrefix = fieldPrefix;
+			this.fieldPrefixBeforeHeadline = fieldPrefixBeforeHeadline;
+			this.fieldPrefixAfterHeadline = fieldPrefixAfterHeadline;
 			this.usedHeadlines = usedHeadlines;
 		}
 
 		@Override
 		public void visitStart() throws IOException {
 			if (fieldPrefix != null && suffixStack.size() == 1) {
-				writer.write(fieldPrefix);
+				writer.write(fieldPrefixBeforeHeadlineWritten ? fieldPrefixAfterHeadline : fieldPrefix);
+				fieldPrefixBeforeHeadlineWritten = true;
 				if (versemap != null) {
 					fieldOn = true;
 					writer.write("{{field-on:bible}}");
@@ -565,6 +578,10 @@ public class LogosHTML implements ExportFormat {
 				suffix += "{{field-on:bible}}";
 			}
 			writer.write("<h" + level + ">");
+			if (suffixStack.size() == 1 && fieldPrefix != null && !fieldPrefixBeforeHeadlineWritten) {
+				writer.write(fieldPrefixBeforeHeadline);
+				fieldPrefixBeforeHeadlineWritten = true;
+			}
 			pushSuffix(suffix);
 			return this;
 		}
@@ -578,7 +595,7 @@ public class LogosHTML implements ExportFormat {
 
 			footnoteWriter.write("<DIV ID=\"sdfootnote" + footnoteCounter + "\">");
 			writer.write("<A CLASS=\"sdfootnoteanc\" HREF=\"#sdfootnote" + footnoteCounter + "sym\" sdfixed><sup>" + footnoteNumber + "</sup></A>");
-			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, versemap, scheme, null, usedHeadlines);
+			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, versemap, scheme, null, null, null, usedHeadlines);
 		}
 
 		@Override
