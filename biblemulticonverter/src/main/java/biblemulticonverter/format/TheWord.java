@@ -85,7 +85,7 @@ public class TheWord implements RoundtripFormat {
 						hasVerses = true;
 						Verse v = new Verse("" + vnumber);
 						if (line.contains("<WH") || line.contains("<WG")) {
-							Matcher m = Pattern.compile("(<FI>[^<> ]*<Fi>|[^<> ]*)((<W[GH][0-9]+>)+)").matcher(line.replaceFirst("^(<W[GH][0-9]+x>)+", ""));
+							Matcher m = Pattern.compile("(<FI>[^<>]*<Fi>|<FO>[^<>]*<Fo>|[^<> ]*)((<W[GH][0-9]+>)+)").matcher(line.replaceFirst("^(<W[GH][0-9]+x>)+", ""));
 							StringBuffer sb = new StringBuffer();
 							while (m.find()) {
 								String word = m.group(1);
@@ -233,6 +233,17 @@ public class TheWord implements RoundtripFormat {
 					} catch (NumberFormatException ex) {
 						// malformed Strongs tag
 					}
+				}
+			} else if (line.startsWith("<XWG", pos) || line.startsWith("<XWH", pos)) {
+				int closePos = line.indexOf('>', pos);
+				try {
+					int number = Integer.parseInt(line.substring(pos + 4, closePos));
+					visitor.visitGrammarInformation(new int[] { number }, null, null);
+					pos = closePos + 1;
+					continue;
+				} catch (NumberFormatException ex) {
+					System.out.println("WARNING: Invalid Strong number in tag " + line.substring(pos, closePos + 1));
+					warningCount++;
 				}
 			} else if (line.startsWith("<WT", pos)) {
 				// TODO parse morph information
