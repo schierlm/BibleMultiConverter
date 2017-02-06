@@ -1,8 +1,10 @@
 package biblemulticonverter.format;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
+import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -130,7 +132,8 @@ public class Accordance implements ExportFormat {
 			if (paraMarker)
 				break;
 		}
-		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(exportArgs[0] + ".txt"), StandardCharsets.UTF_8));
+		File mainFile = new File(exportArgs[0] + ".txt");
+		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(mainFile), StandardCharsets.UTF_8));
 				BufferedWriter bnw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(exportArgs[0] + "-booknames.txt"), StandardCharsets.UTF_8))) {
 			for (Book book : bible.getBooks()) {
 				String bookName = BOOK_NAME_MAP.get(book.getId());
@@ -167,6 +170,11 @@ public class Accordance implements ExportFormat {
 						bw.write(verseText + "\n");
 					}
 				}
+			}
+		}
+		if (mainFile.length() > 0) {
+			try (RandomAccessFile raf = new RandomAccessFile(mainFile, "rw")) {
+				raf.setLength(mainFile.length() - 1);
 			}
 		}
 	}
