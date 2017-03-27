@@ -174,7 +174,8 @@ public class MyBibleZone implements RoundtripFormat {
 			int num = (int) cursor.getInteger("book_number");
 			String col = cursor.getString("book_color");
 			String shortName = cursor.getString("short_name").trim().replace(" ", "").replaceAll("[^A-Z0-9a-zäöü]++", "");
-			shortName = shortName.substring(0, 1).toUpperCase() + shortName.substring(1);
+			if(!shortName.isEmpty())
+				shortName = shortName.substring(0, 1).toUpperCase() + shortName.substring(1);
 			String longName = cursor.getString("long_name").trim();
 			BookID bid = null;
 			for (MyBibleZoneBook bi : BOOK_INFO) {
@@ -189,6 +190,8 @@ public class MyBibleZone implements RoundtripFormat {
 				// generate dummy entry not stored in result object
 				bookIDMap.put(num, new Book("Xxx", BookID.BOOK_Gen, "X", "X"));
 			} else {
+				if (shortName.isEmpty())
+					shortName = bid.getOsisID().replaceAll("[^A-Z0-9a-zäöü]++", "");
 				Book bk = new Book(shortName, bid, longName, longName);
 				result.getBooks().add(bk);
 				bookIDMap.put(num, bk);
