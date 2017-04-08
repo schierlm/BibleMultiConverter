@@ -33,6 +33,7 @@ import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.MetadataBook;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.format.AbstractHTMLVisitor;
@@ -142,7 +143,22 @@ public class MyBibleZone implements RoundtripFormat {
 		File footnoteFile = new File(inputFile.getParentFile(), inputFile.getName().replace(".SQLite3", ".commentaries.SQLite3"));
 		if (inputFile.getName().endsWith(".SQLite3") && footnoteFile.exists()) {
 			footnoteDB = SqlJetDb.open(footnoteFile, false);
+			if (!footnoteDB.getTable("commentaries").getIndexesNames().contains("commentaries_index")) {
+				footnoteDB.close();
+				footnoteDB=SqlJetDb.open(footnoteFile, true);
+				checkIndex(footnoteDB, "commentaries", "commentaries_index", "CREATE INDEX commentaries_index on commentaries(book_number, chapter_number_from, verse_number_from)");
+			}
 			footnoteDB.beginTransaction(SqlJetTransactionMode.READ_ONLY);
+		}
+		if (!db.getTable("verses").getIndexesNames().contains("versesIndex") || (db.getSchema().getTable("stories") != null && !db.getTable("stories").getIndexesNames().contains("stories_index"))) {
+			db.close();
+			db = SqlJetDb.open(inputFile, true);
+			checkIndex(db, "verses", "verses_index", "CREATE UNIQUE INDEX verses_index on verses (book_number, chapter, verse)");
+			if (db.getSchema().getTable("stories") != null)
+				if (db.getSchema().getTable("stories").getColumn("order_if_several") == null)
+					checkIndex(db, "stories", "stories_index", "CREATE UNIQUE INDEX stories_index on stories(book_number, chapter, verse)");
+				else
+					checkIndex(db, "stories", "stories_index", "CREATE UNIQUE INDEX stories_index on stories(book_number, chapter, verse, order_if_several)");
 		}
 		db.beginTransaction(SqlJetTransactionMode.READ_ONLY);
 		String bibleName = null;
@@ -154,7 +170,12 @@ public class MyBibleZone implements RoundtripFormat {
 			if (fn.equals("description")) {
 				bibleName = fv;
 			} else if (!fv.isEmpty()) {
-				mb.setValue("MyBible.zone@" + fn.replace('_', '.'), fv);
+				fv = fv.replaceAll("[\r\n]+", "\n").replaceAll(" *\n *", "\n").replaceAll("\n$","");
+				try {
+					mb.setValue("MyBible.zone@" + fn.replace('_', '.'), fv);
+				} catch (IllegalArgumentException ex) {
+					System.out.println("WARNING: Skipping malformed metadata property "+fn);
+				}
 			}
 			cursor.next();
 		}
@@ -163,7 +184,7 @@ public class MyBibleZone implements RoundtripFormat {
 			System.out.println("WARNING: No bible name in info table");
 			bibleName = inputFile.getName();
 		}
-		Bible result = new Bible(bibleName);
+		Bible result = new Bible(bibleName.trim());
 		if (!mb.getKeys().isEmpty()) {
 			mb.finished();
 			result.getBooks().add(mb.getBook());
@@ -190,7 +211,7 @@ public class MyBibleZone implements RoundtripFormat {
 				// generate dummy entry not stored in result object
 				bookIDMap.put(num, new Book("Xxx", BookID.BOOK_Gen, "X", "X"));
 			} else {
-				if (shortName.isEmpty())
+				if (shortName.length() < 2)
 					shortName = bid.getOsisID().replaceAll("[^A-Z0-9a-zäöü]++", "");
 				Book bk = new Book(shortName, bid, longName, longName);
 				result.getBooks().add(bk);
@@ -253,7 +274,7 @@ public class MyBibleZone implements RoundtripFormat {
 						String rest = convertFromVerse(text, vv.getAppendVisitor(), footnoteDB, new int[] { b, c, v });
 						if (!rest.isEmpty()) {
 							System.out.println("WARNING: Treating tags as plaintext: " + rest);
-							vv.getAppendVisitor().visitText(rest);
+							vv.getAppendVisitor().visitText(rest.replace('\t', ' ').replaceAll("  +", " "));
 						}
 					} catch (RuntimeException ex) {
 						throw new RuntimeException(text, ex);
@@ -307,7 +328,7 @@ public class MyBibleZone implements RoundtripFormat {
 							else {
 								String ref = title.substring(0, pos);
 								title = title.substring(pos + 4);
-								vv.getAppendVisitor().visitFormattingInstruction(FormattingInstructionKind.BOLD).visitText(ref);
+								hl.getAppendVisitor().visitFormattingInstruction(FormattingInstructionKind.BOLD).visitText(ref);
 							}
 						}
 						hl.getAppendVisitor().visitText(title);
@@ -337,6 +358,15 @@ public class MyBibleZone implements RoundtripFormat {
 		db.commit();
 		db.close();
 		return result;
+	}
+
+	private void checkIndex(SqlJetDb db, String tableName, String indexName, String definition) throws SqlJetException {
+		if (!db.getTable(tableName).getIndexesNames().contains(indexName)) {
+			System.out.println("WARNING: Rebuilding index "+indexName+" on "+tableName);
+			db.beginTransaction(SqlJetTransactionMode.WRITE);
+			db.createIndex(definition);
+			db.commit();
+		}
 	}
 
 	private void convertFromHTML(String html, Visitor<RuntimeException> vv) {
@@ -393,9 +423,14 @@ public class MyBibleZone implements RoundtripFormat {
 				String[] txt = cleanText(text.substring(3, pos)).split(",");
 				int[] snum = new int[txt.length];
 				for (int i = 0; i < txt.length; i++) {
-					snum[i] = Integer.parseInt(txt[i].trim().replaceAll("^[GH]", ""));
-					if (snum[i] == 0) {
-						System.out.println("WARNING: Strong number may not be zero");
+					try {
+						snum[i] = Integer.parseInt(txt[i].trim().replaceAll("^[GH]", ""));
+						if (snum[i] == 0) {
+							System.out.println("WARNING: Strong number may not be zero");
+							snum[i] = 99999;
+						}
+					} catch (NumberFormatException ex) {
+						System.out.println("WARNING: Invalid Strong number: "+txt[i]);
 						snum[i] = 99999;
 					}
 				}
@@ -405,8 +440,15 @@ public class MyBibleZone implements RoundtripFormat {
 					pos = text.indexOf("</m>");
 					rmac = cleanText(text.substring(3, pos));
 					text = text.substring(pos + 4);
+					if (!Utils.compilePattern(Utils.RMAC_REGEX).matcher(rmac).matches()) {
+						System.out.println("WARNING: Skipping malformed RMAC morphology code: "+rmac);
+						rmac = null;
+					}
 				}
-				vv.visitGrammarInformation(snum, rmac == null ? null : new String[] { rmac }, null).visitText(strongsWord);
+				if (snum.length == 0 && rmac == null)
+					vv.visitText(strongsWord);
+				else
+					vv.visitGrammarInformation(snum.length == 0 ? null : snum, rmac == null ? null : new String[] { rmac }, null).visitText(strongsWord);
 			} else if (text.startsWith("<n>")) {
 				text = convertFromVerse(text.substring(3), vv.visitCSSFormatting("font-style: italic; myBibleType=note"), footnoteDB, vnums);
 				if (!text.startsWith("</n>"))
