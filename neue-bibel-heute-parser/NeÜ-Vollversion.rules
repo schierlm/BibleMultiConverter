@@ -9,6 +9,10 @@
 dan.html
 (<div class="fn">12,7: .*?</div>¶)(<div class="fn">12,5: .*?</div>¶)
 $2$1
+(Chald&auml;er war, get&ouml;tet\.)¶
+$1</p>¶
+<span class="kap" id="11">
+<span class="kap">
 
 hes.html
 mo\.html#l
@@ -75,10 +79,32 @@ Chor.</div>
 "kap">119</span></a>&nbsp;¶<span class="vers">1</span>*<span class="u2"> I &Aacute;lef*</span></p>¶<p class="poet">¶   Wie$1*
 \Q"kap">119</span></a>&nbsp;<span class="u2"> I &Aacute;lef*</span></p>\E¶<p class="poet">¶   <span class="vers">1</span> Wie([^<>]*)</span>&nbsp;\*
 "kap">119</span></a>&nbsp;¶<span class="vers">1</span>*<span class="u2"> I &Aacute;lef*</span></p>¶<p class="poet">¶   Wie$1*
+\Q"kap">119</span></a>&nbsp;<span class="u2"> I &Aacute;lef*</span></p>\E¶<p class="poet"> <span class="vers">1</span>&nbsp;Wie([^<>]*)</span>&nbsp;\*
+"kap">119</span></a>&nbsp; <span class="vers">1</span>&nbsp;*<span class="u2"> I &Aacute;lef*</span></p>¶<p class="poet">  Wie$1*
 <div class="fn">Psalm 119
 <div class="fn">119,1: Psalm 119
 <div class="fn">132,6 <em>von ihr</em>. Gemeint ist die Bundeslade.</div>¶<div
 <div
+von David. / <span class="vers">2</span>&nbsp;Es entstand,
+von David.</em> / <span class="vers">2</span>&nbsp;<em>Es entstand,
+von David. / <span class="vers">2</span>&nbsp;Damals war
+von David.</em> / <span class="vers">2</span>&nbsp;<em>Damals war
+von David, / <span class="vers">2</span>&nbsp;als
+von David,</em> / <span class="vers">2</span>&nbsp;<em>als
+<a href="#">
+<em>
+<span class="tooltipps"></span></a>
+</em>
+(<div class="fn">78,60: .*?</div>¶<div class="fn">78,61: .*?</div>¶)(<div class="fn">78,2: .*?</div>¶<div class="fn">.*?</div>¶<div class="fn">.*?</div>¶<div class="fn">.*?</div>¶<div class="fn">78,51: .*?</div>¶)
+$2$1
+Nachkommen Josefs wie
+Nachkommen Josefs* wie
+(<div class="fn">95,11: .*?</div>¶)(<div class="fn">95,8: .*?</div>¶)
+$2$1
+<div class="fn"><a name="psalm">Psalm</a> <a href="#119">119</a>
+<div class="fn">119,1: <em>Psalm 119</em>
+Wort<a href="#psalm">\*</a></h4>
+Wort</h4>
 
 spr.html
 ¶¶<p class="poet" id="16">

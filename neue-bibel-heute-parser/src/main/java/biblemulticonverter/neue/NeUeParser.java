@@ -141,6 +141,11 @@ public class NeUeParser implements ImportFormat {
 			Pattern tocPattern = Pattern.compile("<a href=\"([^\"]+)\">([^<>]+)</a>&nbsp;&nbsp;(?:</p>)?");
 			int bookIndex = 0, jcIndex = 0;
 			while (!line.startsWith("<a name=\"vorwort\">")) {
+				if (line.equals("<br>")) {
+					line = br.readLine().trim();
+					if (line.startsWith("&raquo;&raquo;&nbsp;&nbsp;"))
+						line = line.substring("&raquo;&raquo;&nbsp;&nbsp;".length());
+				}
 				Matcher m = tocPattern.matcher(line);
 				if (m.matches()) {
 					String url = m.group(1);
@@ -159,7 +164,7 @@ public class NeUeParser implements ImportFormat {
 					} else {
 						throw new IOException(url);
 					}
-				} else if (line.length() != 0 && !line.startsWith("<p class=\"u3\">") && !line.startsWith("///") && !line.equals("<p>&nbsp;</p>")) {
+				} else if (line.length() != 0 && !line.startsWith("<p class=\"u3\">") && !line.startsWith("///") && !line.equals("<p>&nbsp;</p>") && !line.equals("<p><a name=\"bb\">&nbsp;</a></p>")) {
 					throw new IOException(line);
 				}
 				line = br.readLine().trim();
@@ -176,6 +181,8 @@ public class NeUeParser implements ImportFormat {
 			Visitor<RuntimeException> vv = getPrologVisitor(vorwort);
 
 			boolean needParagraph = false;
+			if (line.endsWith("</a><br>"))
+				line = br.readLine().trim();
 			while (!line.startsWith("<div align=\"right\">")) {
 				line = line.replaceAll("<a name=\"[a-z]+\"></a>", "");
 
@@ -184,6 +191,9 @@ public class NeUeParser implements ImportFormat {
 						throw new IOException(replaceEntities(cutAffix(line, "<h2>", "</h2>")));
 				} else if (line.startsWith("<h4>")) {
 					parseFormattedText(vv.visitHeadline(1), cutAffix(line, "<h4>", "</h4>"), null, null);
+					needParagraph = false;
+				} else if (line.startsWith("<h4 id=")) {
+					parseFormattedText(vv.visitHeadline(1), cutAffix(line.replaceFirst("<h4 id=\"[a-z]+\">(</a>)?", ""), "<a href=\"#vorwort\"> /^\\</a> ", "</h4>"), null, null);
 					needParagraph = false;
 				} else if (line.startsWith("<div class=\"fn\">")) {
 					if (needParagraph)
@@ -197,6 +207,10 @@ public class NeUeParser implements ImportFormat {
 					if (line.endsWith("<br />"))
 						line += br.readLine().trim();
 					parseFormattedText(vv, cutAffix(line, "<p>", "</p>"), null, null);
+				} else if (line.equals("<ul>")) {
+					while (!line.equals("</ul>")) {
+						line = br.readLine();
+					}
 				} else {
 					throw new IOException(line);
 				}
@@ -212,13 +226,15 @@ public class NeUeParser implements ImportFormat {
 			}
 			try (BufferedReader br = createReader(inputDirectory, bm.filename + ".html")) {
 				String line = br.readLine().trim();
-				line = skipLines(br, "<html>", "<head>", "<title>", "<meta ", "<link ", "</head>", "<body>", "<p class=\"u3\">", "<a href=\"", "\\\\\\");
+				line = skipLines(br, "<html>", "<head>", "<title>", "<meta ", "<link ", "</head>", "<body>", "<div style=\"background-color: #DCC2A0;\">", "<table border=", "<tbody ", "<tr><td>", "<p class=\"u3\">", "<a href=\"", "\\\\\\", "<br>", "&raquo;&raquo;");
 				if (!line.equals("<p><a name=\"bb\">&nbsp;</a></p>"))
 					throw new IOException(line);
 				line = skipLines(br);
+				if (line.equals("<p>&nbsp;</p>"))
+					line = br.readLine().trim();
 				Book bk = new Book(bm.abbr, bm.id, bm.shortname, replaceEntities(cutAffix(line, "<h1>", "</h1>")));
 				bible.getBooks().add(bk);
-				line = skipLines(br, "<p class=\"u3\">", "<a href=\"#", "</p>");
+				line = skipLines(br, "<p class=\"u3\">", "<a href=\"#", "</p>", "<p>&nbsp;</p>");
 				FormattedText prolog = new FormattedText();
 				prolog.getAppendVisitor().visitHeadline(1).visitText(replaceEntities(cutAffix(line, "<p class=\"u0\">", "</p>")));
 				line = skipLines(br);
@@ -258,7 +274,7 @@ public class NeUeParser implements ImportFormat {
 					List<Visitor<RuntimeException>> newFootnotes = new ArrayList<>();
 					while (line.matches("<[a-z0-9]+ (class=\"[^\"]+\" )?id=\"[a-z0-9]+\"[> ].*"))
 						line = line.replaceFirst(" id=\"[a-z0-9]+\"", "");
-					if (line.startsWith("<p class=\"poet\">")) {
+					if (line.startsWith("<p class=\"poet\">") || line.startsWith("<p class=\"einl\">")) {
 						line = "<p>" + line.substring(16);
 					}
 					if (line.matches(".*</p>.+")) {
@@ -298,6 +314,9 @@ public class NeUeParser implements ImportFormat {
 						if (pos == -1)
 							throw new IOException(line);
 						String vs = line.substring(19, pos).trim();
+						if (vs.endsWith("&nbsp;")) {
+							vs = cutAffix(vs, "", "&nbsp;");
+						}
 						if (vs.matches("[0-9]+(,[0-9]+)?")) {
 							currentVerse = new Verse(vs);
 						} else {
@@ -309,6 +328,9 @@ public class NeUeParser implements ImportFormat {
 							line = line.substring(0, line.length() - 4);
 						}
 						line = line.trim();
+						if (line.startsWith("&nbsp;")) {
+							line = line.substring(6);
+						}
 						for (Headline h : headlines) {
 							h.accept(currentVerse.getAppendVisitor().visitHeadline(h.getDepth()));
 						}
@@ -433,6 +455,7 @@ public class NeUeParser implements ImportFormat {
 				}
 				line = skipLines(br, "<table border=\"0\" width=\"350\">", "<colgroup>",
 						"<p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>",
+						"<p>&nbsp;</p>", "</div", "</td></tr>", "</tbody>",
 						"</colgroup>", "<col ", "<tr>", "</table>");
 			}
 		}
