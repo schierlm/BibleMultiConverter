@@ -31,6 +31,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<ExportFormat>("BibleAnalyzerFormattedText", "Formatted Text Export format for Bible Analyzer", BibleAnalyzerFormattedText.HELP_TEXT, BibleAnalyzerFormattedText.class));
 		result.add(new Module<ExportFormat>("QuickBible", "Export format for QuickBible (Bible for Android)", QuickBible.HELP_TEXT, QuickBible.class));
 		result.add(new Module<ExportFormat>("Accordance", "Export format for Accordance", Accordance.HELP_TEXT, Accordance.class));
+		result.add(new Module<ExportFormat>("EquipdEPUB", "Epub export format for Equipd Bible", EquipdEPUB.HELP_TEXT, EquipdEPUB.class));
 		return result;
 	}
 
