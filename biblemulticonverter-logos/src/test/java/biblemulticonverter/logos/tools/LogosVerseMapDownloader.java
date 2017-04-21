@@ -56,6 +56,11 @@ public class LogosVerseMapDownloader {
 			"BibleBCP1662", "BibleBCP1928", "BibleBCP1979", "BibleCAMGT", "BibleCBG", "BibleCBL", "BibleCODEXS",
 			"BibleEOBNT", "BibleGRAIL", "BibleGUDSORD", "BibleLXXSCS", "BiblePATR", "BibleRVG",
 			"BibleSB2014", "BibleTOB-HL",
+			"BibleABUV1913", "BibleALMEIDA1819", "BibleCAMBRIDGE1895", "BibleCSB", "BibleCUV", "BibleCUV2",
+			"BibleDKV", "BibleERK", "BibleFIGUEIREDO1885", "BibleKONCTB", "BibleKONKRV", "BibleKONKSV", "BibleKRV",
+			"BibleLEESER1891", "BibleLONGMAN1864", "BibleNET", "BibleNEWCOME", "BiblePALFREY", "BiblePSALMSOFDAVID",
+			"BibleSAWYER1861", "BibleSEPEDI2000", "BibleSHEN", "BibleSMITH1876", "BibleSNDBL2012", "BibleSPURRELL1885",
+			"BibleTLV", "BibleTSHVND1998", "BibleTSWANA1994", "BibleXITSONGA",
 			"BibleTSV", "BibleUBS4", "BibleUT", "BibleVPEE", "BibleVUL", "BibleVUL2", "BibleWH", "BibleWV95"
 	};
 
@@ -165,7 +170,10 @@ public class LogosVerseMapDownloader {
 			for (int j = 1; j < table.get(0).size(); j++) {
 				BitSet v11ns = new BitSet();
 				for (String v11n : table.get(0).get(j).split(", ")) {
-					v11ns.set(versificationMap.get(v11n));
+					if (!versificationMap.containsKey(v11n))
+						System.out.println("SKIPPING VERSEMAP "+v11n);
+					else
+						v11ns.set(versificationMap.get(v11n));
 				}
 
 				List<BitSet> chapters = new ArrayList<>();
