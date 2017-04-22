@@ -26,6 +26,15 @@ public class EquipdEPUB implements ExportFormat {
 
 	public static final String[] HELP_TEXT = {
 			"Epub export format for Equipd Bible",
+			"",
+			"Usage: EquipdEPUB <outfile> [-headlinesAfter|-noHeadlines]",
+			"",
+			"When the optional -headlinesafter switch is given, headlines are exported after the",
+			"verse markers; this makes the headline appear inside the correct verse (instead of",
+			"the previous one), but the verse number will appear at the end of the previous",
+			"paragraph.",
+			"",
+			"When the optional -noheadlines switch is given, headlines are not exported at all."
 	};
 
 	// true: pass EpubCheck
@@ -44,6 +53,15 @@ public class EquipdEPUB implements ExportFormat {
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
 		final Set<String> unsupportedFeatures = new HashSet<>();
 		String uuid = UUID.randomUUID().toString() + "-" + System.currentTimeMillis() / 1000;
+		Boolean headlinesAfter = false;
+		if (exportArgs.length > 1) {
+			if (exportArgs[1].equals("-headlinesAfter"))
+				headlinesAfter = true;
+			else if (exportArgs[1].equals("-noHeadlines"))
+				headlinesAfter = null;
+			else
+				System.out.println("WARNING: Unsupported argument: " + exportArgs[1]);
+		}
 		try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(exportArgs[0] + ".epub"))) {
 			zos.putNextEntry(new ZipEntry("mimetype"));
 			zos.write("application/epub+zip".getBytes(StandardCharsets.US_ASCII));
@@ -123,7 +141,7 @@ public class EquipdEPUB implements ExportFormat {
 				for (int i = 1; i <= book.getChapters().size(); i++) {
 					zos.putNextEntry(new ZipEntry("OEBPS/" + fileName + "." + i + ".xhtml"));
 					StringWriter sw = new StringWriter();
-					writeChapter(sw, unsupportedFeatures, book, i);
+					writeChapter(sw, unsupportedFeatures, book, i, headlinesAfter);
 					zos.write(sw.toString().getBytes(StandardCharsets.UTF_8));
 				}
 			}
@@ -135,7 +153,7 @@ public class EquipdEPUB implements ExportFormat {
 
 	private boolean paragraphOpen = false;
 
-	private void writeChapter(StringWriter sw, Set<String> unsupportedFeatures, Book book, int cnum) throws IOException {
+	private void writeChapter(StringWriter sw, Set<String> unsupportedFeatures, Book book, int cnum, Boolean headlinesAfter) throws IOException {
 		sw.write("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<html dir=\"ltr\" xmlns=\"http://www.w3.org/1999/xhtml\"" +
 				" xmlns:epub=\"http://www.idpf.org/2007/ops\" xml:lang=\"en\">\n<head>\n  <meta http-equiv=\"Content-Type\"" +
 				" content=\"text/html;charset=UTF-8\" />\n  <title>" + xml(book.getShortName()) + " " + cnum + "</title>\n" +
@@ -147,15 +165,29 @@ public class EquipdEPUB implements ExportFormat {
 		if (chapter.getProlog() != null)
 			unsupportedFeatures.add("prolog");
 		for (VirtualVerse vv : chapter.createVirtualVerses()) {
-			for (Headline h : vv.getHeadlines()) {
-				closeParagraph(sw);
-				int depth = Math.min(h.getDepth() + 2, 6);
-				sw.write("<h" + depth + ">");
-				h.accept(new EquipdVisitor(sw, "</h" + depth + ">\n\n", unsupportedFeatures, " in headline", footnoteWriter, footnoteCounter, book.getId().isNT()));
+			boolean markerWritten = false;
+			if (headlinesAfter != null) {
+				if (headlinesAfter && !vv.getHeadlines().isEmpty()) {
+					if (!paragraphOpen) {
+						sw.write("<p>");
+						paragraphOpen = true;
+					}
+					sw.write("<a id=\"c" + cnum + "_v" + vv.getNumber() + "\"></a>");
+					markerWritten = true;
+				}
+				for (Headline h : vv.getHeadlines()) {
+					closeParagraph(sw);
+					int depth = Math.min(h.getDepth() + 2, 6);
+					sw.write("<h" + depth + ">");
+					h.accept(new EquipdVisitor(sw, "</h" + depth + ">\n\n", unsupportedFeatures, " in headline", footnoteWriter, footnoteCounter, book.getId().isNT()));
+				}
 			}
 			sw.write(paragraphOpen ? " " : "<p>");
 			paragraphOpen = true;
-			sw.write("<a id=\"c" + cnum + "_v" + vv.getNumber() + "\"></a><span class=\"vn\">" + vv.getNumber() + "</span> ");
+			if (!markerWritten) {
+				sw.write("<a id=\"c" + cnum + "_v" + vv.getNumber() + "\"></a>");
+			}
+			sw.write("<span class=\"vn\">" + vv.getNumber() + "</span> ");
 			for (Verse v : vv.getVerses()) {
 				if (!v.getNumber().equals("" + vv.getNumber())) {
 					sw.write(" <b>(" + v.getNumber() + ")</b> ");

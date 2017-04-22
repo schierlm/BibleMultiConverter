@@ -65,6 +65,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[Bible Analyzer](http://www.bibleanalyzer.com/)**: export only (text export for
   bibles and dictionaries, SQLite export for bibles)
 - **[Accordance](https://www.accordancebible.com/)**: export only
+- **[Equipd Bible](http://equipd.me/)**: export only
 
 In combination with third party tools, other export formats are available:
 
