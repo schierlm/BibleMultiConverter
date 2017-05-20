@@ -227,7 +227,7 @@ public class NeUeParser implements ImportFormat {
 			try (BufferedReader br = createReader(inputDirectory, bm.filename + ".html")) {
 				String line = br.readLine().trim();
 				line = skipLines(br, "<html>", "<head>", "<title>", "<meta ", "<link ", "</head>", "<body>", "<div style=\"background-color: #DCC2A0;\">", "<table border=", "<tbody ", "<tr><td>", "<p class=\"u3\">", "<a href=\"", "\\\\\\", "<br>", "&raquo;&raquo;");
-				if (!line.equals("<p><a name=\"bb\">&nbsp;</a></p>"))
+				if (!line.equals("<p><a name=\"bb\">&nbsp;</a></p>") && !line.equals("<p><a id=\"bb\">&nbsp;</a></p>"))
 					throw new IOException(line);
 				line = skipLines(br);
 				if (line.equals("<p>&nbsp;</p>"))
