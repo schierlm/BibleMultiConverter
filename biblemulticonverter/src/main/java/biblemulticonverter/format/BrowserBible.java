@@ -290,7 +290,10 @@ public class BrowserBible implements ExportFormat {
 				writer.write("<br><span class=\"indent\">&nbsp;&nbsp;&nbsp;</span>");
 				return;
 			case PARAGRAPH:
-				writer.write("</div><div class=\"p\">");
+				if (footnoteWriter == null)
+					writer.write("<br><br>");
+				else
+					writer.write("</div><div class=\"p\">");
 				break;
 			}
 		}
