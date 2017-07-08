@@ -20,7 +20,7 @@ import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Verse;
-import biblemulticonverter.data.Versification;
+import biblemulticonverter.data.StandardVersification;
 import biblemulticonverter.data.VirtualVerse;
 
 public class OnLineBible implements ExportFormat {
@@ -149,7 +149,7 @@ public class OnLineBible implements ExportFormat {
 					prefix = "0 ";
 				}
 				Book bk = bookMap.remove(bm.id);
-				int[] verseCount = Versification.KJV.getVerseCount(bm.id);
+				int[] verseCount = StandardVersification.KJV.getVerseCount(bm.id);
 				for (int i = 0; i < verseCount.length; i++) {
 					Chapter ch = bk != null && i < bk.getChapters().size() ? bk.getChapters().get(i) : null;
 					int maxVerse = verseCount[i];

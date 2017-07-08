@@ -30,7 +30,7 @@ import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Verse;
-import biblemulticonverter.data.Versification;
+import biblemulticonverter.data.StandardVersification;
 import biblemulticonverter.data.VirtualVerse;
 
 /**
@@ -70,7 +70,7 @@ public class TheWord implements RoundtripFormat {
 				if ((bid.isNT() && !hasNT) || (!bid.isNT() && !hasOT))
 					continue;
 				Book bk = new Book(bid.getOsisID(), bid, bid.getEnglishName(), bid.getEnglishName());
-				int[] verseCount = Versification.KJV.getVerseCount(bid);
+				int[] verseCount = StandardVersification.KJV.getVerseCount(bid);
 				for (int cnumber = 1; cnumber <= verseCount.length; cnumber++) {
 					Chapter ch = new Chapter();
 					boolean hasVerses = false;
@@ -298,7 +298,7 @@ public class TheWord implements RoundtripFormat {
 					continue;
 				TheWordVisitor twv = bid.isNT() ? twvn : twvo;
 				Book bk = foundBooks.get(bid);
-				int[] verseCount = Versification.KJV.getVerseCount(bid);
+				int[] verseCount = StandardVersification.KJV.getVerseCount(bid);
 				for (int cnumber = 1; cnumber <= verseCount.length; cnumber++) {
 					Chapter ch = bk != null && cnumber <= bk.getChapters().size() ? bk.getChapters().get(cnumber - 1) : null;
 					int maxVerse = verseCount[cnumber - 1];
