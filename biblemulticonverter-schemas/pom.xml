@@ -67,6 +67,32 @@
 							<generatePackage>biblemulticonverter.schema.roundtripxml</generatePackage>
 						</configuration>
 					</execution>
+					<execution>
+						<id>generate5</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<generateDirectory>target/generated-sources/xjc5</generateDirectory>
+							<schemaIncludes>
+								<include>ccelVersification.xsd</include>
+							</schemaIncludes>
+							<generatePackage>biblemulticonverter.schema.versification.ccel</generatePackage>
+						</configuration>
+					</execution>
+					<execution>
+						<id>generate6</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<generateDirectory>target/generated-sources/xjc6</generateDirectory>
+							<schemaIncludes>
+								<include>OpenScripturesBibleVersificationSystem.xsd</include>
+							</schemaIncludes>
+							<generatePackage>biblemulticonverter.schema.versification.openscriptures</generatePackage>
+						</configuration>
+					</execution>
 				</executions>
 				<configuration>
 					<locale>en</locale>

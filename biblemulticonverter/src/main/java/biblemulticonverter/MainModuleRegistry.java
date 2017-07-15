@@ -71,6 +71,8 @@ public class MainModuleRegistry extends ModuleRegistry {
 		List<Module<VersificationFormat>> result = new ArrayList<ModuleRegistry.Module<VersificationFormat>>();
 		result.add(new Module<VersificationFormat>("BMCV", "Versification format internally used by BibleMultiConverter.", BMCV.HELP_TEXT, BMCV.class));
 		result.add(new Module<VersificationFormat>("KJV", "Versification format for the hard-coded KJV versification.", KJV.HELP_TEXT, KJV.class));
+		result.add(new Module<VersificationFormat>("CCEL", "Versification format used by http://www.ccel.org/refsys/", CCEL.HELP_TEXT, CCEL.class));
+		result.add(new Module<VersificationFormat>("OpenScriptures", "Versification format used by https://github.com/openscriptures/BibleOrgSys/", OpenScriptures.HELP_TEXT, OpenScriptures.class));
 		return result;
 	}
 }

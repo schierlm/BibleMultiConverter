@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <!-- converted using trang from https://github.com/openscriptures/BibleOrgSys/blob/master/DataFiles/VersificationSystems/BibleVersificationSystem.rnc -->
+  <!--
+    BibleVersificationSystem.rnc           Relax NG Compact Syntax schema file
+      Version 0.60
+      Last modified: 2011-03-03
+  -->
+  <!-- The root element -->
+  <!-- A single header, then multiple BibleBookCodes entries -->
+  <xs:element name="BibleVersificationSystem">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="header"/>
+        <xs:element maxOccurs="unbounded" ref="BibleBookVersification"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="header">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="revisionDesc"/>
+        <xs:element ref="work"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="revisionDesc">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="date"/>
+        <xs:element maxOccurs="unbounded" ref="p"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="date" type="xs:date"/>
+  <xs:element name="p" type="xs:string"/>
+  <xs:element name="work">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="version"/>
+        <xs:element ref="date"/>
+        <xs:element ref="title"/>
+        <xs:element maxOccurs="unbounded" ref="contributor"/>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="identifier"/>
+        <xs:element ref="rights"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="version">
+    <xs:simpleType>
+      <xs:restriction base="xs:decimal">
+        <xs:totalDigits value="2"/>
+      </xs:restriction>
+    </xs:simpleType>
+  </xs:element>
+  <xs:element name="title" type="xs:string"/>
+  <xs:element name="contributor">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attribute name="role" use="required">
+            <xs:simpleType>
+              <xs:restriction base="xs:token">
+                <xs:enumeration value="com"/>
+                <xs:enumeration value="edt"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="identifier">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:anyURI">
+          <xs:attribute name="type" use="required">
+            <xs:simpleType>
+              <xs:restriction base="xs:token">
+                <xs:enumeration value="URL"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="rights" type="xs:string"/>
+  <xs:element name="BibleBookVersification">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="nameEnglish"/>
+        <xs:element ref="referenceAbbreviation"/>
+        <xs:element ref="numChapters"/>
+        <xs:element maxOccurs="unbounded" ref="numVerses"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="nameEnglish">
+    <xs:simpleType>
+      <xs:restriction base="xs:string">
+        <xs:minLength value="3"/>
+        <xs:maxLength value="80"/>
+      </xs:restriction>
+    </xs:simpleType>
+  </xs:element>
+  <xs:element name="referenceAbbreviation">
+    <xs:simpleType>
+      <xs:restriction base="xs:string">
+        <xs:length value="3"/>
+      </xs:restriction>
+    </xs:simpleType>
+  </xs:element>
+  <xs:element name="numChapters">
+    <xs:simpleType>
+      <xs:restriction base="xs:positiveInteger">
+        <xs:minInclusive value="1"/>
+        <xs:maxInclusive value="151"/>
+      </xs:restriction>
+    </xs:simpleType>
+  </xs:element>
+  <xs:element name="numVerses">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:restriction base="xs:anyType">
+          <xs:simpleType>
+            <xs:restriction base="xs:positiveInteger">
+              <xs:minInclusive value="1"/>
+              <xs:maxInclusive value="176"/>
+            </xs:restriction>
+          </xs:simpleType>
+          <xs:attribute name="chapter" use="required">
+            <xs:simpleType>
+              <xs:restriction base="xs:positiveInteger">
+                <xs:minInclusive value="1"/>
+                <xs:maxInclusive value="151"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="omittedVerses" type="xs:string"/>
+          <xs:attribute name="combinedVerses" type="xs:string"/>
+          <xs:attribute name="reorderedVerses" type="xs:string"/>
+        </xs:restriction>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

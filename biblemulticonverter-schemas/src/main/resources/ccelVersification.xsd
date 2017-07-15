@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+	<xs:element name="refSys">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="alias" minOccurs="0" maxOccurs="unbounded">
+					<xs:complexType>
+						<xs:attribute name="code" type="xs:string" use="required" />
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="osisIDs" maxOccurs="1" minOccurs="1">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="osisID" maxOccurs="unbounded" minOccurs="1">
+								<xs:complexType>
+									<xs:attribute name="code" type="xs:string" use="required" />
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="refMap" maxOccurs="unbounded" minOccurs="0">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="map" maxOccurs="unbounded" minOccurs="1">
+								<xs:complexType>
+									<xs:attribute name="from" type="xs:string" />
+									<xs:attribute name="to" type="xs:string" />
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+						<xs:attribute name="from" type="xs:string" use="required" />
+						<xs:attribute name="to" type="xs:string" use="required" />
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+			<xs:attribute name="code" type="xs:string" use="required"></xs:attribute>
+			<xs:attribute name="name" type="xs:string" use="optional"></xs:attribute>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>
