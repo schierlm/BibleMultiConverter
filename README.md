@@ -3,7 +3,7 @@ BibleMultiConverter
 
 Converter written in Java to convert between different Bible program formats
 
-Copyright (c) 2007-2015 Michael Schierl   
+Copyright (c) 2007-2017 Michael Schierl
 Licensed unter MIT License; for details, see the LICENSE file.
 
 Usage
@@ -183,6 +183,44 @@ for correlation attacks to get the plain text. Therefore, use different password
 multiple bibles (like, add the bible name to them), or better, use real encryption like AES
 instead.
 
+
+Versification handling
+----------------------
+
+Most Bible formats do not care about versifications (they just store `book chapter:verse`
+without caring how many verses a certain chapter has), or support only a single versification
+(usually `KJV` or `KJVA`). Exceptions being SWORD and Logos, which encode the versification mapping
+in the bible itself. Therefore, this converter usually does not care about versifications; in case
+a format is limited to a versification, verses will be merged until they fit.
+
+However, there is some support for handling "external" versification mappings (stored in `.bmcv`
+files). A `Versification` tool can be used to import and export versification mappings from
+different formats, and perform some other modifications (like renaming or deleting versifications,
+or joining or comparing them). A `VersificationDetector` export filter can be used to determine
+which versification in a `.bmcv` file fits a given bible best. And a `VersificationMappedDiffable`
+can be used to "change" the versification of an existing Bible text.
+
+When referring to versification mappings in a file, the general syntax is `from`/`to` or
+`from`/`to`/`number`. Use the latter form (`number` starts with 1) in case there is more than
+one mapping stored in your file between the same two versifications. If you use the form without
+number, but there are multiple mappings, the system will automatically try to find the "best" mapping;
+i. e. the one that maps more verses and/or maps them more precisely (e. g. a mapping that maps Gen 1:1
+to Gen 1:1 and Gen 1:2 to Gen 1:2 is more precise than a mapping that maps Gen 1:1-2 to Gen 1:1-2). In case
+this cannot be determined, an error message is shown.
+
+When merging mappings from multiple files, you can come into a situation where you have two versifications
+that represent essentially the same bible, but have different names. Trying to join a path between these two
+versifications will fail (as there is no common mapping). In this case, you can write `name1`/`name2`/-1 to
+dynamically create an identity mapping: all verses that exist in both versifications automatically map to
+themselves, all other verses are unmapped.
+
+Supported Versification formats:
+
+- **BMCV** (own database format): Import and export (versifications and mappings)
+- **KJV** (hard-coded KJV versification): "Import" only (no mapping)
+- **[CCEL](http://www.ccel.org/refsys/)**: Import and export (versifications and mappings)
+- **[OpenScriptures](https://github.com/openscriptures/BibleOrgSys/tree/master/DataFiles/VersificationSystems): Import only (versifications only, no mappings)
+- **SWORDVersification**: Import versifications and mappings from SWORD
 
 SWORD import
 ------------

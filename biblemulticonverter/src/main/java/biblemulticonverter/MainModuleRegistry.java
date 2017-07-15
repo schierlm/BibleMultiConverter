@@ -34,6 +34,8 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<ExportFormat>("Accordance", "Export format for Accordance", Accordance.HELP_TEXT, Accordance.class));
 		result.add(new Module<ExportFormat>("EquipdEPUB", "Epub export format for Equipd Bible", EquipdEPUB.HELP_TEXT, EquipdEPUB.class));
 		result.add(new Module<ExportFormat>("SimpleJSON", "Very simple JSON bible export (verse text only).", SimpleJSON.HELP_TEXT, SimpleJSON.class));
+		result.add(new Module<ExportFormat>("VersificationDetector", "Detect what versification most closely matches a module", VersificationDetector.HELP_TEXT, VersificationDetector.class));
+		result.add(new Module<ExportFormat>("VersificationMappedDiffable", "Export like Diffable, but change the Versification first.", VersificationMappedDiffable.HELP_TEXT, VersificationMappedDiffable.class));
 		return result;
 	}
 
