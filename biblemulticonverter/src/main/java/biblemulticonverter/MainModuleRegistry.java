@@ -4,6 +4,7 @@ import java.util.*;
 
 import biblemulticonverter.format.*;
 import biblemulticonverter.tools.*;
+import biblemulticonverter.versification.*;
 
 public class MainModuleRegistry extends ModuleRegistry {
 
@@ -61,6 +62,15 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<Tool>("MobiPocketTOCBuilder", "Create MobiPocket TOC file from multiple bibles", MobiPocketTOCBuilder.HELP_TEXT, MobiPocketTOCBuilder.class));
 		result.add(new Module<Tool>("ESwordRTFPostprocessor", "Postprocess RTF for exporting to E-Sword", ESwordRTFPostprocessor.HELP_TEXT, ESwordRTFPostprocessor.class));
 		result.add(new Module<Tool>("ValidateXML", "Validate one or more XML files according to a XSD schema.", ValidateXML.HELP_TEXT, ValidateXML.class));
+		result.add(new Module<Tool>("Versification", "Change versification databases or query information from them.", VersificationTool.HELP_TEXT, VersificationTool.class));
+		return result;
+	}
+
+	@Override
+	public Collection<Module<VersificationFormat>> getVersificationFormats() {
+		List<Module<VersificationFormat>> result = new ArrayList<ModuleRegistry.Module<VersificationFormat>>();
+		result.add(new Module<VersificationFormat>("BMCV", "Versification format internally used by BibleMultiConverter.", BMCV.HELP_TEXT, BMCV.class));
+		result.add(new Module<VersificationFormat>("KJV", "Versification format for the hard-coded KJV versification.", KJV.HELP_TEXT, KJV.class));
 		return result;
 	}
 }

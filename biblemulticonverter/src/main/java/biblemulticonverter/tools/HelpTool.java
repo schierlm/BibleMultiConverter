@@ -22,6 +22,8 @@ public class HelpTool implements Tool {
 			if (module == null)
 				module = Main.exportFormats.get(args[0]);
 			if (module == null)
+				module = Main.versificationFormats.get(args[0]);
+			if (module == null)
 				module = Main.tools.get(args[0]);
 			if (module == null) {
 				System.out.println("Module not found: " + args[0]);

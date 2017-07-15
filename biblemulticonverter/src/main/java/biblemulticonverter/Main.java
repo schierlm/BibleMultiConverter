@@ -15,6 +15,7 @@ import biblemulticonverter.format.ExportFormat;
 import biblemulticonverter.format.ImportFormat;
 import biblemulticonverter.format.RoundtripFormat;
 import biblemulticonverter.tools.Tool;
+import biblemulticonverter.versification.VersificationFormat;
 
 /**
  * Main application entry point.
@@ -23,6 +24,7 @@ public class Main {
 
 	public static final Map<String, Module<ImportFormat>> importFormats = new HashMap<>();
 	public static final Map<String, Module<ExportFormat>> exportFormats = new HashMap<>();
+	public static final Map<String, Module<VersificationFormat>> versificationFormats = new HashMap<>();
 	public static final Map<String, Module<Tool>> tools = new HashMap<>();
 
 	public static void discoverModules() {
@@ -41,6 +43,9 @@ public class Main {
 			}
 			for (Module<Tool> m : registry.getTools()) {
 				tools.put(m.getName(), m);
+			}
+			for (Module<VersificationFormat> m : registry.getVersificationFormats()) {
+				versificationFormats.put(m.getName(), m);
 			}
 		}
 	}
@@ -68,6 +73,7 @@ public class Main {
 		System.out.println("java -jar BibleMultiConverter.jar <Tool> [<ToolArgs>...]");
 		printModules("import formats", importFormats);
 		printModules("export formats", exportFormats);
+		printModules("versification formats", versificationFormats);
 		printModules("tools", tools);
 	}
 

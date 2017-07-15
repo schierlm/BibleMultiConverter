@@ -1,11 +1,13 @@
 package biblemulticonverter;
 
 import java.util.Collection;
+import java.util.Collections;
 
 import biblemulticonverter.format.ExportFormat;
 import biblemulticonverter.format.ImportFormat;
 import biblemulticonverter.format.RoundtripFormat;
 import biblemulticonverter.tools.Tool;
+import biblemulticonverter.versification.VersificationFormat;
 
 /**
  * Responsible for discovering modules in this or other JAR files.
@@ -19,6 +21,10 @@ public abstract class ModuleRegistry {
 	public abstract Collection<Module<RoundtripFormat>> getRoundtripFormats();
 
 	public abstract Collection<Module<Tool>> getTools();
+
+	public Collection<Module<VersificationFormat>> getVersificationFormats() {
+		return Collections.emptyList();
+	}
 
 	public static class Module<T> {
 		private final String name;
