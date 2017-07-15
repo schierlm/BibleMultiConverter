@@ -30,7 +30,7 @@ import biblemulticonverter.tools.AbstractVersificationDetector;
 
 public class SWORDVersificationDetector extends AbstractVersificationDetector {
 
-	private static final String[] ALL_V11N_NAMES = {
+	public static final String[] ALL_V11N_NAMES = {
 			SystemKJV.V11N_NAME,
 			SystemCatholic.V11N_NAME,
 			SystemCatholic2.V11N_NAME,
