@@ -12,7 +12,7 @@ Usage
 If you clone from Git or download a source zip, you will need a Java JDK 7 or
 above, and Apache Maven, to build. Just run "mvn package" and you will find
 a suitable distribution .zip file in the TARGET folder. Note that to build all modules
-(including SWORD and All-In-One), you will need to have built JSword (crosswire/jsword@fa6a44d05982a67f0122ffdd7b522d8ebcf43824)
+(including SWORD and All-In-One), you will need to have built [JSword](https://github.com/crosswire/jsword/commit/fa6a44d05982a67f0122ffdd7b522d8ebcf43824)
 first and installed it to your local maven repository. Alternatively, skip these modules
 by adding `-pl !biblemulticonverter-sword,!biblemulticonverter-allinone` to your Maven command line.
 
