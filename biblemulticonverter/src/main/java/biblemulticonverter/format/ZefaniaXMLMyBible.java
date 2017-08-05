@@ -4,6 +4,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.xml.bind.JAXBContext;
@@ -32,6 +33,8 @@ import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.MetadataBook.MetadataBookKey;
+import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.schema.zef2005.BIBLEBOOK;
@@ -48,6 +51,7 @@ import biblemulticonverter.schema.zef2005.ObjectFactory;
 import biblemulticonverter.schema.zef2005.STYLE;
 import biblemulticonverter.schema.zef2005.VERS;
 import biblemulticonverter.schema.zef2005.XMLBIBLE;
+import biblemulticonverter.schema.zef2005.XREF;
 
 public class ZefaniaXMLMyBible implements ExportFormat {
 
@@ -65,6 +69,29 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 		XMLBIBLE doc = f.createXMLBIBLE();
 		doc.setBiblename(bible.getName());
 		doc.setType(EnumModtyp.X_BIBLE);
+		BigInteger revision = null;
+		MetadataBook metadata = bible.getMetadataBook();
+		if (metadata != null) {
+			for (MetadataBookKey key : Arrays.asList(MetadataBookKey.revision, MetadataBookKey.version, MetadataBookKey.date, MetadataBookKey.title)) {
+				String digits = metadata.getValue(key);
+				if (digits == null)
+					continue;
+				digits = digits.replaceAll("[^0-9]+", "");
+				if (!digits.isEmpty()) {
+					revision = new BigInteger(digits);
+					break;
+				}
+			}
+		}
+		if (revision == null) {
+			String digits = bible.getName().replaceAll("[^0-9]+", "");
+			if (!digits.isEmpty()) {
+				revision = new BigInteger(digits);
+			}
+		}
+		if (revision != null) {
+			doc.setRevision(revision);
+		}
 		doc.setINFORMATION(f.createINFORMATION());
 		List<DIV> prologs = new ArrayList<DIV>();
 		for (Book bk : bible.getBooks()) {
@@ -124,20 +151,13 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 						@Override
 						public Visitor<IOException> visitFormattingInstruction(FormattedText.FormattingInstructionKind kind) throws IOException {
 							String startTag, endTag;
-							switch (kind) {
-							case BOLD:
-								startTag = "<b>";
-								endTag = "</b>";
-								break;
-							case ITALIC:
-								startTag = "<i>";
-								endTag = "</i>";
-								break;
-							default:
-								startTag = endTag = "";
-								System.out.println("Unsupported formatting of kind " + kind + " in prolog - stripped");
+							if (kind.getHtmlTag() != null) {
+								startTag = "<" + kind.getHtmlTag() + ">";
+								endTag = "</" + kind.getHtmlTag() + ">";
+							} else {
+								startTag = "<span style=\"" + kind.getCss() + "\">";
+								endTag = "</span>";
 							}
-
 							STYLE s = f.createSTYLE();
 							s.setCss("-zef-dummy: true");
 							targetStack.get(0).add(startTag);
@@ -171,10 +191,10 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 
 						@Override
 						public void visitLineBreak(LineBreakKind kind) throws IOException {
-							;
 							BR br = f.createBR();
 							br.setArt(kind == LineBreakKind.PARAGRAPH ? EnumBreak.X_P : EnumBreak.X_NL);
 							targetStack.get(0).add(" ");
+							targetStack.get(0).add(kind == LineBreakKind.PARAGRAPH ? "<p>" : "<br>");
 							targetStack.get(0).add(br);
 						}
 
@@ -201,7 +221,7 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 							targetStack.get(0).add("<span style=\"" + css + "\">");
 							targetStack.get(0).add(new JAXBElement<STYLE>(new QName("STYLE"), STYLE.class, s));
 							targetStack.get(0).add("</span>");
-							targetStack.add(s.getContent());
+							targetStack.add(0, s.getContent());
 							return this;
 						}
 
@@ -212,6 +232,10 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 
 						@Override
 						public Visitor<IOException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws IOException {
+							if (prio == ExtraAttributePriority.KEEP_CONTENT)
+								return visitCSSFormatting("-zef-extra-attribute-" + category + "-" + key + ": " + value);
+							else if (prio == ExtraAttributePriority.SKIP)
+								return null;
 							throw new RuntimeException("Extra attributes not supported");
 						}
 
@@ -262,6 +286,17 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 								return null;
 							}
 
+							@Override
+							public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
+								System.out.println("WARNING: CSS Formatting in captions are not supported (stripped)");
+								return this;
+							}
+
+							@Override
+							public Visitor<RuntimeException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws RuntimeException {
+								return prio.handleVisitor(category, this);
+							}
+
 							public void visitText(String text) throws RuntimeException {
 								sb.append(text);
 							};
@@ -276,14 +311,16 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 					}
 					prologs.clear();
 					chapter.getPROLOGOrCAPTIONOrVERS().add(vers);
+					boolean first = true;
 					for (Verse v : vv.getVerses()) {
-						if (!v.getNumber().equals("" + vv.getNumber())) {
+						if (!first || !v.getNumber().equals("" + vv.getNumber())) {
 							STYLE x = f.createSTYLE();
 							x.setCss("font-weight: bold");
 							x.getContent().add("(" + v.getNumber() + ")");
 							vers.getContent().add(new JAXBElement<STYLE>(new QName("STYLE"), STYLE.class, x));
 							vers.getContent().add(" ");
 						}
+						first = false;
 						final List<List<Object>> targetStack = new ArrayList<List<Object>>();
 						targetStack.add(vers.getContent());
 						v.accept(new FormattedText.Visitor<IOException>() {
@@ -348,11 +385,21 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 									}
 
 									@Override
-									public FormattedText.Visitor<IOException> visitFormattingInstruction(biblemulticonverter.data.FormattedText.FormattingInstructionKind kind) throws IOException {
-										STYLE x = f.createSTYLE();
-										x.setCss(kind.getCss());
-										footnoteStack.get(0).add(new JAXBElement<STYLE>(new QName("STYLE"), STYLE.class, x));
-										footnoteStack.add(0, x.getContent());
+									public Visitor<IOException> visitFormattingInstruction(FormattedText.FormattingInstructionKind kind) throws IOException {
+										String startTag, endTag;
+										if (kind.getHtmlTag() != null) {
+											startTag = "<" + kind.getHtmlTag() + ">";
+											endTag = "</" + kind.getHtmlTag() + ">";
+										} else {
+											startTag = "<span style=\"" + kind.getCss() + "\">";
+											endTag = "</span>";
+										}
+										STYLE s = f.createSTYLE();
+										s.setCss("-zef-dummy: true");
+										footnoteStack.get(0).add(startTag);
+										footnoteStack.get(0).add(new JAXBElement<STYLE>(new QName("STYLE"), STYLE.class, s));
+										footnoteStack.get(0).add(endTag);
+										footnoteStack.add(0, s.getContent());
 										return this;
 									}
 
@@ -410,19 +457,27 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 										STYLE s = f.createSTYLE();
 										s.setCss("-zef-dummy: true");
 										int bookID = book.getZefID();
-										String mscope;
+										String mscope, xmscope;
 										try {
-											int start = firstVerse.equals("^") ? 1 : Integer.parseInt(firstVerse.replaceAll("[a-zG]", ""));
+											int start = firstVerse.equals("^") ? 1 : Integer.parseInt(firstVerse.replaceAll("[a-zG]|/[0-9]*", ""));
 											int end;
 											if (firstChapter == lastChapter && !lastVerse.equals("$")) {
-												end = Integer.parseInt(lastVerse.replaceAll("[a-z]", ""));
+												end = Integer.parseInt(lastVerse.replaceAll("[a-z]|/[0-9]*", ""));
 											} else {
 												end = -1;
 											}
 											mscope = bookID + "," + firstChapter + "," + start + "," + end;
+											xmscope = bookID + ";" + firstChapter + ";" + start + "-" + end;
 										} catch (NumberFormatException ex) {
 											ex.printStackTrace();
 											mscope = bookID + ",1,1,999";
+											xmscope = bookID + ";1;1-999";
+										}
+										if (footnoteStack.size() == 1) {
+											List<Object> outerList = targetStack.get(0);
+											XREF xref = new XREF();
+											xref.setMscope(xmscope);
+											outerList.add(outerList.size() - 1, xref);
 										}
 										footnoteStack.get(0).add("<a href=\"mybible:content=location&amp;locations=" + mscope + "\">");
 										footnoteStack.get(0).add(new JAXBElement<STYLE>(new QName("STYLE"), STYLE.class, s));
@@ -448,10 +503,12 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 
 									@Override
 									public Visitor<IOException> visitCSSFormatting(String css) throws IOException {
-										STYLE x = f.createSTYLE();
-										x.setCss(css);
-										footnoteStack.get(0).add(new JAXBElement<STYLE>(new QName("STYLE"), STYLE.class, x));
-										footnoteStack.add(0, x.getContent());
+										STYLE s = f.createSTYLE();
+										s.setCss("-zef-dummy: true");
+										footnoteStack.get(0).add("<span style=\"" + css + "\">");
+										footnoteStack.get(0).add(new JAXBElement<STYLE>(new QName("STYLE"), STYLE.class, s));
+										footnoteStack.get(0).add("</span>");
+										footnoteStack.add(s.getContent());
 										return this;
 									}
 

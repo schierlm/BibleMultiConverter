@@ -179,7 +179,19 @@ public class StrippedDiffable implements ExportFormat {
 			}
 		}
 		if (prologBuffer.size() > 0) {
-			System.out.println("WARNING: " + prologBuffer.size() + " introduction prologs could not be merged; no bible book found after them!");
+			System.out.println("WARNING: " + prologBuffer.size() + " introduction prologs after last bible book were merged to first bible book!");
+			for (int i = 0; i < bible.getBooks().size(); i++) {
+				Book book = bible.getBooks().get(i);
+				if (book.getId().getZefID() > 0 && prologBuffer.size() > 0 && book.getChapters().size() > 0) {
+					Chapter ch = book.getChapters().get(0);
+					Visitor<RuntimeException> v = ch.getProlog().getAppendVisitor();
+					for (FormattedText oldProlog : prologBuffer) {
+						v.visitLineBreak(LineBreakKind.PARAGRAPH);
+						oldProlog.accept(v);
+					}
+					break;
+				}
+			}
 		}
 	}
 
