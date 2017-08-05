@@ -601,13 +601,15 @@ public class MyBibleZone implements RoundtripFormat {
 				infoValues.put("detailed_info", infoValues.get("detailed_info") + "\r\n<br><b>" + mbkey + ":</b>" + mb.getValue(mbkey));
 			}
 		}
-		String bibleIntro = null;
+		String bibleIntro = null, singleFootnoteMarker = null, singleXrefMarker = null;
 		if (exportArgs.length > 1) {
 			Properties props = new Properties();
 			FileInputStream in = new FileInputStream(exportArgs[1]);
 			props.load(in);
 			in.close();
 			bibleIntro = (String) props.remove("__INTRODUCTION__");
+			singleFootnoteMarker = (String) props.remove("__FOOTNOTE_MARKER__");
+			singleXrefMarker = (String) props.remove("__XREF_MARKER__");
 			for (Object key : props.keySet()) {
 				String template = props.getProperty(key.toString());
 				template = template.replace("${name}", bible.getName());
@@ -681,6 +683,7 @@ public class MyBibleZone implements RoundtripFormat {
 						throw new RuntimeException(vn + " != " + vv.getNumber());
 					for (int hl = 0; hl < vv.getHeadlines().size(); hl++) {
 						final StringBuilder sb = new StringBuilder();
+						final Map<StringBuilder, String> xrefTags = new HashMap<>();
 						vv.getHeadlines().get(hl).accept(new VisitorAdapter<RuntimeException>(null) {
 							@Override
 							protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
@@ -702,7 +705,32 @@ public class MyBibleZone implements RoundtripFormat {
 								// handle this separately; we do not like
 								// footnote text inside the headline!
 								unsupportedFeatures.add("footnote in headline");
-								return null;
+								return new VisitorAdapter<RuntimeException>(null) {
+									@Override
+									protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
+										return this;
+									}
+
+									@Override
+									public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+										if (!BOOK_NUMBERS.containsKey(book))
+											return null;
+										final StringBuilder innerBuilder = new StringBuilder();
+										String endVerse = firstChapter != lastChapter ? "-" + lastChapter + ":" + lastVerse : !firstVerse.equals(lastVerse) ? "-" + lastVerse : "";
+										xrefTags.put(innerBuilder, "<x>" + BOOK_NUMBERS.get(book) + " " + firstChapter + ":" + firstVerse + endVerse + "</x>");
+										return new VisitorAdapter<RuntimeException>(null) {
+											@Override
+											protected void beforeVisit() throws RuntimeException {
+												throw new RuntimeException("Unsupported content inside headline xref");
+											}
+
+											@Override
+											public void visitText(String text) throws RuntimeException {
+												innerBuilder.append(text.replace('<', '〈').replace('>', '〉'));
+											}
+										};
+									}
+								};
 							}
 
 							@Override
@@ -711,18 +739,64 @@ public class MyBibleZone implements RoundtripFormat {
 								return prio.handleVisitor(category, this);
 							}
 						});
-						storiesTable.insert(info.bookNumber, cn, vn, hl, sb.toString());
+						String headline = sb.toString();
+						for (Map.Entry<StringBuilder, String> xrefTag : xrefTags.entrySet()) {
+							headline = headline.replace(xrefTag.getKey().toString(), xrefTag.getValue());
+						}
+						storiesTable.insert(info.bookNumber, cn, vn, hl, headline);
 					}
 					StringBuilder vb = new StringBuilder();
+					Map<String, MyBibleHTMLVisitor> footnotes = new HashMap<>();
+					MyBibleVerseVisitor mbvv = new MyBibleVerseVisitor(vb, footnotes, unsupportedFeatures);
 					for (Verse v : vv.getVerses()) {
 						if (!v.getNumber().equals("" + vv.getNumber())) {
 							vb.append(" <e>(" + v.getNumber() + ")</e> ");
 						}
-						Map<String, MyBibleHTMLVisitor> footnotes = new HashMap<>();
-						v.accept(new MyBibleVerseVisitor(vb, footnotes, unsupportedFeatures));
+						mbvv.reset();
+						v.accept(mbvv);
+					}
+					if (singleXrefMarker != null || singleFootnoteMarker != null) {
+						String singleXref = null, singleFootnote = null;
 						for (Map.Entry<String, MyBibleHTMLVisitor> fn : footnotes.entrySet()) {
-							footnotesTable.insert(info.bookNumber, cn, vn, cn, vn, fn.getKey(), fn.getValue().getResult());
+							if (!fn.getKey().matches("\\[[0-9]+\\]"))
+								continue;
+							if (fn.getValue().getResult().startsWith(FormattedText.XREF_MARKER) && singleXrefMarker != null) {
+								if (singleXref == null) {
+									singleXref = fn.getKey();
+								} else {
+									System.out.println("WARNING: More than one XREF footnote in verse " + info.bookID + " " + cn + ":" + vn);
+									singleXref = "-";
+								}
+							} else if (singleFootnoteMarker != null) {
+								if (singleFootnote == null) {
+									singleFootnote = fn.getKey();
+								} else {
+									System.out.println("WARNING: More than one normal footnote in verse " + info.bookID + " " + cn + ":" + vn);
+									singleFootnote = "-";
+								}
+							}
 						}
+						if (singleXref != null && !singleXref.equals("-")) {
+							MyBibleHTMLVisitor xfn = footnotes.remove(singleXref);
+							if (xfn == null)
+								throw new RuntimeException();
+							footnotes.put(singleXrefMarker, xfn);
+							String verse = vb.toString();
+							vb.setLength(0);
+							vb.append(verse.replace("<f>" + singleXref + "</f>", "<f>" + singleXrefMarker + "</f>"));
+						}
+						if (singleFootnote != null && !singleFootnote.equals("-")) {
+							MyBibleHTMLVisitor sfn = footnotes.remove(singleFootnote);
+							if (sfn == null)
+								throw new RuntimeException();
+							footnotes.put(singleFootnoteMarker, sfn);
+							String verse = vb.toString();
+							vb.setLength(0);
+							vb.append(verse.replace("<f>" + singleFootnote + "</f>", "<f>" + singleFootnoteMarker + "</f>"));
+						}
+					}
+					for (Map.Entry<String, MyBibleHTMLVisitor> fn : footnotes.entrySet()) {
+						footnotesTable.insert(info.bookNumber, cn, vn, cn, vn, fn.getKey(), fn.getValue().getResult());
 					}
 					versesTable.insert(info.bookNumber, cn, vn, vb.toString().trim());
 				}
@@ -803,16 +877,11 @@ public class MyBibleZone implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
-			int bnum = -1;
-			for (MyBibleZoneBook bi : BOOK_INFO) {
-				if (bi.bookID == book)
-					bnum = bi.bookNumber;
-			}
-			if (bnum == -1) {
+			if (!BOOK_NUMBERS.containsKey(book)) {
 				System.out.println("WARNING: cross reference to unknown book " + book);
 				pushSuffix("");
 			} else {
-				writer.write("<a href=\"B:" + bnum + " " + firstChapter + ":" + firstVerse + "\">");
+				writer.write("<a href=\"B:" + BOOK_NUMBERS.get(book) + " " + firstChapter + ":" + firstVerse + "\">");
 				pushSuffix("</a>");
 			}
 			return this;
@@ -856,6 +925,9 @@ public class MyBibleZone implements RoundtripFormat {
 			this.builder = builder;
 			this.footnotes = footnotes;
 			this.unsupportedFeatures = unsupportedFeatures;
+		}
+
+		public void reset() {
 			suffixStack.add("");
 		}
 
@@ -875,7 +947,24 @@ public class MyBibleZone implements RoundtripFormat {
 
 		@Override
 		public void visitText(String text) throws RuntimeException {
-			builder.append(text.replace('<', '〈').replace('>', '〉'));
+			String lastSuffix = suffixStack.get(suffixStack.size() - 1);
+			if (lastSuffix.equals("--divine-name--")) {
+				for (int i = 0; i < text.length(); i++) {
+					char ch = text.charAt(i);
+					if (ch >= 'a' && ch <= 'z' && ch != 'q' && ch != 'x') {
+						ch = "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘ-ʀꜱᴛᴜᴠᴡ-ʏᴢ".charAt(ch - 'a');
+					} else if (ch == '<') {
+						ch = '〈';
+					} else if (ch == '>') {
+						ch = '〉';
+					} else if (Character.isLowerCase(ch)) {
+						System.out.println("WARNING: Unable to create DIVINE_NAME character for " + ch);
+					}
+					builder.append(ch);
+				}
+			} else {
+				builder.append(text.replace('<', '〈').replace('>', '〉'));
+			}
 		}
 
 		@Override
@@ -908,6 +997,10 @@ public class MyBibleZone implements RoundtripFormat {
 			case WORDS_OF_JESUS:
 				prefix = "<J>";
 				suffix = "</J>";
+				break;
+			case DIVINE_NAME:
+				prefix = "";
+				suffix = "--divine-name--";
 				break;
 			default:
 				unsupportedFeatures.add("formatting " + kind.toString() + " in verse");
@@ -1005,7 +1098,9 @@ public class MyBibleZone implements RoundtripFormat {
 
 		@Override
 		public boolean visitEnd() throws RuntimeException {
-			builder.append(suffixStack.remove(suffixStack.size() - 1));
+			String lastSuffix = suffixStack.remove(suffixStack.size() - 1);
+			if (!lastSuffix.equals("--divine-name--"))
+				builder.append(lastSuffix);
 			return false;
 		}
 	}
