@@ -24,7 +24,7 @@ public class VirtualVerse {
 		this.number = Utils.validateNumber("number", number, 1, Integer.MAX_VALUE);
 	}
 
-	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String,Set<String>> dictionaryEntries) {
+	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries) {
 		int lastHeadlineDepth = 0;
 		String location = bookAbbr + " " + cnumber + ":v" + getNumber();
 		for (Headline headline : headlines) {

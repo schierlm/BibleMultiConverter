@@ -71,7 +71,7 @@ public class LogosNestedHyperlinkPostprocessor implements Tool {
 		ZipEntry rels = null;
 		Document relsDoc = null;
 		try (ZipInputStream zis = new ZipInputStream(new FileInputStream(args[0]))) {
-			ZipEntry ze ;
+			ZipEntry ze;
 			while ((ze = zis.getNextEntry()) != null) {
 				if (ze.getName().equals("word/_rels/document.xml.rels")) {
 					baos.reset();

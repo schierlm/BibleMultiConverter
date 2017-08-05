@@ -23,7 +23,7 @@ public class Book {
 		this.chapters = new ArrayList<Chapter>();
 	}
 
-	public void validate(Bible bible, List<String> danglingReferences, Map<String,Set<String>> dictionaryEntries) {
+	public void validate(Bible bible, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries) {
 		if (chapters.size() == 0)
 			throw new IllegalStateException("Book has no chapters: " + getAbbr());
 		Chapter lastChapter = chapters.get(chapters.size() - 1);

@@ -140,7 +140,7 @@ public class MyBibleZone implements RoundtripFormat {
 	public static final Map<BookID, Integer> BOOK_NUMBERS = new EnumMap<>(BookID.class);
 
 	static {
-		for(MyBibleZoneBook bk : BOOK_INFO) {
+		for (MyBibleZoneBook bk : BOOK_INFO) {
 			BOOK_NUMBERS.put(bk.bookID, bk.bookNumber);
 		}
 	}
@@ -154,7 +154,7 @@ public class MyBibleZone implements RoundtripFormat {
 			footnoteDB = SqlJetDb.open(footnoteFile, false);
 			if (!footnoteDB.getTable("commentaries").getIndexesNames().contains("commentaries_index")) {
 				footnoteDB.close();
-				footnoteDB=SqlJetDb.open(footnoteFile, true);
+				footnoteDB = SqlJetDb.open(footnoteFile, true);
 				checkIndex(footnoteDB, "commentaries", "commentaries_index", "CREATE INDEX commentaries_index on commentaries(book_number, chapter_number_from, verse_number_from)");
 			}
 			footnoteDB.beginTransaction(SqlJetTransactionMode.READ_ONLY);
@@ -179,11 +179,11 @@ public class MyBibleZone implements RoundtripFormat {
 			if (fn.equals("description")) {
 				bibleName = fv;
 			} else if (!fv.isEmpty()) {
-				fv = fv.replaceAll("[\r\n]+", "\n").replaceAll(" *\n *", "\n").replaceAll("\n$","");
+				fv = fv.replaceAll("[\r\n]+", "\n").replaceAll(" *\n *", "\n").replaceAll("\n$", "");
 				try {
 					mb.setValue("MyBible.zone@" + fn.replace('_', '.'), fv);
 				} catch (IllegalArgumentException ex) {
-					System.out.println("WARNING: Skipping malformed metadata property "+fn);
+					System.out.println("WARNING: Skipping malformed metadata property " + fn);
 				}
 			}
 			cursor.next();
@@ -204,7 +204,7 @@ public class MyBibleZone implements RoundtripFormat {
 			int num = (int) cursor.getInteger("book_number");
 			String col = cursor.getString("book_color");
 			String shortName = cursor.getString("short_name").trim().replace(" ", "").replaceAll("[^A-Z0-9a-zäöü]++", "");
-			if(!shortName.isEmpty())
+			if (!shortName.isEmpty())
 				shortName = shortName.substring(0, 1).toUpperCase() + shortName.substring(1);
 			String longName = cursor.getString("long_name").trim();
 			BookID bid = null;
@@ -371,7 +371,7 @@ public class MyBibleZone implements RoundtripFormat {
 
 	private void checkIndex(SqlJetDb db, String tableName, String indexName, String definition) throws SqlJetException {
 		if (!db.getTable(tableName).getIndexesNames().contains(indexName)) {
-			System.out.println("WARNING: Rebuilding index "+indexName+" on "+tableName);
+			System.out.println("WARNING: Rebuilding index " + indexName + " on " + tableName);
 			db.beginTransaction(SqlJetTransactionMode.WRITE);
 			db.createIndex(definition);
 			db.commit();
@@ -439,7 +439,7 @@ public class MyBibleZone implements RoundtripFormat {
 							snum[i] = 99999;
 						}
 					} catch (NumberFormatException ex) {
-						System.out.println("WARNING: Invalid Strong number: "+txt[i]);
+						System.out.println("WARNING: Invalid Strong number: " + txt[i]);
 						snum[i] = 99999;
 					}
 				}
@@ -450,7 +450,7 @@ public class MyBibleZone implements RoundtripFormat {
 					rmac = cleanText(text.substring(3, pos));
 					text = text.substring(pos + 4);
 					if (!Utils.compilePattern(Utils.RMAC_REGEX).matcher(rmac).matches()) {
-						System.out.println("WARNING: Skipping malformed RMAC morphology code: "+rmac);
+						System.out.println("WARNING: Skipping malformed RMAC morphology code: " + rmac);
 						rmac = null;
 					}
 				}

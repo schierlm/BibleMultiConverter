@@ -154,8 +154,7 @@ public class ZefaniaXML implements RoundtripFormat {
 				abbr += "x";
 			if (abbrs.contains(abbr)) {
 				for (int i = 2; i < 100; i++) {
-					if (!abbrs.contains(abbr + i))
-					{
+					if (!abbrs.contains(abbr + i)) {
 						abbr = abbr + i;
 						break;
 					}
@@ -191,8 +190,7 @@ public class ZefaniaXML implements RoundtripFormat {
 				abbr += "x";
 			if (abbrs.contains(abbr)) {
 				for (int i = 2; i < 100; i++) {
-					if (!abbrs.contains(abbr + i))
-					{
+					if (!abbrs.contains(abbr + i)) {
 						abbr = abbr + i;
 						break;
 					}
@@ -211,8 +209,7 @@ public class ZefaniaXML implements RoundtripFormat {
 			if (shortnames.contains(shortname)) {
 				System.out.println("WARNING: Duplicate short name " + shortname);
 				for (int i = 2; i < 100; i++) {
-					if (!shortnames.contains(shortname + i))
-					{
+					if (!shortnames.contains(shortname + i)) {
 						shortname = shortname + i;
 						break;
 					}
@@ -222,8 +219,7 @@ public class ZefaniaXML implements RoundtripFormat {
 			if (longnames.contains(longname)) {
 				System.out.println("WARNING: Duplicate long name " + shortname);
 				for (int i = 2; i < 100; i++) {
-					if (!longnames.contains(longname + i))
-					{
+					if (!longnames.contains(longname + i)) {
 						longname = longname + i;
 						break;
 					}

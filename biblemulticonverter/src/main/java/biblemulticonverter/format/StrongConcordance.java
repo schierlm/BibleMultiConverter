@@ -53,8 +53,7 @@ public class StrongConcordance implements ExportFormat {
 							OccurrenceInfo info = new OccurrenceInfo(val.toString().trim() + suffix, bookIndex, cnumber, v.getNumber());
 							for (String strong : strongs) {
 								List<OccurrenceInfo> occInfo = occurrences.get(strong);
-								if (occInfo == null)
-								{
+								if (occInfo == null) {
 									occInfo = new ArrayList<OccurrenceInfo>();
 									occurrences.put(strong, occInfo);
 								}

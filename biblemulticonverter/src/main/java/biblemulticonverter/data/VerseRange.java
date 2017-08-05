@@ -56,7 +56,7 @@ public class VerseRange {
 		return chapter == other.chapter && maxVerse >= other.minVerse && other.maxVerse >= minVerse;
 	}
 
-	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String,Set<String>> dictionaryEntries) {
+	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries) {
 		String location = bookAbbr + " " + cnumber + ":[" + (chapter == 0 ? "" : chapter + ",") + minVerse + "-" + maxVerse + "]";
 		Set<String> verseNumbers = new HashSet<String>();
 		for (Verse verse : verses) {

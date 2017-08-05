@@ -145,8 +145,7 @@ public class HaggaiXML implements RoundtripFormat {
 				abbr += "x";
 			if (abbrs.contains(abbr)) {
 				for (int i = 2; i < 100; i++) {
-					if (!abbrs.contains(abbr + i))
-					{
+					if (!abbrs.contains(abbr + i)) {
 						abbr = abbr + i;
 						break;
 					}
@@ -183,8 +182,7 @@ public class HaggaiXML implements RoundtripFormat {
 				abbr += "x";
 			if (abbrs.contains(abbr)) {
 				for (int i = 2; i < 100; i++) {
-					if (!abbrs.contains(abbr + i))
-					{
+					if (!abbrs.contains(abbr + i)) {
 						abbr = abbr + i;
 						break;
 					}
@@ -203,8 +201,7 @@ public class HaggaiXML implements RoundtripFormat {
 			if (shortnames.contains(shortname)) {
 				System.out.println("WARNING: Duplicate short name " + shortname);
 				for (int i = 2; i < 100; i++) {
-					if (!shortnames.contains(shortname + i))
-					{
+					if (!shortnames.contains(shortname + i)) {
 						shortname = shortname + i;
 						break;
 					}

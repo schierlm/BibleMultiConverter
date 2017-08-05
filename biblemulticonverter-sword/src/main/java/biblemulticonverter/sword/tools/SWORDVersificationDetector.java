@@ -50,24 +50,25 @@ public class SWORDVersificationDetector extends AbstractVersificationDetector {
 
 	@Override
 	protected VersificationScheme[] loadSchemes() throws IOException {
-			// parse header
-			VersificationScheme[] result = new VersificationScheme[ALL_V11N_NAMES.length];
-			for (int i = 0; i < result.length; i++) {
-				EnumMap<BookID, BitSet[]> coveredBooks = new EnumMap<BookID, BitSet[]>(BookID.class);
-				Versification v11n = Versifications.instance().getVersification(ALL_V11N_NAMES[i]);
-				for(Iterator<BibleBook> it =v11n.getBookIterator(); it.hasNext();) {
-					BibleBook bb = (BibleBook)it.next();
-					BitSet[] chapters = new BitSet[v11n.getLastChapter(bb)];
-					coveredBooks.put(BookMapping.MAPPING.get(bb), chapters);
-					for(int j=1; j <= v11n.getLastChapter(bb); j++) {
-						chapters[j-1] = new BitSet();
-						chapters[j-1].set(1, v11n.getLastVerse(bb, j)+1);
-					}
+		// parse header
+		VersificationScheme[] result = new VersificationScheme[ALL_V11N_NAMES.length];
+		for (int i = 0; i < result.length; i++) {
+			EnumMap<BookID, BitSet[]> coveredBooks = new EnumMap<BookID, BitSet[]>(BookID.class);
+			Versification v11n = Versifications.instance().getVersification(ALL_V11N_NAMES[i]);
+			for (Iterator<BibleBook> it = v11n.getBookIterator(); it.hasNext();) {
+				BibleBook bb = (BibleBook) it.next();
+				BitSet[] chapters = new BitSet[v11n.getLastChapter(bb)];
+				coveredBooks.put(BookMapping.MAPPING.get(bb), chapters);
+				for (int j = 1; j <= v11n.getLastChapter(bb); j++) {
+					chapters[j - 1] = new BitSet();
+					chapters[j - 1].set(1, v11n.getLastVerse(bb, j) + 1);
 				}
-				result[i] = new VersificationScheme(ALL_V11N_NAMES[i], coveredBooks);
 			}
-			return result;
+			result[i] = new VersificationScheme(ALL_V11N_NAMES[i], coveredBooks);
+		}
+		return result;
 	}
+
 	@Override
 	protected boolean useVerseRanges() {
 		return false;

@@ -48,7 +48,7 @@ public class TheWord implements RoundtripFormat {
 
 	static {
 		for (int i = 0; i < BOOK_ORDER.length; i++) {
-			BOOK_ORDER[i] = BookID.fromZefId(i+1);
+			BOOK_ORDER[i] = BookID.fromZefId(i + 1);
 			COVERED_BOOKS.add(BOOK_ORDER[i]);
 		}
 	}

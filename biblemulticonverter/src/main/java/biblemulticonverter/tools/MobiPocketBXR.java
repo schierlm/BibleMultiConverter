@@ -36,8 +36,7 @@ public class MobiPocketBXR {
 		public final int chapterCount;
 		public final String ref;
 
-		public BookInfo(String book, String ref, int chapterCount)
-		{
+		public BookInfo(String book, String ref, int chapterCount) {
 			this.book = book;
 			this.ref = ref;
 			this.chapterCount = chapterCount;

@@ -185,7 +185,7 @@ public class LogosHTML implements ExportFormat {
 		VersificationScheme scheme;
 		if (versemap.startsWith("author:")) {
 			bookDatatypeMap = new Properties();
-			try(InputStream in = new FileInputStream(versemap.substring(7))) {
+			try (InputStream in = new FileInputStream(versemap.substring(7))) {
 				bookDatatypeMap.load(in);
 			}
 			versemap = null;
@@ -262,7 +262,7 @@ public class LogosHTML implements ExportFormat {
 				} else {
 					chapterVerses = scheme.getCoveredBooks().get(book.getId());
 					String babbr = LOGOS_BOOKS.get(book.getId());
-					milestone = babbr == null ? null : (versemap + ":" + babbr+" %c:%v");
+					milestone = babbr == null ? null : (versemap + ":" + babbr + " %c:%v");
 				}
 				if (milestone == null && book.getId().getZefID() < 0 && book.getChapters().size() == 1) {
 					Chapter chapter = book.getChapters().get(0);
@@ -311,7 +311,7 @@ public class LogosHTML implements ExportFormat {
 						exportChapter(milestone, "Prologue", prologue, versemap, scheme, verseSeparator, noChapterHeadings, bw, footnotes, book, chapterVerses, prologueVerses);
 					}
 					BitSet thisChapterVerses = chapterVerses != null && cnumber <= chapterVerses.length ? chapterVerses[cnumber - 1] : null;
-					exportChapter(milestone, ""+cnumber, chapter, versemap, scheme, verseSeparator, noChapterHeadings, bw, footnotes, book, chapterVerses, thisChapterVerses);
+					exportChapter(milestone, "" + cnumber, chapter, versemap, scheme, verseSeparator, noChapterHeadings, bw, footnotes, book, chapterVerses, thisChapterVerses);
 				}
 			}
 			bw.write(footnotes.toString());

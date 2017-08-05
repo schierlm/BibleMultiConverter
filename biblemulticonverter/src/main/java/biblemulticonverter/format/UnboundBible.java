@@ -230,7 +230,7 @@ public class UnboundBible implements RoundtripFormat {
 				}
 				if (chapter < lastChapter) {
 					System.out.println("WARNING: Verses reordered across chapters detected");
-					verse = chapter+","+verse;
+					verse = chapter + "," + verse;
 					chapter = lastChapter;
 				}
 				lastChapter = chapter;
@@ -365,12 +365,12 @@ public class UnboundBible implements RoundtripFormat {
 							extraEmptyVerses.put(id, new ArrayList<String>());
 						extraEmptyVerses.get(id).add(fields[0] + "\t" + fields[1] + "\t" + fields[2] + "\t" + fields[3] + "\t" + fields[4] + "\t" + fields[5] + "\t" + fields[6] + "\t0\t");
 						Book existingBook = null;
-						for(Book bk : allBooks) {
+						for (Book bk : allBooks) {
 							if (bk.getId() == id)
 								existingBook = bk;
 						}
 						if (existingBook == null) {
-							if (nonexistingExtraEmptyVersesBooks.isEmpty() || nonexistingExtraEmptyVersesBooks.get(nonexistingExtraEmptyVersesBooks.size()-1).getId() != id)
+							if (nonexistingExtraEmptyVersesBooks.isEmpty() || nonexistingExtraEmptyVersesBooks.get(nonexistingExtraEmptyVersesBooks.size() - 1).getId() != id)
 								nonexistingExtraEmptyVersesBooks.add(new Book(id.getOsisID(), id, id.getOsisID(), id.getOsisID()));
 						} else if (!nonexistingExtraEmptyVersesBooks.isEmpty()) {
 							int pos = allBooks.indexOf(existingBook);
@@ -420,7 +420,7 @@ public class UnboundBible implements RoundtripFormat {
 						if (vn.matches("[0-9]+,.*")) {
 							int pos = vn.indexOf(',');
 							c = Integer.parseInt(vn.substring(0, pos));
-							vn = vn.substring(pos+1);
+							vn = vn.substring(pos + 1);
 						}
 						if (vn.equals("1-/") || vn.equals("1-//")) {
 							vn = "0";

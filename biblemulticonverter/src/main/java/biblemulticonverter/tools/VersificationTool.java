@@ -115,8 +115,8 @@ public class VersificationTool implements Tool {
 					for (Reference r2 : m1.getMapping(r1)) {
 						r3.addAll(m2.getMapping(r2));
 					}
-					for (int k = 0; k < r3.size()-1; k++) {
-						if(r3.get(k).equals(r3.get(k+1))) {
+					for (int k = 0; k < r3.size() - 1; k++) {
+						if (r3.get(k).equals(r3.get(k + 1))) {
 							r3.remove(k);
 							k--;
 						}

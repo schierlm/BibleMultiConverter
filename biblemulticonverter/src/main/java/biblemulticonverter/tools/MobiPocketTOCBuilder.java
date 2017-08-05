@@ -37,8 +37,7 @@ public class MobiPocketTOCBuilder implements Tool {
 			}
 			crossrefs[i] = new MobiPocketBXR(name, new File(directory, args[i + 1] + ".bxr"));
 			for (BookInfo bi : crossrefs[i].books) {
-				if (!bookMap.containsKey(bi.ref))
-				{
+				if (!bookMap.containsKey(bi.ref)) {
 					if (i != 0)
 						System.out.println(crossrefs[i].name + ": " + bi.ref + "->" + bi.book);
 					bookMap.put(bi.ref, bi.book);

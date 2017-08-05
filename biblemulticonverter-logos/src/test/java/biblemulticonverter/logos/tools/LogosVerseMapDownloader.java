@@ -171,7 +171,7 @@ public class LogosVerseMapDownloader {
 				BitSet v11ns = new BitSet();
 				for (String v11n : table.get(0).get(j).split(", ")) {
 					if (!versificationMap.containsKey(v11n))
-						System.out.println("SKIPPING VERSEMAP "+v11n);
+						System.out.println("SKIPPING VERSEMAP " + v11n);
 					else
 						v11ns.set(versificationMap.get(v11n));
 				}
