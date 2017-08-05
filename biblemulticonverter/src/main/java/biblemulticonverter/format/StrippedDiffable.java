@@ -426,7 +426,7 @@ public class StrippedDiffable implements ExportFormat {
 	public static enum Feature {
 		StripPrologs, StripFootnotes, StripHeadlines, StripVerseSeparators, InlineVerseSeparators,
 		StripCrossReferences, StripFormatting, StripGrammar, StripDictionaryReferences,
-		StripRawHTML, StripExtraAttributes, StripLineBreaks, StripVariations,
+		StripRawHTML, StripExtraAttributes, StripOrKeepExtraAttributes, StripLineBreaks, StripVariations,
 		StripOldTestament, StripNewTestament, StripDeuterocanonicalBooks,
 		StripMetadataBook, StripIntroductionBooks, StripDictionaryEntries, StripAppendixBook
 	}
@@ -605,7 +605,9 @@ public class StrippedDiffable implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws RuntimeException {
-			if (isEnabled(Feature.StripExtraAttributes, chosenFeatures, foundFeatures)) {
+			if (isEnabled(Feature.StripOrKeepExtraAttributes, chosenFeatures, foundFeatures)) {
+				return prio == ExtraAttributePriority.KEEP_CONTENT ? this : null;
+			} else if (isEnabled(Feature.StripExtraAttributes, chosenFeatures, foundFeatures)) {
 				return null;
 			} else {
 				return new StripVisitor(next.visitExtraAttribute(prio, category, key, value), chosenFeatures, foundFeatures);
