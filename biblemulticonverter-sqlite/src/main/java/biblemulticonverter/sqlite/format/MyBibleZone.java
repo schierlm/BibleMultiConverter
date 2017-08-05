@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -135,6 +136,14 @@ public class MyBibleZone implements RoundtripFormat {
 			new MyBibleZoneBook(900, "#66ff99", BookID.BOOK_AddDan),
 			new MyBibleZoneBook(910, "#66ff99", BookID.BOOK_AddEsth),
 	};
+
+	public static final Map<BookID, Integer> BOOK_NUMBERS = new EnumMap<>(BookID.class);
+
+	static {
+		for(MyBibleZoneBook bk : BOOK_INFO) {
+			BOOK_NUMBERS.put(bk.bookID, bk.bookNumber);
+		}
+	}
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
