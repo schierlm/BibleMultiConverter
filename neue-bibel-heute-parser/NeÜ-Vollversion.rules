@@ -25,12 +25,16 @@ mo.html#1
 <div class="fn">40,1: Kapitel 40-48: $1 $2 im Anhang.
 und Freudenopfer\* bestimmt
 und Freudenopfer bestimmt
+Opferh&ouml;hen\* bis
+Opferh&ouml;hen bis
 
 hos.html
 <span class="kap">7</span>&nbsp;
 <span class="kap">7</span></a>&nbsp;
-Signalhorn\*
-Signalhorn
+Signalorn\* in
+Signalhorn\* in
+Signalhorn\* an
+Signalhorn an
 
 jer.html
 </span N
@@ -75,22 +79,14 @@ Chor\.¶</div>
 Chor.</div>
 \*</h4>
 </h4>
-\Q"kap">119</span></a>&nbsp;<span class="u2"> I &Aacute;lef*</span>\E¶<p class="poet">¶   <span class="vers">1</span> Wie([^<>]*)</span></a>&nbsp;\*
-"kap">119</span></a>&nbsp;¶<span class="vers">1</span>*<span class="u2"> I &Aacute;lef*</span></p>¶<p class="poet">¶   Wie$1*
-\Q"kap">119</span></a>&nbsp;<span class="u2"> I &Aacute;lef*</span></p>\E¶<p class="poet">¶   <span class="vers">1</span> Wie([^<>]*)</span>&nbsp;\*
-"kap">119</span></a>&nbsp;¶<span class="vers">1</span>*<span class="u2"> I &Aacute;lef*</span></p>¶<p class="poet">¶   Wie$1*
-\Q"kap">119</span></a>&nbsp;<span class="u2"> I &Aacute;lef*</span></p>\E¶<p class="poet"> <span class="vers">1</span>&nbsp;Wie([^<>]*)</span>&nbsp;\*
-"kap">119</span></a>&nbsp; <span class="vers">1</span>&nbsp;*<span class="u2"> I &Aacute;lef*</span></p>¶<p class="poet">  Wie$1*
+\Q"kap">119</span></a>&nbsp;<span class="u2"> I &Aacute;lef*</span></p>\E¶<p class="poet">¶<span class="vers">1</span>&nbsp;Wie
+"kap">119</span></a>&nbsp;¶<span class="vers">1</span>*<span class="u2"> I &Aacute;lef*</span></p>¶<p class="poet">¶   Wie
 <div class="fn">Psalm 119
 <div class="fn">119,1: Psalm 119
 <div class="fn">132,6 <em>von ihr</em>. Gemeint ist die Bundeslade.</div>¶<div
 <div
-von David. / <span class="vers">2</span>&nbsp;Es entstand,
-von David.</em> / <span class="vers">2</span>&nbsp;<em>Es entstand,
-von David. / <span class="vers">2</span>&nbsp;Damals war
-von David.</em> / <span class="vers">2</span>&nbsp;<em>Damals war
-von David, / <span class="vers">2</span>&nbsp;als
-von David,</em> / <span class="vers">2</span>&nbsp;<em>als
+von David.¶<span class="vers">2</span>&nbsp;
+von David.</em>¶<span class="vers">2</span>&nbsp;<em>
 <a href="#">
 <em>
 <span class="tooltipps"></span></a>
@@ -105,6 +101,8 @@ $2$1
 <div class="fn">119,1: <em>Psalm 119</em>
 Wort<a href="#psalm">\*</a></h4>
 Wort</h4>
+""&nbsp;&nbsp;
+&raquo;&raquo;&nbsp;&nbsp;
 
 spr.html
 ¶¶<p class="poet" id="16">
@@ -118,31 +116,63 @@ spr.html
 aus Eisenstein steht
 aus Eisenstein* steht
 
-apg.html
-class="fn">15,17:
-class="fn">15,18:
-
 off.html
-einem K&ouml;nigsvolk gemacht
-einem K&ouml;nigsvolk* gemacht
 </div><div class="fn">
 </div>¶<div class="fn">
-
-hiob.html
-erhobene Arm\*\.
-erhobene Arm.
 
 hebr.html
 19,16-19; 20,18-21</a>
 19,16-19</a>; 20,18-21
-
-1jo.html
-abstreitet, dass Jesus der Messias
-abstreitet, dass Jesus der Messias*
 
 mt.html
 "fn">13,23:
 "fn">13,32:
 "fn">20,6.9:
 "fn">20,6:
+
+1chr.html
+Jafet.¶</p>
+Jafet.</p>
+
+kla.html
+ +r¶<h1
+<h1
+<div class="fn">Kapitel 4 besteht
+<div class="fn">4,1: Kapitel 4 besteht
+
+joel.html
+<a href="roe.html#10">R&ouml;merbrief</a> 10,13
+<a href="roe.html#10">R&ouml;merbrief 10</a>,13
+
+gal.html
+Christus lebt in mir\.\*
+Christus lebt in mir.
+
+tit.html
+<div class="e">¶
+<div class="e">
+
+bibel.html
+<br />
+<br />
+
+2chr.html
+&xnbsp;
+&nbsp;
+
+jes.html
+&xnbsp;
+&nbsp;
+
+obadja.html
+&xnbsp;
+&nbsp;
+
+jona.html
+&xnbsp;
+&nbsp;
+
+1jo.html
+&xnbsp;
+&nbsp;
 

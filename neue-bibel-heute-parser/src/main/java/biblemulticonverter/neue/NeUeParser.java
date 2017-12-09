@@ -612,7 +612,7 @@ public class NeUeParser implements ImportFormat {
 					filename = linkTarget;
 				} else {
 					Matcher target = Utils.compilePattern("([0-9a-z]+\\.html)?#([0-9]+)").matcher(linkTarget);
-					Matcher desc = Utils.compilePattern("[^<>]*?([0-9]+(?:[-+][0-9]+)?)(, ?[0-9]+(?:-[0-9]+)?)?(?:\\.[0-9.-]*)?(?: – [0-9]+,[0-9]+)?").matcher(text);
+					Matcher desc = Utils.compilePattern("[^<>]*?([0-9]+(?:[-+][0-9]+)?)(, ?[0-9]+(?:-[0-9]+)?)?(?:\\.[0-9.-]*)?(?: [–-] [0-9]+,[0-9]+)?").matcher(text);
 					if (!target.matches() || !desc.matches())
 						throw new IOException(html.substring(tagPos));
 					filename = target.group(1);
@@ -666,6 +666,9 @@ public class NeUeParser implements ImportFormat {
 			} else if (html.startsWith("<br />", tagPos)) {
 				v.visitLineBreak(LineBreakKind.NEWLINE);
 				pos = tagPos + 6;
+			} else if (html.startsWith("<br>", tagPos)) {
+				v.visitLineBreak(LineBreakKind.NEWLINE);
+				pos = tagPos + 4;
 			} else if (html.startsWith("<a name=\"", tagPos)) {
 				if (!html.substring(tagPos).matches("<a name=\"[a-z0-9]+\"></a>"))
 					throw new IOException(html.substring(tagPos));
@@ -752,6 +755,7 @@ public class NeUeParser implements ImportFormat {
 		text = text.replace("&szlig;", "ß").replace("&iuml;", "ï").replace("&euml;", "ë");
 		text = text.replace("&Aacute;", "Á").replace("&iacute;", "í").replace("&aacute;", "á");
 		text = text.replace("&eacute;", "é").replace("&copy;", "©");
+		text = text.replace("&frac12;", "½").replace("&nbsp;", "\u00A0").replace("&acute;", "´");
 		if (text.contains("&"))
 			throw new IOException(text);
 		return text.replace("\0", "&");
