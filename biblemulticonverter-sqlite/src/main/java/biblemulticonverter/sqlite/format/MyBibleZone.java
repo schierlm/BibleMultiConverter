@@ -388,7 +388,7 @@ public class MyBibleZone implements RoundtripFormat {
 				throw new RuntimeException(html);
 			String tag = html.substring(0, pos + 1);
 			html = html.substring(pos + 1);
-			vv.visitRawHTML(RawHTMLMode.BOTH, tag.replaceAll("  +", " "));
+			vv.visitRawHTML(RawHTMLMode.BOTH, tag.replace('\n', ' ').replaceAll("  +", " "));
 			pos = html.indexOf('<');
 		}
 		decodeEntities(vv, html);

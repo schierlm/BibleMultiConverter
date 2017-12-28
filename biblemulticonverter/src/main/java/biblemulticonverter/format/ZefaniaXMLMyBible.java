@@ -444,7 +444,8 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 
 									@Override
 									public void visitRawHTML(RawHTMLMode mode, String raw) throws IOException {
-										throw new RuntimeException("Raw HTML not supported");
+										if (mode != RawHTMLMode.ONLINE)
+											footnoteStack.get(0).add(raw);
 									}
 
 									@Override
@@ -459,10 +460,10 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 										int bookID = book.getZefID();
 										String mscope, xmscope;
 										try {
-											int start = firstVerse.equals("^") ? 1 : Integer.parseInt(firstVerse.replaceAll("[a-zG]|/[0-9]*", ""));
+											int start = firstVerse.equals("^") ? 1 : Integer.parseInt(firstVerse.replaceAll("[a-zG]|[,/][0-9]*", ""));
 											int end;
 											if (firstChapter == lastChapter && !lastVerse.equals("$")) {
-												end = Integer.parseInt(lastVerse.replaceAll("[a-z]|/[0-9]*", ""));
+												end = Integer.parseInt(lastVerse.replaceAll("[a-z]|[,/][0-9]*", ""));
 											} else {
 												end = -1;
 											}
