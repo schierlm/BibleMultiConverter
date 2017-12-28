@@ -26,6 +26,9 @@ public class QuickBible implements ExportFormat {
 
 	public static final String[] HELP_TEXT = {
 			"Export format for QuickBible (Bible for Android)",
+			"",
+			"This export format will export YET files. To convert to YES files, use the",
+			"converter from <http://www.bibleforandroid.com/developer>.",
 	};
 
 	private static final BookID[] EXTRA_BOOKS = {
