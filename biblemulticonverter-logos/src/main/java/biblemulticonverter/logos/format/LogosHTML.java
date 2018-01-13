@@ -368,6 +368,8 @@ public class LogosHTML implements ExportFormat {
 					verseMilestone += "[[@" + formatMilestone(milestone, vcname, minVerse + "-" + maxVerse) + "]]";
 				}
 				versePrefix += verseMilestone;
+				if (versePrefixBeforeHeadline.endsWith("]]") && verseMilestone.startsWith("[[@"))
+					versePrefixBeforeHeadline += "\uFEFF";
 				versePrefixBeforeHeadline += verseMilestone;
 			}
 
