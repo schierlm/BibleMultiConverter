@@ -36,6 +36,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<ExportFormat>("SimpleJSON", "Very simple JSON bible export (verse text only).", SimpleJSON.HELP_TEXT, SimpleJSON.class));
 		result.add(new Module<ExportFormat>("VersificationDetector", "Detect what versification most closely matches a module", VersificationDetector.HELP_TEXT, VersificationDetector.class));
 		result.add(new Module<ExportFormat>("VersificationMappedDiffable", "Export like Diffable, but change the Versification first.", VersificationMappedDiffable.HELP_TEXT, VersificationMappedDiffable.class));
+		result.add(new Module<ExportFormat>("HeatMapHTML", "Create HTML page that shows which verses contain certain features.", HeatMapHTML.HELP_TEXT, HeatMapHTML.class));
 		return result;
 	}
 

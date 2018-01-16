@@ -88,19 +88,21 @@ The **StrongConcordance** import filter takes a Strong dictionary and a Bible an
 augments the dictionary with concordance information (i. e. links that link back
 to all verses that contain this word in that particular Bible).
 
-Two utility exporters are also available: **Validate** validates the syntax of a
+Three utility exporters are also available: **Validate** validates the syntax of a
 bible file, and **StrippedDiffable** exports a Diffable, but removes certain features
 (like prologs, footnotes, headlines, etc.) In case you want to rename or remove
 certain books automatically, have a look at the **Diffable** importer, which provides
-options for that.
+options for that. **HeatMapHTML** can generate heat maps (or verse statistics) which show
+how often a certain feature (e. g. a footnote, a divine name, or the word "Jesus") appears
+in the Bible and where exactly.
 
-The *ValidateXML* tool can be used to validate an input XML file against a XSD schema.
+The **ValidateXML** tool can be used to validate an input XML file against a XSD schema.
 The schema can be given as a file, as an URL or one of the embedded schema names `OSIS`,
 `ZefaniaXML`, `HaggaiXML`, `RoundtripXML` or `ZefDic`. This is useful as in case of an
 invalid XML input file, the schema usually provides better error messages than what is
 provided by the import modules.
 
-The *SQLiteDump* tool (part of the SQLite edition) can dump SQLite databases in a
+The **SQLiteDump** tool (part of the SQLite edition) can dump SQLite databases in a
 diffable text format; useful for diagnosing problems with Bible programs that use
 SQLite based formats or for importing MyBible.Zone bibles.
 
