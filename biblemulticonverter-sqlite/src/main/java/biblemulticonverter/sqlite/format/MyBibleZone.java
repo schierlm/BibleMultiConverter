@@ -145,6 +145,9 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 	}
 
+	private boolean rawMorphology = Boolean.getBoolean("mybiblezone.morphology.raw");
+	private boolean rawFootnotes = Boolean.getBoolean("mybiblezone.footnotes.raw");
+
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
 		SqlJetDb db = SqlJetDb.open(inputFile, false);
@@ -444,8 +447,8 @@ public class MyBibleZone implements RoundtripFormat {
 					}
 				}
 				String rmac = null;
-				text = text.substring(pos + 4);
-				if (text.startsWith("<m>")) {
+				text = text.substring(pos + 4).replaceFirst("^ +<m>", "<m>");
+				if (text.startsWith("<m>") && !rawMorphology) {
 					pos = text.indexOf("</m>");
 					rmac = cleanText(text.substring(3, pos));
 					text = text.substring(pos + 4);
@@ -479,6 +482,14 @@ public class MyBibleZone implements RoundtripFormat {
 			} else if (text.startsWith("<br/>")) {
 				vv.visitLineBreak(LineBreakKind.NEWLINE);
 				text = text.substring(5);
+			} else if ((text.startsWith("<m>") && rawMorphology) || (text.startsWith("<f>") && rawFootnotes)) {
+				String tag = text.substring(1, 2);
+				text = convertFromVerse(text.substring(3), vv.visitExtraAttribute(ExtraAttributePriority.SKIP, "mybiblezone", "rawtag", tag), footnoteDB, vnums);
+				if (!text.startsWith("</" + tag + ">"))
+					System.out.println("WARNING: Unclosed <" + tag + "> tag at: " + text);
+				else {
+					text = text.substring(4);
+				}
 			} else if (text.startsWith("<m>")) {
 				System.out.println("WARNING: Morph code without Strongs not supported");
 				vv.visitText("<");
@@ -1089,6 +1100,11 @@ public class MyBibleZone implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws IOException {
+			if (category.equals("mybiblezone") && key.equals("rawtag")) {
+				builder.append("<" + value + ">");
+				suffixStack.add("</" + value + ">");
+				return this;
+			}
 			unsupportedFeatures.add("extra attribute in verse");
 			Visitor<IOException> next = prio.handleVisitor(category, this);
 			if (next == this)

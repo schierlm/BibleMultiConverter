@@ -64,7 +64,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[BrowserBible](https://github.com/digitalbiblesociety/browserbible-3/)**: export only
 - **[Quick Bible](http://www.bibleforandroid.com/)**: export only
 - **SWORD modules**: import only (see below for details)
-- **MyBible.Zone**: import and export (in a special SQLite edition)
+- **MyBible.Zone** ([more bibles](http://www.ph4.org/b4_index.php)): import and export (in a special SQLite edition)
 - **[Bible Analyzer](http://www.bibleanalyzer.com/)**: export only (text export for
   bibles and dictionaries, SQLite export for bibles)
 - **[Accordance](https://www.accordancebible.com/)**: export only
@@ -224,7 +224,7 @@ Supported Versification formats:
 - **BMCV** (own database format): Import and export (versifications and mappings)
 - **KJV** (hard-coded KJV versification): "Import" only (no mapping)
 - **[CCEL](http://www.ccel.org/refsys/)**: Import and export (versifications and mappings)
-- **[OpenScriptures](https://github.com/openscriptures/BibleOrgSys/tree/master/DataFiles/VersificationSystems): Import only (versifications only, no mappings)
+- **[OpenScriptures](https://github.com/openscriptures/BibleOrgSys/tree/master/DataFiles/VersificationSystems)**: Import only (versifications only, no mappings)
 - **SWORDVersification**: Import versifications and mappings from SWORD
 
 SWORD import
