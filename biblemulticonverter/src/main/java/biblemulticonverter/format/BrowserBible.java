@@ -114,8 +114,8 @@ public class BrowserBible implements ExportFormat {
 		BOOK_NAMES.put(BookID.BOOK_EpLao, "LL");
 		BOOK_NAMES.put(BookID.BOOK_1En, "N1");
 		BOOK_NAMES.put(BookID.BOOK_AddDan, "AD");
-		// BOOK_NAMES.put(BookID.BOOK_Jubilees, "JE");
-		// BOOK_NAMES.put(BookID.BOOK_DanielGreek, "DG");
+		BOOK_NAMES.put(BookID.BOOK_Jub, "JE");
+		BOOK_NAMES.put(BookID.BOOK_DanGr, "DG");
 		BOOK_NAMES.put(BookID.BOOK_Matt, "MT");
 		BOOK_NAMES.put(BookID.BOOK_Mark, "MK");
 		BOOK_NAMES.put(BookID.BOOK_Luke, "LK");
@@ -146,15 +146,16 @@ public class BrowserBible implements ExportFormat {
 		BOOK_NAMES.put(BookID.APPENDIX, "BK");
 		BOOK_NAMES.put(BookID.INTRODUCTION_OT, "XA");
 		BOOK_NAMES.put(BookID.INTRODUCTION_NT, "XB");
-		// BOOK_NAMES.put(BookID.BOOK_Other, "OH");
+		BOOK_NAMES.put(BookID.APPENDIX_OTHER, "OH");
 		// BOOK_NAMES.put(BookID.BOOK_XXC, "XC");
 		// BOOK_NAMES.put(BookID.BOOK_XXD, "XD");
 		// BOOK_NAMES.put(BookID.BOOK_XXE, "XE");
 		// BOOK_NAMES.put(BookID.BOOK_XXF, "XF");
 		// BOOK_NAMES.put(BookID.BOOK_XXG, "XG");
-		// BOOK_NAMES.put(BookID.BOOK_Glossary, "GS");
-		// BOOK_NAMES.put(BookID.BOOK_Concordance, "CN");
-		// BOOK_NAMES.put(BookID.BOOK_TopicalIndex, "TX");
+		BOOK_NAMES.put(BookID.APPENDIX_GLOSSARY, "GS");
+		BOOK_NAMES.put(BookID.APPENDIX_CONCORDANCE, "CN");
+		BOOK_NAMES.put(BookID.APPENDIX_TOPICAL, "TX");
+		BOOK_NAMES.put(BookID.APPENDIX_NAMES, "NX");
 	}
 
 	@Override

@@ -55,7 +55,7 @@ public class LogosVerseMapDownloader {
 			"BibleNO2011", "BiblePDV", "BibleREB", "BibleSCHLACTER2000", "BibleSEM", "BibleSER", "BibleTOB2010",
 			"BibleBCP1662", "BibleBCP1928", "BibleBCP1979", "BibleCAMGT", "BibleCBG", "BibleCBL", "BibleCODEXS",
 			"BibleEOBNT", "BibleGRAIL", "BibleGUDSORD", "BibleLXXSCS", "BiblePATR", "BibleRVG",
-			"BibleSB2014", "BibleTOB-HL",
+			"BibleSB2014", "BibleTOB-HL", "Bible4E2B",
 			"BibleABUV1913", "BibleALMEIDA1819", "BibleCAMBRIDGE1895", "BibleCSB", "BibleCUV", "BibleCUV2",
 			"BibleDKV", "BibleERK", "BibleFIGUEIREDO1885", "BibleKONCTB", "BibleKONKRV", "BibleKONKSV", "BibleKRV",
 			"BibleLEESER1891", "BibleLONGMAN1864", "BibleNET", "BibleNEWCOME", "BiblePALFREY", "BiblePSALMSOFDAVID",
@@ -82,9 +82,9 @@ public class LogosVerseMapDownloader {
 			"Philemon=Phlm", "Hebrews=Heb", "James=Jas", "1 Peter=1Pet", "2 Peter=2Pet", "1 John=1John", "2 John=2John",
 			"3 John=3John", "Jude=Jude", "Revelation=Rev", "Additions to Daniel=AddDan", "Plea for Deliverance=-",
 			"Apostrophe to Zion=-", "Hymn to the Creator=-", "Apostrophe to Judah=-", "David’s Compositions=-",
-			"Apocryphal Psalms=-", "Psalm 151A=-", "Psalm 151B=-",
-			"Epistle of Baruch=-", "Apocalypse of Baruch=-", "Catena=-",
-			"Eschatological Hymn=-", "1 Enoch=1En", "4 Ezra=-", "2 Baruch=-"
+			"Apocryphal Psalms=5ApocSyrPss", "Psalm 151A=-", "Psalm 151B=-",
+			"Epistle of Baruch=EpBar", "Apocalypse of Baruch=2Bar", "Catena=-",
+			"Eschatological Hymn=-", "1 Enoch=1En", "4 Ezra=4Ezra", "2 Baruch=4Bar", "Odes=Odes",
 	};
 
 	public static void main(String[] args) throws Exception {
@@ -109,7 +109,7 @@ public class LogosVerseMapDownloader {
 			while ((len = in.read(buf)) != -1)
 				baos.write(buf, 0, len);
 			String xml = new String(baos.toByteArray(), StandardCharsets.UTF_8);
-			xml = xml.replaceAll("<script type=\"text/javascript\">window.*?</script>", "").replace("createCookie&authorizationHeader=", "");
+			xml = xml.replaceAll("<script type=\"text/javascript\">window.*?</script>", "").replace("createCookie&authorizationHeader=", "").replaceAll("<script async charset=\"utf-8\"", "<script charset=\"utf-8\"");
 			parseVerseMap(builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8))), w);
 		}
 		System.out.println("Downloading Logos verse map done.");

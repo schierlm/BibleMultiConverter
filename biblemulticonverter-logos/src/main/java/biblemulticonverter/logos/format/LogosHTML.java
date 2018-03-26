@@ -142,13 +142,25 @@ public class LogosHTML implements ExportFormat {
 		LOGOS_BOOKS.put(BookID.BOOK_PrAzar, "Pr Az");
 		LOGOS_BOOKS.put(BookID.BOOK_EsthGr, "EsG");
 		LOGOS_BOOKS.put(BookID.BOOK_PssSol, "PssSol");
+		LOGOS_BOOKS.put(BookID.BOOK_AddDan, "AddDa");
+		LOGOS_BOOKS.put(BookID.BOOK_AddEsth, "Gk Es");
+		LOGOS_BOOKS.put(BookID.BOOK_Odes, "Ode");
+		LOGOS_BOOKS.put(BookID.BOOK_EpLao, "Laod");
+		LOGOS_BOOKS.put(BookID.BOOK_1En, "Enoch");
+		LOGOS_BOOKS.put(BookID.BOOK_Bel, "Bel");
+		LOGOS_BOOKS.put(BookID.BOOK_AddPs, "Ps151");
+		LOGOS_BOOKS.put(BookID.BOOK_4Ezra, "4Ezr");
+		LOGOS_BOOKS.put(BookID.BOOK_5ApocSyrPss, "ApocryphalPsalms");
+		LOGOS_BOOKS.put(BookID.BOOK_2Bar, "ApocBar");
+		LOGOS_BOOKS.put(BookID.BOOK_4Bar, "2Bar");
+		LOGOS_BOOKS.put(BookID.BOOK_EpBar, "EpBar");
 		BitSet allVerses = new BitSet();
 		allVerses.set(1, 1000);
 		Arrays.fill(ALL_CHAPTER_VERSES, allVerses);
 	}
 
 	public static final String[] NAMED_VERSES = {
-			"title", "title 2", "title A", "title B", "title C", "prologue", "prologue 1", "prologue 2", "subscript",
+			"title", "title 1", "title 2", "title A", "title B", "title C", "prologue", "prologue 1", "prologue 2", "subscript",
 			"1a", "1b", "1c", "1d", "1e", "1f", "1g", "1h", "1i", "1k", "1l", "1m", "1n", "1o", "1p", "1q", "1r", "1s",
 			"2a", "2b", "2c", "2d", "2e", "2f", "2g", "2h", "2i", "2k", "2l", "2m", "2n", "2o", "2p",
 			"3a", "3b", "3c", "3d", "3e", "3f", "3g", "3h", "3i", "3k", "3l", "4a", "4ab", "4b", "4c", "5a", "5b", "5c", "5d", "5e",
@@ -166,7 +178,7 @@ public class LogosHTML implements ExportFormat {
 			"36a", "36b", "36p", "37a", "37b", "37c", "37p", "38a", "38b", "38p", "39a", "39p", "40a", "40ab", "40b", "40c", "40p",
 			"41a", "41p", "42a", "42b", "42c", "42d", "42p", "43a", "43b", "43p", "44a", "44p", "45a", "45b", "45p",
 			"46a", "46b", "46c", "46d", "46e", "46f", "46g", "46h", "46i", "46k", "46l", "46p", "47a", "47p", "48a", "48b", "48p", "49a", "49p",
-			"50a", "50b", "50p", "51a", "51b", "51p", "52a", "52p", "53a", "53p", "54a", "54p", "55a", "55p", "56a", "56b", "56p", "57a", "57p", "58a", "58p", "59a", "59p",
+			"50a", "50b", "50p", "51a", "51b", "51p", "52a", "52p", "53a", "53b", "53p", "54a", "54p", "55a", "55p", "56a", "56b", "56p", "57a", "57p", "58a", "58p", "59a", "59p",
 			"60a", "60p", "61a", "61p", "62a", "62b", "62c", "62p", "63a", "63p", "64a", "64p", "65a", "65p", "66a", "66p", "67p", "68p", "69a", "69b", "69p",
 			"70a", "70p", "71a", "71p", "72a", "72b", "72p", "73a", "73p", "74a", "74p", "75a", "75p", "76a", "76p", "77a", "77p", "78a", "78p", "79a", "79p",
 			"80a", "80p", "81a", "81p", "82a", "82p", "83a", "83p", "84a", "84p", "85a", "85p", "86a", "86p", "87a", "87p", "88a", "88p", "88w", "88x", "88y", "88z",

@@ -106,8 +106,26 @@ public enum BookID {
 
 	BOOK_PrAzar("PrAzar", false, 901, "Prayer of Azariah", "Aza"),
 	BOOK_EsthGr("EsthGr", false, 902, "Greek Esther", "EsG"),
+	BOOK_DanGr("DanGr", false, 903, "Greek Daniel", "DaG"),
+	BOOK_Jub("Jub", false, 904, "Jubilees", "Jub"),
+	BOOK_4Ezra("4Ezra", false, 905, "Ezra Apocalpyse", "4Ez"),
+	BOOK_5Ezra("5Ezra", false, 906, "5 Ezra", "5Ez"),
+	BOOK_6Ezra("6Ezra", false, 907, "6 Ezra", "6Ez"),
+	BOOK_5ApocSyrPss("5ApocSyrPss", false, 908, "5 Apocryphal Syriac Psalms", "Ps3"),
+	BOOK_2Bar("2Bar", false, 909, "(Syriac) Apocalypse of Baruch", "2Ba"),
+	BOOK_4Bar("4Bar", false, 910, "4 Baruch", "4Ba"),
+	BOOK_EpBar("EpBar", false, 911, "Letter of Baruch", "LBa"),
+	BOOK_1Meq("1Meq", false, 912, "1 Meqabyan", "1Mq"),
+	BOOK_2Meq("2Meq", false, 913, "2 Meqabyan", "2Mq"),
+	BOOK_3Meq("3Meq", false, 914, "3 Meqabyan", "3Mq"),
+	BOOK_Rep("Rep", false, 915, "Reproof", "Rep"),
 
 	APPENDIX("x-App", true, -6, "Appendix", "App"),
+	APPENDIX_OTHER("x-App-Other", true, -7, "Appendix Other", "ApO"),
+	APPENDIX_CONCORDANCE("x-App-Conc", true, -8, "Appendix Concordance", "ApC"),
+	APPENDIX_GLOSSARY("x-App-Gloss", true, -9, "Appendix Glossary", "ApG"),
+	APPENDIX_TOPICAL("x-App-Topical", true, -10, "Appendix Topical Index", "ApT"),
+	APPENDIX_NAMES("x-App-Names", true, -10, "Appendix Names Index", "ApN"),
 
 	DICTIONARY_ENTRY("x-Dict", true, -5, "Dictionary Entry", "Dct");
 

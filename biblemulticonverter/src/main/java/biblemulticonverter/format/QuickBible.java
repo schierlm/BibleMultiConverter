@@ -31,6 +31,7 @@ public class QuickBible implements ExportFormat {
 			"converter from <http://www.bibleforandroid.com/developer>.",
 	};
 
+	// https://github.com/yukuku/androidbible/blob/develop/publication/doc/book%20numbers.txt
 	private static final BookID[] EXTRA_BOOKS = {
 			BookID.BOOK_1Esd, BookID.BOOK_2Esd, BookID.BOOK_Tob, BookID.BOOK_Jdt,
 			BookID.BOOK_1Macc, BookID.BOOK_2Macc, BookID.BOOK_3Macc, BookID.BOOK_4Macc,
