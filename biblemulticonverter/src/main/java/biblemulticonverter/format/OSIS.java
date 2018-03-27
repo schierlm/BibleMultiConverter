@@ -66,6 +66,7 @@ public class OSIS implements RoundtripFormat {
 	};
 
 	private static final Pattern XREF_PATTERN = Pattern.compile("([A-Za-z0-9]+) ([0-9]+), ([0-9]+)");
+	private static final Pattern XREF_PATTERN_2 = Pattern.compile("([A-Za-z0-9]+) ([0-9]+)[., ]+([0-9]+)[.,]?");
 
 	private Set<String> printedWarnings = new HashSet<String>();
 	private Properties osisRefMap = null;
@@ -676,19 +677,54 @@ public class OSIS implements RoundtripFormat {
 						fn.visitCrossReference(ref[0], bookID, ch, vs, ch, vs).visitText(e.getTextContent());
 					}
 				} else if (elem.getTextContent().length() > 0) {
+					// OSIS converted from USFM contains a reference back to the verse itself
+					for (Node n = elem.getFirstChild(); n != null; n = n.getNextSibling()) {
+						if (n instanceof Element && n.getNodeName().equals("reference")) {
+							if (((Element)n).getAttribute("osisRef").equals(((Element)elem).getAttribute("osisRef"))) {
+								n = n.getPreviousSibling();
+								n.getParentNode().removeChild(n.getNextSibling());
+							}
+						}
+					}
 					boolean first = true;
 					for (String ref : elem.getTextContent().split("\\|")) {
 						Matcher m = XREF_PATTERN.matcher(ref);
-						if (!m.matches())
-							throw new IllegalStateException("Malformed cross reference: " + ref);
+						if (!m.matches()) {
+							ref = ref.trim();
+							if (ref.startsWith("1 ") || ref.startsWith("2 ") || ref.startsWith("3 ")) {
+								ref = ref.substring(0,1)+ref.substring(2);
+							}
+							m = XREF_PATTERN_2.matcher(ref);
+							if (m.matches()) {
+								try {
+									BookID.fromOsisId(m.group(1));
+								} catch (IllegalArgumentException ex) {
+									BookID bk = null;
+									for (BookID id : BookID.values()) {
+										if (id.getThreeLetterCode().equalsIgnoreCase(m.group(1)))
+											bk = id;
+									}
+									if (bk != null) {
+										m = XREF_PATTERN_2.matcher(bk.getOsisID()+" "+m.group(2)+"."+m.group(3));
+									} else {
+										m = XREF_PATTERN_2.matcher("");
+									}
+								}
+							}
+						}
 						if (!first)
 							fn.visitText("; ");
 						first = false;
-						String book = m.group(1);
-						BookID bookID = BookID.fromOsisId(book);
-						int ch = Integer.parseInt(m.group(2));
-						String vs = m.group(3);
-						fn.visitCrossReference(book, bookID, ch, vs, ch, vs).visitText(ref);
+						if (m.matches()) {
+							String book = m.group(1);
+							BookID bookID = BookID.fromOsisId(book);
+							int ch = Integer.parseInt(m.group(2));
+							String vs = m.group(3);
+							fn.visitCrossReference(book, bookID, ch, vs, ch, vs).visitText(ref);
+						} else {
+							printWarning("WARNING: Malformed cross reference: " + ref);
+							fn.visitText(ref.replaceAll("[\r\n\t ]+", " ").trim());
+						}
 					}
 				} else {
 					printWarning("WARNING: crossReference without content");
