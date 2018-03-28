@@ -3,6 +3,7 @@ package biblemulticonverter;
 import java.util.*;
 
 import biblemulticonverter.format.*;
+import biblemulticonverter.format.paratext.*;
 import biblemulticonverter.tools.*;
 import biblemulticonverter.versification.*;
 
@@ -55,6 +56,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<RoundtripFormat>("OSIS", "Very rudimentary OSIS (Open Scripture Information Standard) import/export.", OSIS.HELP_TEXT, OSIS.class));
 		result.add(new Module<RoundtripFormat>("TheWord", "Bible format used by theWord", TheWord.HELP_TEXT, TheWord.class));
 		result.add(new Module<RoundtripFormat>("UnboundBible", "Bible format downloadable from Biola University", UnboundBible.HELP_TEXT, UnboundBible.class));
+		result.add(new Module<RoundtripFormat>("USFM", "Bible format used by Paratext", USFM.HELP_TEXT, USFM.class));
 		return result;
 	}
 
@@ -66,6 +68,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<Tool>("ESwordRTFPostprocessor", "Postprocess RTF for exporting to E-Sword", ESwordRTFPostprocessor.HELP_TEXT, ESwordRTFPostprocessor.class));
 		result.add(new Module<Tool>("ValidateXML", "Validate one or more XML files according to a XSD schema.", ValidateXML.HELP_TEXT, ValidateXML.class));
 		result.add(new Module<Tool>("Versification", "Change versification databases or query information from them.", VersificationTool.HELP_TEXT, VersificationTool.class));
+		result.add(new Module<Tool>("ParatextConverter", "Convert between Paratext formats without information loss", ParatextConverter.HELP_TEXT, ParatextConverter.class));
 		return result;
 	}
 

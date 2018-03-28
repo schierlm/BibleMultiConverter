@@ -69,6 +69,7 @@ In addition, the following other formats are supported, with varying accuracy:
   bibles and dictionaries, SQLite export for bibles)
 - **[Accordance](https://www.accordancebible.com/)**: export only
 - **[Equipd Bible](http://equipd.me/)**: export only
+- **[USFM](http://paratext.org/usfm/)**: import and export (most tags are supported; not supported are `\ca \cp \va \vp \fig \fm`)
 
 In combination with third party tools, other export formats are available:
 
@@ -106,13 +107,13 @@ The **SQLiteDump** tool (part of the SQLite edition) can dump SQLite databases i
 diffable text format; useful for diagnosing problems with Bible programs that use
 SQLite based formats or for importing MyBible.Zone bibles.
 
+The **ParatextConverter** tool can be used to remove tagged OT/NT/Deuterocanonical content
+from a USFM file.
 
 Planned formats
 ---------------
 
-I may add an importer and exporter for USFM format (Unified Standard Format Markers).
-
-I also plan lossless import and export to ODT, to make manual editing of the Bible text
+I plan lossless import and export to ODT, to make manual editing of the Bible text
 easier. But no guarantees here, I don't know how hard ODT import will be at the end.
 [This is currently blocked by the fact that OpenOffice/LibreOffice is very slow in loading
 documents that contain very many small spans using the same style, which will inevitably
@@ -159,6 +160,11 @@ always lose more information than needed; if you want to convert this way, perha
 another converter tool is more appropriate for your needs. As soon as either the
 input or the output format is of first category, this converter probably outperforms
 other converters easily.
+
+In addition, some Bible formats have very sophisticated formatting features (which
+are not used by most of the available modules), like several paragraph styles or even
+list and tables. All these formats get reduced to the bare minimum: paragraph breaks
+as well as line breaks with and without indentation.
 
 
 Reporting exporter bugs
