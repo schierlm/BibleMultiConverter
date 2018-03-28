@@ -93,6 +93,32 @@
 							<generatePackage>biblemulticonverter.schema.versification.openscriptures</generatePackage>
 						</configuration>
 					</execution>
+					<execution>
+						<id>generate7</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<generateDirectory>target/generated-sources/xjc7</generateDirectory>
+							<schemaIncludes>
+								<include>usfx.xsd</include>
+							</schemaIncludes>
+							<generatePackage>biblemulticonverter.schema.usfx</generatePackage>
+						</configuration>
+					</execution>
+					<execution>
+						<id>generate8</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<generateDirectory>target/generated-sources/xjc8</generateDirectory>
+							<schemaIncludes>
+								<include>usx.xsd</include>
+							</schemaIncludes>
+							<generatePackage>biblemulticonverter.schema.usx</generatePackage>
+						</configuration>
+					</execution>
 				</executions>
 				<configuration>
 					<locale>en</locale>

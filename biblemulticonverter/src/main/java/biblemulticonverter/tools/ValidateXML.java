@@ -44,6 +44,10 @@ public class ValidateXML implements Tool {
 			schemaResourceName = "/ccelVersification.xsd";
 		} else if (args[0].equals("OpenScriptures")) {
 			schemaResourceName = "/OpenScripturesBibleVersificationSystem.xsd";
+		} else if (args[0].equals("USFX")) {
+			schemaResourceName = "/usfx.xsd";
+		} else if (args[0].equals("USX")) {
+			schemaResourceName = "/usx.xsd";
 		} else {
 			schemaResourceName = null;
 		}
