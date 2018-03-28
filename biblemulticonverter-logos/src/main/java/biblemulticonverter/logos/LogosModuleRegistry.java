@@ -33,6 +33,7 @@ public class LogosModuleRegistry extends ModuleRegistry {
 	public Collection<Module<Tool>> getTools() {
 		List<Module<Tool>> result = new ArrayList<Module<Tool>>();
 		result.add(new Module<Tool>("LogosNestedHyperlinkPostprocessor", "Postprocess nested hyperlinks in DOCX converted from HTML by LibreOffice", LogosNestedHyperlinkPostprocessor.HELP_TEXT, LogosNestedHyperlinkPostprocessor.class));
+		result.add(new Module<Tool>("LogosFootnotePostprocessor", "Postprocess footnote numbers in DOCX converted from HTML by LibreOffice", LogosFootnotePostprocessor.HELP_TEXT, LogosFootnotePostprocessor.class));
 		return result;
 	}
 }
