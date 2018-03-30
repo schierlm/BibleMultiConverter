@@ -18,7 +18,7 @@ public class Utils {
 
 	private static final String RMAC_UNDECLINED = "ADV|CONJ|COND|PRT|PREP|INJ|ARAM|HEB|N-PRI|A-NUI|N-LI|N-OI";
 	private static final String RMAC_DECLINED = "[NARCDTKIXQFSP](-[123]?[NVGDA][SP][MFN]?)?";
-	private static final String RMAC_VERBS = "V-([PIFARLX]|2[FARL])[AMPEDON][ISOMNP](-([123][SP]|[NGDAV][SPD][MFN]))?";
+	private static final String RMAC_VERBS = "V-([PIFARLX]|2[FARL])[AMPEDONQX][ISOMNP](-([123][SP]|[NGDAV][SPD][MFN]))?";
 	public static final String RMAC_REGEX = "(" + RMAC_UNDECLINED + "|" + RMAC_DECLINED + ")(-(S|C|ABB|I|N|K|ATT))?|" + RMAC_VERBS + "(-ATT)?";
 
 	public static int validateNumber(String name, int value, int min, int max) {

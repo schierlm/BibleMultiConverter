@@ -464,7 +464,7 @@ public class LogosHTML implements ExportFormat {
 				return "R" + type + person + flags;
 			}
 		} else if (rmac.startsWith("V-")) { // @V[AFILPRT][AMPU][IMNOPS][123][DPS][ADGNV][FMN]
-			Matcher mm = Utils.compilePattern("V-2?([PIFARLX])([AMPEDON][ISOMNP])(-([123][SP])|-([NGDAV][SPD][MFN]))?(-ATT)?").matcher(rmac);
+			Matcher mm = Utils.compilePattern("V-2?([PIFARLX])([AMPEDONQX][ISOMNP])(-([123][SP])|-([NGDAV][SPD][MFN]))?(-ATT)?").matcher(rmac);
 			if (!mm.matches())
 				throw new RuntimeException(rmac);
 			String tense = mm.group(1);
@@ -478,8 +478,8 @@ public class LogosHTML implements ExportFormat {
 				opt = "XX" + optflags2.charAt(1) + "" + optflags2.charAt(0) + "" + optflags2.charAt(2);
 			}
 			char voice = flags.charAt(0);
-			if ("EDON".contains("" + voice)) {
-				voice = "UMPU".charAt("EDON".indexOf(voice));
+			if ("EDONQX".contains("" + voice)) {
+				voice = "UMPUAU".charAt("EDONQX".indexOf(voice));
 			}
 			return "V" + tense + voice + "" + flags.charAt(1) + opt;
 		} else {
