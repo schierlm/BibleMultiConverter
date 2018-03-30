@@ -5,7 +5,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -156,6 +155,11 @@ public class OSIS implements RoundtripFormat {
 	}
 
 	protected void convertToMilestoned(Element root) {
+		boolean wojTagsInserted = convertAllToMilestoned(root);
+		convertTitleVerseChapterFromMilestoned(root, wojTagsInserted);
+	}
+
+	protected boolean convertAllToMilestoned(Element root) {
 		// convert everything to milestoned form
 		for (Node node = root.getFirstChild(); node != null; node = node.getNextSibling()) {
 			if (node instanceof Element && node.getFirstChild() != null) {
@@ -244,6 +248,10 @@ public class OSIS implements RoundtripFormat {
 				}
 			}
 		}
+		return wojTagsInserted;
+	}
+
+	protected void convertTitleVerseChapterFromMilestoned(Element root, boolean wojTagsInserted) {
 		// unmilestone title, verse, chapter
 		for (String tagName : Arrays.asList("title", "verse", "chapter")) {
 			for (Node node = root.getFirstChild(); node != null; node = node.getNextSibling()) {
@@ -291,7 +299,7 @@ public class OSIS implements RoundtripFormat {
 		}
 	}
 
-	private static final Set<String> REWRAPPABLE_MILESTONED_ELEMENTS = new HashSet<>(Arrays.asList("woj", "hi", "seg", "divineName", "transChange"));
+	private static final Set<String> REWRAPPABLE_MILESTONED_ELEMENTS = new HashSet<>(Arrays.asList("woj", "hi", "seg", "divineName", "transChange", "catchWord", "rdg"));
 	private static final Set<String> FIXED_MILESTONED_ELEMENTS = new HashSet<>(Arrays.asList("note", "w", "reference", "variation"));
 
 	protected void convertFromMilestoned(Element root, List<Element> unclosedElements) {
@@ -624,6 +632,8 @@ public class OSIS implements RoundtripFormat {
 			parseStructuredTextChildren(vv.visitFormattingInstruction(FormattingInstructionKind.DIVINE_NAME), elem);
 		} else if (elem.getNodeName().equals("woj")) {
 			parseStructuredTextChildren(vv.visitFormattingInstruction(FormattingInstructionKind.WORDS_OF_JESUS), elem);
+		} else if (elem.getNodeName().equals("catchWord")) {
+			parseStructuredTextChildren(vv.visitCSSFormatting("osis-style: catchWord; font-style:italic;"), elem);
 		} else if (elem.getNodeName().equals("hi")) {
 			FormattingInstructionKind kind;
 			if (elem.getAttribute("type").equals("italic")) {
@@ -638,7 +648,7 @@ public class OSIS implements RoundtripFormat {
 				Visitor<RuntimeException> vv1 = kind == null ? vv : vv.visitFormattingInstruction(kind);
 				parseStructuredTextChildren(vv1, elem);
 			}
-		} else if (elem.getNodeName().equals("seg") || elem.getNodeName().equals("transChange")) {
+		} else if (elem.getNodeName().equals("seg") || elem.getNodeName().equals("transChange") || elem.getNodeName().equals("rdg")) {
 			String css;
 			if (elem.getNodeName().equals("seg") && elem.getAttribute("type").equals("x-alternative")) {
 				css = "osis-style: alternative; color: gray;";
@@ -646,6 +656,22 @@ public class OSIS implements RoundtripFormat {
 				css = "osis-style: added; font-style:italic;";
 			} else if (elem.getNodeName().equals("transChange") && elem.getAttribute("type").equals("deleted")) {
 				css = "osis-style: deleted; text-decoration: line-through; color: gray;";
+			} else if (elem.getNodeName().equals("transChange") && elem.getAttribute("type").equals("amplified")) {
+				css = "osis-style: amplified; font-style: italic;";
+			} else if (elem.getNodeName().equals("transChange") && elem.getAttribute("type").isEmpty()) {
+				css = "osis-style: trans-change;";
+			} else if (elem.getNodeName().equals("rdg") && elem.getAttribute("type").equals("alternative")) {
+				css = "osis-style: alternative-reading; color: gray;";
+			} else if (elem.getNodeName().equals("rdg") && elem.getAttribute("type").equals("x-literal")) {
+				css = "osis-style: literal-reading; color: gray;";
+			} else if (elem.getNodeName().equals("rdg") && elem.getAttribute("type").equals("x-meaning")) {
+				css = "osis-style: meaning-reading; color: gray;";
+			} else if (elem.getNodeName().equals("rdg") && elem.getAttribute("type").equals("x-equivalent")) {
+				css = "osis-style: equivalent-reading; color: gray;";
+			} else if (elem.getNodeName().equals("rdg") && elem.getAttribute("type").equals("x-identity")) {
+				css = "osis-style: identity-reading; color: gray;";
+			} else if (elem.getNodeName().equals("rdg") && elem.getAttribute("type").isEmpty()) {
+				css = "osis-style: reading; color: gray;";
 			} else {
 				css = null;
 				printWarning("WARNING: Invalid " + elem.getNodeName() + " type: " + elem.getAttribute("type"));
@@ -737,46 +763,33 @@ public class OSIS implements RoundtripFormat {
 		} else if (elem.getNodeName().equals("w")) {
 			if (elem.getFirstChild() == null)
 				return; // skip empty w tags
-			String lemma = elem.getAttribute("lemma");
-			String morph = elem.getAttribute("morph");
 			String src = elem.getAttribute("src");
 			Visitor<RuntimeException> v = vv;
 			int[] strong = null, idx = null;
-			String[] rmac = null;
-			String rawStrong = null;
-			if (lemma.startsWith("strong:G")) {
-				rawStrong = lemma.substring(8).replace(" strong:G", "-");
-			} else if (lemma.startsWith("strong:H")) {
-				rawStrong = lemma.substring(8).replace(" strong:H", "-");
-			}
-			if (rawStrong != null) {
-				if (rawStrong.matches("0*[1-9][0-9]*(-0*[1-9][0-9]*)*")) {
-					String[] strs = rawStrong.split("-");
-					strong = new int[strs.length];
-					for (int i = 0; i < strs.length; i++) {
-						strong[i] = Integer.parseInt(strs[i]);
-					}
-				} else {
+			List<Integer> strongList = new ArrayList<Integer>();
+			for (String lemma : elem.getAttribute("lemma").trim().split(" +")) {
+				if (!lemma.startsWith("strong:G") && !lemma.startsWith("strong:H"))
+					continue;
+				String rawStrong = lemma.substring(8);
+				if (!rawStrong.matches("0*[1-9][0-9]*(-0*[1-9][0-9]*)*")) {
 					printWarning("WARNING: Invalid strong dictionary entry: " + rawStrong);
+					continue;
+				}
+				String[] strs = rawStrong.split("-");
+				for (String str : strs) {
+					strongList.add(Integer.parseInt(str));
 				}
 			}
-			if (morph.startsWith("robinson:")) {
-				rmac = morph.substring(9).replace(" robinson:", " ").split(" ");
-				boolean skipped = false;
-				for (int i = 0; i < rmac.length; i++) {
-					if (!Utils.compilePattern(Utils.RMAC_REGEX).matcher(rmac[i]).matches()) {
-						printWarning("WARNING: Invalid RMAC: " + rmac[i]);
-						skipped = true;
-						rmac[i] = null;
-					}
-				}
-				if (skipped) {
-					List<String> tempList = new ArrayList<String>(Arrays.asList(rmac));
-					tempList.removeAll(Collections.singleton(null));
-					rmac = (String[]) tempList.toArray(new String[tempList.size()]);
-					if (rmac.length == 0) {
-						printWarning("WARNING: Skipped empty RMAC!");
-						rmac = null;
+			if (!strongList.isEmpty())
+				strong = strongList.stream().mapToInt(s -> s).toArray();
+			List<String> rmac = new ArrayList<>();
+			for (String morph : elem.getAttribute("morph").trim().split(" +")) {
+				if (morph.startsWith("robinson:")) {
+					String rmacCandidate = morph.substring(9);
+					if (Utils.compilePattern(Utils.RMAC_REGEX).matcher(rmacCandidate).matches()) {
+						rmac.add(rmacCandidate);
+					} else {
+						printWarning("WARNING: Invalid RMAC: " + rmacCandidate);
 					}
 				}
 			}
@@ -787,10 +800,10 @@ public class OSIS implements RoundtripFormat {
 					idx[i] = Integer.parseInt(strs[i]);
 				}
 			}
-			if (strong == null && rmac == null && idx == null) {
+			if (strong == null && rmac.isEmpty() && idx == null) {
 				printWarning("INFO: Skipped <w> tag without any usable information");
 			} else {
-				v = v.visitGrammarInformation(strong, rmac, idx);
+				v = v.visitGrammarInformation(strong, rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), idx);
 			}
 			parseStructuredTextChildren(v, elem);
 		} else if (elem.getNodeName().equals("reference")) {
