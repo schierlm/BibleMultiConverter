@@ -38,7 +38,17 @@ public class StrippedDiffable implements ExportFormat {
 			"Usage: StrippedDiffable <OutputFile> [<Feature>...]",
 			"Like Diffable, but with features stripped.",
 			"",
-			"Supported features: " + Arrays.toString(Feature.values())
+			"Supported features: " + Arrays.toString(Feature.values()),
+			"",
+			"It can also perform some other transformations:",
+			"- ExtractPrologs",
+			"- MergeIntroductionPrologs",
+			"- ExtractFootnotes",
+			"- RearrangeChapterBoundaries",
+			"- SelectVariation <Name>",
+			"- ChangeVerseStructure {Raw|Virtual|Range} [<VersificationFile> <VersificationName>]",
+			"- RenameBook <OldAbbr> <NewAbbr>",
+			"- OptimizeFormatting [<OldFormatting>=<NewFormatting>[&<NewFormatting>[...]] [...]"
 	};
 
 	@Override
