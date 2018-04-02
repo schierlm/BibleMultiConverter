@@ -1,7 +1,9 @@
 package biblemulticonverter.format;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -19,11 +21,16 @@ import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.VerseRange;
+import biblemulticonverter.data.VersificationSet;
+import biblemulticonverter.data.VirtualVerse;
+import biblemulticonverter.tools.AbstractVersificationDetector.VersificationScheme;
 
 public class StrippedDiffable implements ExportFormat {
 
@@ -52,6 +59,10 @@ public class StrippedDiffable implements ExportFormat {
 		} else if (exportArgs.length == 3 && exportArgs[1].equals("SelectVariation")) {
 			selectVariation(bible, exportArgs[2]);
 			System.out.println("Variation " + exportArgs[2] + " kept.");
+		} else if (exportArgs.length == 3 && exportArgs[1].equals("ChangeVerseStructure")) {
+			changeVerseStructure(bible, VerseStructureFormat.valueOf(exportArgs[2].toUpperCase()), null);
+		} else if (exportArgs.length == 5 && exportArgs[1].equals("ChangeVerseStructure") && exportArgs[2].equalsIgnoreCase(VerseStructureFormat.VIRTUAL.name())) {
+			changeVerseStructure(bible, VerseStructureFormat.VIRTUAL, new VersificationSet(new File(exportArgs[3])).findVersification(exportArgs[4]).toNewVersificationScheme());
 		} else if (exportArgs.length == 4 && exportArgs[1].equals("RenameBook")) {
 			renameBookInXref(bible, exportArgs[2], exportArgs[3], true);
 			for (int i = 0; i < bible.getBooks().size(); i++) {
@@ -421,6 +432,66 @@ public class StrippedDiffable implements ExportFormat {
 	private static boolean isEnabled(Feature feature, EnumSet<Feature> chosenFeatures, EnumSet<Feature> foundFeatures) {
 		foundFeatures.add(feature);
 		return chosenFeatures.contains(feature);
+	}
+
+	private void changeVerseStructure(Bible bible, VerseStructureFormat format, VersificationScheme vs) {
+		for (Book book : bible.getBooks()) {
+			for (int i = 0; i < book.getChapters().size(); i++) {
+				Chapter chap = book.getChapters().get(i);
+				List<Verse> newVerses = new ArrayList<>();
+				List<GroupedVerse> groupedVerses = new ArrayList<>();
+				switch (format) {
+				case RAW:
+					for (Verse v : chap.getVerses()) {
+						v.accept(new SplitVerseVisitor(v.getNumber(), newVerses));
+					}
+					break;
+				case RANGE:
+					for (VerseRange range : chap.createVerseRanges()) {
+						String verseNumber = (range.getMinVerse() == range.getMaxVerse() ? "" : range.getMinVerse() + "-") + range.getMaxVerse();
+						verseNumber = (range.getChapter() == 0 ? "" : range.getChapter() + ",") + verseNumber;
+						groupedVerses.add(new GroupedVerse(verseNumber, Collections.emptyList(), range.getVerses()));
+					}
+					break;
+				case VIRTUAL:
+					BitSet allowedNumbers = null;
+					if (vs != null) {
+						BitSet[] bookInfo = vs.getCoveredBooks().get(book.getId());
+						if (bookInfo != null && i < bookInfo.length) {
+							allowedNumbers = bookInfo[i];
+						}
+					}
+					for (VirtualVerse vv : chap.createVirtualVerses(allowedNumbers)) {
+						groupedVerses.add(new GroupedVerse("" + vv.getNumber(), vv.getHeadlines(), vv.getVerses()));
+					}
+					break;
+				}
+				chap.getVerses().clear();
+				chap.getVerses().addAll(newVerses);
+				for (GroupedVerse groupedVerse : groupedVerses) {
+					Verse v = new Verse(groupedVerse.number);
+					for (Headline hl : groupedVerse.headlines) {
+						hl.accept(v.getAppendVisitor().visitHeadline(hl.getDepth()));
+					}
+					boolean firstVerse = true;
+					for (Verse vv : groupedVerse.verses) {
+						if (!firstVerse || !vv.getNumber().equals(groupedVerse.number)) {
+							String rawNumber = vv.getNumber().replace('.', 'D').replace(',', 'C').replace('/', 'S');
+							Visitor<RuntimeException> vvv = v.getAppendVisitor();
+							vvv = vvv.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "verse", "raw-number", rawNumber);
+							if (!firstVerse)
+								vvv.visitText(" ");
+							vvv.visitFormattingInstruction(FormattingInstructionKind.BOLD).visitText("(" + vv.getNumber() + ")");
+							vvv.visitText(" ");
+						}
+						firstVerse = false;
+						vv.accept(v.getAppendVisitor());
+					}
+					v.finished();
+					chap.getVerses().add(v);
+				}
+			}
+		}
 	}
 
 	public static enum Feature {
@@ -800,6 +871,93 @@ public class StrippedDiffable implements ExportFormat {
 			private FormattingSet(Set<String> formattings) {
 				this.formattings = formattings;
 			}
+		}
+	}
+
+	private static enum VerseStructureFormat {
+		VIRTUAL, RANGE, RAW
+	}
+
+	private static class GroupedVerse {
+		private final String number;
+		private final List<Headline> headlines;
+		private final List<Verse> verses;
+
+		private GroupedVerse(String number, List<Headline> headlines, List<Verse> verses) {
+			super();
+			this.number = number;
+			this.headlines = headlines;
+			this.verses = verses;
+		}
+	}
+
+	private static class SplitVerseVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
+
+		private boolean verseEmpty;
+		private Verse currentVerse;
+		private final List<Verse> verses;
+		private final List<Headline> headlines = new ArrayList<>();
+
+		private SplitVerseVisitor(String originalNumber, List<Verse> verses) throws RuntimeException {
+			super(null);
+			this.currentVerse = new Verse(originalNumber);
+			verseEmpty = true;
+			this.verses = verses;
+		}
+
+		@Override
+		protected Visitor<RuntimeException> getVisitor() throws RuntimeException {
+			return currentVerse.getAppendVisitor();
+		}
+
+		@Override
+		protected void beforeVisit() throws RuntimeException {
+			while (!headlines.isEmpty()) {
+				Headline hl = headlines.remove(0);
+				hl.accept(currentVerse.getAppendVisitor().visitHeadline(hl.getDepth()));
+			}
+			verseEmpty = false;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHeadline(int depth) throws RuntimeException {
+			Headline hl = new Headline(depth);
+			headlines.add(hl);
+			return hl.getAppendVisitor();
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws RuntimeException {
+			String verseNumber = getVerseNumber(category, key, value);
+			if (verseNumber != null) {
+				if (!verseEmpty) {
+					currentVerse.finished();
+					verses.add(currentVerse);
+				}
+				currentVerse = new Verse(verseNumber);
+				verseEmpty = true;
+				return null;
+			} else {
+				return super.visitExtraAttribute(prio, category, key, value);
+			}
+		}
+
+		protected String getVerseNumber(String category, String key, String value) {
+			if (category.equals("verse") && key.equals("raw-number")) {
+				return value.replace('D', '.').replace('C', ',').replace('S', '/');
+			} else {
+				return null;
+			}
+		}
+
+		@Override
+		public boolean visitEnd() throws RuntimeException {
+			if (!verseEmpty || !headlines.isEmpty()) {
+				beforeVisit();
+				currentVerse.finished();
+				verses.add(currentVerse);
+			}
+			return false;
 		}
 	}
 }
