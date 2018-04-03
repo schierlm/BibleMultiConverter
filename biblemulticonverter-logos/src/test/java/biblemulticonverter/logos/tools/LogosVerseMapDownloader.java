@@ -61,7 +61,8 @@ public class LogosVerseMapDownloader {
 			"BibleLEESER1891", "BibleLONGMAN1864", "BibleNET", "BibleNEWCOME", "BiblePALFREY", "BiblePSALMSOFDAVID",
 			"BibleSAWYER1861", "BibleSEPEDI2000", "BibleSHEN", "BibleSMITH1876", "BibleSNDBL2012", "BibleSPURRELL1885",
 			"BibleTLV", "BibleTSHVND1998", "BibleTSWANA1994", "BibleXITSONGA",
-			"BibleTSV", "BibleUBS4", "BibleUT", "BibleVPEE", "BibleVUL", "BibleVUL2", "BibleWH", "BibleWV95"
+			"BibleTSV", "BibleUBS4", "BibleUT", "BibleVPEE", "BibleVUL", "BibleVUL2", "BibleWH", "BibleWV95",
+			"BibleCNV", "BibleCSB2", "BibleKCB", "BibleLUTBIB2017",
 	};
 
 	public static String[] ALL_BOOK_NAMES = {
