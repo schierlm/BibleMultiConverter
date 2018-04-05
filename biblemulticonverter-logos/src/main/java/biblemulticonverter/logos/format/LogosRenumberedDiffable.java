@@ -39,7 +39,7 @@ public class LogosRenumberedDiffable implements ExportFormat {
 			else if (verse.matches("[0-9]+a[b-z]"))
 				verse = verse.replaceFirst("([0-9]+)a([b-z])", "$1/$2");
 			else if (!verse.matches("[0-9]+[a-z]")) {
-				String[] replacements = { "1/t", "2-t", "2/t", "3/t", "4/t", "1/p", "1-p", "2-p", "1/s" };
+				String[] replacements = { "1/t", "2-t", "3-t", "2/t", "3/t", "4/t", "1/p", "1-p", "2-p", "1/s" };
 				verse = replacements[Arrays.asList(LogosHTML.NAMED_VERSES).indexOf(verse)];
 			}
 			if (verseTransforms.containsKey(verse))
