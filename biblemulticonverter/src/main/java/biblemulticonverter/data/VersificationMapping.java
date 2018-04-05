@@ -3,6 +3,7 @@ package biblemulticonverter.data;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -63,6 +64,50 @@ public final class VersificationMapping {
 			rules.put(start, new Rule(start, fullMap[start][0], fullMap[start][1], count));
 		}
 		return new VersificationMapping(from, to, rules);
+	}
+
+	public static VersificationMapping join(VersificationMapping m1, VersificationMapping m2) {
+		Map<Reference, List<Reference>> map = new HashMap<>();
+		for (int j = 0; j < m1.getFrom().getVerseCount(); j++) {
+			Reference r1 = m1.getFrom().getReference(j);
+			List<Reference> r3 = new ArrayList<>();
+			for (Reference r2 : m1.getMapping(r1)) {
+				r3.addAll(m2.getMapping(r2));
+			}
+			for (int k = 0; k < r3.size() - 1; k++) {
+				if (r3.get(k).equals(r3.get(k + 1))) {
+					r3.remove(k);
+					k--;
+				}
+			}
+			if (!r3.isEmpty())
+				map.put(r1, r3);
+		}
+		return VersificationMapping.build(m1.getFrom(), m2.getTo(), map);
+	}
+
+	public static VersificationMapping findBestMapping(Versification fromVersification, Versification toVersification, List<VersificationMapping> candidates) {
+		Map<Reference, List<Reference>> map = new HashMap<>();
+		for (int i = 0; i < fromVersification.getVerseCount(); i++) {
+			Reference r = fromVersification.getReference(i);
+			List<Reference> bestMapping = null;
+			for (VersificationMapping candidate : candidates) {
+				List<Reference> thisMapping = candidate.getMapping(r);
+				if (thisMapping.isEmpty())
+					thisMapping = null;
+				if (bestMapping == null) {
+					bestMapping = thisMapping;
+				} else if (thisMapping != null) {
+					bestMapping.retainAll(thisMapping);
+					if (bestMapping.isEmpty())
+						return null;
+				}
+			}
+			if (bestMapping != null) {
+				map.put(r, bestMapping);
+			}
+		}
+		return VersificationMapping.build(fromVersification, toVersification, map);
 	}
 
 	protected static VersificationMapping fromRules(Versification from, Versification to, List<String> ruleDefinitions) {

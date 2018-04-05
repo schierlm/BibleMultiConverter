@@ -9,6 +9,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +29,7 @@ public class VersificationSet {
 
 	private final List<Versification> versifications = new ArrayList<>();
 	private final List<VersificationMapping> mappings = new ArrayList<>();
+	private VersificationMapping[][] transitiveMappings = null;
 
 	public VersificationSet() {
 	}
@@ -39,11 +41,93 @@ public class VersificationSet {
 	}
 
 	public List<Versification> getVersifications() {
-		return versifications;
+		return Collections.unmodifiableList(versifications);
 	}
 
 	public List<VersificationMapping> getMappings() {
-		return mappings;
+		return Collections.unmodifiableList(mappings);
+	}
+
+	public VersificationMapping[][] getTransitiveMappings() {
+		if (transitiveMappings != null)
+			return transitiveMappings;
+		transitiveMappings = new VersificationMapping[versifications.size()][versifications.size()];
+		boolean[][] ambiguousMatchFound = new boolean[versifications.size()][versifications.size()];
+		for (int i = 0; i < versifications.size(); i++) {
+			for (int j = 0; j < versifications.size(); j++) {
+				if (i == j)
+					continue;
+				List<VersificationMapping> candidates = new ArrayList<>();
+				for (VersificationMapping mapping : mappings) {
+					if (mapping.getFrom() == versifications.get(i) && mapping.getTo() == versifications.get(j))
+						candidates.add(mapping);
+				}
+				if (candidates.size() == 1) {
+					transitiveMappings[i][j] = candidates.get(0);
+				} else if (candidates.size() > 1) {
+					transitiveMappings[i][j] = VersificationMapping.findBestMapping(versifications.get(i), versifications.get(j), candidates);
+					if (transitiveMappings[i][j] == null) {
+						ambiguousMatchFound[i][j] = true;
+					}
+				}
+			}
+		}
+		boolean changeFound = true;
+		while (changeFound) {
+			changeFound = false;
+			VersificationMapping[][] oldTransitiveMappings = new VersificationMapping[versifications.size()][versifications.size()];
+			for (int i = 0; i < oldTransitiveMappings.length; i++) {
+				System.arraycopy(transitiveMappings[i], 0, oldTransitiveMappings[i], 0, versifications.size());
+			}
+			for (int i = 0; i < versifications.size(); i++) {
+				for (int j = 0; j < versifications.size(); j++) {
+					if (i == j || oldTransitiveMappings[i][j] != null || ambiguousMatchFound[i][j])
+						continue;
+					List<VersificationMapping> candidates = new ArrayList<>();
+					for (int k = 0; k < versifications.size(); k++) {
+						if (i == k || j == k)
+							continue;
+						if (oldTransitiveMappings[i][k] == null && !ambiguousMatchFound[i][k])
+							continue;
+						if (oldTransitiveMappings[k][j] == null && !ambiguousMatchFound[k][j])
+							continue;
+						if (ambiguousMatchFound[i][k] || ambiguousMatchFound[k][j]) {
+							ambiguousMatchFound[i][j] = true;
+							break;
+						}
+						candidates.add(VersificationMapping.join(oldTransitiveMappings[i][k], oldTransitiveMappings[k][j]));
+					}
+					if (ambiguousMatchFound[i][j] || candidates.size() == 0)
+						continue;
+					changeFound = true;
+					if (candidates.size() == 1) {
+						transitiveMappings[i][j] = candidates.get(0);
+					} else {
+						transitiveMappings[i][j] = VersificationMapping.findBestMapping(versifications.get(i), versifications.get(j), candidates);
+						if (transitiveMappings[i][j] == null) {
+							ambiguousMatchFound[i][j] = true;
+						}
+					}
+				}
+			}
+		}
+		return transitiveMappings;
+	}
+
+	public void add(List<Versification> newVersifications, List<VersificationMapping> newMappings) {
+		if (newVersifications != null)
+			versifications.addAll(newVersifications);
+		if (newMappings != null)
+			mappings.addAll(newMappings);
+		transitiveMappings = null;
+	}
+
+	public void remove(List<Versification> oldVersifications, List<VersificationMapping> oldMappings) {
+		if (oldVersifications != null)
+			versifications.removeAll(oldVersifications);
+		if (oldMappings != null)
+			mappings.removeAll(oldMappings);
+		transitiveMappings = null;
 	}
 
 	public Versification findVersification(String name) {
@@ -88,32 +172,23 @@ public class VersificationSet {
 			if (mapping.getFrom().getName().equals(from) && mapping.getTo().getName().equals(to))
 				candidates.add(mapping);
 		}
+		if (number == 0 && candidates.isEmpty()) {
+			VersificationMapping result = getTransitiveMappings()[versifications.indexOf(fromVersification)][versifications.indexOf(toVersification)];
+			if (result == null) {
+				throw new NoSuchElementException("No best match transitive mapping found from " + from + " to " + to);
+			}
+			return result;
+		}
 		if (candidates.isEmpty())
 			throw new NoSuchElementException("No mapping found from " + from + " to " + to);
-		if (number == 0 && mappings.size() == 1) {
+		if (number == 0 && candidates.size() == 1) {
 			number = 1;
 		} else if (number == 0) {
-			Map<Reference, List<Reference>> map = new HashMap<>();
-			for (int i = 0; i < fromVersification.getVerseCount(); i++) {
-				Reference r = fromVersification.getReference(i);
-				List<Reference> bestMapping = null;
-				for (VersificationMapping candidate : candidates) {
-					List<Reference> thisMapping = candidate.getMapping(r);
-					if (thisMapping.isEmpty())
-						thisMapping = null;
-					if (bestMapping == null) {
-						bestMapping = thisMapping;
-					} else if (thisMapping != null) {
-						bestMapping.retainAll(thisMapping);
-						if (bestMapping.isEmpty())
-							throw new NoSuchElementException("Unable to build best match from " + from + " to " + to + ": No common subset found for " + r);
-					}
-				}
-				if (bestMapping != null) {
-					map.put(r, bestMapping);
-				}
+			VersificationMapping result = VersificationMapping.findBestMapping(fromVersification, toVersification, candidates);
+			if (result == null) {
+				throw new NoSuchElementException("Unable to build best match from " + from + " to " + to);
 			}
-			return VersificationMapping.build(fromVersification, toVersification, map);
+			return result;
 		} else if (number < 1 || number > candidates.size()) {
 			throw new NoSuchElementException("Mapping " + number + " from " + from + " to " + to + " does not exist.");
 		}
@@ -147,6 +222,7 @@ public class VersificationSet {
 				}
 			}
 		}
+		transitiveMappings = null;
 	}
 
 	public void saveTo(Writer w) throws IOException {

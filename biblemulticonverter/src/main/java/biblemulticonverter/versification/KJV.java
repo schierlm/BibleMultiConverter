@@ -1,6 +1,7 @@
 package biblemulticonverter.versification;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 
 import biblemulticonverter.data.StandardVersification;
@@ -16,7 +17,7 @@ public class KJV implements VersificationFormat {
 
 	@Override
 	public void doImport(VersificationSet versifications, String... importArgs) throws Exception {
-		versifications.getVersifications().add(Versification.fromStandardVersification("KJV", StandardVersification.KJV));
+		versifications.add(Arrays.asList(Versification.fromStandardVersification("KJV", StandardVersification.KJV)), null);
 	}
 
 	@Override

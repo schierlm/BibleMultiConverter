@@ -86,7 +86,7 @@ public class CCEL implements VersificationFormat {
 			if (kingdoms) {
 				aliases.add(doc.getCode() + "__-_KINGDOMS");
 			}
-			vset.getVersifications().add(Versification.fromReferenceList(doc.getCode(), doc.getName(), aliases.isEmpty() ? null : (String[]) aliases.toArray(new String[aliases.size()]), refs));
+			vset.add(Arrays.asList(Versification.fromReferenceList(doc.getCode(), doc.getName(), aliases.isEmpty() ? null : (String[]) aliases.toArray(new String[aliases.size()]), refs)), null);
 			for (RefMap refmap : doc.getRefMap()) {
 				Versification from = vset.findVersification(refmap.getFrom());
 				Versification to = vset.findVersification(refmap.getTo());
@@ -185,7 +185,7 @@ public class CCEL implements VersificationFormat {
 					if (reference.getValue().isEmpty())
 						it.remove();
 				}
-				vset.getMappings().add(VersificationMapping.build(from, to, mapMap));
+				vset.add(null, Arrays.asList(VersificationMapping.build(from, to, mapMap)));
 			}
 		}
 	}

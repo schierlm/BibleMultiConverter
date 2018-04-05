@@ -31,17 +31,21 @@ public class LogosRenumberedDiffable implements ExportFormat {
 
 	private final Map<String, Integer> verseTransforms = new HashMap<>();
 
+	public static String transformLogosVerse(String verse) {
+		if (verse.matches("[0-9]+([a-z])\\1"))
+			verse = verse.replaceFirst("([0-9]+)([a-z])\\2", "$1-$2");
+		else if (verse.matches("[0-9]+a[b-z]"))
+			verse = verse.replaceFirst("([0-9]+)a([b-z])", "$1/$2");
+		else if (!verse.matches("[0-9]+[a-z]")) {
+			String[] replacements = { "1/t", "2-t", "3-t", "2/t", "3/t", "4/t", "1/p", "1-p", "2-p", "1/s" };
+			verse = replacements[Arrays.asList(LogosHTML.NAMED_VERSES).indexOf(verse)];
+		}
+		return verse;
+	}
+
 	public LogosRenumberedDiffable() {
 		for (int i = 0; i < LogosHTML.NAMED_VERSES.length; i++) {
-			String verse = LogosHTML.NAMED_VERSES[i];
-			if (verse.matches("[0-9]+([a-z])\\1"))
-				verse = verse.replaceFirst("([0-9]+)([a-z])\\2", "$1-$2");
-			else if (verse.matches("[0-9]+a[b-z]"))
-				verse = verse.replaceFirst("([0-9]+)a([b-z])", "$1/$2");
-			else if (!verse.matches("[0-9]+[a-z]")) {
-				String[] replacements = { "1/t", "2-t", "3-t", "2/t", "3/t", "4/t", "1/p", "1-p", "2-p", "1/s" };
-				verse = replacements[Arrays.asList(LogosHTML.NAMED_VERSES).indexOf(verse)];
-			}
+			String verse = transformLogosVerse(LogosHTML.NAMED_VERSES[i]);
 			if (verseTransforms.containsKey(verse))
 				throw new IllegalStateException(verse);
 			verseTransforms.put(verse, i + 1000);

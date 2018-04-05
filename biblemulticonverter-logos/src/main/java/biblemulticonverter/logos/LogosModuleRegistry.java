@@ -6,7 +6,9 @@ import biblemulticonverter.ModuleRegistry;
 import biblemulticonverter.format.*;
 import biblemulticonverter.logos.format.*;
 import biblemulticonverter.logos.tools.*;
+import biblemulticonverter.logos.versification.*;
 import biblemulticonverter.tools.Tool;
+import biblemulticonverter.versification.VersificationFormat;
 
 public class LogosModuleRegistry extends ModuleRegistry {
 
@@ -34,6 +36,13 @@ public class LogosModuleRegistry extends ModuleRegistry {
 		List<Module<Tool>> result = new ArrayList<Module<Tool>>();
 		result.add(new Module<Tool>("LogosNestedHyperlinkPostprocessor", "Postprocess nested hyperlinks in DOCX converted from HTML by LibreOffice", LogosNestedHyperlinkPostprocessor.HELP_TEXT, LogosNestedHyperlinkPostprocessor.class));
 		result.add(new Module<Tool>("LogosFootnotePostprocessor", "Postprocess footnote numbers in DOCX converted from HTML by LibreOffice", LogosFootnotePostprocessor.HELP_TEXT, LogosFootnotePostprocessor.class));
+		return result;
+	}
+
+	@Override
+	public Collection<Module<VersificationFormat>> getVersificationFormats() {
+		List<Module<VersificationFormat>> result = new ArrayList<ModuleRegistry.Module<VersificationFormat>>();
+		result.add(new Module<VersificationFormat>("LogosVersification", "Versification format for versifications supported by Logos.", LogosVersification.HELP_TEXT, LogosVersification.class));
 		return result;
 	}
 }

@@ -95,11 +95,7 @@ public class VersificationTool implements Tool {
 				else
 					vvv.add(vs.findVersification(args[i]));
 			}
-			for (Versification v : vvv) {
-				vs.getVersifications().remove(v);
-			}
-			for (VersificationMapping m : mmm)
-				vs.getMappings().remove(m);
+			vs.remove(vvv, mmm);
 			save = true;
 			break;
 		case "join":
@@ -108,25 +104,9 @@ public class VersificationTool implements Tool {
 				VersificationMapping m2 = vs.findMapping(args[i]);
 				if (m1.getTo() != m2.getFrom())
 					throw new IllegalStateException("Cannot join, versification mismatch: " + m1.getTo().getName() + " != " + m2.getFrom().getName());
-				Map<Reference, List<Reference>> map = new HashMap<>();
-				for (int j = 0; j < m1.getFrom().getVerseCount(); j++) {
-					Reference r1 = m1.getFrom().getReference(j);
-					List<Reference> r3 = new ArrayList<>();
-					for (Reference r2 : m1.getMapping(r1)) {
-						r3.addAll(m2.getMapping(r2));
-					}
-					for (int k = 0; k < r3.size() - 1; k++) {
-						if (r3.get(k).equals(r3.get(k + 1))) {
-							r3.remove(k);
-							k--;
-						}
-					}
-					if (!r3.isEmpty())
-						map.put(r1, r3);
-				}
-				m1 = VersificationMapping.build(m1.getFrom(), m2.getTo(), map);
+				m1 = VersificationMapping.join(m1, m2);
 			}
-			vs.getMappings().add(m1);
+			vs.add(null, Arrays.asList(m1));
 			save = true;
 			break;
 		case "compare":

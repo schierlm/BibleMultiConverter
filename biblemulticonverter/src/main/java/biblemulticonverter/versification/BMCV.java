@@ -37,8 +37,7 @@ public class BMCV implements VersificationFormat {
 	@Override
 	public void doExport(File outputFile, List<Versification> versifications, List<VersificationMapping> mappings) throws Exception {
 		VersificationSet set = new VersificationSet();
-		set.getVersifications().addAll(versifications);
-		set.getMappings().addAll(mappings);
+		set.add(versifications, mappings);
 		try (Writer w = new OutputStreamWriter(new FileOutputStream(outputFile), StandardCharsets.UTF_8)) {
 			set.saveTo(w);
 		}

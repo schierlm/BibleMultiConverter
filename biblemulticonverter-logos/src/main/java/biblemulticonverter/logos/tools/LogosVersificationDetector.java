@@ -50,7 +50,7 @@ public class LogosVersificationDetector extends AbstractVersificationDetector {
 		}
 	}
 
-	private static BitSet readBits(String word) {
+	public static BitSet readBits(String word) {
 		BitSet result = new BitSet();
 		if (!word.equals("-")) {
 			for (String range : word.split(",")) {

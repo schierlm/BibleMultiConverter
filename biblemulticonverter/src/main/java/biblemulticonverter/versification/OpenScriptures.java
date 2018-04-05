@@ -2,6 +2,7 @@ package biblemulticonverter.versification;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -196,7 +197,7 @@ public class OpenScriptures implements VersificationFormat {
 				}
 			}
 		}
-		versifications.getVersifications().add(Versification.fromReferenceList(importArgs[1], doc.getHeader().getWork().getTitle(), null, allRefs));
+		versifications.add(Arrays.asList(Versification.fromReferenceList(importArgs[1], doc.getHeader().getWork().getTitle(), null, allRefs)), null);
 	}
 
 	@Override

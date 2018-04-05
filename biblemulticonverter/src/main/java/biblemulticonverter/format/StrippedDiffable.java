@@ -901,14 +901,14 @@ public class StrippedDiffable implements ExportFormat {
 		}
 	}
 
-	private static class SplitVerseVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
+	public static class SplitVerseVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
 
 		private boolean verseEmpty;
 		private Verse currentVerse;
 		private final List<Verse> verses;
 		private final List<Headline> headlines = new ArrayList<>();
 
-		private SplitVerseVisitor(String originalNumber, List<Verse> verses) throws RuntimeException {
+		public SplitVerseVisitor(String originalNumber, List<Verse> verses) throws RuntimeException {
 			super(null);
 			this.currentVerse = new Verse(originalNumber);
 			verseEmpty = true;

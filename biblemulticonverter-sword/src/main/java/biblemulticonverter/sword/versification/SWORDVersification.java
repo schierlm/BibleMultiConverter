@@ -55,7 +55,7 @@ public class SWORDVersification implements VersificationFormat {
 					chapters[j - 1] = v11n.getLastVerse(bb, j);
 				}
 			}
-			versifications.getVersifications().add(Versification.fromVerseCounts("SWORD_" + versificationName, null, null, verseCounts));
+			versifications.add(Arrays.asList(Versification.fromVerseCounts("SWORD_" + versificationName, null, null, verseCounts)), null);
 			if (!versificationName.equals(SystemKJV.V11N_NAME) && !missingMappings.contains(versificationName)) {
 				buildMapping(versifications, SystemKJV.V11N_NAME, v11n_kjv, versificationName, v11n, reverseBookMapping);
 				buildMapping(versifications, versificationName, v11n, SystemKJV.V11N_NAME, v11n_kjv, reverseBookMapping);
@@ -86,7 +86,7 @@ public class SWORDVersification implements VersificationFormat {
 			if (!refs.isEmpty())
 				map.put(ref, refs);
 		}
-		versifications.getMappings().add(VersificationMapping.build(from, to, map));
+		versifications.add(null, Arrays.asList(VersificationMapping.build(from, to, map)));
 	}
 
 	@Override
