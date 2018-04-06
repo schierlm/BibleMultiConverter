@@ -1,3 +1,7 @@
+1mo.html
+Zoar, Winzig
+Zoar*, Winzig
+
 4mo.html
 <h4 id="20">Nach 40 Jahren an der Grenze des Landes</h4>¶<h4>Das Wasser von Meriba</h4>
 <h4 id="20">Nach 40 Jahren an der Grenze des Landes: Das Wasser von Meriba</h4>
@@ -33,6 +37,8 @@ Wort</h4>
 spr.html
 ¶¶<p class="poet" id="16">
 ¶<h4 id="16">(Sprichw&ouml;rter Salomos)</h4>¶<p class="poet" id="16">
+Frau\*</h4>¶<div class="fn">(31,10: .*?)</div>¶<p class="poet">((.*+¶)*?.*)</p>
+Frau</h4>¶<p class="poet">$2</p>¶<div class="fn">$1</div>
 
 jes.html
 "fn">11\.10:
