@@ -83,6 +83,11 @@
 					<enumeration value="x-IntrOT" />
 					<enumeration value="x-IntrNT" />
 					<enumeration value="x-App" />
+					<enumeration value="x-App-Other" />
+					<enumeration value="x-App-Conc" />
+					<enumeration value="x-App-Gloss" />
+					<enumeration value="x-App-Topical" />
+					<enumeration value="x-App-Names" />
 					<enumeration value="x-Dict" />
 
 					<enumeration value="Gen" />
@@ -176,6 +181,21 @@
 					<enumeration value="Sus" />
 					<enumeration value="Bel" />
 					<enumeration value="AddPs" />
+					<enumeration value="PrAzar" />
+					<enumeration value="EsthGr" />
+					<enumeration value="DanGr" />
+					<enumeration value="Jub" />
+					<enumeration value="4Ezra" />
+					<enumeration value="5Ezra" />
+					<enumeration value="6Ezra" />
+					<enumeration value="5ApocSyrPss" />
+					<enumeration value="2Bar" />
+					<enumeration value="4Bar" />
+					<enumeration value="EpBar" />
+					<enumeration value="1Meq" />
+					<enumeration value="2Meq" />
+					<enumeration value="3Meq" />
+					<enumeration value="Rep" />
 				</restriction>
 			</simpleType>
 			<simpleType>
