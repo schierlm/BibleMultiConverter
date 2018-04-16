@@ -5,30 +5,103 @@
 	</annotation>
 
 	<simpleType name="NormalizedStringType">
+		<annotation>
+			<documentation>
+				String that does not start or end with whitespace, and where all inner whitespace consists of single space characters.
+				All "natural language" attributes inside a Bible (bible name, book names, etc.) have to follow this pattern.
+			</documentation>
+		</annotation>
 		<restriction base="string">
 			<pattern value="\S+( \S+)*"></pattern>
 		</restriction>
 	</simpleType>
 
 	<simpleType name="AbbrType">
+		<annotation>
+			<documentation>
+				Format of a bible book abbreviation. It has to start with a digit or uppercase letter,
+				and may continue also with lowercase letters or dots. Minimum length is 2 characters.
+				(The inclusion of German umlauts in the letters is considered legacy, but cannot be
+				changed without invalidating legacy bible files.)
+			</documentation>
+		</annotation>
 		<restriction base="string">
 			<pattern value="[A-Z0-9][A-Z0-9a-z.äöü]+"></pattern>
 		</restriction>
 	</simpleType>
 
 	<simpleType name="VerseNumberType">
+		<annotation>
+			<documentation>
+				Format of a verse number. After the initial digit (which may not be 0), there can follow other
+				digits and some special characters (see below). At the end, an optional lowercase letter (for
+				sub-verses) or uppercase G (for Greek version), but not both at the same time, may be added.
+
+				While this verse format sounds complex, most bibles will just use plain numbers here.
+
+				Use dot or slash in verse numbers that represent more than one verse (e.g. 12/14 or 2.5.7). There
+				is no semantic difference between them, but some Bibles use both formats at the same time.
+
+				Hyphen is used for verse ranges, e.g. 12-15.
+
+				Comma is used if a verse is moved to a different book (like 41,6 for a verse between Jes 40:20 and Jes 40:21
+				in German Einheitsübersetzung (1980 edition)).
+
+				Note that while verses in this bible file can be in a non-numeric order, chapters need to follow the numeric
+				order, so using commas in verse numbers is the only workaround to get around this.
+
+				To simplify exporting to Bible formats
+				that
+				do not support reordered or non-numeric verse numbers, Exporters
+				that are part of BibleMultiConverter can use one of two different abstractions, which both are intended to group
+				multiple "real" verses into one new verse (preserving the order of the text):
+
+				"Virtual Verses" will combine multiple verses into numerical verses in ascending order. Verses that do not
+				follow the order or are non-numeric are joined at the end of the previous verse. Non-numeric verses at the beginning
+				of chapters, as well as headlines in the middle of verses, result in a new "synthetic" verse. This abstraction
+				can optionally also follow a versification scheme and join verses whose verse numbers lie outside of the
+				versification. Choose the abstraction to minimize the amount of joined verses at the expense that the numerical
+				verse number and the real verse number can differ vastly in some cases (like reordered verses).
+
+				"Verse ranges" will also combine verses, but the resulting verses may be ranges (two verse
+				numbers
+				separated by a
+				dash) and do not have to be consecutive. All non-numerical verse numbers are grouped in a way to minimize the grouping,
+				but still assuring that every "real" verse number lies in the range of its "new" verse.
+
+				For external conversion, StrippedDiffable has a ChangeVerseStructure option to "persist" virtual verses or verse ranges.
+			</documentation>
+		</annotation>
 		<restriction base="string">
 			<pattern value="[1-9][0-9,/.-]*[a-zG]?"></pattern>
 		</restriction>
 	</simpleType>
 
 	<simpleType name="RMACType">
+		<annotation>
+			<documentation>
+				Format of a valid Robinson's Morphological Analysis Code. Some formats will use a different representation,
+				so to make conversion work without errors, the allowed pattern is restricted here.
+			</documentation>
+		</annotation>
 		<restriction base="string">
 			<pattern value="(ADV|CONJ|COND|PRT|PREP|INJ|ARAM|HEB|N-PRI|A-NUI|N-LI|N-OI|[NARCDTKIXQFSP](-[123]?[NVGDA][SP][MFN]?)?)(-(S|C|ABB|I|N|K|ATT))?|V-([PIFARLX]|2[FARL])[AMPEDON][ISOMNP](-([123][SP]|[NGDAV][SPD][MFN]))?(-ATT)?"></pattern>
 		</restriction>
 	</simpleType>
 
 	<simpleType name="LineBreakKindType">
+		<annotation>
+			<documentation>
+				List of supported line break kinds (styles). Compared to other bible formats like USFM, this list is rather
+				short. Paragraphs usually include some vertical space while newlines do not. Newlines with indent are mostly
+				used inside the Psalms.
+
+				As this format follows the "verses first" paradigm, line breaks are stored inside the verses. A line break
+				or paragraph between two verses is stored at the end of the previous verse.
+
+				Chapters and headlines are considered to start a new paragraph automatically, so no need for additional tagging.
+			</documentation>
+		</annotation>
 		<restriction base="string">
 			<enumeration value="paragraph" />
 			<enumeration value="newline" />
@@ -37,6 +110,18 @@
 	</simpleType>
 
 	<simpleType name="RawHTMLModeType">
+		<annotation>
+			<documentation>
+				Bibles can contain embedded Raw HTML. This HTML can be either shown only for online formats (i.e. formats
+				that are read in a browser), only for offline formats (i.e. formats that are read without Internet connection),
+				or for both. Formats that do not support Raw HTML (i.e. formats that are not HTML based)
+				should skip these elements.
+
+				Therefore, Raw HTML should not contain any elements that are required for the correct representation
+				of the Bible. If required, normal text can be put between two Raw HTML elements, one that opens a HTML
+				comment and one that closes it again.
+			</documentation>
+		</annotation>
 		<restriction base="string">
 			<enumeration value="online"></enumeration>
 			<enumeration value="offline"></enumeration>
@@ -45,20 +130,73 @@
 	</simpleType>
 
 	<simpleType name="ExtraAttributePrioType">
+		<annotation>
+			<documentation>
+				Extra attributes are used to encode features that are not supported by this format. They are mostly useful for
+				"round trip" conversion from another format to this format, and back later after editing/processing.
+
+				Formats that do not support this extra attribute should treat it depending on its priority.
+
+				Importers/Exporters part of BibleMultiConverter can use ExtraAttributePriority.handleVisitor to automatically
+				handle an attribute depending on its category.
+			</documentation>
+		</annotation>
 		<restriction base="string">
-			<enumeration value="keepContent"></enumeration>
-			<enumeration value="skip"></enumeration>
-			<enumeration value="error"></enumeration>
+			<enumeration value="keepContent">
+				<annotation>
+					<documentation>
+						Skip this attribute but keep its content.
+					</documentation>
+				</annotation>
+			</enumeration>
+			<enumeration value="skip">
+				<annotation>
+					<documentation>
+						Skip this attribute including its content.
+					</documentation>
+				</annotation>
+			</enumeration>
+			<enumeration value="error">
+				<annotation>
+					<documentation>
+						Treat the existence of this attribute as an error and abort conversion.
+						Use this category carefully.
+					</documentation>
+				</annotation>
+			</enumeration>
 		</restriction>
 	</simpleType>
 
 	<simpleType name="FormattingInstructionKindType">
+		<annotation>
+			<documentation>
+				Texts within Bible verses can be formatted in various ways. This enumeration lists all the special
+				formatting kinds that are supported. In addition, text can be formatted using CSS attributes.
+
+				Import modules should always try to use explicit formatting instructions instead of CSS formatting.
+			</documentation>
+		</annotation>
 		<restriction base="string">
 			<enumeration value="bold" />
 			<enumeration value="italic" />
 			<enumeration value="underline" />
-			<enumeration value="link" />
-			<enumeration value="footnoteLink" />
+			<enumeration value="link">
+				<annotation>
+					<documentation>
+						Used to indicate that the text linked to another place in the original bible,
+						which is not supported by this format in another way. The destination of the
+						link is not encoded in any way.
+					</documentation>
+				</annotation>
+			</enumeration>
+			<enumeration value="footnoteLink">
+				<annotation>
+					<documentation>
+						Some bible formats highlight the part of the verse a footnote refers to.
+						This can be encoded by enclosing both the text and the footnote in a single "footnoteLink" formatting.
+					</documentation>
+				</annotation>
+			</enumeration>
 			<enumeration value="subscript" />
 			<enumeration value="superscript" />
 			<enumeration value="divineName" />
@@ -74,21 +212,84 @@
 	</simpleType>
 
 	<simpleType name="BookIDType">
+		<annotation>
+			<documentation>
+				Representation of a Bible book. Values mostly follow the OSIS standard; exceptions start with x- and
+				are documented separately.
+
+				Normal Bibles cannot contain Dictionary entries ("x-Dict-*"). Dictionary books can only contain metadata
+				and Dictionary entries.
+			</documentation>
+		</annotation>
 		<!-- Unique constraints cannot exclude some values; therefore, allow a pattern for dictionary entries. As patterns cannot be combined with enum values directly, use a union here. -->
 		<union>
 			<simpleType>
 				<restriction base="string">
-					<enumeration value="x-Meta" />
-					<enumeration value="x-Intr" />
-					<enumeration value="x-IntrOT" />
-					<enumeration value="x-IntrNT" />
-					<enumeration value="x-App" />
-					<enumeration value="x-App-Other" />
-					<enumeration value="x-App-Conc" />
-					<enumeration value="x-App-Gloss" />
-					<enumeration value="x-App-Topical" />
-					<enumeration value="x-App-Names" />
-					<enumeration value="x-Dict" />
+					<enumeration value="x-Meta">
+						<annotation>
+							<documentation>
+								Metadata book. This book consists of a single chapter with only a prolog. The prolog
+								consists of key/value pairs (key and value separated by a colon), each in its own paragraph.
+
+								Metadata keys are one of the predefined keys below, or contain an @ symbol
+								(for private metadata of a specific format).
+
+								Predefined keys: version, revision, status,
+								source, identifier, type, publisher, date, coverage, format, creator,
+								language, subject, contributors, description, title, rights, contributor.
+							</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value="x-Intr">
+						<annotation>
+							<documentation>Introduction</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value="x-IntrOT">
+						<annotation>
+							<documentation>Introduction to the Old Testament</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value="x-IntrNT">
+						<annotation>
+							<documentation>Introduction to the New Testament</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value="x-App">
+						<annotation>
+							<documentation>Generic Appendix</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value="x-App-Other">
+						<annotation>
+							<documentation>Other Appendix</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value="x-App-Conc">
+						<annotation>
+							<documentation>Concordance</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value="x-App-Gloss">
+						<annotation>
+							<documentation>Glossary</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value="x-App-Topical">
+						<annotation>
+							<documentation>Topical Index</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value="x-App-Names">
+						<annotation>
+							<documentation>Names index</documentation>
+						</annotation>
+					</enumeration>
+					<enumeration value="x-Dict">
+						<annotation>
+							<documentation>Dictionary Entry</documentation>
+						</annotation>
+					</enumeration>
 
 					<enumeration value="Gen" />
 					<enumeration value="Exod" />
@@ -177,7 +378,14 @@
 					<enumeration value="PssSol" />
 					<enumeration value="EpLao" />
 					<enumeration value="1En" />
-					<enumeration value="x-kGen" />
+					<enumeration value="x-kGen">
+						<annotation>
+							<documentation>
+								"Kleines Genesis" (Lesser Genesis) used by some Zefania XML bibles. In fact it is a
+								duplicate assignment for Jubilees ("Jub"). When possible, use "Jub" instead.
+							</documentation>
+						</annotation>
+					</enumeration>
 					<enumeration value="Sus" />
 					<enumeration value="Bel" />
 					<enumeration value="AddPs" />
@@ -206,10 +414,28 @@
 		</union>
 	</simpleType>
 
+
 	<complexType name="FormattedTextType" mixed="true">
+		<annotation>
+			<documentation>
+				Represents text that can contain different formattings. Formattings can be nested, but not arbitrarily.
+
+				Verse separators may only be in verses. Headlines, footnotes and links may not be nested.
+				Cross references may only appear in footnotes and in prolog text, not in verse text.
+
+				Use the "Validate" module to validate these constraints.
+			</documentation>
+		</annotation>
 		<choice maxOccurs="unbounded" minOccurs="0">
 			<element name="headline">
 				<complexType>
+					<annotation>
+						<documentation>
+							Headlines have a depth (1 being the biggest level).
+							Consecutive headlines without text in between need to have "increasing" depth
+							(with the exception that two consecutive headlines may both be depth 9).
+						</documentation>
+					</annotation>
 					<complexContent>
 						<extension base="tns:FormattedTextType">
 							<attribute name="depth" use="required">
@@ -225,6 +451,11 @@
 				</complexType>
 			</element>
 			<element name="footnote">
+				<annotation>
+					<documentation>
+						Some explanatory text that gets represented as a footnote mark. Cross references have to be inside footnotes (or in the prolog).
+					</documentation>
+				</annotation>
 				<complexType>
 					<complexContent>
 						<extension base="tns:FormattedTextType" />
@@ -232,6 +463,13 @@
 				</complexType>
 			</element>
 			<element name="crossReference">
+				<annotation>
+					<documentation>
+						Special type of link that links to a different location in the Bible.
+						Unlike some other formats, cross references need to have text inside, which is used to
+						show the cross reference. Referenced chapter and verse numbers must exist in this Bible.
+					</documentation>
+				</annotation>
 				<complexType>
 					<complexContent>
 						<extension base="tns:FormattedTextType">
@@ -255,6 +493,11 @@
 				</complexType>
 			</element>
 			<element name="cssFormatting">
+				<annotation>
+					<documentation>
+						Formatting based on CSS rule. If possible, use formattingInstruction instead.
+					</documentation>
+				</annotation>
 				<complexType>
 					<complexContent>
 						<extension base="tns:FormattedTextType">
@@ -264,14 +507,46 @@
 				</complexType>
 			</element>
 			<element name="verseSeparator">
+				<annotation>
+					<documentation>
+						A marker inside a verse that is used to separate poem or psalm verses.
+						Often rendered as a gray slash.
+					</documentation>
+				</annotation>
 				<complexType></complexType>
 			</element>
 			<element name="lineBreak">
+				<annotation>
+					<documentation>
+						A marker for a line break.
+
+						As this format follows the "verses first" paradigm, line breaks are stored inside the verses. A line break
+						or paragraph between two verses is stored at the end of the previous verse.
+
+						Chapters and headlines are considered to start a new paragraph automatically, so no need for additional tagging.
+					</documentation>
+				</annotation>
 				<complexType>
 					<attribute name="kind" type="tns:LineBreakKindType" use="required" />
 				</complexType>
 			</element>
 			<element name="grammarInformation">
+				<annotation>
+					<documentation>
+						Used to wrap its content with grammar information.
+
+						At least one type of grammar information needs to be present.
+
+						Strong numbers are just the numbers, the type (G or H) is determined by the Testament the current
+						verse is in.
+
+						RMAC codes should follow the RMACType rules to ensure that every RMAC can be converted
+						if required.
+
+						Source indices can refer to word numbers in some reference source text. This format does not
+						store which source text is used in any way.
+					</documentation>
+				</annotation>
 				<complexType>
 					<complexContent>
 						<extension base="tns:FormattedTextType">
@@ -282,7 +557,7 @@
 							</attribute>
 							<attribute name="rmac" use="optional">
 								<simpleType>
-									<list itemType="string" />
+									<list itemType="tns:RMACType" />
 								</simpleType>
 							</attribute>
 							<attribute name="sourceIndices" use="optional">
@@ -302,6 +577,14 @@
 				</complexType>
 			</element>
 			<element name="dictionaryEntry">
+				<annotation>
+					<documentation>
+						A reference to an explanatory topic in a dictionary. The dictionary is referenced by its name and an entry name.
+
+						In general, bible formats that do not support dictionaries will ignore this entry. Other formats (like Zefania XML
+						or MyBible.Zone) have command line options that can be used to map dictionary names to file names.
+					</documentation>
+				</annotation>
 				<complexType>
 					<complexContent>
 						<extension base="tns:FormattedTextType">
@@ -324,6 +607,16 @@
 				</complexType>
 			</element>
 			<element name="rawHTML">
+				<annotation>
+					<documentation>
+						Bibles can contain embedded Raw HTML. Formats that do not support Raw HTML
+						(i.e. formats that are not HTML based) should skip these elements.
+
+						Therefore, Raw HTML should not contain any elements that are required for the correct representation
+						of the Bible. If required, normal text can be put between two Raw HTML elements, one that opens a HTML
+						comment and one that closes it again.
+					</documentation>
+				</annotation>
 				<complexType>
 					<simpleContent>
 						<extension base="string">
@@ -333,6 +626,18 @@
 				</complexType>
 			</element>
 			<element name="variation">
+				<annotation>
+					<documentation>
+						This is quite an exotic feature and not supported by most Bible formats. It allows to encode small
+						variations in the text without requiring a separate file for each variation.
+
+						Each variation gives a list of variation names that include the text. Inside, arbitrary formatting
+						tags can be nested.
+
+						For formats that do not support variations, the SelectVariation argument of StrippedDiffable can be
+						used to generate single-variation bible files from a multi-variation one.
+					</documentation>
+				</annotation>
 				<complexType>
 					<complexContent>
 						<extension base="tns:FormattedTextType">
@@ -352,6 +657,16 @@
 				</complexType>
 			</element>
 			<element name="extraAttribute">
+				<annotation>
+					<documentation>
+						Extra attributes are used to encode features that are not supported by this format. They are mostly useful for
+						"round trip" conversion from another format to this format, and back later after editing/processing.
+
+						Values of extra attributes are quite limited (to make it easier for roundtrip formats to export/import them).
+
+						If more complex values are required, nest the value inside the tag and specify a priority of "skip".
+					</documentation>
+				</annotation>
 				<complexType>
 					<complexContent>
 						<extension base="tns:FormattedTextType">
@@ -385,11 +700,36 @@
 	</complexType>
 
 	<complexType name="BibleType">
+		<annotation>
+			<documentation>
+				Root type of this XML format. A bible has a name and multiple books.
+				Introductions and Appendices are encoded as books with special book IDs, which only consist
+				of a single prolog chapter.
+			</documentation>
+		</annotation>
 		<sequence>
 			<element name="book" minOccurs="1" maxOccurs="unbounded">
+				<annotation>
+					<documentation>
+						Books have an ID, an abbreviation ("Col"), a short name ("Collosians") and a long name ("Epistle of Paul to the Colossians").
+
+						The content of the book is divided into chapters. Chapters do not have any encoded numbers, the chapter numbers start by 1.
+
+						A prolog of the whole book is encoded as a prolog of the first chapter (which may have no verses). If there is more than
+						one chapter, the last chapter needs to have verses.
+					</documentation>
+				</annotation>
 				<complexType>
 					<sequence>
 						<element name="chapter" minOccurs="1" maxOccurs="unbounded">
+							<annotation>
+								<documentation>
+									Each chapter may have an optional prolog, and verses (except for prolog-only books, every chapter needs to have at least one verse).
+
+									Verses have numbers and some (formatted) text; verse numbers do not need to be only numeric (see VerseNumberType) and also
+									do not need to be consecutive.
+								</documentation>
+							</annotation>
 							<complexType>
 								<sequence>
 									<element name="prolog" maxOccurs="1" minOccurs="0">
@@ -404,7 +744,6 @@
 											<complexContent>
 												<extension base="tns:FormattedTextType">
 													<attribute name="number" type="tns:VerseNumberType" use="required"></attribute>
-
 												</extension>
 											</complexContent>
 										</complexType>
@@ -412,6 +751,9 @@
 								</sequence>
 							</complexType>
 							<unique name="UniqueVerseNumber">
+								<annotation>
+									<documentation>Verse numbers in a chapter need to be unique.</documentation>
+								</annotation>
 								<selector xpath="tns:verse" />
 								<field xpath="@number" />
 							</unique>
@@ -429,18 +771,30 @@
 
 	<element name="bible" type="tns:BibleType">
 		<unique name="UniqueBookAbbr">
+			<annotation>
+				<documentation>Abbreviations of books need to be unique.</documentation>
+			</annotation>
 			<selector xpath="tns:book" />
 			<field xpath="@abbr" />
 		</unique>
 		<unique name="UniqueBookID">
+			<annotation>
+				<documentation>Book IDs need to be unique.</documentation>
+			</annotation>
 			<selector xpath="tns:book" />
 			<field xpath="@id" />
 		</unique>
 		<unique name="UniqueBookShortName">
+			<annotation>
+				<documentation>Short names of books need to be unique.</documentation>
+			</annotation>
 			<selector xpath="tns:book" />
 			<field xpath="@shortName" />
 		</unique>
 		<unique name="UniqueBookLongName">
+			<annotation>
+				<documentation>Long names of books need to be unique.</documentation>
+			</annotation>
 			<selector xpath="tns:book" />
 			<field xpath="@longName" />
 		</unique>
