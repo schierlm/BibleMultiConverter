@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,7 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref
 import biblemulticonverter.format.paratext.ParatextCharacterContent.KeepIf;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 
@@ -52,6 +54,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 	public Bible doImport(File inputFile) throws Exception {
 		List<ParatextBook> books = doImportBooks(inputFile);
 		String bibleName = null;
+		final Map<ParatextID, String> bookAbbrs = new EnumMap<>(ParatextID.class);
 		for (ParatextBook book : books) {
 			if (bibleName == null || book.getBibleName().isEmpty()) {
 				bibleName = book.getBibleName();
@@ -70,6 +73,15 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					}
 				}
 			}
+			String abbr = book.getAttributes().get("toc3"), fallbackAbbr = book.getId().getId().getOsisID().replace("x-", "").replace("-", "");
+			if (abbr == null)
+				abbr = fallbackAbbr;
+			abbr = abbr.replace(" ", "");
+			if (!Utils.compilePattern(Utils.BOOK_ABBR_REGEX).matcher(abbr).matches()) {
+				System.out.println("WARNING: Unsupported book abbreviation " + abbr + ", using " + fallbackAbbr + " instead");
+				abbr = fallbackAbbr;
+			}
+			bookAbbrs.put(book.getId(), abbr);
 		}
 		Bible bible = new Bible((bibleName == null || bibleName.isEmpty()) ? "Imported Bible" : bibleName);
 		for (ParatextBook book : books) {
@@ -79,19 +91,12 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			String shortName = book.getAttributes().get("toc2");
 			if (shortName == null || shortName.isEmpty())
 				shortName = longName;
-			String abbr = book.getAttributes().get("toc3"), fallbackAbbr = book.getId().getId().getOsisID().replace("x-", "").replace("-", "");
-			if (abbr == null)
-				abbr = fallbackAbbr;
-			abbr = abbr.replace(" ", "");
-			if (!Utils.compilePattern(Utils.BOOK_ABBR_REGEX).matcher(abbr).matches()) {
-				System.out.println("WARNING: Unsupported book abbreviation " + abbr + ", using " + fallbackAbbr + " instead");
-				abbr = fallbackAbbr;
-			}
-			final Book bk = new Book(abbr, book.getId().getId(), shortName, longName);
+			final Book bk = new Book(bookAbbrs.get(book.getId()), book.getId().getId(), shortName, longName);
 			bible.getBooks().add(bk);
 			final boolean forceProlog = book.getId().getId().getZefID() < 0;
 			final ParatextImportContext ctx = new ParatextImportContext();
 			ctx.nt = book.getId().getId().isNT();
+			ctx.bookAbbrs = bookAbbrs;
 			book.accept(new ParatextBookContentVisitor<RuntimeException>() {
 
 				@Override
@@ -328,6 +333,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		private Visitor<RuntimeException> currentVisitor;
 		private CurrentParagraph currentParagraph = CurrentParagraph.NONE;
 		private boolean nt;
+		private Map<ParatextID, String> bookAbbrs;
 
 		private void flushHeadlines() {
 			for (Headline hl : headlines) {
@@ -449,6 +455,15 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			}
 			visitorStack.add(newVisitor);
 			return this;
+		}
+
+		@Override
+		public void visitReference(Reference reference) throws RuntimeException {
+			if (ctx.currentParagraph == ParatextImportContext.CurrentParagraph.NORMAL && getCurrentVisitor() == null) {
+				System.out.println("WARNING: Skipping text outside of verse/headline/prolog");
+				return;
+			}
+			getCurrentVisitor().visitCrossReference(ctx.bookAbbrs.get(reference.getBook()), reference.getBook().getId(), reference.getFirstChapter(), "" + reference.getFirstVerse(), reference.getLastChapter(), "" + reference.getLastVerse()).visitText(reference.getContent());
 		}
 
 		@Override
@@ -610,7 +625,34 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) {
-			return this;
+			int firstVerseNumber, lastVerseNumber;
+			try {
+				firstVerseNumber = Integer.parseInt(firstVerse);
+				lastVerseNumber = Integer.parseInt(lastVerse);
+			} catch (NumberFormatException ex) {
+				System.out.println("WARNING: Ignoring non-numeric verse reference: " + firstVerse + "-" + lastVerse);
+				return this;
+			}
+			final Reference reference = new Reference(ParatextID.fromBookID(book), firstChapter, firstVerseNumber, lastChapter, lastVerseNumber, "");
+			getCharContent().getContent().add(reference);
+			return new VisitorAdapter<RuntimeException>(this) {
+				boolean start = true;
+
+				@Override
+				protected void beforeVisit() throws RuntimeException {
+					start = false;
+				}
+
+				@Override
+				public void visitText(String text) throws RuntimeException {
+					if (start) {
+						reference.setContent(text);
+						start = false;
+					} else {
+						super.visitText(text);
+					}
+				}
+			};
 		}
 
 		@Override

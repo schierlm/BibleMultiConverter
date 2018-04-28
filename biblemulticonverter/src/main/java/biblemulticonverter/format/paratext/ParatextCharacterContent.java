@@ -10,6 +10,7 @@ import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentPart;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisitor;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
+import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
 
 public class ParatextCharacterContent implements ParatextBookContentPart, ParatextCharacterContentContainer {
 
@@ -29,7 +30,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 
 	/**
 	 * One of {@link VerseStart}, {@link FootnoteXref},
-	 * {@link AutoClosingFormatting} or {@link Text}.
+	 * {@link AutoClosingFormatting}, {@link Reference} or {@link Text}.
 	 */
 	public static interface ParatextCharacterContentPart {
 		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T;
@@ -41,6 +42,8 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		public ParatextCharacterContentVisitor<T> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws T;
 
 		public ParatextCharacterContentVisitor<T> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws T;
+
+		public void visitReference(Reference reference) throws T;
 
 		public void visitText(String text) throws T;
 
@@ -70,6 +73,11 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 			AutoClosingFormatting acf = new AutoClosingFormatting(kind, false);
 			acf.getAttributes().putAll(attributes);
 			return addAndVisit(acf);
+		}
+
+		@Override
+		public void visitReference(Reference reference) throws RuntimeException {
+			parent.getContent().add(reference);
 		}
 
 		@Override
@@ -204,7 +212,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		QUOTATION_REFERENCE("rq", FormattingInstructionKind.ITALIC),
 		VERSE_PRESENTATION("vp", FormattingInstructionKind.BOLD), // only very rudimentary
 		SELAH("qs", FormattingInstructionKind.ITALIC, FormattingInstructionKind.DIVINE_NAME),
-		ACROSTIC_CHARACTER("ac",  FormattingInstructionKind.BOLD,  FormattingInstructionKind.ITALIC),
+		ACROSTIC_CHARACTER("qac",  FormattingInstructionKind.BOLD,  FormattingInstructionKind.ITALIC),
 
 		LIST_TOTAL("litl"),
 		LIST_KEY("lik", FormattingInstructionKind.ITALIC),
@@ -352,6 +360,57 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 
 	public static enum KeepIf {
 		OT, NT, DC
+	}
+
+	public static class Reference implements ParatextCharacterContentPart {
+		private final ParatextID book;
+		private final int firstChapter;
+		private final int firstVerse;
+		private final int lastChapter;
+		private final int lastVerse;
+		private String content;
+
+		public Reference(ParatextID book, int firstChapter, int firstVerse, int lastChapter, int lastVerse, String content) {
+			this.book = book;
+			this.firstChapter = firstChapter;
+			this.firstVerse = firstVerse;
+			this.lastChapter = lastChapter;
+			this.lastVerse = lastVerse;
+			this.content = content;
+		}
+
+		public ParatextID getBook() {
+			return book;
+		}
+
+		public int getFirstChapter() {
+			return firstChapter;
+		}
+
+		public int getFirstVerse() {
+			return firstVerse;
+		}
+
+		public int getLastChapter() {
+			return lastChapter;
+		}
+
+		public int getLastVerse() {
+			return lastVerse;
+		}
+
+		public String getContent() {
+			return content;
+		}
+
+		public void setContent(String content) {
+			this.content = content;
+		}
+
+		@Override
+		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
+			visitor.visitReference(this);
+		}
 	}
 
 	public static class Text implements ParatextCharacterContentPart {

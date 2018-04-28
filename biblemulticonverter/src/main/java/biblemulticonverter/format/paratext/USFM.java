@@ -29,6 +29,7 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingF
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXrefKind;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 
 /**
@@ -330,6 +331,11 @@ public class USFM extends AbstractParatextFormat {
 				pushSuffix(thisTag + "\t|" + attrs.toString());
 			}
 			return this;
+		}
+
+		@Override
+		public void visitReference(Reference reference) throws IOException {
+			visitText(reference.getContent());
 		}
 
 		@Override
