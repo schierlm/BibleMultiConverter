@@ -18,7 +18,7 @@ public class ParatextConverter implements Tool {
 			"",
 			"Usage: ParatextConverter <ImportFormat> <ImportFile> <ExportFormat> [<ExportArgs>...]",
 			"",
-			"You can use this tool to reformat USFM or remove conditional parts without",
+			"You can use this tool to convert between Paratext formats (USFM/USFX/USX) without",
 			"losing information. Unlike the normal converter, which converts everything to",
 			"BibleMultiConverter's internal XML format, this will only parse the input file to",
 			"a paratext AST and then write it out in the other format again.",

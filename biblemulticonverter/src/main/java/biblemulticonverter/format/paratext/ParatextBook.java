@@ -182,6 +182,8 @@ public class ParatextBook {
 		SEMANTIC_DIVISION_4(false, ParagraphKindCategory.SKIP, "sd4", 0, false, null),
 
 		PARAGRAPH_P(false, ParagraphKindCategory.TEXT, "p", 0, false, null),
+		PARAGRAPH_P1(false, ParagraphKindCategory.TEXT, "p1", 0, false, null),
+		PARAGRAPH_P2(false, ParagraphKindCategory.TEXT, "p2", 0, false, null),
 		PARAGRAPH_M(false, ParagraphKindCategory.TEXT, "m", 0, false, null),
 		PARAGRAPH_PMO(false, ParagraphKindCategory.TEXT, "pmo", 0, false, null),
 		PARAGRAPH_PM(false, ParagraphKindCategory.TEXT, "pm", 0, false, null),
@@ -224,6 +226,10 @@ public class ParatextBook {
 		PARAGRAPH_QC(false, ParagraphKindCategory.TEXT, "qc", 0, false, null),
 		PARAGRAPH_QA(true, ParagraphKindCategory.HEADLINE, "qa", 9, false, FormattingInstructionKind.ITALIC),
 		PARAGRAPH_QM(false, ParagraphKindCategory.TEXT, "qm", 0, false, null),
+		PARAGRAPH_QM1(false, ParagraphKindCategory.TEXT, "qm1", 0, false, null),
+		PARAGRAPH_QM2(false, ParagraphKindCategory.TEXT, "qm2", 0, false, null),
+		PARAGRAPH_QM3(false, ParagraphKindCategory.TEXT, "qm3", 0, false, null),
+		PARAGRAPH_QM4(false, ParagraphKindCategory.TEXT, "qm4", 0, false, null),
 
 		TABLE_ROW(false, ParagraphKindCategory.TABLE_ROW, "tr", 0, false, null),
 

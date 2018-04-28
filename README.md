@@ -69,7 +69,8 @@ In addition, the following other formats are supported, with varying accuracy:
   bibles and dictionaries, SQLite export for bibles)
 - **[Accordance](https://www.accordancebible.com/)**: export only
 - **[Equipd Bible](http://equipd.me/)**: export only
-- **[USFM](http://paratext.org/usfm/)**: import and export (most tags are supported; not supported are `\ca \cp \va \vp \fig \fm`)
+- **[USFM](http://paratext.org/usfm/)/[USX](https://app.thedigitalbiblelibrary.org/)**: import and export (most tags are supported; not supported are `\ca \cp \va \vp \fig \fm`)
+- **[USFX](https://ebible.org/usfx/)/**: import only
 
 In combination with third party tools, other export formats are available:
 
@@ -99,7 +100,7 @@ in the Bible and where exactly.
 
 The **ValidateXML** tool can be used to validate an input XML file against a XSD schema.
 The schema can be given as a file, as an URL or one of the embedded schema names `OSIS`,
-`ZefaniaXML`, `HaggaiXML`, `RoundtripXML` or `ZefDic`. This is useful as in case of an
+`ZefaniaXML`, `HaggaiXML`, `RoundtripXML`, `USFX`, `USX` or `ZefDic`. This is useful as in case of an
 invalid XML input file, the schema usually provides better error messages than what is
 provided by the import modules.
 
@@ -107,8 +108,11 @@ The **SQLiteDump** tool (part of the SQLite edition) can dump SQLite databases i
 diffable text format; useful for diagnosing problems with Bible programs that use
 SQLite based formats or for importing MyBible.Zone bibles.
 
-The **ParatextConverter** tool can be used to remove tagged OT/NT/Deuterocanonical content
-from a USFM file.
+The **ParatextConverter** tool can be used to convert between USFM/USFX/USX formats
+without converting to BibleMultiConverter's internal format first, or to remove
+tagged OT/NT/Deuterocanonical content from such a file. It can also be used to convert
+to **ParatextDump** format (which is a diffable plain text dump of the internal Paratext
+structure and useful for comparing different Paratext formats).
 
 Planned formats
 ---------------
