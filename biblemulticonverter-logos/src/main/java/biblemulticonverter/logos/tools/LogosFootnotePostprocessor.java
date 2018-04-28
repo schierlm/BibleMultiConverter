@@ -26,9 +26,7 @@ import javax.xml.xpath.XPathConstants;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.w3c.dom.Text;
 
 import biblemulticonverter.tools.Tool;
 
@@ -50,7 +48,6 @@ public class LogosFootnotePostprocessor implements Tool {
 	};
 
 	private static final String NS_URI_W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-	private static final String NS_URI_R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 	public void run(String... args) throws Exception {
 		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
