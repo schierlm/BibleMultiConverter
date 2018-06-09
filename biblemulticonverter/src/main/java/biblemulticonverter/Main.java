@@ -71,6 +71,9 @@ public class Main {
 		System.out.println("Usage:");
 		System.out.println("java -jar BibleMultiConverter.jar <ImportFormat> <ImportFile> <ExportFormat> [<ExportArgs>...]");
 		System.out.println("java -jar BibleMultiConverter.jar <Tool> [<ToolArgs>...]");
+		System.out.println();
+		System.out.println("To list the arguments supported/required by a tool or export format, use the help tool:");
+		System.out.println("java -jar BibleMultiConverter.jar help <ExportFormat/Tool>");
 		printModules("import formats", importFormats);
 		printModules("export formats", exportFormats);
 		printModules("versification formats", versificationFormats);
