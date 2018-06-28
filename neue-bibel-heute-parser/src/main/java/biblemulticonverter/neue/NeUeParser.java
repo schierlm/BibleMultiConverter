@@ -17,6 +17,7 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
@@ -218,6 +219,8 @@ public class NeUeParser implements ImportFormat {
 			}
 			vorwort.getChapters().get(0).getProlog().finished();
 		}
+		if (quoteDepth != 0)
+			throw new IOException(""+quoteDepth);
 
 		for (BookMetadata bm : METADATA) {
 			if (!new File(inputDirectory, bm.filename + ".html").exists()) {
@@ -307,7 +310,22 @@ public class NeUeParser implements ImportFormat {
 						String headline = cutAffix(line, line.substring(0, 4), "</" + line.substring(1, 4));
 						if (headline.contains("*"))
 							throw new IOException(headline);
-						hl.getAppendVisitor().visitText(replaceEntities(headline));
+						Pattern p;
+						if (line.startsWith("<h2")) {
+							p = Utils.compilePattern("()([0-9]+(?:-[0-9]+)?)(: .*)");
+						} else if (line.startsWith("<h3")) {
+							p = Utils.compilePattern("(.*? \\()([0-9]+(?:-[0-9]+)?)(\\))");
+						} else {
+							p = Utils.compilePattern("");
+						}
+						Matcher m = p.matcher(replaceEntities(headline));
+						if (m.matches()) {
+							hl.getAppendVisitor().visitText(m.group(1));
+							hl.getAppendVisitor().visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "logos", "chapter-range", m.group(2)).visitText(m.group(2));
+							hl.getAppendVisitor().visitText(m.group(3));
+						} else {
+							hl.getAppendVisitor().visitText(replaceEntities(headline));
+						}
 						headlines.add(hl);
 					} else if (inParagraph && line.startsWith("<span class=\"vers\">")) {
 						int pos = line.indexOf("</span>");
@@ -358,7 +376,12 @@ public class NeUeParser implements ImportFormat {
 						if (!content.startsWith(prefix)) {
 							throw new IOException(prefix + " / " + content);
 						}
+						int mainQuoteDepth = quoteDepth;
+						quoteDepth = 0;
 						parseFormattedText(footnotes.remove(0), content.substring(prefix.length()).trim(), bm, null);
+						if (quoteDepth != 0)
+							throw new IOException(quoteDepth + "|" + content.substring(prefix.length()).trim());
+						quoteDepth = mainQuoteDepth;
 					} else if (inParagraph && !line.isEmpty() && (!line.startsWith("<") && !line.startsWith("&nbsp;") || line.startsWith("<span class=\"u2\">"))) {
 						if (line.endsWith("</p>")) {
 							inParagraph = false;
@@ -398,6 +421,8 @@ public class NeUeParser implements ImportFormat {
 					}
 				}
 			}
+			if (quoteDepth != 0)
+				throw new IOException(""+quoteDepth);
 		}
 
 		// Anhang
@@ -467,6 +492,8 @@ public class NeUeParser implements ImportFormat {
 		vvv.visitFormattingInstruction(FormattingInstructionKind.BOLD).visitText("Rekonstruktionszeichnung");
 		vvv.visitRawHTML(RawHTMLMode.OFFLINE, "</a>");
 		vv.visitRawHTML(RawHTMLMode.ONLINE, "<br /><img src=\"http://www.alt.kh-vanheiden.de/NeUe/Bibeltexte/Hesekiels%20Tempel.gif\" width=\"640\" height=\"635\">");
+		if (quoteDepth != 0)
+			throw new IOException(""+quoteDepth);
 
 		// Jesus-Chronik
 		if (JESUS_CHRONIK.length > 0)
@@ -532,6 +559,8 @@ public class NeUeParser implements ImportFormat {
 				if (!footnoteList.isEmpty() || !footnotePrefixes.isEmpty())
 					throw new IOException(footnoteList.size() + " / " + footnotePrefixes.size());
 			}
+			if (quoteDepth != 0)
+				throw new IOException(""+quoteDepth);
 		}
 		anhang.getChapters().get(0).getProlog().trimWhitespace();
 		anhang.getChapters().get(0).getProlog().finished();
@@ -748,17 +777,64 @@ public class NeUeParser implements ImportFormat {
 			throw new IOException(text);
 		text = text.replace('\t', ' ').replaceAll("  +", " ");
 		if (!text.contains("&"))
-			return text;
+			return replaceQuotes(text);
 		text = text.replace("&amp;", "\0").replace("&lt;", "<").replace("&gt;", ">");
 		text = text.replace("&Auml;", "Ä").replace("&Ouml;", "Ö").replace("&Uuml;", "Ü");
 		text = text.replace("&auml;", "ä").replace("&ouml;", "ö").replace("&uuml;", "ü");
 		text = text.replace("&szlig;", "ß").replace("&iuml;", "ï").replace("&euml;", "ë");
 		text = text.replace("&Aacute;", "Á").replace("&iacute;", "í").replace("&aacute;", "á");
 		text = text.replace("&eacute;", "é").replace("&copy;", "©");
+		text = text.replace("&bdquo;", "„").replace("&ldquo;", "“");
 		text = text.replace("&frac12;", "½").replace("&nbsp;", "\u00A0").replace("&acute;", "´");
 		if (text.contains("&"))
 			throw new IOException(text);
-		return text.replace("\0", "&");
+		return replaceQuotes(text.replaceAll("\0", "&"));
+	}
+
+	private static int quoteDepth = 0;
+
+	private static final boolean SKIP_FANCY_QUOTES = Boolean.getBoolean("biblemulticonverter.neue.skipfancyquotes");
+
+	private static String replaceQuotes(String text) throws IOException {
+		if (SKIP_FANCY_QUOTES)
+			return text;
+		String done = "";
+		while(text.contains("\"") || (quoteDepth > 0 && text.contains("'"))) {
+			int pos = text.indexOf('"');
+			int qpos = text.indexOf('\'');
+			if (quoteDepth > 0 && qpos != -1 && (pos == -1 || qpos < pos))
+				pos = qpos;
+			if (quoteDepth < 2
+					&& text.charAt(pos) == (quoteDepth == 0 ? '"' : '\'')
+					&& (pos == 0 || " (".indexOf(text.charAt(pos - 1)) != -1)
+					&& (pos == text.length() - 1 || Character.isLetterOrDigit(text.charAt(pos + 1)) || ".'(".indexOf(text.charAt(pos + 1)) != -1)) {
+				done += text.substring(0, pos) + (quoteDepth == 0 ? "„" : "‚");
+				text = text.substring(pos + 1);
+				quoteDepth++;
+			} else if (quoteDepth > 0
+					&& text.charAt(pos) == (quoteDepth == 1 ? '"' : '\'')
+					&& (pos == 0 || Character.isLetterOrDigit(text.charAt(pos - 1)) || ".!?*:«)".indexOf(text.charAt(pos - 1)) != -1)
+					&& (pos == text.length() - 1 || " .,;:*?!)♪".indexOf(text.charAt(pos + 1)) != -1 || (quoteDepth >= 2 && text.charAt(pos + 1) == '"'))) {
+				quoteDepth--;
+				done += text.substring(0, pos) + (quoteDepth == 0 ? "“" : "‘");
+				text = text.substring(pos + 1);
+			} else if (pos > 0 && pos < text.length() - 1 && text.substring(pos - 1, pos + 2).matches("[a-z]'[a-z]")) {
+				// ignore
+				done += text.substring(0, pos + 1);
+				text = text.substring(pos + 1);
+			} else if (pos > 0 && text.substring(pos - 1, pos + 1).matches("[a-z]'") && text.startsWith("' ich ", pos)) {
+				// ignore
+				done += text.substring(0, pos + 1);
+				text = text.substring(pos + 1);
+			} else if (pos >= 8 && text.startsWith("Johannes' des", pos - 8)) {
+				// ignore
+				done += text.substring(0, pos + 1);
+				text = text.substring(pos + 1);
+			} else {
+				throw new IOException(quoteDepth + "|" + text);
+			}
+		}
+		return done + text;
 	}
 
 	private BufferedReader createReader(File directory, String filename) throws IOException {

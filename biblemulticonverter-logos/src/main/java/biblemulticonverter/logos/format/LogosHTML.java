@@ -26,6 +26,7 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
@@ -296,7 +297,7 @@ public class LogosHTML implements ExportFormat {
 						}
 						bw.write(book.getLongName() + "</h2>\n");
 						footnoteNumber = 0;
-						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, versemap, scheme, null, null, null, 2));
+						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, versemap, scheme, null, null, null, 2, null));
 						bw.write("\n<br/>\n");
 						continue;
 					}
@@ -345,7 +346,7 @@ public class LogosHTML implements ExportFormat {
 		}
 		footnoteNumber = 0;
 		if (chapter.getProlog() != null) {
-			chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, null, null, null, usedHeadlines));
+			chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, null, null, null, usedHeadlines, null));
 			bw.write("\n<br/>\n");
 		}
 		for (VerseRange vr : chapter.createVerseRanges()) {
@@ -388,7 +389,7 @@ public class LogosHTML implements ExportFormat {
 			for (Verse v : vr.getVerses()) {
 				bw.write(verseSeparator);
 				String verseNumber = "<b>" + v.getNumber() + "</b> ";
-				v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, versePrefix + verseNumber, versePrefixBeforeHeadline, versePrefixAfterHeadline + verseNumber, usedHeadlines));
+				v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, versePrefix + verseNumber, versePrefixBeforeHeadline, versePrefixAfterHeadline + verseNumber, usedHeadlines, formatMilestone(milestone, "%c", "")));
 				versePrefix = "";
 				versePrefixBeforeHeadline = "";
 				versePrefixAfterHeadline = "";
@@ -538,8 +539,9 @@ public class LogosHTML implements ExportFormat {
 		private final String fieldPrefixAfterHeadline;
 		private boolean fieldOn = false, fieldPrefixBeforeHeadlineWritten = false;
 		private final int usedHeadlines;
+		private final String currentBookMilestone;
 
-		protected LogosVisitor(Writer writer, String suffix, StringWriter footnoteWriter, boolean nt, String versemap, VersificationScheme scheme, String fieldPrefix, String fieldPrefixBeforeHeadline, String fieldPrefixAfterHeadline, int usedHeadlines) {
+		protected LogosVisitor(Writer writer, String suffix, StringWriter footnoteWriter, boolean nt, String versemap, VersificationScheme scheme, String fieldPrefix, String fieldPrefixBeforeHeadline, String fieldPrefixAfterHeadline, int usedHeadlines, String currentBookMilestone) {
 			super(writer, suffix);
 			this.footnoteWriter = footnoteWriter;
 			this.nt = nt;
@@ -549,6 +551,7 @@ public class LogosHTML implements ExportFormat {
 			this.fieldPrefixBeforeHeadline = fieldPrefixBeforeHeadline;
 			this.fieldPrefixAfterHeadline = fieldPrefixAfterHeadline;
 			this.usedHeadlines = usedHeadlines;
+			this.currentBookMilestone = currentBookMilestone;
 		}
 
 		@Override
@@ -609,7 +612,7 @@ public class LogosHTML implements ExportFormat {
 
 			footnoteWriter.write("<DIV ID=\"sdfootnote" + footnoteCounter + "\">");
 			writer.write("<A CLASS=\"sdfootnoteanc\" HREF=\"#sdfootnote" + footnoteCounter + "sym\" sdfixed><sup>" + footnoteNumber + "</sup></A>");
-			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, versemap, scheme, null, null, null, usedHeadlines);
+			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, versemap, scheme, null, null, null, usedHeadlines, null);
 		}
 
 		@Override
@@ -716,6 +719,17 @@ public class LogosHTML implements ExportFormat {
 				}
 			}
 			return this;
+		}
+
+		@Override
+		public Visitor<IOException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws IOException {
+			if (prio == ExtraAttributePriority.KEEP_CONTENT && category.equals("logos") && key.equals("chapter-range")) {
+				writer.write("[[ ");
+				pushSuffix(" &gt;&gt; " + currentBookMilestone.replace("%c", value) + "]]");
+				return this;
+			} else {
+				return super.visitExtraAttribute(prio, category, key, value);
+			}
 		}
 	}
 

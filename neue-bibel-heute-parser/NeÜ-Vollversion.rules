@@ -108,3 +108,81 @@ bibel.html
 <br />
 <br />
 
+1mo.html
+	##### QUOTES #####
+	### 24:44 Third Level Quote
+sagt: "(Trink nur! Ich will auch deine Kamele tr&auml;nken!)", dass
+sagt: »$1«, dass
+
+2mo.html
+	### 3:16 3:17 4:22 4:23 7:16 7:17 7:18 7:26 8:16 8:19 9:1 9:5 9:13 9:19 21:5 Third Level Quotes
+	### 12:18 Quotes with link
+hat gesagt: "Ich habe
+hat gesagt: »Ich habe
+&uuml;berflie&szlig;t\."'
+&uuml;berflie&szlig;t.«'
+Jahwe: "Israel
+Jahwe: »Israel
+Sohn um."'"
+Sohn um.«'"
+auf: "Lass mein
+auf: »Lass mein
+W&uuml;ste dient!" Aber
+W&uuml;ste dient!« Aber
+Jahwe: "Jetzt wirst
+Jahwe: »Jetzt wirst
+Nilwasser zu trinken."'"
+Nilwasser zu trinken.«'"
+'So spricht Jahwe: "Lass
+'So spricht Jahwe: »Lass
+kommen."'"</p>
+kommen.«'"</p>
+Morgen wird es geschehen."'"
+Morgen wird es geschehen.«'"
+Gott der Hebr&auml;er: "Lass
+Gott der Hebr&auml;er: »Lass
+und zwar morgen!"'"</p>
+und zwar morgen!«'"</p>
+Hagel erschlagen."'"
+Hagel erschlagen.«'"
+"<a href="index.htm#schalt">Schaltmonat</a>"
+&bdquo;<a href="index.htm#schalt">Schaltmonat</a>&ldquo;
+aber sagt: "Ich
+aber sagt: »Ich
+werden!",
+werden!«,
+
+4mo.html
+	### 5:20 whitespace missing after closing single quote
+	###
+geschlafen hat'-
+geschlafen hat' -
+
+jer.html
+	### 7:4, 7:10, 25:30, 34:5 Nested Quote
+	### [8:4 Unclosed Second Level Quote]
+"(Das hier ist der Tempel Jahwes! Es ist der Tempel Jahwes! Jahwes Tempel ist das!)"
+»$1«
+"(Wir sind doch gerettet!)",
+»$1«,
+"Hei&szlig;a!"
+»Hei&szlig;a!«
+"Weh, Herr!"
+»Weh, Herr!«
+
+mt.html
+	### 22:44 third level quote
+	###
+Herrn: "Setz
+Herrn: »Setz
+\Qgemacht habe."'*
+gemacht habe.«'*
+
+apg.html
+	### 2:34 - 2:35 third level quote
+	###
+Herrn: "Setz dich
+Herrn: »Setz dich
+\Qgemacht habe."'*\E
+gemacht habe.«'*
+
