@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -154,7 +155,21 @@ public class Diffable implements RoundtripFormat {
 						target = chapter.getVerses().get(idx);
 					}
 				}
-				parseDiffable(target.getAppendVisitor(), parts[2]);
+				String contents = parts[2];
+				int lastPos = 0, pos = contents.indexOf('<');
+				List<Visitor<RuntimeException>> visitorStack = new ArrayList<Visitor<RuntimeException>>();
+				visitorStack.add(target.getAppendVisitor());
+				while (pos != -1) {
+					if (pos > lastPos) {
+						visitorStack.get(visitorStack.size() - 1).visitText(contents.substring(lastPos, pos));
+					}
+					lastPos = parseSingleTag(contents, pos, visitorStack);
+					pos = contents.indexOf('<', lastPos);
+				}
+				if (lastPos < contents.length())
+					visitorStack.get(visitorStack.size() - 1).visitText(contents.substring(lastPos));
+				if (visitorStack.size() > 1)
+					throw new RuntimeException("Unclosed tags: " + contents);
 			} catch (Exception ex) {
 				throw new IOException("Error while parsing line: " + line, ex);
 			}
@@ -181,109 +196,101 @@ public class Diffable implements RoundtripFormat {
 		return true;
 	}
 
-	private void parseDiffable(Visitor<RuntimeException> visitor, String line) throws IOException {
-		int lastPos = 0, pos = line.indexOf('<');
-		List<Visitor<RuntimeException>> visitorStack = new ArrayList<Visitor<RuntimeException>>();
-		while (pos != -1) {
-			if (pos > lastPos) {
-				visitor.visitText(line.substring(lastPos, pos));
-			}
-			int endPos = line.indexOf('>', pos);
-			if (endPos == -1)
-				throw new IOException("Unclosed tag: " + line.substring(pos));
+	protected static int parseSingleTag(String line, int pos, List<Visitor<RuntimeException>> visitorStack) throws IOException {
+		int lastPos;
+		Visitor<RuntimeException> visitor = visitorStack.remove(visitorStack.size() - 1);
+		int endPos = line.indexOf('>', pos);
+		if (endPos == -1)
+			throw new IOException("Unclosed tag: " + line.substring(pos));
 
-			String tag = line.substring(pos + 1, endPos);
-			if (tag.length() > 1 && tag.endsWith("/"))
-				tag = tag.substring(0, tag.length() - 1);
-			Map<String, String> tagArgs = new HashMap<String, String>();
-			lastPos = endPos + 1;
-			if (tag.contains(" ")) {
-				int tpos = tag.indexOf(' ');
-				while (tpos < tag.length()) {
-					if (tag.charAt(tpos) == ' ')
-						tpos++;
-					int aspos = tag.indexOf("=\"", tpos);
-					int aepos = tag.indexOf("\"", aspos + 2);
-					if (aspos == -1 || aepos == -1)
-						throw new IOException("Malformed tag: <" + tag + ">");
-					tagArgs.put(tag.substring(tpos, aspos), tag.substring(aspos + 2, aepos));
-					tpos = aepos + 1;
-				}
-				tag = tag.substring(0, tag.indexOf(' '));
+		String tag = line.substring(pos + 1, endPos);
+		if (tag.length() > 1 && tag.endsWith("/"))
+			tag = tag.substring(0, tag.length() - 1);
+		Map<String, String> tagArgs = new HashMap<String, String>();
+		lastPos = endPos + 1;
+		if (tag.contains(" ")) {
+			int tpos = tag.indexOf(' ');
+			while (tpos < tag.length()) {
+				if (tag.charAt(tpos) == ' ')
+					tpos++;
+				int aspos = tag.indexOf("=\"", tpos);
+				int aepos = tag.indexOf("\"", aspos + 2);
+				if (aspos == -1 || aepos == -1)
+					throw new IOException("Malformed tag: <" + tag + ">");
+				tagArgs.put(tag.substring(tpos, aspos), tag.substring(aspos + 2, aepos));
+				tpos = aepos + 1;
 			}
-			if (tag.startsWith("/")) {
-				visitor = visitorStack.remove(visitorStack.size() - 1);
-			} else if (tag.length() == 1 && tag.charAt(0) >= 'a' && tag.charAt(0) <= 'z') {
-				visitorStack.add(visitor);
-				visitor = visitor.visitFormattingInstruction(FormattingInstructionKind.fromChar(tag.charAt(0)));
-			} else if (tag.length() == 2 && tag.startsWith("h") && tag.charAt(1) >= '1' && tag.charAt(1) <= '9') {
-				visitorStack.add(visitor);
-				visitor = visitor.visitHeadline(tag.charAt(1) - '0');
-			} else if (tag.startsWith("raw:")) {
-				validateTagArgs(tag, tagArgs, "mode");
-				int markerPos = line.indexOf("</" + tag + ">", lastPos);
-				visitor.visitRawHTML(RawHTMLMode.valueOf(tagArgs.get("mode")), line.substring(lastPos, markerPos));
-				lastPos = markerPos + tag.length() + 3;
-			} else {
-				switch (tag) {
-				case "<":
-					visitor.visitText("<");
-					break;
-				case "fn":
-					visitorStack.add(visitor);
-					visitor = visitor.visitFootnote();
-					break;
-				case "css":
-					validateTagArgs(tag, tagArgs, "style");
-					visitorStack.add(visitor);
-					visitor = visitor.visitCSSFormatting(tagArgs.get("style"));
-					break;
-				case "vs":
-					visitor.visitVerseSeparator();
-					break;
-				case "br":
-					validateTagArgs(tag, tagArgs, "kind");
-					visitor.visitLineBreak(LineBreakKind.valueOf(tagArgs.get("kind")));
-					break;
-				case "grammar":
-					validateTagArgs(tag, tagArgs, "strong", "rmac", "idx");
-					visitorStack.add(visitor);
-					visitor = visitor.visitGrammarInformation(intArray(tagArgs.get("strong")), tagArgs.get("rmac").length() == 0 ? null : tagArgs.get("rmac").split(","), intArray(tagArgs.get("idx")));
-					break;
-				case "dict":
-					validateTagArgs(tag, tagArgs, "dictionary", "entry");
-					visitorStack.add(visitor);
-					visitor = visitor.visitDictionaryEntry(tagArgs.get("dictionary"), tagArgs.get("entry"));
-					break;
-				case "var":
-					validateTagArgs(tag, tagArgs, "vars");
-					visitorStack.add(visitor);
-					visitor = visitor.visitVariationText(tagArgs.get("vars").split(","));
-					break;
-				case "extra":
-					validateTagArgs(tag, tagArgs, "prio", "category", "key", "value");
-					visitorStack.add(visitor);
-					visitor = visitor.visitExtraAttribute(ExtraAttributePriority.valueOf(tagArgs.get("prio")), tagArgs.get("category"), tagArgs.get("key"), tagArgs.get("value"));
-					break;
-				case "xref":
-					validateTagArgs(tag, tagArgs, "abbr", "id", "chapters", "verses");
-					String[] chapters = tagArgs.get("chapters").split(":");
-					String[] verses = tagArgs.get("verses").split(":");
-					if (chapters.length != 2 || verses.length != 2)
-						throw new IOException("Malformed \"abbr\" tag arguments: " + tagArgs);
-					visitorStack.add(visitor);
-					visitor = visitor.visitCrossReference(tagArgs.get("abbr"), BookID.fromOsisId(tagArgs.get("id")), Integer.parseInt(chapters[0]), verses[0], Integer.parseInt(chapters[1]), verses[1]);
-					break;
-				default:
-					throw new IOException("Unsupported tag: " + tag);
-				}
-			}
-			pos = line.indexOf('<', lastPos);
+			tag = tag.substring(0, tag.indexOf(' '));
 		}
-		if (lastPos < line.length())
-			visitor.visitText(line.substring(lastPos));
-		if (visitorStack.size() > 0)
-			throw new RuntimeException("Unclosed tags: " + line);
+		if (tag.startsWith("/")) {
+			visitor = visitorStack.remove(visitorStack.size() - 1);
+		} else if (tag.length() == 1 && tag.charAt(0) >= 'a' && tag.charAt(0) <= 'z') {
+			visitorStack.add(visitor);
+			visitor = visitor.visitFormattingInstruction(FormattingInstructionKind.fromChar(tag.charAt(0)));
+		} else if (tag.length() == 2 && tag.startsWith("h") && tag.charAt(1) >= '1' && tag.charAt(1) <= '9') {
+			visitorStack.add(visitor);
+			visitor = visitor.visitHeadline(tag.charAt(1) - '0');
+		} else if (tag.startsWith("raw:")) {
+			validateTagArgs(tag, tagArgs, "mode");
+			int markerPos = line.indexOf("</" + tag + ">", lastPos);
+			visitor.visitRawHTML(RawHTMLMode.valueOf(tagArgs.get("mode")), line.substring(lastPos, markerPos));
+			lastPos = markerPos + tag.length() + 3;
+		} else {
+			switch (tag) {
+			case "<":
+				visitor.visitText("<");
+				break;
+			case "fn":
+				visitorStack.add(visitor);
+				visitor = visitor.visitFootnote();
+				break;
+			case "css":
+				validateTagArgs(tag, tagArgs, "style");
+				visitorStack.add(visitor);
+				visitor = visitor.visitCSSFormatting(tagArgs.get("style"));
+				break;
+			case "vs":
+				visitor.visitVerseSeparator();
+				break;
+			case "br":
+				validateTagArgs(tag, tagArgs, "kind");
+				visitor.visitLineBreak(LineBreakKind.valueOf(tagArgs.get("kind")));
+				break;
+			case "grammar":
+				validateTagArgs(tag, tagArgs, "strong", "rmac", "idx");
+				visitorStack.add(visitor);
+				visitor = visitor.visitGrammarInformation(intArray(tagArgs.get("strong")), tagArgs.get("rmac").length() == 0 ? null : tagArgs.get("rmac").split(","), intArray(tagArgs.get("idx")));
+				break;
+			case "dict":
+				validateTagArgs(tag, tagArgs, "dictionary", "entry");
+				visitorStack.add(visitor);
+				visitor = visitor.visitDictionaryEntry(tagArgs.get("dictionary"), tagArgs.get("entry"));
+				break;
+			case "var":
+				validateTagArgs(tag, tagArgs, "vars");
+				visitorStack.add(visitor);
+				visitor = visitor.visitVariationText(tagArgs.get("vars").split(","));
+				break;
+			case "extra":
+				validateTagArgs(tag, tagArgs, "prio", "category", "key", "value");
+				visitorStack.add(visitor);
+				visitor = visitor.visitExtraAttribute(ExtraAttributePriority.valueOf(tagArgs.get("prio")), tagArgs.get("category"), tagArgs.get("key"), tagArgs.get("value"));
+				break;
+			case "xref":
+				validateTagArgs(tag, tagArgs, "abbr", "id", "chapters", "verses");
+				String[] chapters = tagArgs.get("chapters").split(":");
+				String[] verses = tagArgs.get("verses").split(":");
+				if (chapters.length != 2 || verses.length != 2)
+					throw new IOException("Malformed \"abbr\" tag arguments: " + tagArgs);
+				visitorStack.add(visitor);
+				visitor = visitor.visitCrossReference(tagArgs.get("abbr"), BookID.fromOsisId(tagArgs.get("id")), Integer.parseInt(chapters[0]), verses[0], Integer.parseInt(chapters[1]), verses[1]);
+				break;
+			default:
+				throw new IOException("Unsupported tag: " + tag);
+			}
+		}
+		visitorStack.add(visitor);
+		return lastPos;
 	}
 
 	private static int[] intArray(String string) {
@@ -297,14 +304,14 @@ public class Diffable implements RoundtripFormat {
 		return result;
 	}
 
-	private void validateTagArgs(String tag, Map<String, String> tagArgs, String... requiredArgs) throws IOException {
+	private static void validateTagArgs(String tag, Map<String, String> tagArgs, String... requiredArgs) throws IOException {
 		for (String arg : requiredArgs) {
 			if (!tagArgs.containsKey(arg))
 				throw new IOException("Missing argument " + arg + " in " + tag + " tag with args: " + tagArgs);
 		}
 	}
 
-	private static class DiffableVisitor implements Visitor<IOException> {
+	protected static class DiffableVisitor implements Visitor<IOException> {
 		private final Writer w;
 		private final String linePrefix;
 		private final DiffableVisitor childVisitor;
@@ -316,6 +323,10 @@ public class Diffable implements RoundtripFormat {
 			childVisitor = linePrefix == null ? this : new DiffableVisitor(w, null);
 			if (linePrefix != null)
 				w.write(linePrefix);
+		}
+
+		protected DiffableVisitor(StringWriter sw) throws IOException {
+			this(sw, "");
 		}
 
 		@Override

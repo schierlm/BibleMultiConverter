@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<office:document-styles
+	xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+	xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+	xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
+	office:version="1.2">
+	<office:styles>
+		<style:style style:name="BMC_5f_Content"
+			style:display-name="BMC_Content" style:family="paragraph">
+		</style:style>
+		<style:style style:name="BMC_5f_Heading_5f_1"
+			style:display-name="BMC_Heading_1" style:family="paragraph"
+			style:parent-style-name="Heading" style:next-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-size="115%"
+				fo:font-weight="bold" />
+		</style:style>
+		<style:style style:name="BMC_5f_Heading_5f_2"
+			style:display-name="BMC_Heading_2" style:family="paragraph"
+			style:parent-style-name="Heading" style:next-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-size="14pt"
+				fo:font-style="italic" fo:font-weight="bold" />
+		</style:style>
+		<style:style style:name="BMC_5f_Heading_5f_3"
+			style:display-name="BMC_Heading_3" style:family="paragraph"
+			style:parent-style-name="Heading" style:next-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-size="14pt"
+				fo:font-weight="bold" />
+		</style:style>
+		<style:style style:name="BMC_5f_Heading_5f_4"
+			style:display-name="BMC_Heading_4" style:family="paragraph"
+			style:parent-style-name="Heading" style:next-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-size="85%"
+				fo:font-style="italic" fo:font-weight="bold" />
+		</style:style>
+		<style:style style:name="BMC_5f_Heading_5f_5"
+			style:display-name="BMC_Heading_5" style:family="paragraph"
+			style:parent-style-name="Heading" style:next-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-size="85%"
+				fo:font-weight="bold" />
+		</style:style>
+		<style:style style:name="BMC_5f_Heading_5f_6"
+			style:display-name="BMC_Heading_6" style:family="paragraph"
+			style:parent-style-name="Heading" style:next-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-size="75%"
+				fo:font-weight="bold" />
+		</style:style>
+		<style:style style:name="BMC_5f_Heading_5f_7"
+			style:display-name="BMC_Heading_7" style:family="paragraph"
+			style:parent-style-name="Heading" style:next-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-size="75%"
+				fo:font-weight="bold" />
+		</style:style>
+		<style:style style:name="BMC_5f_Heading_5f_8"
+			style:display-name="BMC_Heading_8" style:family="paragraph"
+			style:parent-style-name="Heading" style:next-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-size="75%"
+				fo:font-weight="bold" />
+		</style:style>
+		<style:style style:name="BMC_5f_Heading_5f_9"
+			style:display-name="BMC_Heading_9" style:family="paragraph"
+			style:parent-style-name="Heading" style:next-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-size="75%"
+				fo:font-weight="bold" />
+		</style:style>
+		<style:style style:name="BMC_5f_NextChapter"
+			style:display-name="BMC_NextChapter" style:family="paragraph"
+			style:parent-style-name="BMC_5f_Content" style:next-style-name="BMC_5f_Content">
+			<style:paragraph-properties fo:margin-top="0.1cm"
+				fo:margin-bottom="0.1cm"  fo:text-align="center" />
+			<style:text-properties style:text-underline-style="solid" />
+		</style:style>
+		<style:style style:name="BMC_5f_Book" style:display-name="BMC_Book"
+			style:family="paragraph" style:parent-style-name="BMC_5f_Content"
+			style:next-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-size="14pt" style:text-underline-style="solid" />
+		</style:style>
+		<style:style style:name="BMC_5f_Content"
+			style:display-name="BMC_Content" style:family="text">
+		</style:style>
+		<style:style style:name="BMC_5f_Ignored"
+			style:display-name="BMC_Ignored" style:family="text">
+			<style:text-properties fo:font-style="italic"
+				fo:background-color="#c0c0c0" />
+		</style:style>
+		<style:style style:name="BMC_5f_Verse" style:display-name="BMC_Verse"
+			style:family="text">
+			<style:text-properties fo:font-weight="bold"
+				fo:background-color="#e0e0e0" />
+		</style:style>
+		<style:style style:name="BMC_5f_Grammar"
+			style:display-name="BMC_Grammar" style:family="text">
+			<style:text-properties style:text-position="super 58%"
+				fo:background-color="#c0c0c0" />
+		</style:style>
+		<style:style style:name="BMC_5f_Special"
+			style:display-name="BMC_Special" style:family="text">
+			<style:text-properties fo:color="#ffffff"
+				fo:font-size="9pt" fo:background-color="#000000" />
+		</style:style>
+		<style:style style:name="BMC_5f_Content_2b_Bold"
+			style:display-name="BMC_Content+Bold" style:family="text"
+			style:parent-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-weight="bold" />
+		</style:style>
+		<style:style style:name="BMC_5f_Content_2b_Italic"
+			style:display-name="BMC_Content+Italic" style:family="text"
+			style:parent-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-style="italic" />
+		</style:style>
+		<style:style style:name="BMC_5f_Content_2b_DivineName"
+			style:display-name="BMC_Content+DivineName" style:family="text"
+			style:parent-style-name="BMC_5f_Content">
+			<style:text-properties fo:font-variant="small-caps" />
+		</style:style>
+		<style:style style:name="BMC_5f_Content_2b_WOJ"
+			style:display-name="BMC_Content+WOJ" style:family="text"
+			style:parent-style-name="BMC_5f_Content">
+		</style:style>
+		<style:style style:name="Standard" style:family="paragraph" />
+		<style:style style:name="Heading" style:family="paragraph"
+			style:next-style-name="Standard">
+			<style:paragraph-properties fo:margin-top="0.423cm"
+				fo:margin-bottom="0.212cm" fo:keep-with-next="always" />
+			<style:text-properties style:font-name="Arial"
+				fo:font-size="14pt" />
+		</style:style>
+	</office:styles>
+	<office:master-styles />
+</office:document-styles>

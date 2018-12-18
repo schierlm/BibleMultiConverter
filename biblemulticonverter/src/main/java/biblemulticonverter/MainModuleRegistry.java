@@ -60,6 +60,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<RoundtripFormat>("USFX", "XML Bible format based on USFM used by ebible.org", USFX.HELP_TEXT, USFX.class));
 		result.add(new Module<RoundtripFormat>("USX", "XML Bible format used by Paratext and the Digital Bible Library", USX.HELP_TEXT, USX.class));
 		result.add(new Module<RoundtripFormat>("ParatextDump", "Dump a Paratext bible to diffable plain text", ParatextDump.HELP_TEXT, ParatextDump.class));
+		result.add(new Module<RoundtripFormat>("RoundtripODT", "ODT export and re-import [Unfinished]", RoundtripODT.HELP_TEXT, RoundtripODT.class));
 		return result;
 	}
 

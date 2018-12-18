@@ -43,9 +43,20 @@ both for import and for export:
 - **Diffable**: Designed to make comparing different bibles easier
 - **RoundtripXML**: Useful for interchange of modules with converters written
   in other programming languages (that prefer XML binding to plaintext parsing)
+
+In addition, there are other formats that can preserve all features supported by
+the BibleMultiConverter framework, and can therefore used for exchanging or editing
+modules without loss of data:
+
 - **RoundtripHTML**: HTML format that can be read back if desired (originally
   intended for publishing on free website hosters, but with the advent of free
   file hosters this feature is pretty much obsolete).
+- **RoundtripODT**: Export as an editable .odt (OpenOffice/LibreOffice Document
+  Text), which can be edited in LibreOffice (tested with LibreOffice 6.0) and later
+  imported again. Large bibles can take a minute or so to open in LibreOffice 6, which
+  is quite some improvement since LibreOffice 5.x sometimes took more than 15 minutes.
+  Note that all formatting is exported as named Paragraph or Text styles, and other
+  individual formatting will be ignored when importing.
 
 In addition, the following other formats are supported, with varying accuracy:
 
@@ -117,13 +128,7 @@ structure and useful for comparing different Paratext formats).
 Planned formats
 ---------------
 
-I plan lossless import and export to ODT, to make manual editing of the Bible text
-easier. But no guarantees here, I don't know how hard ODT import will be at the end.
-[This is currently blocked by the fact that OpenOffice/LibreOffice is very slow in loading
-documents that contain very many small spans using the same style, which will inevitably
-happen when exporting a bible with lots of formatting]
-
-EPUB export is also planned (but not high priority at the moment).
+EPUB export is planned (but not high priority at the moment).
 
 If you want to see any other formats, feel free to open an issue (or a pull request :-D).
 
