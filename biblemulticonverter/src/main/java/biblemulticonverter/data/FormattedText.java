@@ -749,6 +749,9 @@ public class FormattedText {
 
 	private static class ValidatingVisitor implements Visitor<RuntimeException> {
 
+		private static boolean IGNORE_WHITESPACE_ISSUES = Boolean.getBoolean("biblemulticonverter.validate.ignore.whitespace");
+		private static boolean IGNORE_EMPTY_ELEMENTS = Boolean.getBoolean("biblemulticonverter.validate.ignore.empty");
+
 		private final Bible bible;
 		private final BookID book;
 		private final List<String> danglingReferences;
@@ -789,9 +792,9 @@ public class FormattedText {
 			isEmpty = false;
 			lastHeadlineDepth = 0;
 			if (text.startsWith(" ")) {
-				if (trailingWhitespaceFound)
+				if (trailingWhitespaceFound && !IGNORE_WHITESPACE_ISSUES)
 					throw new IllegalStateException("Whitespace adjacent to whitespace found");
-				if (!leadingWhitespaceAllowed)
+				if (!leadingWhitespaceAllowed && !IGNORE_WHITESPACE_ISSUES)
 					throw new IllegalStateException("No whitespace allowed at beginning or after line breaks or headlines");
 			}
 			trailingWhitespaceFound = text.endsWith(" ");
@@ -803,7 +806,7 @@ public class FormattedText {
 
 		@Override
 		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
-			if (trailingWhitespaceFound)
+			if (trailingWhitespaceFound && !IGNORE_WHITESPACE_ISSUES)
 				throw new IllegalStateException("No whitespace allowed before line breaks");
 			if (context.ordinal() >= ValidationContext.HEADLINE.ordinal() && context != ValidationContext.FOOTNOTE)
 				throw new IllegalStateException("Line breaks only allowed in block context or footnotes");
@@ -818,7 +821,7 @@ public class FormattedText {
 				throw new IllegalArgumentException("Invalid nested headline");
 			if (depth <= lastHeadlineDepth)
 				throw new IllegalStateException("Invalid headline depth order: " + depth + " after " + lastHeadlineDepth);
-			if (trailingWhitespaceFound)
+			if (trailingWhitespaceFound && !IGNORE_WHITESPACE_ISSUES)
 				throw new IllegalStateException("No whitespace allowed before headlines");
 			leadingWhitespaceAllowed = false;
 			lastHeadlineDepth = depth == 9 ? 8 : depth;
@@ -931,9 +934,9 @@ public class FormattedText {
 
 		@Override
 		public boolean visitEnd() throws RuntimeException {
-			if (trailingWhitespaceFound)
+			if (trailingWhitespaceFound && !IGNORE_WHITESPACE_ISSUES)
 				throw new IllegalStateException("No whitespace allowed at end of element");
-			if (isEmpty)
+			if (isEmpty && !IGNORE_EMPTY_ELEMENTS)
 				throw new IllegalStateException("Element is empty");
 			return false;
 		}
