@@ -1,6 +1,8 @@
 1mo.html
 Zoar, Winzig
 Zoar*, Winzig
+Engel Gottes Hagar
+Engel Gottes* Hagar
 
 4mo.html
 <h4 id="20">Nach 40 Jahren an der Grenze des Landes</h4>¶<h4>Das Wasser von Meriba</h4>
@@ -10,6 +12,14 @@ Zoar*, Winzig
 aus Eisenstein steht
 aus Eisenstein* steht
 
+jos.html
+Baal-Gad\*
+Baal-Gad
+
+ri.html
+(<p><span class="vers">8</span>.*?)¶(<div class="fn">13,6: <em>.*?</div>)
+$2¶$1
+
 1chr.html
 Jafet.¶</p>
 Jafet.</p>
@@ -18,9 +28,15 @@ neh.html
 <p><a href="#top"><span class="kap">8</span></a>&nbsp; ([^¶]*)
 <p>$1 </p>¶<p><a href="#top"><span class="kap">8</span></a>&nbsp;
 
+hiob.html
+&xnbsp;
+&nbsp;
+
 ps.html
 von David.¶   <span class="vers">2</span>&nbsp;
 von David.</em>¶   <span class="vers">2</span>&nbsp;<em>
+(<div class="fn">1,3: .*?</div>¶)((?:.*?¶){1,10}<div class="fn">1,2: .*?</div>¶)
+$2$1
 (<div class="fn">78,60: .*?</div>¶<div class="fn">78,61: .*?</div>¶)(<div class="fn">78,2: .*?</div>¶<div class="fn">.*?</div>¶<div class="fn">.*?</div>¶<div class="fn">.*?</div>¶<div class="fn">78,51: .*?</div>¶)
 $2$1
 (<div class="fn">95,11: .*?</div>¶)(<div class="fn">95,8: .*?</div>¶)
@@ -33,6 +49,8 @@ Wort</h4>
 <div class="fn">119,1: <em>Psalm 119</em>
 <div class="fn">132,6 <em>von ihr</em>. Gemeint ist die Bundeslade.</div>¶<div
 <div
+&xnbsp;
+&nbsp;
 
 spr.html
 ¶¶<p class="poet" id="16">
@@ -73,6 +91,8 @@ mt.html
 "fn">13,32:
 "fn">20,6.9:
 "fn">20,6:
+"2mo.html#2">2. Mose 21,
+"2mo.html#21">2. Mose 21,
 
 mk.html
 >,20\)\.¶</div>
@@ -83,6 +103,8 @@ href="3mo.html#10"
 href="3mo.html#25"
 "fn">22,43:
 "fn">22,44:
+<p></p><span class="vers">29</span>
+<p><span class="vers">29</span>
 
 tit.html
 <div class="e">¶
@@ -103,9 +125,13 @@ hebr.html
 off.html
 </div><div class="fn">
 </div>¶<div class="fn">
+&xnbsp;
+&nbsp;
 
 bibel.html
 <br />
+<br />
+<br&xnbsp;/>
 <br />
 
 1mo.html
