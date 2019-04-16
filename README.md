@@ -79,6 +79,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[Bible Analyzer](http://www.bibleanalyzer.com/)**: export only (text export for
   bibles and dictionaries, SQLite export for bibles)
 - **[Accordance](https://www.accordancebible.com/)**: export only
+- **[BibleWorks](https://www.bibleworks.com/)**: import and export
 - **[Equipd Bible](http://equipd.me/)**: export only
 - **[USFM](http://paratext.org/usfm/)/[USX](https://app.thedigitalbiblelibrary.org/)**: import and export (most tags are supported; not supported are `\ca \cp \va \vp \fig \fm`)
 - **[USFX](https://ebible.org/usfx/)/**: import only
