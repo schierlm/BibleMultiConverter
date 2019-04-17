@@ -281,7 +281,7 @@ public class MyBibleZone implements RoundtripFormat {
 					while (bk.getChapters().size() < c)
 						bk.getChapters().add(new Chapter());
 					Chapter ch = bk.getChapters().get(c - 1);
-					Verse vv = new Verse("" + v);
+					Verse vv = new Verse(v == 0 ? "1/t" : "" + v);
 					try {
 						String rest = convertFromVerse(text, vv.getAppendVisitor(), footnoteDB, new int[] { b, c, v });
 						if (!rest.isEmpty()) {
@@ -317,7 +317,7 @@ public class MyBibleZone implements RoundtripFormat {
 					Chapter ch = bk.getChapters().get(c - 1);
 					Verse vv = null;
 					for (Verse vvv : ch.getVerses()) {
-						if (vvv.getNumber().equals("" + v))
+						if (vvv.getNumber().equals(v == 0 ? "1/t" : "" + v))
 							vv = vvv;
 					}
 					if (vv == null) {
@@ -387,6 +387,8 @@ public class MyBibleZone implements RoundtripFormat {
 			decodeEntities(vv, html.substring(0, pos));
 			html = html.substring(pos);
 			pos = html.indexOf('>');
+			if (html.startsWith("<!--") && html.contains("-->"))
+				pos = html.indexOf("-->") + 2;
 			if (pos == -1)
 				throw new RuntimeException(html);
 			String tag = html.substring(0, pos + 1);
@@ -398,17 +400,28 @@ public class MyBibleZone implements RoundtripFormat {
 	}
 
 	private void decodeEntities(Visitor<RuntimeException> vv, String text) {
-		if (text.contains("\1"))
+		if (text.contains("\1") || text.contains("\2"))
 			throw new RuntimeException(text);
 		text = text.replace("&amp;", "\1").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"");
 		text = text.replace("&#146;", "’").replace("&#147;", "“").replace("&#148;", "”");
-		if (text.contains("&"))
-			System.out.println("WARNING: Unsupported HTML entity in " + text);
-		text = text.replace("\1", "&").replace("\r\n", "\n").replace('\r', '\n').replaceAll("  +", " ");
-		while (text.contains("\n")) {
+		text = text.replace("&", "\2").replace("\1", "&").replace("\r\n", "\n").replace('\r', '\n').replaceAll("  +", " ");
+		while (text.contains("\n") || text.contains("\2")) {
 			int pos = text.indexOf('\n');
-			vv.visitText(text.substring(0, pos).trim());
-			text = text.substring(pos + 1).trim();
+			int pos2 = text.indexOf('\2');
+			if (pos2 != -1 && (pos == -1 || pos2 < pos)) {
+				pos = text.indexOf(";", pos2);
+				if (pos == -1) {
+					System.out.println("WARNING: Unclosed HTML entity in " + text.substring(pos2));
+					pos = pos2;
+				}
+				vv.visitText(text.substring(0, pos2).trim());
+				vv.visitRawHTML(RawHTMLMode.BOTH, text.substring(pos2, pos + 1).replace('\2', '&'));
+				text = text.substring(pos + 1).trim();
+			} else {
+				vv.visitText(text.substring(0, pos).trim());
+				vv.visitLineBreak(LineBreakKind.NEWLINE);
+				text = text.substring(pos + 1).trim();
+			}
 		}
 		vv.visitText(text);
 	}
@@ -515,11 +528,18 @@ public class MyBibleZone implements RoundtripFormat {
 				else {
 					text = text.substring(4);
 				}
+			} else if (text.startsWith("<h>")) {
+				text = convertFromVerse(text.substring(3), vv.visitHeadline(1), footnoteDB, vnums);
+				if (!text.startsWith("</h>"))
+					System.out.println("WARNING: Unclosed <e> tag at: " + text);
+				else {
+					text = text.substring(4);
+				}
 			} else if (text.startsWith("<f>")) {
 				pos = text.indexOf("</f>");
 				String fn = cleanText(text.substring(3, pos));
 				text = text.substring(pos + 4);
-				if (!fn.matches("\\[\\*?[0-9]+\\]"))
+				if (!fn.matches("\\[\u2020?\\*?[0-9-:]+\\]|[\u24D0-\u24E9\u2780-\u2793]"))
 					System.out.println("WARNING: Unusual footnote mark: " + fn);
 				try {
 					ISqlJetCursor cursor = footnoteDB.getTable("commentaries").lookup("commentaries_index", vnums[0], vnums[1], vnums[2]);
