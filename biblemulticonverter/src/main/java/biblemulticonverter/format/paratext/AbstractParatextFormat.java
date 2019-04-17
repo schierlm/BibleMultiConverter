@@ -1,6 +1,7 @@
 package biblemulticonverter.format.paratext;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -260,10 +261,16 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 	protected List<ParatextBook> doImportAllBooks(File inputFile) throws Exception {
 		List<ParatextBook> result = new ArrayList<ParatextBook>();
+		if (!inputFile.isDirectory())
+			throw new IOException("Not a directory: "+inputFile);
 		for (File file : inputFile.listFiles()) {
-			ParatextBook book = doImportBook(file);
-			if (book != null)
-				result.add(book);
+			try {
+				ParatextBook book = doImportBook(file);
+				if (book != null)
+					result.add(book);
+			} catch (Exception ex) {
+				throw new RuntimeException("Failed parsing "+file.getName(), ex);
+			}
 		}
 		result.sort(Comparator.comparing(ParatextBook::getId));
 		return result;

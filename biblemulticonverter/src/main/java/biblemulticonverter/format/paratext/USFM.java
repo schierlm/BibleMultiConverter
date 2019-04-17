@@ -177,6 +177,8 @@ public class USFM extends AbstractParatextFormat {
 				textPart = parts.length == 1 ? "" : parts[1];
 			} else if (tag.equals("c")) {
 				String[] parts = textPart.split(" ", 2);
+				if (!parts[0].matches("[0-9]+"))
+					throw new NumberFormatException("Invalid chapter number in \\c "+textPart);
 				result.getContent().add(new ChapterStart(Integer.parseInt(parts[0])));
 				closeCharacterAttributes = true;
 				textPart = parts.length == 1 ? "" : parts[1];
