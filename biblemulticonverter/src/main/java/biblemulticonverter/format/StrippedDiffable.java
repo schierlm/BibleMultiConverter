@@ -72,7 +72,7 @@ public class StrippedDiffable implements ExportFormat {
 		} else if (exportArgs.length == 3 && exportArgs[1].equals("ChangeVerseStructure")) {
 			changeVerseStructure(bible, VerseStructureFormat.valueOf(exportArgs[2].toUpperCase()), null);
 		} else if (exportArgs.length == 5 && exportArgs[1].equals("ChangeVerseStructure") && exportArgs[2].equalsIgnoreCase(VerseStructureFormat.VIRTUAL.name())) {
-			changeVerseStructure(bible, VerseStructureFormat.VIRTUAL, new VersificationSet(new File(exportArgs[3])).findVersification(exportArgs[4]).toNewVersificationScheme());
+			changeVerseStructure(bible, VerseStructureFormat.VIRTUAL, new VersificationSet(new File(exportArgs[3])).findVersification(exportArgs[4]).toNewVersificationScheme(false));
 		} else if (exportArgs.length == 4 && exportArgs[1].equals("RenameBook")) {
 			renameBookInXref(bible, exportArgs[2], exportArgs[3], true);
 			for (int i = 0; i < bible.getBooks().size(); i++) {

@@ -53,7 +53,7 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 						countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), cnumber, vr.getMaxVerse());
 					}
 				} else {
-					for (VirtualVerse v : chapter.createVirtualVerses()) {
+					for (VirtualVerse v : chapter.createVirtualVerses(useTitleAsVerseZero())) {
 						countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), cc + 1, v.getNumber());
 					}
 				}
@@ -117,6 +117,10 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 	}
 
 	protected boolean useVerseRanges() {
+		return false;
+	}
+
+	protected boolean useTitleAsVerseZero() {
 		return false;
 	}
 

@@ -323,7 +323,7 @@ public final class Versification {
 		}
 	}
 
-	public VersificationScheme toNewVersificationScheme() {
+	public VersificationScheme toNewVersificationScheme(boolean titleAsVerseZero) {
 		Map<BookID, BitSet[]> coveredBooks = new EnumMap<BookID, BitSet[]>(BookID.class);
 		for (Map.Entry<BookID, VerseSet[]> entry : verseSets.entrySet()) {
 			BitSet[] value = new BitSet[entry.getValue().length];
@@ -336,6 +336,8 @@ public final class Versification {
 					value[i].or(vs.verses);
 				if (vs.lastRangeTo >= vs.lastRangeFrom)
 					value[i].set(vs.lastRangeFrom, vs.lastRangeTo + 1);
+				if (titleAsVerseZero && vs.extraVerses != null && vs.extraVerses.contains("1/t"))
+					value[i].set(0);
 			}
 			coveredBooks.put(entry.getKey(), value);
 		}

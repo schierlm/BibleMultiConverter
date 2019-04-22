@@ -21,7 +21,7 @@ public class VirtualVerse {
 	private final List<Verse> verses = new ArrayList<Verse>();
 
 	protected VirtualVerse(int number) {
-		this.number = Utils.validateNumber("number", number, 1, Integer.MAX_VALUE);
+		this.number = Utils.validateNumber("number", number, 0, Integer.MAX_VALUE);
 	}
 
 	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries) {

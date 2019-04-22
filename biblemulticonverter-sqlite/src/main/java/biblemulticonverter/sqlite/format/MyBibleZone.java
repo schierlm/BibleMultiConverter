@@ -705,8 +705,9 @@ public class MyBibleZone implements RoundtripFormat {
 					prologs.getAppendVisitor().visitHeadline(1).visitText(cn == 1 ? bk.getLongName() : "" + cn);
 					ch.getProlog().accept(prologs.getAppendVisitor());
 				}
-				int vn = 0;
-				for (VirtualVerse vv : ch.createVirtualVerses()) {
+				int vn = -1;
+				for (VirtualVerse vv : ch.createVirtualVerses(true)) {
+					if (vn == -1 && vv.getNumber() != 0) vn = 0;
 					vn++;
 					while (vn < vv.getNumber())
 						versesTable.insert(info.bookNumber, cn, vn++, "");
@@ -779,12 +780,14 @@ public class MyBibleZone implements RoundtripFormat {
 					StringBuilder vb = new StringBuilder();
 					Map<String, MyBibleHTMLVisitor> footnotes = new HashMap<>();
 					MyBibleVerseVisitor mbvv = new MyBibleVerseVisitor(vb, footnotes, unsupportedFeatures);
+					boolean first = true;
 					for (Verse v : vv.getVerses()) {
-						if (!v.getNumber().equals("" + vv.getNumber())) {
+						if (!first || !v.getNumber().equals("" + vv.getNumber()) && !(v.getNumber().equals("1/t") && vv.getNumber() == 0)) {
 							vb.append(" <e>(" + v.getNumber() + ")</e> ");
 						}
 						mbvv.reset();
 						v.accept(mbvv);
+						first = false;
 					}
 					if (singleXrefMarker != null || singleFootnoteMarker != null) {
 						String singleXref = null, singleFootnote = null;

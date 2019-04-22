@@ -66,6 +66,10 @@ public class Chapter {
 	}
 
 	public List<VirtualVerse> createVirtualVerses() {
+		return createVirtualVerses(false);
+	}
+
+	public List<VirtualVerse> createVirtualVerses(boolean titleAsVerseZero) {
 
 		// split up verses to separate headlines
 		final List<VirtualVerse> tempVerses = new ArrayList<VirtualVerse>();
@@ -78,6 +82,8 @@ public class Chapter {
 			} catch (NumberFormatException ex) {
 				// ignore nonnumeric verse numbers
 				num = Integer.MAX_VALUE;
+				if (titleAsVerseZero && verse.getNumber().equals("1/t"))
+					num = 0;
 			}
 			final int vnum = num;
 			verse.accept(new VisitorAdapter<RuntimeException>(null) {
@@ -134,7 +140,7 @@ public class Chapter {
 		// group verses sensibly
 		List<VirtualVerse> result = new ArrayList<VirtualVerse>();
 		VirtualVerse current = null;
-		int nextverse = 1;
+		int nextverse = 0;
 		for (VirtualVerse vv : tempVerses) {
 			for (Headline h : vv.getHeadlines())
 				h.finished();
@@ -183,7 +189,10 @@ public class Chapter {
 	}
 
 	public List<VirtualVerse> createVirtualVerses(BitSet allowedVerseNumbers) {
-		List<VirtualVerse> result = createVirtualVerses();
+		return createVirtualVerses(false, allowedVerseNumbers);
+	}
+	public List<VirtualVerse> createVirtualVerses(boolean titleAsVerseZero, BitSet allowedVerseNumbers) {
+		List<VirtualVerse> result = createVirtualVerses(titleAsVerseZero);
 		if (allowedVerseNumbers == null)
 			return result;
 		boolean unsatisfied = false;
