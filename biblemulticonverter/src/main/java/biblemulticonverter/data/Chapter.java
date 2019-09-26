@@ -140,7 +140,7 @@ public class Chapter {
 		// group verses sensibly
 		List<VirtualVerse> result = new ArrayList<VirtualVerse>();
 		VirtualVerse current = null;
-		int nextverse = 0;
+		int nextverse = titleAsVerseZero ? 0 : 1;
 		for (VirtualVerse vv : tempVerses) {
 			for (Headline h : vv.getHeadlines())
 				h.finished();
@@ -201,7 +201,7 @@ public class Chapter {
 		// if not possible
 		for (int i = 0; i < result.size(); i++) {
 			VirtualVerse current = result.get(i);
-			int prevNumber = previous == null ? 0 : previous.getNumber();
+			int prevNumber = previous == null ? (titleAsVerseZero ? -1 : 0) : previous.getNumber();
 			if (!allowedVerseNumbers.get(current.getNumber()) || (current.getNumber() <= prevNumber)) {
 				if (previous != null && current.getHeadlines().size() == 0) {
 					// combine it with the previous one
@@ -246,7 +246,7 @@ public class Chapter {
 			throw new RuntimeException("Unable to satisfy verse map: more headlines (" + result.size() + ") than available verse numbers (" + allowedVerseNumbers.cardinality() + ")");
 
 		// now try to renumber what is needed to fit the verses
-		int lastNumber = 0;
+		int lastNumber = titleAsVerseZero ? -1 : 0;
 		for (int i = 0; i < result.size(); i++) {
 			VirtualVerse vv = result.get(i);
 			int remainingVerses = result.size() - i;
