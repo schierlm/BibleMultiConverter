@@ -9,7 +9,7 @@ Licensed unter MIT License; for details, see the LICENSE file.
 Usage
 -----
 
-If you clone from Git or download a source zip, you will need a Java JDK 8,
+If you clone from Git or download a source zip, you will need a Java JDK 8 or above (tested up to 11),
 and Apache Maven 3.5 or above, to build. Just run "mvn package" and you will find
 a suitable distribution .zip file in the TARGET folder. Note that to build all modules
 (including SWORD and All-In-One), you will need to have built [JSword](https://github.com/crosswire/jsword/commit/1983dc1bd39d735a28accadbe282f4a043b225a9)

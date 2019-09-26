@@ -62,7 +62,7 @@ public class LogosNestedHyperlinkPostprocessor implements Tool {
 				throw new UnsupportedOperationException();
 			}
 
-			public Iterator<?> getPrefixes(String uri) {
+			public Iterator<String> getPrefixes(String uri) {
 				throw new UnsupportedOperationException();
 			}
 		});

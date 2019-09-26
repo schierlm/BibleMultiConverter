@@ -9,114 +9,126 @@
 	</parent>
 	<packaging>jar</packaging>
 	<name>BibleMultiConverter XML Schemas</name>
+	<dependencies>
+		<dependency>
+			<groupId>com.sun.activation</groupId>
+			<artifactId>javax.activation</artifactId>
+			<version>1.2.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.xml.bind</groupId>
+			<artifactId>jaxb-impl</artifactId>
+			<version>2.2.8-b01</version>
+		</dependency>
+	</dependencies>
 	<build>
 		<plugins>
 			<plugin>
-				<groupId>org.jvnet.jaxb2.maven2</groupId>
-				<artifactId>maven-jaxb2-plugin</artifactId>
-				<version>0.13.1</version>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>jaxb2-maven-plugin</artifactId>
+				<version>2.5.0</version>
 				<executions>
 					<execution>
-						<id>generate</id>
+						<id>xjc-zef2005</id>
 						<goals>
-							<goal>generate</goal>
+							<goal>xjc</goal>
 						</goals>
 						<configuration>
-							<schemaIncludes>
-								<include>zef2005.xsd</include>
-							</schemaIncludes>
-							<generatePackage>biblemulticonverter.schema.zef2005</generatePackage>
+							<sources>
+								<source>src/main/resources/zef2005.xsd</source>
+							</sources>
+							<packageName>biblemulticonverter.schema.zef2005</packageName>
 						</configuration>
 					</execution>
 					<execution>
-						<id>generate2</id>
+						<id>xjc-zefdic</id>
 						<goals>
-							<goal>generate</goal>
+							<goal>xjc</goal>
 						</goals>
 						<configuration>
-							<generateDirectory>target/generated-sources/xjc2</generateDirectory>
-							<schemaIncludes>
-								<include>zefDic1.xsd</include>
-							</schemaIncludes>
-							<generatePackage>biblemulticonverter.schema.zefdic1</generatePackage>
+							<outputDirectory>target/generated-sources/xjc2</outputDirectory>
+							<sources>
+								<source>src/main/resources/zefDic1.xsd</source>
+							</sources>
+							<packageName>biblemulticonverter.schema.zefdic1</packageName>
 						</configuration>
 					</execution>
 					<execution>
-						<id>generate3</id>
+						<id>xjc-haggai</id>
 						<goals>
-							<goal>generate</goal>
+							<goal>xjc</goal>
 						</goals>
 						<configuration>
-							<generateDirectory>target/generated-sources/xjc3</generateDirectory>
-							<schemaIncludes>
-								<include>haggai_20130620.xsd</include>
-							</schemaIncludes>
-							<generatePackage>biblemulticonverter.schema.haggai</generatePackage>
+							<outputDirectory>target/generated-sources/xjc3</outputDirectory>
+							<sources>
+								<source>src/main/resources/haggai_20130620.xsd</source>
+							</sources>
+							<packageName>biblemulticonverter.schema.haggai</packageName>
 						</configuration>
 					</execution>
 					<execution>
-						<id>generate4</id>
+						<id>xjc-roundtripxml</id>
 						<goals>
-							<goal>generate</goal>
+							<goal>xjc</goal>
 						</goals>
 						<configuration>
-							<generateDirectory>target/generated-sources/xjc4</generateDirectory>
-							<schemaIncludes>
-								<include>RoundtripXML.xsd</include>
-							</schemaIncludes>
-							<generatePackage>biblemulticonverter.schema.roundtripxml</generatePackage>
+							<outputDirectory>target/generated-sources/xjc4</outputDirectory>
+							<sources>
+								<source>src/main/resources/RoundtripXML.xsd</source>
+							</sources>
+							<packageName>biblemulticonverter.schema.roundtripxml</packageName>
 						</configuration>
 					</execution>
 					<execution>
-						<id>generate5</id>
+						<id>xjc-ccel</id>
 						<goals>
-							<goal>generate</goal>
+							<goal>xjc</goal>
 						</goals>
 						<configuration>
-							<generateDirectory>target/generated-sources/xjc5</generateDirectory>
-							<schemaIncludes>
-								<include>ccelVersification.xsd</include>
-							</schemaIncludes>
-							<generatePackage>biblemulticonverter.schema.versification.ccel</generatePackage>
+							<outputDirectory>target/generated-sources/xjc5</outputDirectory>
+							<sources>
+								<source>src/main/resources/ccelVersification.xsd</source>
+							</sources>
+							<packageName>biblemulticonverter.schema.versification.ccel</packageName>
 						</configuration>
 					</execution>
 					<execution>
-						<id>generate6</id>
+						<id>xjc-openscriptures</id>
 						<goals>
-							<goal>generate</goal>
+							<goal>xjc</goal>
 						</goals>
 						<configuration>
-							<generateDirectory>target/generated-sources/xjc6</generateDirectory>
-							<schemaIncludes>
-								<include>OpenScripturesBibleVersificationSystem.xsd</include>
-							</schemaIncludes>
-							<generatePackage>biblemulticonverter.schema.versification.openscriptures</generatePackage>
+							<outputDirectory>target/generated-sources/xjc6</outputDirectory>
+							<sources>
+								<source>src/main/resources/OpenScripturesBibleVersificationSystem.xsd</source>
+							</sources>
+							<packageName>biblemulticonverter.schema.versification.openscriptures</packageName>
 						</configuration>
 					</execution>
 					<execution>
-						<id>generate7</id>
+						<id>xjc-usfx</id>
 						<goals>
-							<goal>generate</goal>
+							<goal>xjc</goal>
 						</goals>
 						<configuration>
-							<generateDirectory>target/generated-sources/xjc7</generateDirectory>
-							<schemaIncludes>
-								<include>usfx.xsd</include>
-							</schemaIncludes>
-							<generatePackage>biblemulticonverter.schema.usfx</generatePackage>
+							<outputDirectory>target/generated-sources/xjc7</outputDirectory>
+							<sources>
+								<source>src/main/resources/usfx.xsd</source>
+							</sources>
+							<packageName>biblemulticonverter.schema.usfx</packageName>
 						</configuration>
 					</execution>
 					<execution>
-						<id>generate8</id>
+						<id>xjc-usx</id>
 						<goals>
-							<goal>generate</goal>
+							<goal>xjc</goal>
 						</goals>
 						<configuration>
-							<generateDirectory>target/generated-sources/xjc8</generateDirectory>
-							<schemaIncludes>
-								<include>usx.xsd</include>
-							</schemaIncludes>
-							<generatePackage>biblemulticonverter.schema.usx</generatePackage>
+							<outputDirectory>target/generated-sources/xjc8</outputDirectory>
+							<sources>
+								<source>src/main/resources/usx.xsd</source>
+							</sources>
+							<packageName>biblemulticonverter.schema.usx</packageName>
 						</configuration>
 					</execution>
 				</executions>
