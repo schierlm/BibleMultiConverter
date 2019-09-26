@@ -242,6 +242,7 @@ Supported Versification formats:
 - **[CCEL](http://www.ccel.org/refsys/)**: Import and export (versifications and mappings)
 - **[OpenScriptures](https://github.com/openscriptures/BibleOrgSys/tree/master/DataFiles/VersificationSystems)**: Import only (versifications only, no mappings)
 - **SWORDVersification**: Import versifications and mappings from SWORD
+- **ReportHTML**: Export only (HTML report that shows difference of covered verses)
 
 SWORD import
 ------------

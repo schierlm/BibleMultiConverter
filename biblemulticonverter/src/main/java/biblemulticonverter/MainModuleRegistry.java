@@ -85,6 +85,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<VersificationFormat>("KJV", "Versification format for the hard-coded KJV versification.", KJV.HELP_TEXT, KJV.class));
 		result.add(new Module<VersificationFormat>("CCEL", "Versification format used by http://www.ccel.org/refsys/", CCEL.HELP_TEXT, CCEL.class));
 		result.add(new Module<VersificationFormat>("OpenScriptures", "Versification format used by https://github.com/openscriptures/BibleOrgSys/", OpenScriptures.HELP_TEXT, OpenScriptures.class));
+		result.add(new Module<VersificationFormat>("ReportHTML", "HTML report that shows difference of covered verses.", ReportHTML.HELP_TEXT, ReportHTML.class));
 		result.add(new Module<VersificationFormat>("Bible", "Extract versification from a Bible or create dummy Bible from versification.", Bible.HELP_TEXT, Bible.class));
 		return result;
 	}
