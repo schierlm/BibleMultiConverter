@@ -12,10 +12,10 @@ public class VersificationDetector extends AbstractVersificationDetector {
 	public static final String[] HELP_TEXT = {
 			"Detect what versification most closely matches a module",
 			"",
-			"Usage: VersificationDetector <dbfile> [-range|-title] [-xref]",
+			"Usage: VersificationDetector <dbfile> [-range|-title] [-ignoreheadlines] [-xref]",
 	};
 
-	private boolean useRanges, titleAsVerseZero;
+	private boolean useRanges, titleAsVerseZero, ignoreHeadlines;
 	private VersificationSet vs;
 
 	@Override
@@ -23,7 +23,14 @@ public class VersificationDetector extends AbstractVersificationDetector {
 		vs = new VersificationSet(new File(exportArgs[0]));
 		useRanges = (exportArgs.length > 1 && exportArgs[1].equals("-range"));
 		titleAsVerseZero = (exportArgs.length > 1 && exportArgs[1].equals("-title"));
-		super.doExport(bible, Arrays.copyOfRange(exportArgs, useRanges || titleAsVerseZero ? 2 : 1, exportArgs.length));
+		ignoreHeadlines = (exportArgs.length > 1 && exportArgs[1].equals("-ignoreheadlines"))
+				|| (exportArgs.length > 2 && exportArgs[2].equals("-ignoreheadlines"));
+		super.doExport(bible, Arrays.copyOfRange(exportArgs, (useRanges || titleAsVerseZero ? 2 : 1) + (ignoreHeadlines ? 1 : 0), exportArgs.length));
+	}
+
+	@Override
+	protected boolean ignoreHeadlines() {
+		return ignoreHeadlines;
 	}
 
 	@Override

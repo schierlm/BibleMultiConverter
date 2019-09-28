@@ -73,4 +73,9 @@ public class SWORDVersificationDetector extends AbstractVersificationDetector {
 	protected boolean useVerseRanges() {
 		return false;
 	}
+
+	@Override
+	protected boolean ignoreHeadlines() {
+		return true;
+	}
 }

@@ -929,11 +929,10 @@ public class OSIS implements RoundtripFormat {
 				if (chp.getProlog() != null) {
 					chp.getProlog().accept(visitor);
 				}
-				for (VirtualVerse vv : chp.createVirtualVerses()) {
+				for (VirtualVerse vv : chp.createVirtualVerses(false, false)) {
 					String osisID = bk.getId().getOsisID() + "." + cnumber + "." + vv.getNumber();
-					for (Headline hl : vv.getHeadlines()) {
-						hl.accept(visitor.visitHeadline(hl.getDepth()));
-					}
+					if (!vv.getHeadlines().isEmpty())
+						throw new IllegalStateException();
 					Element verse = doc.createElement("verse");
 					chapter.appendChild(verse);
 					verse.setAttribute("osisID", osisID);

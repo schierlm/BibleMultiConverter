@@ -235,9 +235,9 @@ public class Accordance implements ExportFormat {
 						BitSet verseBits = maxVerse == -1 ? null : new BitSet(maxVerse + 1);
 						if (verseBits != null)
 							verseBits.set(minVerse, maxVerse + 1);
-						vvs = chapter.createVirtualVerses(true, verseBits);
+						vvs = chapter.createVirtualVerses(true, verseBits, false);
 					} else {
-						vvs = chapter.createVirtualVerses(true);
+						vvs = chapter.createVirtualVerses(true, false);
 					}
 					if (vvs.isEmpty()) {
 						if (verseSchema == 0 && book.getId() == BookID.BOOK_Ps && psalmSet.get(cnumber)) {
@@ -272,12 +272,8 @@ public class Accordance implements ExportFormat {
 							}
 							prolog = null;
 						}
-						for (FormattedText.Headline hl : vv.getHeadlines()) {
-							Visitor<RuntimeException> hlv = av.visitHeadline(hl.getDepth());
-							if (hlv != null) {
-								hl.accept(hlv);
-							}
-						}
+						if (!vv.getHeadlines().isEmpty())
+							throw new IllegalStateException();
 						av.visitEnd();
 						boolean firstVerse = true;
 						for (Verse v : vv.getVerses()) {

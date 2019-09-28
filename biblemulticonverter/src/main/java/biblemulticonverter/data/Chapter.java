@@ -66,10 +66,10 @@ public class Chapter {
 	}
 
 	public List<VirtualVerse> createVirtualVerses() {
-		return createVirtualVerses(false);
+		return createVirtualVerses(false, true);
 	}
 
-	public List<VirtualVerse> createVirtualVerses(boolean titleAsVerseZero) {
+	public List<VirtualVerse> createVirtualVerses(boolean titleAsVerseZero, boolean extractHeadlines) {
 
 		// split up verses to separate headlines
 		final List<VirtualVerse> tempVerses = new ArrayList<VirtualVerse>();
@@ -98,6 +98,9 @@ public class Chapter {
 
 				@Override
 				public Visitor<RuntimeException> visitHeadline(int depth) {
+					if (!extractHeadlines) {
+						return super.visitHeadline(depth);
+					}
 					Headline h = new Headline(depth);
 					if (hasContent) {
 						vv = new VirtualVerse(vnum);
@@ -189,10 +192,11 @@ public class Chapter {
 	}
 
 	public List<VirtualVerse> createVirtualVerses(BitSet allowedVerseNumbers) {
-		return createVirtualVerses(false, allowedVerseNumbers);
+		return createVirtualVerses(false, allowedVerseNumbers, true);
 	}
-	public List<VirtualVerse> createVirtualVerses(boolean titleAsVerseZero, BitSet allowedVerseNumbers) {
-		List<VirtualVerse> result = createVirtualVerses(titleAsVerseZero);
+
+	public List<VirtualVerse> createVirtualVerses(boolean titleAsVerseZero, BitSet allowedVerseNumbers, boolean extractHeadlines) {
+		List<VirtualVerse> result = createVirtualVerses(titleAsVerseZero, extractHeadlines);
 		if (allowedVerseNumbers == null)
 			return result;
 		boolean unsatisfied = false;

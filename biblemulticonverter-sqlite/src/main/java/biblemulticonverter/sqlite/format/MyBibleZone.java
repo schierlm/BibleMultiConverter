@@ -706,7 +706,7 @@ public class MyBibleZone implements RoundtripFormat {
 					ch.getProlog().accept(prologs.getAppendVisitor());
 				}
 				int vn = -1;
-				for (VirtualVerse vv : ch.createVirtualVerses(true)) {
+				for (VirtualVerse vv : ch.createVirtualVerses(true, true)) {
 					if (vn == -1 && vv.getNumber() != 0) vn = 0;
 					vn++;
 					while (vn < vv.getNumber())

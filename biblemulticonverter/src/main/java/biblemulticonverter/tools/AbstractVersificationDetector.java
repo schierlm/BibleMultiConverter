@@ -53,7 +53,7 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 						countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), cnumber, vr.getMaxVerse());
 					}
 				} else {
-					for (VirtualVerse v : chapter.createVirtualVerses(useTitleAsVerseZero())) {
+					for (VirtualVerse v : chapter.createVirtualVerses(useTitleAsVerseZero(), !ignoreHeadlines())) {
 						countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), cc + 1, v.getNumber());
 					}
 				}
@@ -114,6 +114,10 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 				scheme.getMissingVerses().add(bookAbbr + " " + cnum + ":" + vnum);
 			}
 		}
+	}
+
+	protected boolean ignoreHeadlines() {
+		return false;
 	}
 
 	protected boolean useVerseRanges() {
