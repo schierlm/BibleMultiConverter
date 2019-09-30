@@ -364,7 +364,7 @@ public class ReportHTML implements VersificationFormat {
 				}
 			} catch (NumberFormatException ex) {
 				finishRange();
-				doAdd(verse);
+				doAdd(verse.equals("1/t") ? "title" : verse);
 			}
 		}
 

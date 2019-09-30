@@ -3,6 +3,7 @@ package biblemulticonverter.format;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
@@ -22,13 +23,16 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
-import biblemulticonverter.data.StandardVersification;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.StandardVersification;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
+import biblemulticonverter.data.Versification.Reference;
+import biblemulticonverter.data.VersificationSet;
 import biblemulticonverter.data.VirtualVerse;
 
 public class Accordance implements ExportFormat {
@@ -41,6 +45,7 @@ public class Accordance implements ExportFormat {
 			"Supported elements: H*, H1-H9, FN, VN, XREF, STRONG, MORPH, DICT, GRAMMAR, PL,",
 			"                    B, I, U, L, F, S, P, D, T, W",
 			"Every supported element is also supported with prefix PL: (when in prolog).",
+			"The prefix CSS: can be used to style CSS rules.",
 			"",
 			"Supported formattings:",
 			" -                         Do not include element content",
@@ -49,7 +54,8 @@ public class Accordance implements ExportFormat {
 			" <formatting>#<formatting> Include a (footnote) number with first formatting, ",
 			"                           move element content to end of verse with second formatting",
 			"",
-			"Supported formats: PARENS, BRACKETS, BRACES, BR, BOLD, SMALL_CAPS, ITALIC, SUB, SUP, UNDERLINE",
+			"Supported formats: PARENS, BRACKETS, BRACES, BR_START, PARA_START, BR_END, PARA_END,"+
+			"                   BOLD, SMALL_CAPS, ITALIC, SUB, SUP, UNDERLINE",
 			"as well as colors: BLACK, GRAY, WHITE, CHOCOLATE, BURGUNDY, RED, ORANGE, BROWN,",
 			"                   YELLOW, CYAN, TURQUOISE, GREEN, OLIVE, FOREST, TEAL, SAPPHIRE,",
 			"                   BLUE, NAVY, PURPLE, LAVENDER, MAGENTA",
@@ -59,7 +65,8 @@ public class Accordance implements ExportFormat {
 			" encoding=macroman,utf-8  Try first macroman, then UTF-8 as encoding",
 			" verseschema=fillone      Fill missing verses starting from verse 1",
 			" verseschema=fillzero     In some psalms, fill from verse 0",
-			" verseschema=restrictkjv  Restrict allowed verses to KJV schema"
+			" verseschema=restrictkjv  Restrict allowed verses to KJV schema",
+			" verseschema=<name>@<db>  Use verse schema from database to restrict and fill verses"
 	};
 
 	public static Map<BookID, String> BOOK_NAME_MAP = new EnumMap<>(BookID.class);
@@ -182,6 +189,7 @@ public class Accordance implements ExportFormat {
 		String lineEnding = "\n";
 		String[] encodings = null;
 		int verseSchema = -1;
+		Versification versification = null;
 		BitSet psalmSet = null;
 		for (int i = 1; i < exportArgs.length; i++) {
 			if (exportArgs[i].toLowerCase().equals("lineending=cr")) {
@@ -206,6 +214,10 @@ public class Accordance implements ExportFormat {
 				psalmSet.set(138, 145 + 1);
 			} else if (exportArgs[i].toLowerCase().equals("verseschema=restrictkjv")) {
 				verseSchema = -2;
+			} else if (exportArgs[i].toLowerCase().startsWith("verseschema=")) {
+				String[] params = exportArgs[i].substring(12).split("@", 2);
+				versification = new VersificationSet(new File(params[1])).findVersification(params[0]);
+				verseSchema = 2;
 			} else if (exportArgs[i].toLowerCase().startsWith("encoding=")) {
 				encodings = exportArgs[i].substring(9).split(",");
 			} else {
@@ -220,14 +232,85 @@ public class Accordance implements ExportFormat {
 					System.out.println("WARNING: Skipping book " + book.getAbbr());
 					continue;
 				}
-				bnw.write(bookName + "\t" + book.getAbbr() + lineEnding);
-				bw.write(bookName + " ");
 				int cnumber = 0;
-				for (Chapter chapter : book.getChapters()) {
+				List<Chapter> chapters = book.getChapters();
+				List<List<Integer>> allReferences = new ArrayList<>();
+				if (verseSchema == 2) {
+					for (int i = 0; i < versification.getVerseCount(); i++) {
+						Reference r = versification.getReference(i);
+						if (r.getBook() != book.getId())
+							continue;
+						int chapter = r.getChapter();
+						String verse = r.getVerse();
+						if (chapter == 1 && verse.endsWith("/p")) {
+							chapter = 0;
+							verse = verse.substring(0, verse.length() - 2);
+						}
+						if (verse.equals("1/t"))
+							verse = "0";
+						if (!verse.matches("[0-9]+"))
+							throw new IOException("Unsupported verse reference in versification: " + verse);
+						while (chapter >= allReferences.size())
+							allReferences.add(new ArrayList<>());
+						allReferences.get(chapter).add(Integer.parseInt(verse));
+					}
+					if (allReferences.isEmpty()) {
+						System.out.println("WARNING: Skipping book " + book.getAbbr() + " as it is not contained in versification");
+						continue;
+					}
+					if (!allReferences.get(0).isEmpty()) {
+						// we have chapter zero here, so we need to split
+						// verses!
+						cnumber--;
+						chapters = new ArrayList<>(chapters);
+						Chapter chapter0 = new Chapter();
+						Chapter chapter1 = new Chapter();
+						Chapter origChapter = chapters.remove(0);
+						chapter0.setProlog(origChapter.getProlog());
+						for (Verse v : origChapter.getVerses()) {
+							if (v.getNumber().endsWith("/p")) {
+								Verse vv = new Verse(v.getNumber().substring(0, v.getNumber().length() - 2));
+								v.accept(vv.getAppendVisitor());
+								vv.finished();
+								chapter0.getVerses().add(vv);
+							} else {
+								chapter1.getVerses().add(v);
+							}
+						}
+						chapters.add(0, chapter1);
+						chapters.add(0, chapter0);
+					}
+					int allowedChapters = allReferences.size() - cnumber - 1;
+					if (chapters.size() > allowedChapters) {
+						if (cnumber == 0)
+							chapters = new ArrayList<>(chapters);
+						Chapter lastAllowedChapter = new Chapter();
+						lastAllowedChapter.setProlog(chapters.get(allowedChapters - 1).getProlog());
+						lastAllowedChapter.getVerses().addAll(chapters.get(allowedChapters - 1).getVerses());
+						for (int ch = allowedChapters; ch < chapters.size(); ch++) {
+							int cnum = ch + cnumber + 1;
+							for (Verse v : chapters.get(ch).getVerses()) {
+								Verse vv = new Verse(cnum + "," + v.getNumber());
+								v.accept(vv.getAppendVisitor());
+								vv.finished();
+								lastAllowedChapter.getVerses().add(vv);
+							}
+						}
+						while (chapters.size() >= allowedChapters)
+							chapters.remove(chapters.size() - 1);
+						chapters.add(lastAllowedChapter);
+					}
+				}
+				bnw.write(bookName.replace(".", "") + "\t" + book.getAbbr().replace(".", "") + lineEnding);
+				bw.write(bookName + " ");
+				for (Chapter chapter : chapters) {
 					FormattedText prolog = chapter.getProlog();
 					cnumber++;
-					bw.write(cnumber + ":");
 					List<VirtualVerse> vvs;
+					Map<String, String> verseNumberMap = null;
+					int nextFillVerse = verseSchema < 0 ? 99999 : verseSchema, lastFillVerse = -1;
+					if (nextFillVerse == 0 && !(book.getId() == BookID.BOOK_Ps && psalmSet.get(cnumber)))
+						nextFillVerse = 1;
 					if (verseSchema == -2) {
 						int[] verseCounts = StandardVersification.KJV.getVerseCount(book.getId());
 						int minVerse = book.getId() == BookID.BOOK_Ps && psalmSet.get(cnumber) ? 0 : 1;
@@ -236,30 +319,62 @@ public class Accordance implements ExportFormat {
 						if (verseBits != null)
 							verseBits.set(minVerse, maxVerse + 1);
 						vvs = chapter.createVirtualVerses(true, verseBits, false);
+					} else if (verseSchema == 2) {
+						Chapter dummyChapter = new Chapter();
+						verseNumberMap = new HashMap<>();
+						if (cnumber >= allReferences.size() || allReferences.get(cnumber).isEmpty()) {
+							System.out.println("WARNING: Skipping export of " + book.getAbbr() + " " + cnumber + " as it is not contained in versification!");
+							continue;
+						}
+						List<Integer> references = allReferences.get(cnumber);
+						for (int i = 0; i < references.size(); i++) {
+							verseNumberMap.put("" + (i + 1), "" + references.get(i));
+						}
+						int nextExtraVerse = 1;
+						for (Verse v : chapter.getVerses()) {
+							String vnumber = v.getNumber().equals("1/t") ? "0" : v.getNumber();
+							int idx;
+							try {
+								int vnum = Integer.parseInt(vnumber);
+								idx = references.indexOf(vnum);
+							} catch (NumberFormatException ex) {
+								idx = -1;
+							}
+							String newNum = "" + (idx + 1);
+							if (idx == -1) {
+								newNum = nextExtraVerse + "x";
+								nextExtraVerse++;
+								verseNumberMap.put(newNum, vnumber);
+							}
+							Verse vv = new Verse(newNum);
+							v.accept(vv.getAppendVisitor());
+							vv.finished();
+							dummyChapter.getVerses().add(vv);
+						}
+						nextFillVerse = 1;
+						lastFillVerse = references.size();
+						BitSet verseBits = new BitSet(lastFillVerse + 1);
+						verseBits.set(1, lastFillVerse + 1);
+						vvs = dummyChapter.createVirtualVerses(false, verseBits, false);
 					} else {
 						vvs = chapter.createVirtualVerses(true, false);
 					}
+					bw.write(cnumber + ":");
 					if (vvs.isEmpty()) {
-						if (verseSchema == 0 && book.getId() == BookID.BOOK_Ps && psalmSet.get(cnumber)) {
-							bw.write("0");
+						if (verseSchema < 0) {
+							bw.write("1 " + (paraMarker ? "¶" : "") + lineEnding);
 						} else {
-							bw.write("1");
-						}
-						if (verseSchema < 0)
-							bw.write(" " + (paraMarker ? "¶" : "") + lineEnding);
-						else
-							bw.write(" " + (paraMarker ? "¶ " : "") + "-" + lineEnding);
-						paraMarker = false;
-					}
-					int nextFillVerse = verseSchema < 0 ? 99999 : verseSchema;
-					if (nextFillVerse == 0 && !(book.getId() == BookID.BOOK_Ps && psalmSet.get(cnumber)))
-						nextFillVerse = 1;
-					for (VirtualVerse vv : vvs) {
-						while (nextFillVerse < vv.getNumber()) {
-							bw.write(nextFillVerse + " " + (paraMarker ? "¶ " : "") + "-" + lineEnding);
+							bw.write(mapBack(verseNumberMap, "" + nextFillVerse) + " " + (paraMarker ? "¶ " : "") + "-" + lineEnding);
 							nextFillVerse++;
 						}
-						bw.write(vv.getNumber() + " " + (paraMarker ? "¶ " : ""));
+						paraMarker = false;
+					}
+					for (VirtualVerse vv : vvs) {
+						while (nextFillVerse < vv.getNumber()) {
+							bw.write(mapBack(verseNumberMap, "" + nextFillVerse) + " " + (paraMarker ? "¶ " : "") + "-" + lineEnding);
+							nextFillVerse++;
+						}
+						bw.write(mapBack(verseNumberMap, "" + vv.getNumber()) + " " + (paraMarker ? "¶ " : ""));
 						if (nextFillVerse == vv.getNumber())
 							nextFillVerse++;
 						paraMarker = false;
@@ -282,7 +397,7 @@ public class Accordance implements ExportFormat {
 								av.visitText(" ");
 								Visitor<RuntimeException> nv = av.visitElement("VN", DEFAULT_VERSENO);
 								if (nv != null) {
-									nv.visitText(v.getNumber());
+									nv.visitText(mapBack(verseNumberMap, v.getNumber()));
 									nv.visitEnd();
 								}
 								av.visitText(" ");
@@ -291,11 +406,15 @@ public class Accordance implements ExportFormat {
 							firstVerse = false;
 						}
 						String verseText = av.getContent().replaceAll("  +", " ").trim();
-						if (verseText.endsWith(" ¶")) {
-							verseText = verseText.substring(0, verseText.length() - 2);
+						if (verseText.endsWith("¶")) {
+							verseText = verseText.substring(0, verseText.length() - 1);
 							paraMarker = true;
 						}
 						bw.write(verseText + lineEnding);
+					}
+					while (nextFillVerse <= lastFillVerse) {
+						bw.write(mapBack(verseNumberMap, "" + nextFillVerse) + " " + (paraMarker ? "¶ " : "") + "-" + lineEnding);
+						nextFillVerse++;
 					}
 				}
 			}
@@ -327,6 +446,12 @@ public class Accordance implements ExportFormat {
 			System.out.println("WARNING: No formatting specified for elements: " + unformattedElements);
 	}
 
+	private String mapBack(Map<String, String> verseNumberMap, String verseNumber) {
+		if (verseNumberMap == null)
+			return verseNumber;
+		return verseNumberMap.get(verseNumber).toString();
+	}
+
 	private void parseFormatRule(String rule, Map<String, String[]> formatRules) {
 		String[] parts = rule.toUpperCase().split("=");
 		if (parts.length != 2)
@@ -336,7 +461,7 @@ public class Accordance implements ExportFormat {
 				parseFormatRule(parts[0].replace('*', (char) ('0' + i)) + "=" + parts[1], formatRules);
 			return;
 		}
-		if (!SUPPORTED_ELEMENTS.contains(parts[0]))
+		if (!parts[0].startsWith("CSS:") && !SUPPORTED_ELEMENTS.contains(parts[0]))
 			throw new RuntimeException("Unsupported element in format rule: " + rule);
 		if (parts[1].equals("-")) {
 			formatRules.put(parts[0], new String[0]);
@@ -365,7 +490,7 @@ public class Accordance implements ExportFormat {
 
 	private static class AccordanceVisitor implements Visitor<RuntimeException> {
 
-		private StringBuilder sb = new StringBuilder(), fnb = new StringBuilder();
+		private TagReorderStringBuilder sb = new TagReorderStringBuilder(), fnb = new TagReorderStringBuilder();
 		private boolean inFootnote = false;
 		private int footnoteNumber = 0;
 		private final List<String> suffixStack = new ArrayList<String>();
@@ -398,7 +523,15 @@ public class Accordance implements ExportFormat {
 		private String getContent() {
 			if (inFootnote || !suffixStack.isEmpty())
 				throw new IllegalStateException();
-			return sb.toString() + fnb.toString();
+			String text = sb.getContent(), fn = fnb.getContent();
+			if (text.endsWith("¶")) {
+				text = text.substring(0, text.length() - 1);
+				fn = fn + "¶";
+			} else if (text.endsWith("<br>")) {
+				text = text.substring(0, text.length() - 4);
+				fn = fn + "<br>";
+			}
+			return text + fn;
 		}
 
 		private void pushSuffix(String suffix) {
@@ -430,7 +563,7 @@ public class Accordance implements ExportFormat {
 				sb.append(rule[0] + footnoteNumber);
 				fnb.append(" " + rule[2] + footnoteNumber + " ");
 				pushSuffix(rule[1] + "\0" + rule[3]);
-				StringBuilder tmp = sb;
+				TagReorderStringBuilder tmp = sb;
 				sb = fnb;
 				fnb = tmp;
 				pushSuffix("\0\0\2");
@@ -454,7 +587,7 @@ public class Accordance implements ExportFormat {
 
 		@Override
 		public void visitVerseSeparator() {
-			sb.append("/");
+			sb.appendText("/");
 		}
 
 		@Override
@@ -468,12 +601,12 @@ public class Accordance implements ExportFormat {
 
 		@Override
 		public void visitText(String text) {
-			sb.append(text.replace("<", "〈").replace(">", "〉"));
+			sb.appendText(text.replace("<", "〈").replace(">", "〉").replace("\u00A0", " "));
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitCSSFormatting(String css) {
-			return visitElement("CSS:" + css, DEFAULT_KEEP);
+			return visitElement("CSS:" + css.replace(" ", "_").toUpperCase(), DEFAULT_KEEP);
 		}
 
 		@Override
@@ -504,7 +637,7 @@ public class Accordance implements ExportFormat {
 				sb.append("<br>");
 				return;
 			case PARAGRAPH:
-				sb.append(" ¶ ");
+				sb.appendText("¶");
 				break;
 			}
 		}
@@ -575,7 +708,7 @@ public class Accordance implements ExportFormat {
 				if (!inFootnote)
 					throw new IllegalStateException();
 				inFootnote = false;
-				StringBuilder tmp = sb;
+				TagReorderStringBuilder tmp = sb;
 				sb = fnb;
 				fnb = tmp;
 				suffix = suffixStack.remove(suffixStack.size() - 1);
@@ -593,10 +726,129 @@ public class Accordance implements ExportFormat {
 		}
 	}
 
+	private static class TagReorderStringBuilder {
+		private final StringBuilder sb = new StringBuilder();
+		private final List<ShadowTag> shadowTagStack = new ArrayList<>();
+
+		public void appendText(String text) {
+			if (text.isEmpty())
+				return;
+			for (ShadowTag t : shadowTagStack) {
+				if (t.printed)
+					continue;
+				sb.append(t.getOpenTag());
+				t.printed = true;
+			}
+			sb.append(text);
+		}
+
+		public void append(String textWithTags) {
+			int start = 0, pos = textWithTags.indexOf('<');
+			while (pos != -1) {
+				appendText(textWithTags.substring(start, pos));
+				int endPos = textWithTags.indexOf('>', pos);
+				if (endPos == -1)
+					throw new RuntimeException("Incomplete tag in " + textWithTags);
+				String[] tagInfo = textWithTags.substring(pos + 1, endPos).split("=", 2);
+				if (tagInfo.length == 1 && tagInfo[0].equals("br")) {
+					sb.append("<" + tagInfo[0] + ">");
+				} else if (tagInfo.length == 1 && tagInfo[0].startsWith("/")) {
+					ShadowTag lastTag = shadowTagStack.remove(shadowTagStack.size() - 1);
+					if (!lastTag.name.equals(tagInfo[0].substring(1)))
+						throw new RuntimeException("Closing tag <" + tagInfo[0] + "> does not match expected tag " + lastTag.name);
+					if (lastTag.shadowed)
+						throw new IllegalStateException("Closing a tag that was not unshadowed");
+					sb.append(lastTag.getCloseTagIfPrinted());
+					if (lastTag.type == ShadowTagType.SHADOWING) {
+						int shadowedIndex = -1;
+						for (int i = shadowTagStack.size() - 1; i >= 0; i--) {
+							ShadowTag tag = shadowTagStack.get(i);
+							sb.append(tag.getCloseTagIfPrinted());
+							tag.printed = false;
+							if (tag.shadowed && tag.name.equals(lastTag.name)) {
+								tag.shadowed = false;
+								shadowedIndex = i;
+								break;
+							}
+						}
+						if (shadowedIndex == -1)
+							throw new IllegalStateException("Shadow stack mismatch");
+					}
+				} else {
+					int shadowCandidateIndex = -1;
+					for (int i = shadowTagStack.size() - 1; i >= 0; i--) {
+						ShadowTag tag = shadowTagStack.get(i);
+						if (tag.type != ShadowTagType.REDUNDANT && !tag.shadowed && tag.name.equals(tagInfo[0])) {
+							shadowCandidateIndex = i;
+							break;
+						}
+					}
+					ShadowTagType newType = ShadowTagType.NORMAL;
+					String tagValue = tagInfo.length == 2 ? tagInfo[1] : "";
+					if (shadowCandidateIndex != -1) {
+						ShadowTag candidate = shadowTagStack.get(shadowCandidateIndex);
+						if (candidate.value.equals(tagValue)) {
+							newType = ShadowTagType.REDUNDANT;
+						} else {
+							newType = ShadowTagType.SHADOWING;
+							for (int i = shadowTagStack.size() - 1; i >= shadowCandidateIndex; i--) {
+								ShadowTag tag = shadowTagStack.get(i);
+								sb.append(shadowTagStack.get(i).getCloseTagIfPrinted());
+								tag.printed = false;
+							}
+							candidate.shadowed = true;
+						}
+					}
+					ShadowTag newTag = new ShadowTag(newType, tagInfo[0], tagValue);
+					shadowTagStack.add(newTag);
+				}
+				start = endPos + 1;
+				pos = textWithTags.indexOf('<', start);
+			}
+			appendText(textWithTags.substring(start));
+		}
+
+		public String getContent() {
+			if (!shadowTagStack.isEmpty())
+				throw new IllegalStateException();
+			return sb.toString();
+		}
+	}
+
+	private static class ShadowTag {
+		private final ShadowTagType type;
+		private final String name;
+		private final String value;
+		private boolean shadowed = false, printed = false;
+
+		private ShadowTag(ShadowTagType type, String name, String value) {
+			this.type = type;
+			this.name = name;
+			this.value = value;
+		}
+
+		private String getOpenTag() {
+			if (shadowed || type == ShadowTagType.REDUNDANT)
+				return "";
+			return "<" + name + (value.isEmpty() ? "" : "=" + value) + ">";
+		}
+
+		private String getCloseTagIfPrinted() {
+			if (shadowed || !printed || type == ShadowTagType.REDUNDANT)
+				return "";
+			return "</" + name + ">";
+		}
+	}
+
+	private static enum ShadowTagType {
+		NORMAL, SHADOWING, REDUNDANT
+	}
+
 	private static final String[] DEFAULT_KEEP = { "", "" }, DEFAULT_SKIP = {}, DEFAULT_VERSENO = { "<color=teal>(", ")</color>" };
 
 	private static enum Format {
-		PARENS("(", ")"), BRACKETS("[", "]"), BRACES("{", "}"), BR("<br>", ""), //
+		PARENS("(", ")"), BRACKETS("[", "]"), BRACES("{", "}"), //
+		BR_START("<br>", ""), PARA_START("¶", ""), BR_END("<br>", ""), PARA_END("¶", ""), //
 		BOLD("<b>", "</b>"), SMALL_CAPS("<c>", "</c>"), ITALIC("<i>", "</i>"), SUB("<sub>", "</sub>"), SUP("<sup>", "</sup>"), UNDERLINE("<u>", "</u>"), //
 
 		BLACK("<color=black>", "</color>"), GRAY("<color=gray>", "</color>"), WHITE("<color=white>", "</color>"), CHOCOLATE("<color=chocolate>", "</color>"), //

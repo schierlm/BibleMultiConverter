@@ -84,7 +84,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[BibleWorks](https://www.bibleworks.com/)**: import and export
 - **[Equipd Bible](http://equipd.me/)**: export only
 - **[USFM](http://paratext.org/usfm/)/[USX](https://app.thedigitalbiblelibrary.org/)**: import and export (most tags are supported; not supported are `\ca \cp \va \vp \fig \fm`)
-- **[USFX](https://ebible.org/usfx/)/**: import only
+- **[USFX](https://ebible.org/usfx/)**: import only
 
 In combination with third party tools, other export formats are available:
 
@@ -244,6 +244,7 @@ Supported Versification formats:
 - **[CCEL](http://www.ccel.org/refsys/)**: Import and export (versifications and mappings)
 - **[OpenScriptures](https://github.com/openscriptures/BibleOrgSys/tree/master/DataFiles/VersificationSystems)**: Import only (versifications only, no mappings)
 - **SWORDVersification**: Import versifications and mappings from SWORD
+- **AccordanceReferenceList**: Import a reference list from Accordance
 - **ReportHTML**: Export only (HTML report that shows difference of covered verses)
 
 SWORD import
@@ -308,3 +309,113 @@ information will look broken in Logos.
 
 [In case anybody wants to contribute a Logos exporter that directly writes .docx files,
 it will be very much appreciated.]
+
+Accordance export
+-----------------
+
+Accordance export also is quite complex, but this time not because of the complexity
+of the format, but because of some quirks in Accordance and because - due to the
+limited features - there are several common workarounds available (which are used by
+people when manually creating modules as well), but which do not apply to every module.
+Sometimes, it makes even sense to create multiple modules of the same bible with
+different options and use them at the same time.
+
+Character formats are limited to bold, italic, underlined, small caps, subscript,
+superscript, and 20 named colors. While it is quite common to format divine names
+in small caps, and words of Jesus in red (which by the way is the only color that
+can be switched on and off in the settings), it is unclear how to format e.g.
+prologs, headlines or footnotes, or whether to include them at all. Another
+peculiarity: When searching in the module, you can exclude text that is written
+in square brackets; therefore some people like to put these kinds of content
+into square brackets; others (who prefer "clean" display) do not.
+
+Therefore, it is possible to configure the appearance of each of the available
+Bible features individually, and whether they should be exported at all. Features
+used in the text that are not configured (except the aforementioned divine names
+and words of Jesus) cause a warning. Each feature can be configured independently
+how it should appear if it occurs in a chapter prolog. Available appearance options
+include the mentioned character formats, adding newlines or paragraphs before/after
+the items, and putting the item in round, square or curly brackets.
+
+As character set, MacRoman or UTF-8 can be used; while MacRoman is supported better
+by older Accordance versions, UTF-8 supports more characters. Line endings can be CR
+or LF; again CR for better compatibility, LF for interoperability with other editors.
+
+For all the options, see the help text of the module.
+
+
+Another point to keep in mind are versification schemas.
+
+When importing a Bible in accordance, there are basically two options for the
+Versification schema:
+
+- When choosing "Standard KJV", you are quite free what verse numbers to include.
+  As long as they basically fall inside the bounds of the KJV (about 10 more verses
+  are permitted per book), verse numbers can be omitted and the number of actual
+  verses in a book does not matter (as long as there is at least one). As a
+  disadvantage, viewing this Bible in parallel with other (official) Bibles will
+  likely not match your expectations.
+
+- The other option is to choose to take the versification scheme of any other
+  Bible you own. In that case, the verse numbers (and order and gaps) have to match
+  the verse numbers of that Bible exactly. If verses at the beginning or in the middle
+  are missing, wrong verse numbers are displayed next to the verses (even when the Bible
+  is shown alone), and if verses at the end are missing or too many, only the parallel
+  view is impacted. But, on the other hand, parallel display with other Bibles will
+  most likely work as you would expect.
+
+To cover these two variants, there are several options in the exporter.
+
+- By default, reordered verses will be sorted (and the format for the real verse
+  number can be given by the `VN=` option, `VN=BRACKETS+TEAL` is a good option),
+  but apart from that, verses will stay as they were in the import file. This option
+  is often suitable for "Standard KJV" versification.
+
+- When specifying `verseschema=restrictkjv`, verses that lie outside
+  the KJV versification will be joined, again using the `VN=` option for the real
+  verse numbers.
+
+- When specifying `verseschame=fillone`, verses that are missing and lie before
+  an existing verse (starting with verse 1) will be filled with `-`. This is the
+  poor man's option when using an existing versification scheme, in the hope that
+  this scheme does not have any reorderings or gaps, and will not help for
+  parallel view.
+
+- When specifying `verseschema=fillzero`, some Psalms (in particular 3-9, 11-32,
+  34-42, 44-70, 72-90, 92, 98, 100-103, 108-110, 120-134, 138-145) will be filled
+  starting with verse 0. This helps for versification schemes that follow KJV and
+  put the psalm title into verse 0, but still only a workaround.
+
+- The best option when using custom versifications is to export a reference list
+  from Accordance (or more if you are unsure which versification to use), import
+  them into BibleMultiConverter and then specify the versification as
+  `verseschema=<name>@<dbname>`. In that case, the versification schema is
+  followed exactly, omissions are moved to the previous verse (if present) and
+  reorderings are followed at a best effort basis. In addition, missing verses
+  at the end of the book will also be filled with `-`, and extra books will be
+  merged with the previous book.
+
+The usual workflow when using custom versifications is as follow
+
+1. Identify which versification formats you may want to use (or export all
+   if you are unsure and have the time/patience to do so).
+
+2. Export a versification list from Accordance. To do so, open the corresponding
+   Bible, choose `Display->Set Text Pane Display->Show As->References only` as well
+   as `Display->Set Text Pane Display->Advanced->Use English Book Names`. Then, select
+   all verses (`Edit->Select All`) and save them using
+   `File->Save Text Selection->Plain Text...`.
+
+3. Import the versifications into BibleMultiConverter. Therefore, a database file
+   with extension `.bmcv` (BibleMultiConverter Versification) is created. The command
+   to do so is:
+
+       java -jar BibleMultiConverter.jar Versification <file>.bmcv import AccordanceVersificationList <file>.txt <NAME>
+
+   Repeat this for every versification you want to import, into the *same* database
+   file, but using *different* names.
+
+4. Run **VersificationDetector** to decide which module to use. Use the options
+   `-title` and `-ignoreheadlines` for best results.
+
+5. Do the actual conversion, using the `verseschema=` option as mentioned above.
