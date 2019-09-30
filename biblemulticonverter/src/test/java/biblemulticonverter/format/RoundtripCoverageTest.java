@@ -23,7 +23,7 @@ import biblemulticonverter.data.Bible;
  */
 public class RoundtripCoverageTest {
 
-	public static final List<Class<? extends RoundtripFormat>> FULL_EXPORT_IMPORT_ROUNDTRIP_MODULES = Arrays.asList(Compact.class, Diffable.class, RoundtripHTML.class, RoundtripXML.class, RoundtripODT.class);
+	public static final List<Class<? extends RoundtripFormat>> FULL_EXPORT_IMPORT_ROUNDTRIP_MODULES = Arrays.asList(Compact.class, Diffable.class, RoundtripHTML.class, RoundtripXML.class, RoundtripODT.class, RoundtripTaggedText.class);
 
 	@Test
 	public void testExportImportRoundtripCoverage() throws Exception {

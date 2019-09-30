@@ -35,12 +35,14 @@ source, or open an issue if anything is unclear.
 Supported Formats
 -----------------
 
-BibleMultiConverter supports three custom formats, which are loss-less (support
+BibleMultiConverter supports four custom formats, which are loss-less (support
 all features supported by the BibleMultiConverter framework) and are supported
 both for import and for export:
 
 - **Compact**: Designed for creating small text files that compress well
 - **Diffable**: Designed to make comparing different bibles easier
+- **RoundtripTaggedText**: Similar to **Diffable**, but optimized for
+  automated editing using regular expression, at the expense of legibility
 - **RoundtripXML**: Useful for interchange of modules with converters written
   in other programming languages (that prefer XML binding to plaintext parsing)
 

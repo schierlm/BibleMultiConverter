@@ -63,6 +63,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<RoundtripFormat>("RoundtripODT", "ODT export and re-import", RoundtripODT.HELP_TEXT, RoundtripODT.class));
 		result.add(new Module<RoundtripFormat>("BibleWorks", "Plain text import and export format for BibleWorks", BibleWorks.HELP_TEXT, BibleWorks.class));
 		result.add(new Module<RoundtripFormat>("BibleWorksRTF", "RTF import and export format for BibleWorks", BibleWorksRTF.HELP_TEXT, BibleWorksRTF.class));
+		result.add(new Module<RoundtripFormat>("RoundtripTaggedText", "A text-format that consistently uses numbered tags to make automated editing easy.", RoundtripTaggedText.HELP_TEXT, RoundtripTaggedText.class));
 		return result;
 	}
 
