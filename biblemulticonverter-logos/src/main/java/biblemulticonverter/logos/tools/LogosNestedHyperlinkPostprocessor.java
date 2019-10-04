@@ -7,9 +7,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -97,6 +102,13 @@ public class LogosNestedHyperlinkPostprocessor implements Tool {
 					baos.reset();
 					copy(zis, baos);
 					Document doc = dbf.newDocumentBuilder().parse(new ByteArrayInputStream(baos.toByteArray()));
+					NodeList hyperlinkStyles = (NodeList) xp.evaluate("//w:hyperlink/w:r/w:rPr/w:rStyle/@w:val", doc, XPathConstants.NODESET);
+					List<String> styleNames = new ArrayList<>();
+					for (int i = 0; i < hyperlinkStyles.getLength(); i++) {
+						styleNames.add(hyperlinkStyles.item(i).getNodeValue());
+					}
+					String mostCommonStyle = styleNames.stream().collect(Collectors.groupingBy(s -> s, Collectors.counting()))
+							.entrySet().stream().max(Comparator.comparing(Entry::getValue)).map(Entry::getKey).orElse(null);
 					NodeList strikes = (NodeList) xp.evaluate("//w:strike", doc, XPathConstants.NODESET);
 					for (int i = 0; i < strikes.getLength(); i++) {
 						Node strike = strikes.item(i);
@@ -118,7 +130,7 @@ public class LogosNestedHyperlinkPostprocessor implements Tool {
 						text.setNodeValue(parts[1]);
 						parts = parts[0].split("\\|");
 						Element style = doc.createElementNS(NS_URI_W, "w:rStyle");
-						style.setAttributeNS(NS_URI_W, "w:val", "Internetlink");
+						style.setAttributeNS(NS_URI_W, "w:val", mostCommonStyle);
 						strike.getParentNode().insertBefore(style, strike);
 						Node toWrap = strike.getParentNode().getParentNode();
 						strike.getParentNode().removeChild(strike);
