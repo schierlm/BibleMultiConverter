@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,6 +36,17 @@ public class AccordanceReferenceList implements VersificationFormat {
 		for (Map.Entry<BookID, String> entry : Accordance.BOOK_NAME_MAP.entrySet()) {
 			BOOK_NAME_MAP.put(entry.getValue(), entry.getKey());
 		}
+		// alternative short names
+		BOOK_NAME_MAP.put("Isa.", BookID.BOOK_Isa);
+		BOOK_NAME_MAP.put("Ps.", BookID.BOOK_Ps);
+		BOOK_NAME_MAP.put("Mal", BookID.BOOK_Mal);
+		BOOK_NAME_MAP.put("Tob", BookID.BOOK_Tob);
+		BOOK_NAME_MAP.put("Est", BookID.BOOK_Esth);
+		BOOK_NAME_MAP.put("Est.", BookID.BOOK_Esth);
+		BOOK_NAME_MAP.put("Wisd.", BookID.BOOK_Wis);
+		BOOK_NAME_MAP.put("Dan", BookID.BOOK_Dan);
+		BOOK_NAME_MAP.put("1Mac", BookID.BOOK_1Macc);
+		BOOK_NAME_MAP.put("2Mac", BookID.BOOK_2Macc);
 		// long names
 		BOOK_NAME_MAP.put("Genesis", BookID.BOOK_Gen);
 		BOOK_NAME_MAP.put("Exodus", BookID.BOOK_Exod);
@@ -67,6 +79,8 @@ public class AccordanceReferenceList implements VersificationFormat {
 		BOOK_NAME_MAP.put("Zechariah", BookID.BOOK_Zech);
 		BOOK_NAME_MAP.put("Malachi", BookID.BOOK_Mal);
 		BOOK_NAME_MAP.put("Manasse", BookID.BOOK_PrMan);
+		BOOK_NAME_MAP.put("Susanna", BookID.BOOK_Sus);
+		BOOK_NAME_MAP.put("LetterJ", BookID.BOOK_EpJer);
 		BOOK_NAME_MAP.put("Matthew", BookID.BOOK_Matt);
 		BOOK_NAME_MAP.put("Romans", BookID.BOOK_Rom);
 		BOOK_NAME_MAP.put("1Corinthians", BookID.BOOK_1Cor);
@@ -85,26 +99,43 @@ public class AccordanceReferenceList implements VersificationFormat {
 		BOOK_NAME_MAP.put("1Peter", BookID.BOOK_1Pet);
 		BOOK_NAME_MAP.put("2Peter", BookID.BOOK_2Pet);
 		BOOK_NAME_MAP.put("Revelation", BookID.BOOK_Rev);
+		BOOK_NAME_MAP.put("Tobit", BookID.BOOK_Tob);
+		BOOK_NAME_MAP.put("Judith", BookID.BOOK_Jdt);
+		BOOK_NAME_MAP.put("1Maccabees", BookID.BOOK_1Macc);
+		BOOK_NAME_MAP.put("2Maccabees", BookID.BOOK_2Macc);
+		BOOK_NAME_MAP.put("Wisdom", BookID.BOOK_Wis);
+		BOOK_NAME_MAP.put("Sirach", BookID.BOOK_Sir);
+		BOOK_NAME_MAP.put("Baruch", BookID.BOOK_Bar);
 	}
 
 	@Override
 	public void doImport(VersificationSet versifications, String... importArgs) throws Exception {
 		List<Reference> allRefs = new ArrayList<>();
+		Set<Reference> allRefsSet = new HashSet<>();
 		try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(importArgs[0]), StandardCharsets.UTF_16))) {
 			String line;
 			while ((line = br.readLine()) != null) {
+				if (line.equals("--"))
+					continue;
 				String[] parts = line.trim().replace(',', ':').replace(' ', ':').split(":");
-				if (parts.length == 2 && Arrays.asList("Obadiah", "Obad.", "Philemon", "Philem.", "2John", "3John", "Jude", "Man.", "Manasse").contains(parts[0]))
+				BookID bid = BOOK_NAME_MAP.get(parts[0]);
+				if (parts.length == 2 && EnumSet.of(BookID.BOOK_Obad, BookID.BOOK_Phlm, BookID.BOOK_2John, BookID.BOOK_3John, BookID.BOOK_Jude, BookID.BOOK_PrMan, BookID.BOOK_EpJer, BookID.BOOK_Sus, BookID.BOOK_Bel, BookID.BOOK_EpLao).contains(bid))
 					parts = new String[] { parts[0], "1", parts[1] };
 				if (parts.length != 3)
 					throw new IOException("Unsupported verse reference: " + line);
-				BookID bid = BOOK_NAME_MAP.get(parts[0]);
 				if (bid == null)
 					throw new IOException("Unsupported book name (did you use English Book Names?): " + parts[0]);
 				int chapter = Integer.parseInt(parts[1]);
 				int verse = Integer.parseInt(parts[2]);
-				allRefs.add(new Reference(bid, chapter == 0 ? 1 : chapter,
-						(verse == 0 ? "1/t" : "" + verse) + (chapter == 0 ? "/p" : "")));
+				Reference ref = new Reference(bid, chapter == 0 ? 1 : chapter,
+						(verse == 0 ? "1/t" : "" + verse) + (chapter == 0 ? "/p" : ""));
+				while (chapter != 0 && allRefsSet.contains(ref)) {
+					verse += 100;
+					System.out.println("WARNING: Duplicate reference " + ref);
+					ref = new Reference(bid, chapter, "" + verse);
+				}
+				allRefs.add(ref);
+				allRefsSet.add(ref);
 			}
 		}
 		versifications.add(Arrays.asList(Versification.fromReferenceList(importArgs[1], null, null, allRefs)), null);

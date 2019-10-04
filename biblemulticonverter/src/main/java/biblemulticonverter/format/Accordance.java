@@ -54,8 +54,8 @@ public class Accordance implements ExportFormat {
 			" <formatting>#<formatting> Include a (footnote) number with first formatting, ",
 			"                           move element content to end of verse with second formatting",
 			"",
-			"Supported formats: PARENS, BRACKETS, BRACES, BR_START, PARA_START, BR_END, PARA_END,"+
-			"                   BOLD, SMALL_CAPS, ITALIC, SUB, SUP, UNDERLINE",
+			"Supported formats: PARENS, BRACKETS, BRACES, BR_START, PARA_START, BR_END, PARA_END,",
+			"                   NOBREAK, BOLD, SMALL_CAPS, ITALIC, SUB, SUP, UNDERLINE",
 			"as well as colors: BLACK, GRAY, WHITE, CHOCOLATE, BURGUNDY, RED, ORANGE, BROWN,",
 			"                   YELLOW, CYAN, TURQUOISE, GREEN, OLIVE, FOREST, TEAL, SAPPHIRE,",
 			"                   BLUE, NAVY, PURPLE, LAVENDER, MAGENTA",
@@ -112,7 +112,7 @@ public class Accordance implements ExportFormat {
 		BOOK_NAME_MAP.put(BookID.BOOK_Zech, "Zech.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Mal, "Mal.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Tob, "Tob.");
-		BOOK_NAME_MAP.put(BookID.BOOK_Jdt, "Judith");
+		BOOK_NAME_MAP.put(BookID.BOOK_Jdt, "Jud.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Wis, "Wis.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Sir, "Sir.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Bar, "Bar.");
@@ -122,7 +122,16 @@ public class Accordance implements ExportFormat {
 		BOOK_NAME_MAP.put(BookID.BOOK_PrMan, "Man.");
 		BOOK_NAME_MAP.put(BookID.BOOK_3Macc, "3Mac.");
 		BOOK_NAME_MAP.put(BookID.BOOK_2Esd, "2Esdr.");
+		BOOK_NAME_MAP.put(BookID.BOOK_4Ezra, "4Ezra");
+		BOOK_NAME_MAP.put(BookID.BOOK_3Macc, "3Mac.");
 		BOOK_NAME_MAP.put(BookID.BOOK_4Macc, "4Mac.");
+		BOOK_NAME_MAP.put(BookID.BOOK_Sus, "Sus.");
+		BOOK_NAME_MAP.put(BookID.BOOK_Bel, "Bel");
+		BOOK_NAME_MAP.put(BookID.BOOK_EpJer, "Let.");
+		BOOK_NAME_MAP.put(BookID.BOOK_PssSol, "Sol.");
+		BOOK_NAME_MAP.put(BookID.BOOK_1En, "Enoch");
+		BOOK_NAME_MAP.put(BookID.BOOK_Odes, "Ode.");
+		BOOK_NAME_MAP.put(BookID.BOOK_EpLao, "Laod.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Matt, "Matt.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Mark, "Mark");
 		BOOK_NAME_MAP.put(BookID.BOOK_Luke, "Luke");
@@ -155,7 +164,7 @@ public class Accordance implements ExportFormat {
 	private static Set<String> SUPPORTED_ELEMENTS = new HashSet<>(Arrays.asList(
 			"B", "I", "U", "L", "F", "S", "P", "D", "T", "W", "VN", "XREF", "STRONG", "MORPH", "DICT", "GRAMMAR",
 			"FN", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "PL", "PL:XREF",
-			"PL:B", "PL:I", "PL:U", "PL:L", "PL:F", "PL:S", "PL:P", "PL:D", "PL:T", "PL:W",
+			"PL:B", "PL:I", "PL:U", "PL:L", "PL:F", "PL:S", "PL:P", "PL:D", "PL:T", "PL:W", "PL:FN",
 			"PL:H1", "PL:H2", "PL:H3", "PL:H4", "PL:H5", "PL:H6", "PL:H7", "PL:H8", "PL:H9"));
 
 	@Override
@@ -179,6 +188,7 @@ public class Accordance implements ExportFormat {
 				break;
 		}
 		File mainFile = new File(exportArgs[0] + ".txt");
+		File booknameFile = new File(exportArgs[0] + "-booknames.txt");
 		Map<String, String[]> formatRules = new HashMap<>();
 		Set<String> unformattedElements = new HashSet<>();
 		parseFormatRule("VN=BOLD", formatRules);
@@ -225,7 +235,7 @@ public class Accordance implements ExportFormat {
 			}
 		}
 		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(mainFile), StandardCharsets.UTF_8));
-				BufferedWriter bnw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(exportArgs[0] + "-booknames.txt"), StandardCharsets.UTF_8))) {
+				BufferedWriter bnw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(booknameFile), StandardCharsets.UTF_8))) {
 			for (Book book : bible.getBooks()) {
 				String bookName = BOOK_NAME_MAP.get(book.getId());
 				if (bookName == null) {
@@ -266,7 +276,6 @@ public class Accordance implements ExportFormat {
 						Chapter chapter0 = new Chapter();
 						Chapter chapter1 = new Chapter();
 						Chapter origChapter = chapters.remove(0);
-						chapter0.setProlog(origChapter.getProlog());
 						for (Verse v : origChapter.getVerses()) {
 							if (v.getNumber().endsWith("/p")) {
 								Verse vv = new Verse(v.getNumber().substring(0, v.getNumber().length() - 2));
@@ -277,6 +286,10 @@ public class Accordance implements ExportFormat {
 								chapter1.getVerses().add(v);
 							}
 						}
+						if (chapter0.getVerses().isEmpty())
+							chapter1.setProlog(origChapter.getProlog());
+						else
+							chapter0.setProlog(origChapter.getProlog());
 						chapters.add(0, chapter1);
 						chapters.add(0, chapter0);
 					}
@@ -330,18 +343,25 @@ public class Accordance implements ExportFormat {
 						for (int i = 0; i < references.size(); i++) {
 							verseNumberMap.put("" + (i + 1), "" + references.get(i));
 						}
-						int nextExtraVerse = 1;
+						int nextExtraVerse = 1, maxSeenRealVerse = -2;
 						for (Verse v : chapter.getVerses()) {
 							String vnumber = v.getNumber().equals("1/t") ? "0" : v.getNumber();
 							int idx;
 							try {
 								int vnum = Integer.parseInt(vnumber);
+								maxSeenRealVerse = Math.max(vnum, maxSeenRealVerse);
 								idx = references.indexOf(vnum);
 							} catch (NumberFormatException ex) {
 								idx = -1;
 							}
 							String newNum = "" + (idx + 1);
 							if (idx == -1) {
+								if (vnumber.startsWith("" + (maxSeenRealVerse + 1)) && references.contains(maxSeenRealVerse + 1)) {
+									maxSeenRealVerse++;
+									Verse dv = new Verse("" + maxSeenRealVerse);
+									dv.finished();
+									dummyChapter.getVerses().add(dv);
+								}
 								newNum = nextExtraVerse + "x";
 								nextExtraVerse++;
 								verseNumberMap.put(newNum, vnumber);
@@ -426,20 +446,28 @@ public class Accordance implements ExportFormat {
 		}
 		if (encodings != null) {
 			String content = new String(Files.readAllBytes(mainFile.toPath()), StandardCharsets.UTF_8);
-			byte[] bytes = null;
+			String booknameContent = new String(Files.readAllBytes(booknameFile.toPath()), StandardCharsets.UTF_8);
+			byte[] bytes = null, booknameBytes = null;
+			;
 			for (String encoding : encodings) {
 				byte[] trying = content.getBytes(encoding);
-				if (new String(trying, encoding).equals(content)) {
+				byte[] booknameTrying = booknameContent.getBytes(encoding);
+				if (new String(trying, encoding).equals(content) && new String(booknameTrying, encoding).equals(booknameContent)) {
 					bytes = trying;
+					booknameBytes = booknameTrying;
 					break;
 				}
 			}
 			if (bytes == null) {
 				System.out.println("WARNING: All encoding could not losslessly encode the bible, using " + encodings[encodings.length - 1] + " anyway");
 				bytes = content.getBytes(encodings[encodings.length - 1]);
+				booknameBytes = booknameContent.getBytes(encodings[encodings.length - 1]);
 			}
 			try (FileOutputStream fos = new FileOutputStream(mainFile)) {
 				fos.write(bytes);
+			}
+			try (FileOutputStream fos = new FileOutputStream(booknameFile)) {
+				fos.write(booknameBytes);
 			}
 		}
 		if (!unformattedElements.isEmpty())
@@ -461,7 +489,7 @@ public class Accordance implements ExportFormat {
 				parseFormatRule(parts[0].replace('*', (char) ('0' + i)) + "=" + parts[1], formatRules);
 			return;
 		}
-		if (!parts[0].startsWith("CSS:") && !SUPPORTED_ELEMENTS.contains(parts[0]))
+		if (!parts[0].startsWith("CSS:") && !parts[0].startsWith("PL:CSS:") && !SUPPORTED_ELEMENTS.contains(parts[0]))
 			throw new RuntimeException("Unsupported element in format rule: " + rule);
 		if (parts[1].equals("-")) {
 			formatRules.put(parts[0], new String[0]);
@@ -490,7 +518,7 @@ public class Accordance implements ExportFormat {
 
 	private static class AccordanceVisitor implements Visitor<RuntimeException> {
 
-		private TagReorderStringBuilder sb = new TagReorderStringBuilder(), fnb = new TagReorderStringBuilder();
+		private TagReorderStringBuilder sb = new TagReorderStringBuilder(PendingLineBreak.NOBREAK), fnb = new TagReorderStringBuilder(PendingLineBreak.NONE);
 		private boolean inFootnote = false;
 		private int footnoteNumber = 0;
 		private final List<String> suffixStack = new ArrayList<String>();
@@ -523,15 +551,7 @@ public class Accordance implements ExportFormat {
 		private String getContent() {
 			if (inFootnote || !suffixStack.isEmpty())
 				throw new IllegalStateException();
-			String text = sb.getContent(), fn = fnb.getContent();
-			if (text.endsWith("¶")) {
-				text = text.substring(0, text.length() - 1);
-				fn = fn + "¶";
-			} else if (text.endsWith("<br>")) {
-				text = text.substring(0, text.length() - 4);
-				fn = fn + "<br>";
-			}
-			return text + fn;
+			return sb.getContent() + fnb.getContent() + sb.pendingLineBreak.merge(fnb.pendingLineBreak).getText();
 		}
 
 		private void pushSuffix(String suffix) {
@@ -637,7 +657,7 @@ public class Accordance implements ExportFormat {
 				sb.append("<br>");
 				return;
 			case PARAGRAPH:
-				sb.appendText("¶");
+				sb.append("<para>");
 				break;
 			}
 		}
@@ -729,10 +749,17 @@ public class Accordance implements ExportFormat {
 	private static class TagReorderStringBuilder {
 		private final StringBuilder sb = new StringBuilder();
 		private final List<ShadowTag> shadowTagStack = new ArrayList<>();
+		private PendingLineBreak pendingLineBreak;
+
+		public TagReorderStringBuilder(PendingLineBreak pendingLineBreak) {
+			this.pendingLineBreak = pendingLineBreak;
+		}
 
 		public void appendText(String text) {
 			if (text.isEmpty())
 				return;
+			sb.append(pendingLineBreak.getText());
+			pendingLineBreak = PendingLineBreak.NONE;
 			for (ShadowTag t : shadowTagStack) {
 				if (t.printed)
 					continue;
@@ -751,7 +778,11 @@ public class Accordance implements ExportFormat {
 					throw new RuntimeException("Incomplete tag in " + textWithTags);
 				String[] tagInfo = textWithTags.substring(pos + 1, endPos).split("=", 2);
 				if (tagInfo.length == 1 && tagInfo[0].equals("br")) {
-					sb.append("<" + tagInfo[0] + ">");
+					pendingLineBreak = pendingLineBreak.merge(PendingLineBreak.BR);
+				} else if (tagInfo.length == 1 && tagInfo[0].equals("para")) {
+					pendingLineBreak = pendingLineBreak.merge(PendingLineBreak.PARAGRAPH);
+				} else if (tagInfo.length == 1 && tagInfo[0].equals("nobreak")) {
+					pendingLineBreak = pendingLineBreak.merge(PendingLineBreak.NOBREAK);
 				} else if (tagInfo.length == 1 && tagInfo[0].startsWith("/")) {
 					ShadowTag lastTag = shadowTagStack.remove(shadowTagStack.size() - 1);
 					if (!lastTag.name.equals(tagInfo[0].substring(1)))
@@ -844,11 +875,29 @@ public class Accordance implements ExportFormat {
 		NORMAL, SHADOWING, REDUNDANT
 	}
 
+	private static enum PendingLineBreak {
+		NONE(""), BR("<br>"), PARAGRAPH("¶"), NOBREAK("");
+
+		private String text;
+
+		private PendingLineBreak(String text) {
+			this.text = text;
+		}
+
+		public String getText() {
+			return text;
+		}
+
+		public PendingLineBreak merge(PendingLineBreak other) {
+			return values()[Math.max(ordinal(), other.ordinal())];
+		}
+	}
+
 	private static final String[] DEFAULT_KEEP = { "", "" }, DEFAULT_SKIP = {}, DEFAULT_VERSENO = { "<color=teal>(", ")</color>" };
 
 	private static enum Format {
-		PARENS("(", ")"), BRACKETS("[", "]"), BRACES("{", "}"), //
-		BR_START("<br>", ""), PARA_START("¶", ""), BR_END("<br>", ""), PARA_END("¶", ""), //
+		PARENS("(", ")"), BRACKETS("[", "]"), BRACES("{", "}"), NOBREAK("<nobreak>", "<nobreak>"), //
+		BR_START("<br>", ""), PARA_START("<para>", ""), BR_END("", "<br>"), PARA_END("", "<para>"), //
 		BOLD("<b>", "</b>"), SMALL_CAPS("<c>", "</c>"), ITALIC("<i>", "</i>"), SUB("<sub>", "</sub>"), SUP("<sup>", "</sup>"), UNDERLINE("<u>", "</u>"), //
 
 		BLACK("<color=black>", "</color>"), GRAY("<color=gray>", "</color>"), WHITE("<color=white>", "</color>"), CHOCOLATE("<color=chocolate>", "</color>"), //

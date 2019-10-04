@@ -410,7 +410,7 @@ The usual workflow when using custom versifications is as follow
    with extension `.bmcv` (BibleMultiConverter Versification) is created. The command
    to do so is:
 
-       java -jar BibleMultiConverter.jar Versification <file>.bmcv import AccordanceVersificationList <file>.txt <NAME>
+       java -jar BibleMultiConverter.jar Versification <file>.bmcv import AccordanceReferenceList <file>.txt <NAME>
 
    Repeat this for every versification you want to import, into the *same* database
    file, but using *different* names.
