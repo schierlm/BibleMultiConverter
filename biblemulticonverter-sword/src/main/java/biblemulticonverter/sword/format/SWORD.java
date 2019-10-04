@@ -55,44 +55,8 @@ public class SWORD implements ImportFormat {
 		TransformerHandler th = ((SAXTransformerFactory) SAXTransformerFactory.newInstance()).newTransformerHandler();
 		Map<BookID, biblemulticonverter.data.Book> parsedBooks = new EnumMap<>(BookID.class);
 		Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
-		List<Verse> allVerses = new ArrayList<>();
-		Verse nextCandidate = null;
 		for (Iterator<?> iter = book.getGlobalKeyList().iterator(); iter.hasNext();) {
 			Verse v = (Verse) iter.next();
-			while (nextCandidate != null && !nextCandidate.equals(v)) {
-				if (book.contains(nextCandidate)) {
-					System.out.println("WARNING: Verse (after) skipped by iterator: " + nextCandidate);
-					allVerses.add(nextCandidate);
-				}
-				nextCandidate = nextCandidate.getVersification().add(nextCandidate, 1);
-			}
-			Verse prevCandidate = v.getVersification().subtract(v, 1);
-			List<Verse> versesSkippedBefore = new ArrayList<>();
-			while (prevCandidate != null && !allVerses.contains(prevCandidate) && !versesSkippedBefore.contains(prevCandidate)) {
-				versesSkippedBefore.add(0, prevCandidate);
-				prevCandidate = prevCandidate.getVersification().subtract(prevCandidate, 1);
-			}
-			for (Verse vv : versesSkippedBefore) {
-				if (book.contains(vv)) {
-					System.out.println("WARNING: Verse (before) skipped by iterator: " + vv);
-					allVerses.add(vv);
-				}
-			}
-			allVerses.add(v);
-			nextCandidate = v.getVersification().add(v, 1);
-		}
-		while (nextCandidate != null) {
-			if (book.contains(nextCandidate)) {
-				System.out.println("WARNING: Verse (at end) skipped by iterator: " + nextCandidate);
-				allVerses.add(nextCandidate);
-			}
-			Verse nextNextCandidate = nextCandidate.getVersification().add(nextCandidate, 1);
-			if (nextCandidate.equals(nextNextCandidate))
-				break;
-			nextCandidate = nextNextCandidate;
-		}
-
-		for (Verse v : allVerses) {
 			BookID bkid = biblemulticonverter.sword.BookMapping.MAPPING.get(v.getBook());
 			biblemulticonverter.data.Book bk = parsedBooks.get(bkid);
 			if (!parsedBooks.containsKey(bkid)) {
