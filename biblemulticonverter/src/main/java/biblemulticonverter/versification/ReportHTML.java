@@ -246,6 +246,7 @@ public class ReportHTML implements VersificationFormat {
 					table.put(name, bv);
 				}
 				List<String> tableKeys = new ArrayList<>(table.keySet());
+				tableKeys.removeIf(k -> table.get(k).getChapterCount() == 0);
 				tableKeys.sort(Comparator.comparing((String s) -> s.replaceAll("[^ ]", "").replace(' ', 'x')).reversed().thenComparing(s -> s));
 				bw.write("<h2 id=\"" + h(bid.getOsisID()) + "\">" + h(bid.getEnglishName()) + "</h2>\n<table>\n<tr><th>&nbsp;</th>");
 				if (flip) {
