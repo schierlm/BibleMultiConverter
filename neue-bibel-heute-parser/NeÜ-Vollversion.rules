@@ -3,6 +3,12 @@ Zoar, Winzig
 Zoar*, Winzig
 Engel Gottes Hagar
 Engel Gottes* Hagar
+Hebron nach Sichem\.
+Hebron nach Sichem*.
+
+3mo.html
+Silberst&uuml;cke\*\.
+Silberst&uuml;cke.
 
 4mo.html
 <h4 id="20">Nach 40 Jahren an der Grenze des Landes</h4>¶<h4>Das Wasser von Meriba</h4>
@@ -20,6 +26,18 @@ ri.html
 (<p><span class="vers">8</span>.*?)¶(<div class="fn">13,6: <em>.*?</div>)
 $2¶$1
 
+1sam.html
+sagte Abischai\.¶
+sagte Abischai.</p>¶
+
+2sam.html
+Efod,
+Efod*,
+
+2koe.html
+Gold\* an
+Gold an
+
 1chr.html
 Jafet.¶</p>
 Jafet.</p>
@@ -27,6 +45,8 @@ Jafet.</p>
 neh.html
 <p><a href="#top"><span class="kap">8</span></a>&nbsp; ([^¶]*)
 <p>$1 </p>¶<p><a href="#top"><span class="kap">8</span></a>&nbsp;
+Silberst&uuml;cke pro
+Silberst&uuml;cke* pro
 
 hiob.html
 &xnbsp;
@@ -73,8 +93,8 @@ mo\.html#l
 mo.html#1
 \*</h4>
 </h4>
-<span class="vers">1</span> Am Jahresanfang
-<span class="vers">1</span>* Am Jahresanfang
+<span class="vers">1</span> Es geschah im
+<span class="vers">1</span>* Es geschah im
 <div class="fn">Kapitel 40-48: (.*?) <a href="Hesekiels Tempel\.gif" target="_blank">(.*?)</a>\.
 <div class="fn">40,1: Kapitel 40-48: $1 $2 im Anhang.
 
@@ -105,6 +125,12 @@ href="3mo.html#25"
 "fn">22,44:
 <p></p><span class="vers">29</span>
 <p><span class="vers">29</span>
+Richtet nicht
+Richtet* nicht
+
+apg.html
+Stadtregenten Roms
+Stadtregenten* Roms
 
 tit.html
 <div class="e">¶
@@ -203,6 +229,8 @@ Herrn: "Setz
 Herrn: »Setz
 \Qgemacht habe."'*
 gemacht habe.«'*
+sagen .von
+sagen 'von
 
 apg.html
 	### 2:34 - 2:35 third level quote
