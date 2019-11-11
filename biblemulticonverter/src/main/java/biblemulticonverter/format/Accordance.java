@@ -1,9 +1,12 @@
 package biblemulticonverter.format;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
@@ -34,18 +37,20 @@ import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.Versification.Reference;
 import biblemulticonverter.data.VersificationSet;
 import biblemulticonverter.data.VirtualVerse;
+import biblemulticonverter.versification.AccordanceReferenceList;
 
-public class Accordance implements ExportFormat {
+public class Accordance implements RoundtripFormat {
 
 	public static final String[] HELP_TEXT = {
-			"Export format for Accordance",
+			"Bible format for Accordance",
 			"",
-			"Usage: Accordance <outfile> [<element>=<formatting> [...]] [lineending|encoding|verseschema=<value>]",
+			"Usage: Accordance <outfile> [<element>=<formatting> [...]] [lineending|encoding|verseref|verseschema=<value>]",
 			"",
 			"Supported elements: H*, H1-H9, FN, VN, XREF, STRONG, MORPH, DICT, GRAMMAR, PL,",
 			"                    B, I, U, L, F, S, P, D, T, W",
 			"Every supported element is also supported with prefix PL: (when in prolog).",
 			"The prefix CSS: can be used to style CSS rules.",
+			"Metadata elements:  BIBN, BKSN, BKLN (Bible name, book short/long name)",
 			"",
 			"Supported formattings:",
 			" -                         Do not include element content",
@@ -55,14 +60,18 @@ public class Accordance implements ExportFormat {
 			"                           move element content to end of verse with second formatting",
 			"",
 			"Supported formats: PARENS, BRACKETS, BRACES, BR_START, PARA_START, BR_END, PARA_END,",
-			"                   NOBREAK, BOLD, SMALL_CAPS, ITALIC, SUB, SUP, UNDERLINE",
+			"                   FORCEBREAK_START, FORCEBREAK_END, NOBREAK,",
+			"                   BOLD, SMALL_CAPS, ITALIC, SUB, SUP, UNDERLINE",
 			"as well as colors: BLACK, GRAY, WHITE, CHOCOLATE, BURGUNDY, RED, ORANGE, BROWN,",
 			"                   YELLOW, CYAN, TURQUOISE, GREEN, OLIVE, FOREST, TEAL, SAPPHIRE,",
-			"                   BLUE, NAVY, PURPLE, LAVENDER, MAGENTA",
+			"                   BLUE, NAVY, PURPLE, LAVENDER, MAGENTA, CERULEAN",
 			"",
 			"Other supported options:",
 			" lineending=cr|lf         Use CR or LF as line ending",
 			" encoding=macroman,utf-8  Try first macroman, then UTF-8 as encoding",
+			" verseref=short           Output the shortest possible verse refs (only verse if needed)",
+			" verseref=medium          Output medium verse refs (always include chapter)",
+			" verseref=full            Output full verse refs (always include book and chapter)",
 			" verseschema=fillone      Fill missing verses starting from verse 1",
 			" verseschema=fillzero     In some psalms, fill from verse 0",
 			" verseschema=restrictkjv  Restrict allowed verses to KJV schema",
@@ -70,6 +79,7 @@ public class Accordance implements ExportFormat {
 	};
 
 	public static Map<BookID, String> BOOK_NAME_MAP = new EnumMap<>(BookID.class);
+	private static Map<Format, String> CSS_COLORS = new EnumMap<>(Format.class);
 
 	static {
 		BOOK_NAME_MAP.put(BookID.BOOK_Gen, "Gen.");
@@ -112,7 +122,7 @@ public class Accordance implements ExportFormat {
 		BOOK_NAME_MAP.put(BookID.BOOK_Zech, "Zech.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Mal, "Mal.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Tob, "Tob.");
-		BOOK_NAME_MAP.put(BookID.BOOK_Jdt, "Jud.");
+		BOOK_NAME_MAP.put(BookID.BOOK_Jdt, "Judith");
 		BOOK_NAME_MAP.put(BookID.BOOK_Wis, "Wis.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Sir, "Sir.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Bar, "Bar.");
@@ -159,13 +169,197 @@ public class Accordance implements ExportFormat {
 		BOOK_NAME_MAP.put(BookID.BOOK_3John, "3John");
 		BOOK_NAME_MAP.put(BookID.BOOK_Jude, "Jude");
 		BOOK_NAME_MAP.put(BookID.BOOK_Rev, "Rev.");
+
+		CSS_COLORS.put(Format.BLACK, "black");
+		CSS_COLORS.put(Format.GRAY, "dimgray");
+		CSS_COLORS.put(Format.WHITE, "white");
+		CSS_COLORS.put(Format.CHOCOLATE, "saddlebrown");
+		CSS_COLORS.put(Format.BURGUNDY, "maroon");
+		CSS_COLORS.put(Format.RED, "red");
+		CSS_COLORS.put(Format.ORANGE, "orange");
+		CSS_COLORS.put(Format.BROWN, "sandybrown");
+		CSS_COLORS.put(Format.YELLOW, "yellow");
+		CSS_COLORS.put(Format.CYAN, "cyan");
+		CSS_COLORS.put(Format.TURQUOISE, "turquoise");
+		CSS_COLORS.put(Format.GREEN, "green");
+		CSS_COLORS.put(Format.OLIVE, "olivedrab");
+		CSS_COLORS.put(Format.FOREST, "forestgreen");
+		CSS_COLORS.put(Format.TEAL, "teal");
+		CSS_COLORS.put(Format.SAPPHIRE, "deepskyblue");
+		CSS_COLORS.put(Format.BLUE, "blue");
+		CSS_COLORS.put(Format.NAVY, "navy");
+		CSS_COLORS.put(Format.PURPLE, "purple");
+		CSS_COLORS.put(Format.LAVENDER, "blueviolet");
+		CSS_COLORS.put(Format.MAGENTA, "magenta");
+		CSS_COLORS.put(Format.CERULEAN, "darkcyan");
 	}
 
 	private static Set<String> SUPPORTED_ELEMENTS = new HashSet<>(Arrays.asList(
 			"B", "I", "U", "L", "F", "S", "P", "D", "T", "W", "VN", "XREF", "STRONG", "MORPH", "DICT", "GRAMMAR",
-			"FN", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "PL", "PL:XREF",
+			"FN", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "BIBN", "BKSN", "BKLN", "PL", "PL:XREF",
 			"PL:B", "PL:I", "PL:U", "PL:L", "PL:F", "PL:S", "PL:P", "PL:D", "PL:T", "PL:W", "PL:FN",
 			"PL:H1", "PL:H2", "PL:H3", "PL:H4", "PL:H5", "PL:H6", "PL:H7", "PL:H8", "PL:H9"));
+
+	@Override
+	public Bible doImport(File inputFile) throws Exception {
+		// probe charset
+		String line, charset = "US-ASCII";
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile), StandardCharsets.ISO_8859_1))) {
+			while ((line = br.readLine()) != null) {
+				if (line.matches("[\0-~]*"))
+					continue;
+				byte[] origBytes = line.getBytes(StandardCharsets.ISO_8859_1);
+				byte[] testUTF8 = new String(origBytes, StandardCharsets.UTF_8).getBytes(StandardCharsets.UTF_8);
+				if (Arrays.equals(testUTF8, origBytes)) {
+					charset = "UTF-8";
+				} else {
+					charset = "MacRoman";
+				}
+				break;
+			}
+		}
+		System.out.println("Detected charset: " + charset);
+
+		// do the real parsing
+		Bible bible = new Bible("Imported From Accordance");
+		Map<BookID, Book> bibleBooks = new EnumMap<>(BookID.class);
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile), charset))) {
+			BookID bookID = null;
+			Verse v = null;
+			int chapterNumber = -1, verseNumber = -1;
+			while ((line = br.readLine()) != null) {
+				String rest = line.replaceAll("(?U)\\p{Cntrl}", " ").replaceAll("  +", " ").trim();
+				if (rest.isEmpty())
+					continue;
+				int pos = rest.indexOf(' ');
+				if (!rest.matches("[0-9]+[: ].*") && pos != -1) {
+					bookID = AccordanceReferenceList.BOOK_NAME_MAP.get(rest.substring(0, pos));
+					if (bookID == null)
+						bookID = AccordanceReferenceList.BOOK_NAME_MAP.get(rest.substring(0, pos) + ".");
+					if (bookID == null)
+						throw new IOException("Unsupported verse reference/book name: " + line);
+					chapterNumber = verseNumber = -1;
+					rest = rest.substring(pos + 1).trim();
+					pos = rest.indexOf(' ');
+				}
+				if (rest.matches("[0-9]+ .*")) {
+					verseNumber = Integer.parseInt(rest.substring(0, pos));
+				} else if (rest.matches("[0-9]+:[0-9]+ .*")) {
+					String[] numberParts = rest.substring(0, pos).split(":");
+					chapterNumber = Integer.parseInt(numberParts[0]);
+					verseNumber = Integer.parseInt(numberParts[1]);
+				} else {
+					throw new IOException("Unsupported verse reference: " + line);
+				}
+				rest = rest.substring(pos + 1).trim();
+				if (rest.startsWith("¶")) {
+					if (v != null)
+						v.getAppendVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
+					rest = rest.substring(1).trim();
+				}
+				if (bookID == null || chapterNumber == -1)
+					throw new IOException("Incomplete first line verse reference: " + line);
+				Book bk = bibleBooks.get(bookID);
+				if (bk == null) {
+					bk = new Book(bookID.getOsisID(), bookID, bookID.getEnglishName(), bookID.getEnglishName());
+					bibleBooks.put(bookID, bk);
+					bible.getBooks().add(bk);
+				}
+				v = new Verse(verseNumber == 0 ? "1/t" : "" + verseNumber);
+				int cn = chapterNumber;
+				if (cn == 0) {
+					v = new Verse(verseNumber + "/p");
+					cn = 1;
+				}
+				while (bk.getChapters().size() < cn)
+					bk.getChapters().add(new Chapter());
+				bk.getChapters().get(cn - 1).getVerses().add(v);
+				int parsed = parseText(rest, 0, v.getAppendVisitor());
+				if (parsed != rest.length())
+					throw new IOException("Unparsed tags: " + rest.substring(parsed));
+			}
+		}
+		for (Book bk : bible.getBooks()) {
+			for (Chapter ch : bk.getChapters()) {
+				for (Verse v : ch.getVerses()) {
+					v.finished();
+				}
+			}
+		}
+		return bible;
+	}
+
+	private int parseText(String text, int start, Visitor<RuntimeException> vv) throws IOException {
+		while (start < text.length()) {
+			if (text.charAt(start) != '<') {
+				int pos1 = text.indexOf('<', start);
+				int pos2 = text.indexOf('¶', start);
+				if (pos1 == -1)
+					pos1 = text.length();
+				while (pos2 != -1 && pos2 < pos1) {
+					vv.visitText(text.substring(start, pos2).replaceAll(" +$", ""));
+					vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+					start = pos2 + 1;
+					while (start < text.length() && text.charAt(start) == ' ')
+						start++;
+					pos2 = text.indexOf('¶', start);
+				}
+				vv.visitText(text.substring(start, pos1));
+				start = pos1;
+				continue;
+			}
+			if (text.startsWith("</", start))
+				return start;
+			int pos = text.indexOf('>', start);
+			String tag = text.substring(start + 1, pos).toUpperCase();
+			start = pos + 1;
+			if (tag.startsWith("COLOR=")) {
+				String cssName;
+				try {
+					cssName = CSS_COLORS.get(Format.valueOf(tag.substring(6)));
+					if (cssName == null)
+						throw new IllegalArgumentException();
+				} catch (IllegalArgumentException ex) {
+					throw new IOException("Unsupported tag: " + text.substring(start - tag.length() - 2));
+				}
+				start = parseText(text, start, vv.visitCSSFormatting("-accordance-color:" + tag.substring(6).toLowerCase() + "; color:" + cssName));
+				if (!text.substring(start).toUpperCase().startsWith("</COLOR>"))
+					throw new IOException("Unclosed COLOR tag: " + text.substring(start));
+				start += 8;
+			} else if (tag.equals("BR")) {
+				vv.visitLineBreak(LineBreakKind.NEWLINE);
+			} else {
+				FormattingInstructionKind kind;
+				switch (tag) {
+				case "B":
+					kind = FormattingInstructionKind.BOLD;
+					break;
+				case "C":
+					kind = FormattingInstructionKind.DIVINE_NAME;
+					break;
+				case "I":
+					kind = FormattingInstructionKind.ITALIC;
+					break;
+				case "SUB":
+					kind = FormattingInstructionKind.SUBSCRIPT;
+					break;
+				case "SUP":
+					kind = FormattingInstructionKind.SUPERSCRIPT;
+					break;
+				case "U":
+					kind = FormattingInstructionKind.UNDERLINE;
+					break;
+				default:
+					throw new IOException("Unsupported tag: " + text.substring(start - tag.length() - 2));
+				}
+				start = parseText(text, start, vv.visitFormattingInstruction(kind));
+				if (!text.substring(start).toUpperCase().startsWith("</" + tag + ">"))
+					throw new IOException("Unclosed " + tag + " tag: " + text.substring(start));
+				start += tag.length() + 3;
+			}
+		}
+		return start;
+	}
 
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
@@ -192,13 +386,20 @@ public class Accordance implements ExportFormat {
 		Map<String, String[]> formatRules = new HashMap<>();
 		Set<String> unformattedElements = new HashSet<>();
 		parseFormatRule("VN=BOLD", formatRules);
+		parseFormatRule("BIBN=-", formatRules);
+		parseFormatRule("BKSN=-", formatRules);
+		parseFormatRule("BKLN=-", formatRules);
 		for (String rule : Arrays.asList("B=BOLD", "D=SMALL_CAPS", "I=ITALIC", "S=SUB", "P=SUP", "U=UNDERLINE", "W=RED")) {
 			parseFormatRule(rule, formatRules);
 			parseFormatRule("PL:" + rule, formatRules);
 		}
+		for (Map.Entry<Format, String> cssColor : CSS_COLORS.entrySet()) {
+			parseFormatRule("CSS:-ACCORDANCE-COLOR:" + cssColor.getKey().name() + ";_COLOR:" + cssColor.getValue().toUpperCase() + "=" + cssColor.getKey().name(), formatRules);
+			parseFormatRule("PL:CSS:-ACCORDANCE-COLOR:" + cssColor.getKey().name() + ";_COLOR:" + cssColor.getValue().toUpperCase() + "=" + cssColor.getKey().name(), formatRules);
+		}
 		String lineEnding = "\n";
 		String[] encodings = null;
-		int verseSchema = -1;
+		int verseSchema = -1, verseRef = 0;
 		Versification versification = null;
 		BitSet psalmSet = null;
 		for (int i = 1; i < exportArgs.length; i++) {
@@ -206,6 +407,12 @@ public class Accordance implements ExportFormat {
 				lineEnding = "\r";
 			} else if (exportArgs[i].toLowerCase().equals("lineending=lf")) {
 				lineEnding = "\n";
+			} else if (exportArgs[i].toLowerCase().equals("verseref=short")) {
+				verseRef = 0;
+			} else if (exportArgs[i].toLowerCase().equals("verseref=medium")) {
+				verseRef = 1;
+			} else if (exportArgs[i].toLowerCase().equals("verseref=full")) {
+				verseRef = 2;
 			} else if (exportArgs[i].toLowerCase().equals("verseschema=fillone")) {
 				verseSchema = 1;
 			} else if (exportArgs[i].toLowerCase().equals("verseschema=fillzero")) {
@@ -236,8 +443,10 @@ public class Accordance implements ExportFormat {
 		}
 		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(mainFile), StandardCharsets.UTF_8));
 				BufferedWriter bnw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(booknameFile), StandardCharsets.UTF_8))) {
+			String bibleName = bible.getName();
 			for (Book book : bible.getBooks()) {
 				String bookName = BOOK_NAME_MAP.get(book.getId());
+				String shortName = book.getShortName(), longName = book.getLongName();
 				if (bookName == null) {
 					System.out.println("WARNING: Skipping book " + book.getAbbr());
 					continue;
@@ -315,7 +524,8 @@ public class Accordance implements ExportFormat {
 					}
 				}
 				bnw.write(bookName.replace(".", "") + "\t" + book.getAbbr().replace(".", "") + lineEnding);
-				bw.write(bookName + " ");
+				if (verseRef != 2)
+					bw.write(bookName + " ");
 				for (Chapter chapter : chapters) {
 					FormattedText prolog = chapter.getProlog();
 					cnumber++;
@@ -379,8 +589,13 @@ public class Accordance implements ExportFormat {
 					} else {
 						vvs = chapter.createVirtualVerses(true, false);
 					}
-					bw.write(cnumber + ":");
+					if (verseRef == 0)
+						bw.write(cnumber + ":");
 					if (vvs.isEmpty()) {
+						if (verseRef == 2)
+							bw.write(bookName + " ");
+						if (verseRef != 0)
+							bw.write(cnumber + ":");
 						if (verseSchema < 0) {
 							bw.write("1 " + (paraMarker ? "¶" : "") + lineEnding);
 						} else {
@@ -391,15 +606,47 @@ public class Accordance implements ExportFormat {
 					}
 					for (VirtualVerse vv : vvs) {
 						while (nextFillVerse < vv.getNumber()) {
+							if (verseRef == 2)
+								bw.write(bookName + " ");
+							if (verseRef != 0)
+								bw.write(cnumber + ":");
 							bw.write(mapBack(verseNumberMap, "" + nextFillVerse) + " " + (paraMarker ? "¶ " : "") + "-" + lineEnding);
 							nextFillVerse++;
 						}
+						if (verseRef == 2)
+							bw.write(bookName + " ");
+						if (verseRef != 0)
+							bw.write(cnumber + ":");
 						bw.write(mapBack(verseNumberMap, "" + vv.getNumber()) + " " + (paraMarker ? "¶ " : ""));
 						if (nextFillVerse == vv.getNumber())
 							nextFillVerse++;
 						paraMarker = false;
 						AccordanceVisitor av = new AccordanceVisitor(formatRules, unformattedElements);
 						av.start();
+						if (bibleName != null) {
+							Visitor<RuntimeException> nv = av.visitElement("BIBN", DEFAULT_SKIP);
+							if (nv != null) {
+								nv.visitText(bibleName);
+								nv.visitEnd();
+							}
+							bibleName = null;
+						}
+						if (shortName != null) {
+							Visitor<RuntimeException> nv = av.visitElement("BKSN", DEFAULT_SKIP);
+							if (nv != null) {
+								nv.visitText(shortName);
+								nv.visitEnd();
+							}
+							shortName = null;
+						}
+						if (longName != null) {
+							Visitor<RuntimeException> nv = av.visitElement("BKLN", DEFAULT_SKIP);
+							if (nv != null) {
+								nv.visitText(longName);
+								nv.visitEnd();
+							}
+							longName = null;
+						}
 						if (prolog != null) {
 							AccordanceVisitor plv = av.startProlog();
 							if (plv != null) {
@@ -433,6 +680,10 @@ public class Accordance implements ExportFormat {
 						bw.write(verseText + lineEnding);
 					}
 					while (nextFillVerse <= lastFillVerse) {
+						if (verseRef == 2)
+							bw.write(bookName + " ");
+						if (verseRef != 0)
+							bw.write(cnumber + ":");
 						bw.write(mapBack(verseNumberMap, "" + nextFillVerse) + " " + (paraMarker ? "¶ " : "") + "-" + lineEnding);
 						nextFillVerse++;
 					}
@@ -514,6 +765,16 @@ public class Accordance implements ExportFormat {
 			suffix.insert(0, fmt.suffix);
 		}
 		return new String[] { prefix.toString(), suffix.toString() };
+	}
+
+	@Override
+	public boolean isExportImportRoundtrip() {
+		return false;
+	}
+
+	@Override
+	public boolean isImportExportRoundtrip() {
+		return true;
 	}
 
 	private static class AccordanceVisitor implements Visitor<RuntimeException> {
@@ -783,6 +1044,9 @@ public class Accordance implements ExportFormat {
 					pendingLineBreak = pendingLineBreak.merge(PendingLineBreak.PARAGRAPH);
 				} else if (tagInfo.length == 1 && tagInfo[0].equals("nobreak")) {
 					pendingLineBreak = pendingLineBreak.merge(PendingLineBreak.NOBREAK);
+				} else if (tagInfo.length == 1 && tagInfo[0].equals("forcebreak")) {
+					sb.append(pendingLineBreak.getText());
+					pendingLineBreak = PendingLineBreak.NONE;
 				} else if (tagInfo.length == 1 && tagInfo[0].startsWith("/")) {
 					ShadowTag lastTag = shadowTagStack.remove(shadowTagStack.size() - 1);
 					if (!lastTag.name.equals(tagInfo[0].substring(1)))
@@ -898,6 +1162,7 @@ public class Accordance implements ExportFormat {
 	private static enum Format {
 		PARENS("(", ")"), BRACKETS("[", "]"), BRACES("{", "}"), NOBREAK("<nobreak>", "<nobreak>"), //
 		BR_START("<br>", ""), PARA_START("<para>", ""), BR_END("", "<br>"), PARA_END("", "<para>"), //
+		FORCEBREAK_START("<forcebreak>", ""), FORCEBREAK_END("", "<forcebreak>"), //
 		BOLD("<b>", "</b>"), SMALL_CAPS("<c>", "</c>"), ITALIC("<i>", "</i>"), SUB("<sub>", "</sub>"), SUP("<sup>", "</sup>"), UNDERLINE("<u>", "</u>"), //
 
 		BLACK("<color=black>", "</color>"), GRAY("<color=gray>", "</color>"), WHITE("<color=white>", "</color>"), CHOCOLATE("<color=chocolate>", "</color>"), //
@@ -905,7 +1170,7 @@ public class Accordance implements ExportFormat {
 		YELLOW("<color=yellow>", "</color>"), CYAN("<color=cyan>", "</color>"), TURQUOISE("<color=turquoise>", "</color>"), GREEN("<color=green>", "</color>"), //
 		OLIVE("<color=olive>", "</color>"), FOREST("<color=forest>", "</color>"), TEAL("<color=teal>", "</color>"), SAPPHIRE("<color=sapphire>", "</color>"), //
 		BLUE("<color=blue>", "</color>"), NAVY("<color=navy>", "</color>"), PURPLE("<color=purple>", "</color>"), LAVENDER("<color=lavender>", "</color>"), //
-		MAGENTA("<color=magenta>", "</color>");
+		MAGENTA("<color=magenta>", "</color>"), CERULEAN("<color=cerulean>", "</color>");
 
 		private final String prefix, suffix;
 

@@ -30,7 +30,7 @@ public class AccordanceReferenceList implements VersificationFormat {
 			"Usage for import: AccordanceReferenceList <filename> <name>"
 	};
 
-	private static final Map<String, BookID> BOOK_NAME_MAP = new HashMap<>();
+	public static final Map<String, BookID> BOOK_NAME_MAP = new HashMap<>();
 
 	static {
 		for (Map.Entry<BookID, String> entry : Accordance.BOOK_NAME_MAP.entrySet()) {
@@ -39,14 +39,19 @@ public class AccordanceReferenceList implements VersificationFormat {
 		// alternative short names
 		BOOK_NAME_MAP.put("Isa.", BookID.BOOK_Isa);
 		BOOK_NAME_MAP.put("Ps.", BookID.BOOK_Ps);
+		BOOK_NAME_MAP.put("Jud.", BookID.BOOK_Jdt);
 		BOOK_NAME_MAP.put("Mal", BookID.BOOK_Mal);
 		BOOK_NAME_MAP.put("Tob", BookID.BOOK_Tob);
 		BOOK_NAME_MAP.put("Est", BookID.BOOK_Esth);
 		BOOK_NAME_MAP.put("Est.", BookID.BOOK_Esth);
+		BOOK_NAME_MAP.put("Tit.", BookID.BOOK_Titus);
 		BOOK_NAME_MAP.put("Wisd.", BookID.BOOK_Wis);
 		BOOK_NAME_MAP.put("Dan", BookID.BOOK_Dan);
 		BOOK_NAME_MAP.put("1Mac", BookID.BOOK_1Macc);
 		BOOK_NAME_MAP.put("2Mac", BookID.BOOK_2Macc);
+		BOOK_NAME_MAP.put("Judge", BookID.BOOK_Judg);
+		BOOK_NAME_MAP.put("1Thess", BookID.BOOK_1Thess);
+		BOOK_NAME_MAP.put("2Thess", BookID.BOOK_2Thess);
 		// long names
 		BOOK_NAME_MAP.put("Genesis", BookID.BOOK_Gen);
 		BOOK_NAME_MAP.put("Exodus", BookID.BOOK_Exod);
@@ -100,7 +105,6 @@ public class AccordanceReferenceList implements VersificationFormat {
 		BOOK_NAME_MAP.put("2Peter", BookID.BOOK_2Pet);
 		BOOK_NAME_MAP.put("Revelation", BookID.BOOK_Rev);
 		BOOK_NAME_MAP.put("Tobit", BookID.BOOK_Tob);
-		BOOK_NAME_MAP.put("Judith", BookID.BOOK_Jdt);
 		BOOK_NAME_MAP.put("1Maccabees", BookID.BOOK_1Macc);
 		BOOK_NAME_MAP.put("2Maccabees", BookID.BOOK_2Macc);
 		BOOK_NAME_MAP.put("Wisdom", BookID.BOOK_Wis);

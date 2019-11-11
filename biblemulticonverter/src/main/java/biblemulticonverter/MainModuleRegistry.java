@@ -32,7 +32,6 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<ExportFormat>("BrowserBible", "Export format for The Browser Bible 3 by Digital Bible Society", BrowserBible.HELP_TEXT, BrowserBible.class));
 		result.add(new Module<ExportFormat>("BibleAnalyzerFormattedText", "Formatted Text Export format for Bible Analyzer", BibleAnalyzerFormattedText.HELP_TEXT, BibleAnalyzerFormattedText.class));
 		result.add(new Module<ExportFormat>("QuickBible", "Export format for QuickBible (Bible for Android)", QuickBible.HELP_TEXT, QuickBible.class));
-		result.add(new Module<ExportFormat>("Accordance", "Export format for Accordance", Accordance.HELP_TEXT, Accordance.class));
 		result.add(new Module<ExportFormat>("EquipdEPUB", "Epub export format for Equipd Bible", EquipdEPUB.HELP_TEXT, EquipdEPUB.class));
 		result.add(new Module<ExportFormat>("SimpleJSON", "Very simple JSON bible export (verse text only).", SimpleJSON.HELP_TEXT, SimpleJSON.class));
 		result.add(new Module<ExportFormat>("VersificationDetector", "Detect what versification most closely matches a module", VersificationDetector.HELP_TEXT, VersificationDetector.class));
@@ -56,6 +55,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<RoundtripFormat>("OSIS", "Very rudimentary OSIS (Open Scripture Information Standard) import/export.", OSIS.HELP_TEXT, OSIS.class));
 		result.add(new Module<RoundtripFormat>("TheWord", "Bible format used by theWord", TheWord.HELP_TEXT, TheWord.class));
 		result.add(new Module<RoundtripFormat>("UnboundBible", "Bible format downloadable from Biola University", UnboundBible.HELP_TEXT, UnboundBible.class));
+		result.add(new Module<RoundtripFormat>("Accordance", "Bible format for Accordance", Accordance.HELP_TEXT, Accordance.class));
 		result.add(new Module<RoundtripFormat>("USFM", "Bible format used by Paratext", USFM.HELP_TEXT, USFM.class));
 		result.add(new Module<RoundtripFormat>("USFX", "XML Bible format based on USFM used by ebible.org", USFX.HELP_TEXT, USFX.class));
 		result.add(new Module<RoundtripFormat>("USX", "XML Bible format used by Paratext and the Digital Bible Library", USX.HELP_TEXT, USX.class));

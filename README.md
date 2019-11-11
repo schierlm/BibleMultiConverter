@@ -80,7 +80,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **MyBible.Zone** ([more bibles](http://www.ph4.org/b4_index.php)): import and export (in a special SQLite edition)
 - **[Bible Analyzer](http://www.bibleanalyzer.com/)**: export only (text export for
   bibles and dictionaries, SQLite export for bibles)
-- **[Accordance](https://www.accordancebible.com/)**: export only
+- **[Accordance](https://www.accordancebible.com/)**: import and export
 - **[BibleWorks](https://www.bibleworks.com/)**: import and export
 - **[Equipd Bible](http://equipd.me/)**: export only
 - **[USFM](http://paratext.org/usfm/)/[USX](https://app.thedigitalbiblelibrary.org/)**: import and export (most tags are supported; not supported are `\ca \cp \va \vp \fig \fm`)
