@@ -1,6 +1,8 @@
 package biblemulticonverter.format;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -54,21 +56,26 @@ public class StrippedDiffable implements ExportFormat {
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
 		String outputFile = exportArgs[0];
+		doConversion(bible, System.out, exportArgs);
+		new Diffable().doExport(bible, new String[] {outputFile});
+	}
+
+	protected void doConversion(final Bible bible, PrintStream out, String... exportArgs) throws IOException {
 		if (exportArgs.length == 2 && exportArgs[1].equals("ExtractPrologs")) {
 			extractPrologs(bible);
-			System.out.println("Prologs extracted.");
+			out.println("Prologs extracted.");
 		} else if (exportArgs.length == 2 && exportArgs[1].equals("MergeIntroductionPrologs")) {
-			mergeIntroductionPrologs(bible);
-			System.out.println("Introduction prologs merged.");
+			mergeIntroductionPrologs(bible, out);
+			out.println("Introduction prologs merged.");
 		} else if (exportArgs.length == 2 && exportArgs[1].equals("ExtractFootnotes")) {
 			extractFootnotes(bible);
-			System.out.println("Footnotes extracted.");
+			out.println("Footnotes extracted.");
 		} else if (exportArgs.length == 2 && exportArgs[1].equals("RearrangeChapterBoundaries")) {
 			rearrangeChapterBoundaries(bible);
-			System.out.println("Chapter boundaries rearranged.");
+			out.println("Chapter boundaries rearranged.");
 		} else if (exportArgs.length == 3 && exportArgs[1].equals("SelectVariation")) {
 			selectVariation(bible, exportArgs[2]);
-			System.out.println("Variation " + exportArgs[2] + " kept.");
+			out.println("Variation " + exportArgs[2] + " kept.");
 		} else if (exportArgs.length == 3 && exportArgs[1].equals("ChangeVerseStructure")) {
 			changeVerseStructure(bible, VerseStructureFormat.valueOf(exportArgs[2].toUpperCase()), null);
 		} else if (exportArgs.length == 5 && exportArgs[1].equals("ChangeVerseStructure") && exportArgs[2].equalsIgnoreCase(VerseStructureFormat.VIRTUAL.name())) {
@@ -83,26 +90,26 @@ public class StrippedDiffable implements ExportFormat {
 					bible.getBooks().set(i, newBook);
 				}
 			}
-			System.out.println("Book " + exportArgs[2] + " renamed to " + exportArgs[3]);
+			out.println("Book " + exportArgs[2] + " renamed to " + exportArgs[3]);
 		} else if (exportArgs.length >= 2 && exportArgs[1].equals("OptimizeFormatting")) {
 			Map<String, String[]> mappings = new HashMap<>();
 			for (int i = 2; i < exportArgs.length; i++) {
 				int pos = exportArgs[i].indexOf("->");
 				if (pos == -1) {
-					System.out.println("WARNING: Skipped malformed formatting mapping " + exportArgs[i]);
+					out.println("WARNING: Skipped malformed formatting mapping " + exportArgs[i]);
 					continue;
 				}
 				String key = exportArgs[i].substring(0, pos).trim();
 				String[] values = exportArgs[i].substring(pos + 2).split("&");
 				mappings.put(key, values);
 			}
-			optimizeFormatting(bible, mappings);
+			optimizeFormatting(bible, out, mappings);
 		} else {
 			EnumSet<Feature> chosenFeeatures = EnumSet.noneOf(Feature.class);
 			for (int i = 1; i < exportArgs.length; i++) {
 				chosenFeeatures.add(Feature.valueOf(exportArgs[i]));
 			}
-			strip(bible, chosenFeeatures);
+			strip(bible, out, chosenFeeatures);
 		}
 		List<Book> booksToRemove = new ArrayList<Book>();
 		for (Book book : bible.getBooks()) {
@@ -116,10 +123,9 @@ public class StrippedDiffable implements ExportFormat {
 				booksToRemove.add(book);
 		}
 		bible.getBooks().removeAll(booksToRemove);
-		new Diffable().doExport(bible, new String[] { outputFile });
 	}
 
-	private void optimizeFormatting(Bible bible, Map<String, String[]> mappings) {
+	private void optimizeFormatting(Bible bible, PrintStream out, Map<String, String[]> mappings) {
 		CountFormattingVisitor oldCount = new CountFormattingVisitor();
 		CountFormattingVisitor newCount = new CountFormattingVisitor();
 		for (Book book : bible.getBooks()) {
@@ -143,11 +149,11 @@ public class StrippedDiffable implements ExportFormat {
 				}
 			}
 		}
-		System.out.println("Formatting instructions before optimizing:");
-		oldCount.printSummary();
-		System.out.println();
-		System.out.println("Formatting instructions after optimizing:");
-		newCount.printSummary();
+		out.println("Formatting instructions before optimizing:");
+		oldCount.printSummary(out);
+		out.println();
+		out.println("Formatting instructions after optimizing:");
+		newCount.printSummary(out);
 	}
 
 	private void extractPrologs(Bible bible) {
@@ -165,6 +171,10 @@ public class StrippedDiffable implements ExportFormat {
 	}
 
 	protected void mergeIntroductionPrologs(Bible bible) {
+		mergeIntroductionPrologs(bible, System.out);
+	}
+
+	private void mergeIntroductionPrologs(Bible bible, PrintStream out) {
 		List<FormattedText> prologBuffer = new ArrayList<FormattedText>();
 		for (int i = 0; i < bible.getBooks().size(); i++) {
 			Book book = bible.getBooks().get(i);
@@ -172,13 +182,13 @@ public class StrippedDiffable implements ExportFormat {
 				if (book.getChapters().size() == 1) {
 					Chapter ch = book.getChapters().get(0);
 					if (ch.getVerses().size() > 0)
-						System.out.println("WARNING: Book " + book.getAbbr() + " has verses; not merged.");
+						out.println("WARNING: Book " + book.getAbbr() + " has verses; not merged.");
 					if (ch.getProlog() != null)
 						prologBuffer.add(ch.getProlog());
 					else
-						System.out.println("WARNING: Book " + book.getAbbr() + " does not have a prolog; not merged.");
+						out.println("WARNING: Book " + book.getAbbr() + " does not have a prolog; not merged.");
 				} else {
-					System.out.println("WARNING: Book " + book.getAbbr() + " has " + book.getChapters().size() + " chapters; not merged.");
+					out.println("WARNING: Book " + book.getAbbr() + " has " + book.getChapters().size() + " chapters; not merged.");
 				}
 				bible.getBooks().remove(i);
 				i--;
@@ -200,7 +210,7 @@ public class StrippedDiffable implements ExportFormat {
 			}
 		}
 		if (prologBuffer.size() > 0) {
-			System.out.println("WARNING: " + prologBuffer.size() + " introduction prologs after last bible book were merged to first bible book!");
+			out.println("WARNING: " + prologBuffer.size() + " introduction prologs after last bible book were merged to first bible book!");
 			for (int i = 0; i < bible.getBooks().size(); i++) {
 				Book book = bible.getBooks().get(i);
 				if (book.getId().getZefID() > 0 && prologBuffer.size() > 0 && book.getChapters().size() > 0) {
@@ -340,7 +350,7 @@ public class StrippedDiffable implements ExportFormat {
 		}
 	}
 
-	private void selectVariation(Bible bible, String variation) {
+	protected void selectVariation(Bible bible, String variation) {
 		for (Book book : bible.getBooks()) {
 			for (Chapter chapter : book.getChapters()) {
 				if (chapter.getProlog() != null) {
@@ -361,7 +371,7 @@ public class StrippedDiffable implements ExportFormat {
 		}
 	}
 
-	protected void strip(Bible bible, EnumSet<Feature> chosenFeatures) {
+	protected void strip(Bible bible, PrintStream out, EnumSet<Feature> chosenFeatures) {
 		EnumSet<Feature> foundFeatures = EnumSet.noneOf(Feature.class);
 		for (int i = 0; i < bible.getBooks().size(); i++) {
 			Book book = bible.getBooks().get(i);
@@ -426,17 +436,17 @@ public class StrippedDiffable implements ExportFormat {
 		stripped.retainAll(foundFeatures);
 		chosenFeatures.removeAll(stripped);
 		foundFeatures.removeAll(stripped);
-		printFeatureSet("Features stripped:", stripped);
-		printFeatureSet("Features to strip not found:", chosenFeatures);
-		printFeatureSet("Features still present after stripping:", foundFeatures);
+		printFeatureSet("Features stripped:", out, stripped);
+		printFeatureSet("Features to strip not found:", out, chosenFeatures);
+		printFeatureSet("Features still present after stripping:", out, foundFeatures);
 	}
 
-	private void printFeatureSet(String headline, EnumSet<Feature> set) {
-		System.out.println(headline);
+	private void printFeatureSet(String headline, PrintStream out, EnumSet<Feature> set) {
+		out.println(headline);
 		for (Feature f : set) {
-			System.out.println("\t" + f.toString());
+			out.println("\t" + f.toString());
 		}
-		System.out.println();
+		out.println();
 	}
 
 	private static boolean isEnabled(Feature feature, EnumSet<Feature> chosenFeatures, EnumSet<Feature> foundFeatures) {
@@ -731,11 +741,11 @@ public class StrippedDiffable implements ExportFormat {
 			counts.get(key).incrementAndGet();
 		}
 
-		public void printSummary() {
+		public void printSummary(PrintStream out) {
 			List<String> keys = new ArrayList<>(counts.keySet());
 			Collections.sort(keys);
 			for (String key : keys) {
-				System.out.println("\t" + key + ": " + counts.get(key));
+				out.println("\t" + key + ": " + counts.get(key));
 			}
 		}
 	}

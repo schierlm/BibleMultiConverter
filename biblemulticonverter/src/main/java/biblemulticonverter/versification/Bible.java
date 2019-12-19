@@ -1,6 +1,7 @@
 package biblemulticonverter.versification;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -37,8 +38,12 @@ public class Bible implements VersificationFormat {
 	public void doImport(VersificationSet vset, String... importArgs) throws Exception {
 		Module<ImportFormat> importModule = Main.importFormats.get(importArgs[0]);
 		biblemulticonverter.data.Bible bible = importModule.getImplementationClass().newInstance().doImport(new File(importArgs[1]));
+		doImport(vset, bible, importArgs[2], importArgs[3]);
+	}
+
+	protected void doImport(VersificationSet vset, biblemulticonverter.data.Bible bible, String versificationName, String importSources) throws IOException {
 		EnumSet<ImportSource> sources = EnumSet.noneOf(ImportSource.class);
-		for (String source : importArgs[3].split(",")) {
+		for (String source : importSources.split(",")) {
 			sources.add(ImportSource.valueOf(source.toUpperCase()));
 		}
 		final List<Reference> refs = new ArrayList<>();
@@ -85,7 +90,7 @@ public class Bible implements VersificationFormat {
 			}
 		}
 		refs.addAll(xrefRefs);
-		vset.add(Arrays.asList(Versification.fromReferenceList(importArgs[2], null, null, refs)), null);
+		vset.add(Arrays.asList(Versification.fromReferenceList(versificationName, null, null, refs)), null);
 	}
 
 	@Override
@@ -95,6 +100,11 @@ public class Bible implements VersificationFormat {
 
 	@Override
 	public void doExport(File outputFile, List<Versification> versifications, List<VersificationMapping> mappings) throws Exception {
+		biblemulticonverter.data.Bible bible = buildDummyBible(versifications, mappings);
+		new Diffable().doExport(bible, outputFile.getPath());
+	}
+
+	protected biblemulticonverter.data.Bible buildDummyBible(List<Versification> versifications, List<VersificationMapping> mappings) throws IOException {
 		if (versifications.size() != 1 || !mappings.isEmpty())
 			throw new IllegalArgumentException("Bible export can only export one single versification and no mappings");
 		Versification versification = versifications.get(0);
@@ -115,7 +125,7 @@ public class Bible implements VersificationFormat {
 			v.finished();
 			chs.get(r.getChapter() - 1).getVerses().add(v);
 		}
-		new Diffable().doExport(bible, outputFile.getPath());
+		return bible;
 	}
 
 	private static enum ImportSource {

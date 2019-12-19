@@ -1,6 +1,7 @@
 package biblemulticonverter.format;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -50,6 +51,11 @@ public class VersificationMappedDiffable implements ExportFormat {
 		String outputFile = exportArgs[0];
 		VersificationSet vs = new VersificationSet(new File(exportArgs[1]));
 		VersificationMapping vm = vs.findMapping(exportArgs[2]);
+		doConversion(bible, vm, exportArgs);
+		new Diffable().doExport(bible, new String[] {outputFile});
+	}
+
+	protected void doConversion(final Bible bible, VersificationMapping vm, String... exportArgs) throws IOException {
 		boolean dropUnmapped = false, showNumbers = false, addTags = false;
 		boolean useTags = false, reorderVerses = false;
 		for (int i = 3; i < exportArgs.length; i++) {
@@ -190,14 +196,15 @@ public class VersificationMappedDiffable implements ExportFormat {
 				}
 			}
 		}
+		bible.getBooks().clear();
 		for (Book bk : newBible.getBooks()) {
 			for (Chapter ch : bk.getChapters()) {
 				for (Verse v : ch.getVerses()) {
 					v.finished();
 				}
 			}
+			bible.getBooks().add(bk);
 		}
-		bible = newBible;
 		if (reorderVerses) {
 			Versification v = vm.getTo();
 			List<BookID> bookOrder = new ArrayList<>();
@@ -227,7 +234,6 @@ public class VersificationMappedDiffable implements ExportFormat {
 				}
 			}
 		}
-		new Diffable().doExport(bible, new String[] { outputFile });
 	}
 
 	private static class UnmappedVerse {
