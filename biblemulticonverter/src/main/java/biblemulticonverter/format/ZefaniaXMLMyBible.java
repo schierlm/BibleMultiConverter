@@ -211,7 +211,8 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 
 						@Override
 						public void visitRawHTML(RawHTMLMode mode, String raw) throws IOException {
-							throw new RuntimeException("Raw HTML in prologs not supported");
+							if (mode != RawHTMLMode.ONLINE)
+								targetStack.get(0).add(raw);
 						}
 
 						@Override
