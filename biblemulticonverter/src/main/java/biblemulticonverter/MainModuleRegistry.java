@@ -64,6 +64,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<RoundtripFormat>("BibleWorks", "Plain text import and export format for BibleWorks", BibleWorks.HELP_TEXT, BibleWorks.class));
 		result.add(new Module<RoundtripFormat>("BibleWorksRTF", "RTF import and export format for BibleWorks", BibleWorksRTF.HELP_TEXT, BibleWorksRTF.class));
 		result.add(new Module<RoundtripFormat>("RoundtripTaggedText", "A text-format that consistently uses numbered tags to make automated editing easy.", RoundtripTaggedText.HELP_TEXT, RoundtripTaggedText.class));
+		result.add(new Module<RoundtripFormat>("SoftProjector", "Bible format used by SoftProjector", SoftProjector.HELP_TEXT, SoftProjector.class));
 		return result;
 	}
 
@@ -87,6 +88,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<VersificationFormat>("CCEL", "Versification format used by http://www.ccel.org/refsys/", CCEL.HELP_TEXT, CCEL.class));
 		result.add(new Module<VersificationFormat>("OpenScriptures", "Versification format used by https://github.com/openscriptures/BibleOrgSys/", OpenScriptures.HELP_TEXT, OpenScriptures.class));
 		result.add(new Module<VersificationFormat>("AccordanceReferenceList", "Build a versification from a plain text reference list (English book names) exported from Accordance.", AccordanceReferenceList.HELP_TEXT, AccordanceReferenceList.class));
+		result.add(new Module<VersificationFormat>("SoftProjectorMapping", "Build a versification mapping from a SoftProjector bible file.", SoftProjectorMapping.HELP_TEXT, SoftProjectorMapping.class));
 		result.add(new Module<VersificationFormat>("ReportHTML", "HTML report that shows difference of covered verses.", ReportHTML.HELP_TEXT, ReportHTML.class));
 		result.add(new Module<VersificationFormat>("Bible", "Extract versification from a Bible or create dummy Bible from versification.", Bible.HELP_TEXT, Bible.class));
 		return result;

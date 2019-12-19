@@ -83,6 +83,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[Accordance](https://www.accordancebible.com/)**: import and export
 - **[BibleWorks](https://www.bibleworks.com/)**: import and export
 - **[Equipd Bible](http://equipd.me/)**: export only
+- **[SoftProjector](https://softprojector.org/)**: import and export
 - **[USFM](http://paratext.org/usfm/)/[USX](https://app.thedigitalbiblelibrary.org/)**: import and export (most tags are supported; not supported are `\ca \cp \va \vp \fig \fm`)
 - **[USFX](https://ebible.org/usfx/)**: import only
 
@@ -245,6 +246,7 @@ Supported Versification formats:
 - **[OpenScriptures](https://github.com/openscriptures/BibleOrgSys/tree/master/DataFiles/VersificationSystems)**: Import only (versifications only, no mappings)
 - **SWORDVersification**: Import versifications and mappings from SWORD
 - **AccordanceReferenceList**: Import a reference list from Accordance
+- **SoftProjectorVersification**: Import versification mapping from SoftProjector bible
 - **ReportHTML**: Export only (HTML report that shows difference of covered verses)
 
 SWORD import

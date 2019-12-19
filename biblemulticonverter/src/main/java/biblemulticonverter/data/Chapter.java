@@ -287,6 +287,8 @@ public class Chapter {
 					cc = 0;
 					vv = Integer.parseInt(part);
 				}
+				if (vv == 0)
+					continue;
 				if (cc != chapter) {
 					if (chapter == 0 && minVerse == Integer.MAX_VALUE) {
 						// no (main) verses seen yet, use this extra verse:
