@@ -289,6 +289,7 @@ public class CCEL implements VersificationFormat {
 			oi.setCode(formatReference(r, kingdoms));
 			refsys.getOsisIDs().getOsisID().add(oi);
 		}
+		boolean exportIdenticalRefs = Boolean.getBoolean("biblemulticonverter.ccil.exportidenticalrefs");
 		for (VersificationMapping vm : mappings) {
 			Map<BookID, List<List<Reference>>> destReferencesByBook = new EnumMap<>(BookID.class);
 			Map<Reference, List<List<Reference>>> destReferencesByChapter = new HashMap<>();
@@ -393,7 +394,7 @@ public class CCEL implements VersificationFormat {
 				if (to.size() == 0) {
 					addMapping(refmap, formattedFrom, "");
 				} else if (to.size() == 1) {
-					if (!to.get(0).equals(mappedFrom)) {
+					if (!to.get(0).equals(mappedFrom) || exportIdenticalRefs) {
 						addMapping(refmap, formattedFrom, formatReference(to.get(0), kingdomsTo));
 					}
 				} else {

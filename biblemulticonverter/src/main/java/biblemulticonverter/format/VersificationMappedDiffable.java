@@ -3,6 +3,7 @@ package biblemulticonverter.format;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -39,6 +40,8 @@ public class VersificationMappedDiffable implements ExportFormat {
 			"ShowNumbers   - Add bold verse numbers of original verses in parentheses",
 			"AddTags       - Add tags (Extra Attributes) to automatically identify the mapping later",
 			"UseTags       - If there are existing tags, use them as if they were verse numbers",
+			"CloneVerses   - If a verse maps to more than one verse, write the verse into all of them,",
+			"                tagged with e.g. !!![2/3] verseText!!!, to make manual fixing easier",
 			"ReorderVerses - Reorder verses to match the target versification",
 			"",
 			"When using UseTags, you may want to use an auto-generated mapping <from>/<from>/-1.",
@@ -57,7 +60,7 @@ public class VersificationMappedDiffable implements ExportFormat {
 
 	protected void doConversion(final Bible bible, VersificationMapping vm, String... exportArgs) throws IOException {
 		boolean dropUnmapped = false, showNumbers = false, addTags = false;
-		boolean useTags = false, reorderVerses = false;
+		boolean useTags = false, cloneVerses = false, reorderVerses = false;
 		for (int i = 3; i < exportArgs.length; i++) {
 			if (exportArgs[i].equals("DropUnmapped"))
 				dropUnmapped = true;
@@ -67,6 +70,8 @@ public class VersificationMappedDiffable implements ExportFormat {
 				addTags = true;
 			else if (exportArgs[i].equals("UseTags"))
 				useTags = true;
+			else if (exportArgs[i].equals("CloneVerses"))
+				cloneVerses = true;
 			else if (exportArgs[i].equals("ReorderVerses"))
 				reorderVerses = true;
 			else
@@ -121,7 +126,7 @@ public class VersificationMappedDiffable implements ExportFormat {
 					}
 				}
 				for (UnmappedVerse unmappedVerse : unmappedVerses) {
-					Reference ref = unmappedVerse.origReference, newRef;
+					Reference ref = unmappedVerse.origReference;
 					List<Reference> newRefs = vm.getMapping(ref);
 					if ((newRefs == null || newRefs.isEmpty()) && dropUnmapped) {
 						if (unmappedVerse.prolog != null) {
@@ -129,70 +134,81 @@ public class VersificationMappedDiffable implements ExportFormat {
 						}
 						continue;
 					}
-					if (newRefs == null || newRefs.contains(ref) || newRefs.isEmpty())
-						newRef = ref;
-					else
-						newRef = newRefs.get(0);
-					if (!newBooks.containsKey(newRef.getBook())) {
-						Book newBook = null;
-						for (Book oldBook : bible.getBooks()) {
-							if (oldBook.getId() == newRef.getBook()) {
-								newBook = new Book(oldBook.getAbbr(), newRef.getBook(), oldBook.getShortName(), oldBook.getLongName());
+					if (newRefs == null || newRefs.isEmpty())
+						newRefs = Arrays.asList(ref);
+					if (!cloneVerses && newRefs.size() > 1) {
+						if (newRefs.contains(ref))
+							newRefs = Arrays.asList(ref);
+						else
+							newRefs = Arrays.asList(newRefs.get(0));
+					}
+					for(int rc = 0; rc < newRefs.size(); rc++) {
+						Reference newRef = newRefs.get(rc);
+						if (!newBooks.containsKey(newRef.getBook())) {
+							Book newBook = null;
+							for (Book oldBook : bible.getBooks()) {
+								if (oldBook.getId() == newRef.getBook()) {
+									newBook = new Book(oldBook.getAbbr(), newRef.getBook(), oldBook.getShortName(), oldBook.getLongName());
+									break;
+								}
+							}
+							if (newBook == null)
+								newBook = new Book(newRef.getBook().getOsisID(), newRef.getBook(), newRef.getBook().getEnglishName(), newRef.getBook().getEnglishName());
+							newBooks.put(newRef.getBook(), newBook);
+							newBible.getBooks().add(newBook);
+						}
+						Book newBook = newBooks.get(newRef.getBook());
+						while (newBook.getChapters().size() < newRef.getChapter())
+							newBook.getChapters().add(new Chapter());
+						Chapter newChapter = newBook.getChapters().get(newRef.getChapter() - 1);
+						if (rc == 0 && unmappedVerse.prolog != null) {
+							FormattedText newProlog = new FormattedText();
+							if (newChapter.getProlog() != null) {
+								newChapter.getProlog().accept(newProlog.getAppendVisitor());
+								newProlog.getAppendVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
+							}
+							unmappedVerse.prolog.accept(new MapXrefVisitor(newProlog.getAppendVisitor(), vm, dropUnmapped, cloneVerses, abbrMap));
+							newProlog.finished();
+							newChapter.setProlog(newProlog);
+						}
+						Verse newVerse = null;
+						for (Verse v : newChapter.getVerses()) {
+							if (v.getNumber().equals(newRef.getVerse())) {
+								newVerse = v;
 								break;
 							}
 						}
-						if (newBook == null)
-							newBook = new Book(newRef.getBook().getOsisID(), newRef.getBook(), newRef.getBook().getEnglishName(), newRef.getBook().getEnglishName());
-						newBooks.put(newRef.getBook(), newBook);
-						newBible.getBooks().add(newBook);
-					}
-					Book newBook = newBooks.get(newRef.getBook());
-					while (newBook.getChapters().size() < newRef.getChapter())
-						newBook.getChapters().add(new Chapter());
-					Chapter newChapter = newBook.getChapters().get(newRef.getChapter() - 1);
-					if (unmappedVerse.prolog != null) {
-						FormattedText newProlog = new FormattedText();
-						if (newChapter.getProlog() != null) {
-							newChapter.getProlog().accept(newProlog.getAppendVisitor());
-							newProlog.getAppendVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
+						boolean needSpace = true;
+						if (newVerse == null) {
+							newVerse = new Verse(newRef.getVerse());
+							newChapter.getVerses().add(newVerse);
+							needSpace = false;
 						}
-						unmappedVerse.prolog.accept(new MapXrefVisitor(newProlog.getAppendVisitor(), vm, dropUnmapped, abbrMap));
-						newProlog.finished();
-						newChapter.setProlog(newProlog);
-					}
-					Verse newVerse = null;
-					for (Verse v : newChapter.getVerses()) {
-						if (v.getNumber().equals(newRef.getVerse())) {
-							newVerse = v;
-							break;
-						}
-					}
-					boolean needSpace = true;
-					if (newVerse == null) {
-						newVerse = new Verse(newRef.getVerse());
-						newChapter.getVerses().add(newVerse);
-						needSpace = false;
-					}
-					if (needSpace || !ref.equals(newRef)) {
-						Visitor<RuntimeException> v = newVerse.getAppendVisitor();
-						if (addTags)
-							v = v.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "v11n", "origverse", ref.getBook().getOsisID() + "--" + ref.getChapter() + "--" + ref.getVerse().replace('.', 'D').replace(',', 'C').replace('/', 'S'));
-						if (needSpace)
-							v.visitText(" ");
-						if (showNumbers) {
-							String verseNumber;
-							if (!ref.getBook().equals(newRef.getBook())) {
-								verseNumber = ref.getBook().getOsisID() + " " + ref.getChapter() + ":" + ref.getVerse();
-							} else if (ref.getChapter() != newRef.getChapter()) {
-								verseNumber = ref.getChapter() + ":" + ref.getVerse();
-							} else {
-								verseNumber = ref.getVerse();
+						if (needSpace || !ref.equals(newRef)) {
+							Visitor<RuntimeException> v = newVerse.getAppendVisitor();
+							if (addTags)
+								v = v.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "v11n", "origverse", ref.getBook().getOsisID() + "--" + ref.getChapter() + "--" + ref.getVerse().replace('.', 'D').replace(',', 'C').replace('/', 'S'));
+							if (needSpace)
+								v.visitText(" ");
+							if (showNumbers) {
+								String verseNumber;
+								if (!ref.getBook().equals(newRef.getBook())) {
+									verseNumber = ref.getBook().getOsisID() + " " + ref.getChapter() + ":" + ref.getVerse();
+								} else if (ref.getChapter() != newRef.getChapter()) {
+									verseNumber = ref.getChapter() + ":" + ref.getVerse();
+								} else {
+									verseNumber = ref.getVerse();
+								}
+								v.visitFormattingInstruction(FormattingInstructionKind.BOLD).visitText("(" + verseNumber + ")");
+								v.visitText(" ");
 							}
-							v.visitFormattingInstruction(FormattingInstructionKind.BOLD).visitText("(" + verseNumber + ")");
-							v.visitText(" ");
 						}
+						if (newRefs.size() > 1)
+							newVerse.getAppendVisitor().visitText("!!!["+(rc+1)+"/"+newRefs.size()+"] ");
+						unmappedVerse.verse.accept(new MapXrefVisitor(newVerse.getAppendVisitor(), vm, dropUnmapped, cloneVerses, abbrMap));
+						if (newRefs.size() > 1)
+							newVerse.getAppendVisitor().visitText("!!!");
 					}
-					unmappedVerse.verse.accept(new MapXrefVisitor(newVerse.getAppendVisitor(), vm, dropUnmapped, abbrMap));
 				}
 			}
 		}
@@ -254,19 +270,21 @@ public class VersificationMappedDiffable implements ExportFormat {
 		private final Visitor<RuntimeException> next;
 		private final VersificationMapping vm;
 		private final boolean dropUnmapped;
+		private final boolean cloneVerses;
 		private final Map<BookID, String> abbrMap;
 
-		private MapXrefVisitor(Visitor<RuntimeException> next, VersificationMapping vm, boolean dropUnmapped, Map<BookID, String> abbrMap) {
+		private MapXrefVisitor(Visitor<RuntimeException> next, VersificationMapping vm, boolean dropUnmapped, boolean cloneVerses, Map<BookID, String> abbrMap) {
 			super(next);
 			this.next = next;
 			this.vm = vm;
 			this.dropUnmapped = dropUnmapped;
+			this.cloneVerses = cloneVerses;
 			this.abbrMap = abbrMap;
 		}
 
 		@Override
 		protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
-			return new MapXrefVisitor(childVisitor, vm, dropUnmapped, abbrMap);
+			return new MapXrefVisitor(childVisitor, vm, dropUnmapped, cloneVerses, abbrMap);
 		}
 
 		@Override
@@ -275,6 +293,31 @@ public class VersificationMappedDiffable implements ExportFormat {
 			List<Reference> newRefs = vm.getMapping(ref);
 			if ((newRefs == null || newRefs.isEmpty()) && dropUnmapped) {
 				return next;
+			}
+			if (cloneVerses) {
+				Reference endRef = new Reference(book, lastChapter, lastVerse), newEndRef;
+				List<Reference> newEndRefs = vm.getMapping(endRef);
+				if ((newEndRefs == null || newEndRefs.isEmpty()) && dropUnmapped) {
+					return next;
+				}
+				if (newRefs == null || newRefs.isEmpty())
+					newRef = ref;
+				else
+					newRef = newRefs.get(0);
+				if (newEndRefs == null || newEndRefs.isEmpty())
+					newEndRef = endRef;
+				else
+					newEndRef = newEndRefs.get(newEndRefs.size()-1);
+				if (newRef.getBook() != newEndRef.getBook())
+					newEndRef = newRef;
+				String newAbbr;
+				if (book == newRef.getBook())
+					newAbbr = bookAbbr;
+				else if (abbrMap.containsKey(newRef.getBook()))
+					newAbbr = abbrMap.get(newRef.getBook());
+				else
+					newAbbr = newRef.getBook().getOsisID();
+				return next.visitCrossReference(newAbbr, newRef.getBook(), newRef.getChapter(), newRef.getVerse(), newEndRef.getChapter(), newEndRef.getVerse());
 			}
 			if (newRefs == null || newRefs.contains(ref) || newRefs.isEmpty())
 				newRef = ref;

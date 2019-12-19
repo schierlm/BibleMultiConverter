@@ -38,6 +38,7 @@ public class VersificationTool implements Tool {
 			"- rename <versification> <newName>",
 			"- remove [<versification|mapping> [...]]",
 			"- join <mapping> [<mapping> [...]]",
+			"- reverse <mapping>",
 			"- compare {<versification1> <versification2>|<mapping1> <mapping2>}"
 	};
 
@@ -107,6 +108,20 @@ public class VersificationTool implements Tool {
 				m1 = VersificationMapping.join(m1, m2);
 			}
 			vs.add(null, Arrays.asList(m1));
+			save = true;
+			break;
+		case "reverse":
+			VersificationMapping mr = vs.findMapping(args[2]);
+			Map<Reference, List<Reference>> rm = new HashMap<>();
+			for (int j = 0; j < mr.getFrom().getVerseCount(); j++) {
+				Reference r1 = mr.getFrom().getReference(j);
+				for (Reference r2 : mr.getMapping(r1)) {
+					if (!rm.containsKey(r2))
+						rm.put(r2, new ArrayList<>());
+					rm.get(r2).add(r1);
+				}
+			}
+			vs.add(null, Arrays.asList(VersificationMapping.build(mr.getTo(), mr.getFrom(), rm)));
 			save = true;
 			break;
 		case "compare":
