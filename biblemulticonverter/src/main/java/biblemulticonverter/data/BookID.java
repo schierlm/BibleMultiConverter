@@ -108,7 +108,7 @@ public enum BookID {
 	BOOK_EsthGr("EsthGr", false, 902, "Greek Esther", "EsG"),
 	BOOK_DanGr("DanGr", false, 903, "Greek Daniel", "DaG"),
 	BOOK_Jub("Jub", false, 904, "Jubilees", "Jub"),
-	BOOK_4Ezra("4Ezra", false, 905, "Ezra Apocalpyse", "4Ez"),
+	BOOK_4Ezra("4Ezra", false, 905, "Ezra Apocalypse", "4Ez"),
 	BOOK_5Ezra("5Ezra", false, 906, "5 Ezra", "5Ez"),
 	BOOK_6Ezra("6Ezra", false, 907, "6 Ezra", "6Ez"),
 	BOOK_5ApocSyrPss("5ApocSyrPss", false, 908, "5 Apocryphal Syriac Psalms", "Ps3"),

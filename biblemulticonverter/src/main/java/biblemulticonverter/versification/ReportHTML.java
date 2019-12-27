@@ -29,6 +29,7 @@ public class ReportHTML implements VersificationFormat {
 	public static final String[] HELP_TEXT = {
 			"HTML report that shows difference of covered verses.",
 			"",
+			"If the filename contains 'count', each table will have an extra column that contains the total verse count.",
 			"If the filename contains 'flat', verse maps are not merged if they are the same in one book.",
 			"If the filename contains 'flip', columns and rows are flipped (as on the Logos Verse Maps wiki page).",
 			"",
@@ -204,6 +205,7 @@ public class ReportHTML implements VersificationFormat {
 		}
 		boolean flip = outputFile.getName().contains("flip");
 		boolean flat = outputFile.getName().contains("flat");
+		boolean counts = outputFile.getName().contains("count");
 		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFile), StandardCharsets.UTF_8))) {
 			bw.write("<!DOCTYPE html>\n" +
 					"<html>\n" +
@@ -261,15 +263,28 @@ public class ReportHTML implements VersificationFormat {
 						}
 						bw.write("</tr>\n");
 					}
+					if (counts) {
+						bw.write("<tr><th><i>Counts</i></th>");
+						for (String key : tableKeys) {
+							bw.write("<td><i>" + table.get(key).getVerseCount() + "</i></td>");
+						}
+						bw.write("</tr>\n");
+					}
 				} else {
 					for (int i = 1; i <= maxChaps; i++) {
 						bw.write("<th>" + i + "</th>");
+					}
+					if (counts) {
+						bw.write("<th><i>Counts</i></th>");
 					}
 					bw.write("</tr>\n");
 					for (String key : tableKeys) {
 						bw.write("<tr><th>" + renderKey(key) + "</th>");
 						for (int i = 1; i <= maxChaps; i++) {
 							bw.write("<td>" + h(table.get(key).getChapter(i).getVerseString()) + "</td>");
+						}
+						if (counts) {
+							bw.write("<td><i>" + table.get(key).getVerseCount() + "</i></td>");
 						}
 						bw.write("</tr>\n");
 					}
@@ -302,6 +317,13 @@ public class ReportHTML implements VersificationFormat {
 			return chapters.size();
 		}
 
+		public int getVerseCount() {
+			int result = 0;
+			for (BookVersificationChapter chapter : chapters)
+				result += chapter.getVerseCount();
+			return result;
+		}
+
 		public BookVersificationChapter getChapter(int chapter) {
 			return chapter <= chapters.size() ? chapters.get(chapter - 1) : BookVersificationChapter.EMPTY_CHAPTER;
 		}
@@ -330,6 +352,7 @@ public class ReportHTML implements VersificationFormat {
 
 		private StringBuilder verses = new StringBuilder();
 		private int rangeStart = -1, rangeEnd = -1;
+		private int verseCount = 0;
 
 		private void doAdd(String verse) {
 			if (verses.length() > 0)
@@ -352,7 +375,12 @@ public class ReportHTML implements VersificationFormat {
 			return verses.toString();
 		}
 
+		public int getVerseCount() {
+			return verseCount;
+		}
+
 		public void addVerse(String verse) {
+			verseCount++;
 			try {
 				int vno = Integer.parseInt(verse);
 				if (vno <= 0)
