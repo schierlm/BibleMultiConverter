@@ -62,22 +62,22 @@ modules without loss of data:
 
 In addition, the following other formats are supported, with varying accuracy:
 
-- **HaggaiXML**: import and export
-- **OSIS**: import and export (only a very limited subset of OSIS standard)
-- **ZefaniaXML**: import and export (There are two import filters and three export
+- **[HaggaiXML](http://www.freie-bibel.de/official/projekt/haggai_xml.html)**: import and export
+- **[OSIS](https://ebible.org/osis/)**: import and export (only a very limited subset of OSIS standard)
+- **[ZefaniaXML](https://bgfdb.de/zefania.de/)**: import and export (There are two import filters and three export
   filters available that focus on different subsets/features of this quite diverse
   format)
 - **ZefDic** (Zefania's dictionary format): import and export (two export filters)
-- **TheWord**: import and export
-- **PalmBible+**: import and export (for the XML-like format used to build PDBs)
+- **[TheWord](https://www.theword.net/)**: import and export
+- **[PalmBible+](http://palmbibleplus.sourceforge.net/)**: import and export (for the XML-like format used to build PDBs)
 - **[UnboundBible](https://unbound.biola.edu/)**: Import and export
-- **MobiPocket**: export only
-- **Volksbibel2000**: export only
-- **OnLineBible**: export only
+- **[MobiPocket](https://en.wikipedia.org/wiki/Mobipocket)**: export only
+- **[Volksbibel2000](http://www.volksbibel-2000.de/)**: export only
+- **[OnLineBible](https://onlinebible.com/)**: export only
 - **[BrowserBible](https://github.com/digitalbiblesociety/browserbible-3/)**: export only
 - **[Quick Bible](http://www.bibleforandroid.com/)**: export only
-- **SWORD modules**: import only (see below for details)
-- **MyBible.Zone** ([more bibles](http://www.ph4.org/b4_index.php)): import and export (in a special SQLite edition)
+- **[SWORD](https://www.crosswire.org/sword) modules**: import only (see below for details)
+- **[MyBible.Zone](https://mybible.zone/index-eng.php)** ([more bibles](http://www.ph4.org/b4_index.php)): import and export (in a special SQLite edition)
 - **[Bible Analyzer](http://www.bibleanalyzer.com/)**: export only (text export for
   bibles and dictionaries, SQLite export for bibles)
 - **[Accordance](https://www.accordancebible.com/)**: import and export
