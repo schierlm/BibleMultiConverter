@@ -449,6 +449,11 @@ public class TheWord implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws IOException {
+			if (category.equals("mybiblezone") && key.equals("rawtag") && value.equals("m")) {
+				bw.write("<WT");
+				suffixStack.add(">");
+				return this;
+			}
 			Visitor<IOException> result = prio.handleVisitor(category, this);
 			if (result != null)
 				suffixStack.add("");

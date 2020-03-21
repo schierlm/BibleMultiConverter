@@ -283,7 +283,7 @@ public class MyBibleZone implements RoundtripFormat {
 					Chapter ch = bk.getChapters().get(c - 1);
 					Verse vv = new Verse(v == 0 ? "1/t" : "" + v);
 					try {
-						String rest = convertFromVerse(text, vv.getAppendVisitor(), footnoteDB, new int[] { b, c, v });
+						String rest = convertFromVerse(text, vv.getAppendVisitor(), footnoteDB, new int[] { b, c, v }, bk.getId().isNT());
 						if (!rest.isEmpty()) {
 							System.out.println("WARNING: Treating tags as plaintext: " + rest);
 							vv.getAppendVisitor().visitText(rest.replace('\t', ' ').replaceAll("  +", " "));
@@ -426,7 +426,7 @@ public class MyBibleZone implements RoundtripFormat {
 		vv.visitText(text);
 	}
 
-	private String convertFromVerse(String text, Visitor<RuntimeException> vv, SqlJetDb footnoteDB, int[] vnums) {
+	private String convertFromVerse(String text, Visitor<RuntimeException> vv, SqlJetDb footnoteDB, int[] vnums, boolean nt) {
 		int pos = text.indexOf("<");
 		while (pos != -1) {
 			String strongsWord = "";
@@ -449,10 +449,14 @@ public class MyBibleZone implements RoundtripFormat {
 				int[] snum = new int[txt.length];
 				for (int i = 0; i < txt.length; i++) {
 					try {
-						snum[i] = Integer.parseInt(txt[i].trim().replaceAll("^[GH]", ""));
+						String normalized = txt[i].trim().replaceAll(nt ? "^G" : "^H", "");
+						String stripped = normalized.replaceAll("^[GHLS]", "");
+						snum[i] = Integer.parseInt(stripped);
 						if (snum[i] == 0) {
 							System.out.println("WARNING: Strong number may not be zero");
 							snum[i] = 99999;
+						} else if (!normalized.equals(stripped)) {
+							System.out.println("WARNING: Treating Strong number " + txt[i] + " as " + (nt ? "G" : "H") + stripped);
 						}
 					} catch (NumberFormatException ex) {
 						System.out.println("WARNING: Invalid Strong number: " + txt[i]);
@@ -475,7 +479,7 @@ public class MyBibleZone implements RoundtripFormat {
 				else
 					vv.visitGrammarInformation(snum.length == 0 ? null : snum, rmac == null ? null : new String[] { rmac }, null).visitText(strongsWord);
 			} else if (text.startsWith("<n>")) {
-				text = convertFromVerse(text.substring(3), vv.visitCSSFormatting("font-style: italic; myBibleType=note"), footnoteDB, vnums);
+				text = convertFromVerse(text.substring(3), vv.visitCSSFormatting("font-style: italic; myBibleType=note"), footnoteDB, vnums, nt);
 				if (!text.startsWith("</n>"))
 					System.out.println("WARNING: Unclosed <n> tag at: " + text);
 				else {
@@ -497,7 +501,7 @@ public class MyBibleZone implements RoundtripFormat {
 				text = text.substring(5);
 			} else if ((text.startsWith("<m>") && rawMorphology) || (text.startsWith("<f>") && rawFootnotes)) {
 				String tag = text.substring(1, 2);
-				text = convertFromVerse(text.substring(3), vv.visitExtraAttribute(ExtraAttributePriority.SKIP, "mybiblezone", "rawtag", tag), footnoteDB, vnums);
+				text = convertFromVerse(text.substring(3), vv.visitExtraAttribute(ExtraAttributePriority.SKIP, "mybiblezone", "rawtag", tag), footnoteDB, vnums, nt);
 				if (!text.startsWith("</" + tag + ">"))
 					System.out.println("WARNING: Unclosed <" + tag + "> tag at: " + text);
 				else {
@@ -508,28 +512,28 @@ public class MyBibleZone implements RoundtripFormat {
 				vv.visitText("<");
 				text = text.substring(1);
 			} else if (text.startsWith("<i>")) {
-				text = convertFromVerse(text.substring(3), vv.visitFormattingInstruction(FormattingInstructionKind.ITALIC), footnoteDB, vnums);
+				text = convertFromVerse(text.substring(3), vv.visitFormattingInstruction(FormattingInstructionKind.ITALIC), footnoteDB, vnums, nt);
 				if (!text.startsWith("</i>"))
 					System.out.println("WARNING: Unclosed <i> tag at: " + text);
 				else {
 					text = text.substring(4);
 				}
 			} else if (text.startsWith("<J>")) {
-				text = convertFromVerse(text.substring(3), vv.visitFormattingInstruction(FormattingInstructionKind.WORDS_OF_JESUS), footnoteDB, vnums);
+				text = convertFromVerse(text.substring(3), vv.visitFormattingInstruction(FormattingInstructionKind.WORDS_OF_JESUS), footnoteDB, vnums, nt);
 				if (!text.startsWith("</J>"))
 					System.out.println("WARNING: Unclosed <J> tag at: " + text);
 				else {
 					text = text.substring(4);
 				}
 			} else if (text.startsWith("<e>")) {
-				text = convertFromVerse(text.substring(3), vv.visitFormattingInstruction(FormattingInstructionKind.BOLD), footnoteDB, vnums);
+				text = convertFromVerse(text.substring(3), vv.visitFormattingInstruction(FormattingInstructionKind.BOLD), footnoteDB, vnums, nt);
 				if (!text.startsWith("</e>"))
 					System.out.println("WARNING: Unclosed <e> tag at: " + text);
 				else {
 					text = text.substring(4);
 				}
 			} else if (text.startsWith("<h>")) {
-				text = convertFromVerse(text.substring(3), vv.visitHeadline(1), footnoteDB, vnums);
+				text = convertFromVerse(text.substring(3), vv.visitHeadline(1), footnoteDB, vnums, nt);
 				if (!text.startsWith("</h>"))
 					System.out.println("WARNING: Unclosed <e> tag at: " + text);
 				else {
