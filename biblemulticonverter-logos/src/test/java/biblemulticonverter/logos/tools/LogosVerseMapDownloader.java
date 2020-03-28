@@ -114,7 +114,7 @@ public class LogosVerseMapDownloader {
 			while ((len = in.read(buf)) != -1)
 				baos.write(buf, 0, len);
 			String xml = new String(baos.toByteArray(), StandardCharsets.UTF_8);
-			xml = xml.replaceAll("<script type=\"text/javascript\">window.*?</script>", "").replace("createCookie&authorizationHeader=", "").replaceAll("<script async charset=\"utf-8\"", "<script charset=\"utf-8\"");
+			xml = xml.replaceAll("<script type=\"text/javascript\">\\(?window.*?</script>", "").replace("createCookie&authorizationHeader=", "").replaceAll("<script async charset=\"utf-8\"", "<script charset=\"utf-8\"");
 			parseVerseMap(builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8))), w);
 		}
 		System.out.println("Downloading Logos verse map done.");
