@@ -96,7 +96,6 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			bible.getBooks().add(bk);
 			final boolean forceProlog = book.getId().getId().getZefID() < 0;
 			final ParatextImportContext ctx = new ParatextImportContext();
-			ctx.nt = book.getId().getId().isNT();
 			ctx.bookAbbrs = bookAbbrs;
 			book.accept(new ParatextBookContentVisitor<RuntimeException>() {
 
@@ -339,7 +338,6 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		private List<Headline> headlines = new ArrayList<>();
 		private Visitor<RuntimeException> currentVisitor;
 		private CurrentParagraph currentParagraph = CurrentParagraph.NONE;
-		private boolean nt;
 		private Map<ParatextID, String> bookAbbrs;
 
 		private void flushHeadlines() {
@@ -422,19 +420,21 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			} else if (kind.getFormat() != null) {
 				newVisitor = getCurrentVisitor().visitFormattingInstruction(kind.getFormat());
 			} else if (kind == AutoClosingFormattingKind.WORDLIST && !attributes.isEmpty()) {
+				StringBuilder strongsPrefixes = new StringBuilder();
 				List<Integer> strongs = new ArrayList<>();
 				String strongAttribute = attributes.get("strong");
 				if (strongAttribute != null) {
 					for (String strong : strongAttribute.split("[, ]")) {
-						if (strong.matches(ctx.nt ? "G[0-9]+" : "H[0-9]+")) {
+						if (strong.matches("[A-Z][0-9]+")) {
+							strongsPrefixes.append(strong.charAt(0));
 							int num = Integer.parseInt(strong.substring(1));
 							if (num > 0) {
 								strongs.add(num);
 							} else {
-								System.out.println("WARNING: Skipping unsupported strong number: " + strong + " (in " + (ctx.nt ? "NT" : "OT") + ")");
+								System.out.println("WARNING: Skipping unsupported strong number: " + strong);
 							}
 						} else {
-							System.out.println("WARNING: Skipping unsupported strong number: " + strong + " (in " + (ctx.nt ? "NT" : "OT") + ")");
+							System.out.println("WARNING: Skipping unsupported strong number: " + strong);
 						}
 					}
 				}
@@ -455,7 +455,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				if (rmacs.isEmpty() && strongsArray == null) {
 					newVisitor = getCurrentVisitor().visitCSSFormatting(kind.getCss());
 				} else {
-					newVisitor = getCurrentVisitor().visitGrammarInformation(strongsArray, rmacs.isEmpty() ? null : rmacs.toArray(new String[rmacs.size()]), null);
+					newVisitor = getCurrentVisitor().visitGrammarInformation(strongsPrefixes.toString().toCharArray(), strongsArray, rmacs.isEmpty() ? null : rmacs.toArray(new String[rmacs.size()]), null);
 				}
 			} else {
 				newVisitor = getCurrentVisitor().visitCSSFormatting(kind.getCss());
@@ -694,14 +694,14 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
 			final AutoClosingFormatting formatting = new AutoClosingFormatting(AutoClosingFormattingKind.WORDLIST, false);
 			if (strongs != null) {
 				StringBuilder sb = new StringBuilder();
-				for (int strong : strongs) {
+				for (int i = 0; i < strongs.length; i++) {
 					if (sb.length() != 0)
 						sb.append(",");
-					sb.append((nt ? "G" : "H") + strong);
+					sb.append((strongsPrefixes != null ? "" + strongsPrefixes[i] : nt ? "G" : "H") + strongs[i]);
 				}
 				formatting.getAttributes().put("strong", sb.toString());
 			}

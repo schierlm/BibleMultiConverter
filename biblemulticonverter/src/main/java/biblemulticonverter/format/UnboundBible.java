@@ -284,18 +284,20 @@ public class UnboundBible implements RoundtripFormat {
 				Visitor<RuntimeException> vvv = vv.getAppendVisitor();
 				if (useParsedFormat) {
 					String[] words = text.split(" ");
+					char[] strongsPrefixes = new char[10];
 					int[] strongs = new int[10];
 					String[] rmacs = new String[10];
 					int strongCount = 0, rmacCount = 0;
 					String word = words[0];
 					for (int i = 1; i < words.length; i++) {
 						if (words[i].matches("[GH][0-9]+")) {
+							strongsPrefixes[strongCount] = words[i].charAt(0);
 							strongs[strongCount++] = Integer.parseInt(words[i].substring(1));
 						} else if (words[i].matches(Utils.RMAC_REGEX)) {
 							rmacs[rmacCount++] = words[i];
 						} else {
 							if (strongCount > 0 || rmacCount > 0) {
-								vvv.visitGrammarInformation(strongCount > 0 ? Arrays.copyOf(strongs, strongCount) : null, rmacCount > 0 ? Arrays.copyOf(rmacs, rmacCount) : null, null).visitText(word);
+								vvv.visitGrammarInformation(strongCount > 0 ? Arrays.copyOf(strongsPrefixes, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongs, strongCount) : null, rmacCount > 0 ? Arrays.copyOf(rmacs, rmacCount) : null, null).visitText(word);
 								strongCount = rmacCount = 0;
 							} else {
 								vvv.visitText(word);
@@ -305,7 +307,7 @@ public class UnboundBible implements RoundtripFormat {
 						}
 					}
 					if (strongCount > 0 || rmacCount > 0) {
-						vvv.visitGrammarInformation(strongCount > 0 ? Arrays.copyOf(strongs, strongCount) : null, rmacCount > 0 ? Arrays.copyOf(rmacs, rmacCount) : null, null).visitText(word);
+						vvv.visitGrammarInformation(strongCount > 0 ? Arrays.copyOf(strongsPrefixes, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongs, strongCount) : null, rmacCount > 0 ? Arrays.copyOf(rmacs, rmacCount) : null, null).visitText(word);
 						strongCount = rmacCount = 0;
 					} else {
 						vvv.visitText(word);
@@ -448,7 +450,7 @@ public class UnboundBible implements RoundtripFormat {
 						int v = Integer.parseInt(vn);
 						sorting[0] += 10;
 						StringBuilder sb = new StringBuilder();
-						vv.accept(new UnboundBibleVisitor(sb, sorting, useParsedFormat));
+						vv.accept(new UnboundBibleVisitor(sb, sorting, useParsedFormat, bk.getId().isNT()));
 						String text = sb.toString();
 						if (useRoundtrip && text.contains("\uFEFF")) {
 							if (text.equals("\uFEFF-\uFEFF"))
@@ -559,11 +561,13 @@ public class UnboundBible implements RoundtripFormat {
 		protected final List<String> suffixStack = new ArrayList<String>();
 		private final int[] sorting;
 		private final boolean useParsedFormat;
+		private final boolean nt;
 
-		private UnboundBibleVisitor(StringBuilder sb, int[] sorting, boolean useParsedFormat) {
+		private UnboundBibleVisitor(StringBuilder sb, int[] sorting, boolean useParsedFormat, boolean nt) {
 			this.sb = sb;
 			this.sorting = sorting;
 			this.useParsedFormat = useParsedFormat;
+			this.nt = nt;
 			suffixStack.add("");
 		}
 
@@ -637,12 +641,12 @@ public class UnboundBible implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
 			if (useParsedFormat) {
 				StringBuilder suffix = new StringBuilder();
 				if (strongs != null) {
-					for (int strong : strongs) {
-						suffix.append(" G" + strong);
+					for (int i = 0; i < strongs.length; i++) {
+						suffix.append(" " + (strongsPrefixes != null ? "" + strongsPrefixes[i] : nt ? "G" : "H") + strongs[i]);
 					}
 				}
 				if (rmac != null) {

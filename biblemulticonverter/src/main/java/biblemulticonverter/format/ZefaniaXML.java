@@ -539,18 +539,26 @@ public class ZefaniaXML implements RoundtripFormat {
 					}
 					Visitor<RuntimeException> strongVisitor = visitor;
 					int[] strongs = null;
+					char[] strongsPrefixes = null;
 					if (gram.getStr() != null) {
-						List<String> strongList = new ArrayList<String>(Arrays.asList(gram.getStr().trim().replaceAll(" ++", " ").replace("G", "").replace("H", "").split(" ")));
+						List<String> strongList = new ArrayList<String>(Arrays.asList(gram.getStr().trim().replaceAll(" ++", " ").split(" ")));
 						for (int i = 0; i < strongList.size(); i++) {
-							if (!strongList.get(i).matches("[0-9]+")) {
+							if (!strongList.get(i).matches("[GH]?[0-9]+")) {
 								System.out.println("WARNING: Skipping invalid Strong number " + strongList.get(i));
 								strongList.remove(i);
 								i--;
 							}
 						}
 						strongs = new int[strongList.size()];
+						strongsPrefixes = strongList.size() == 0 ? null : new char[strongList.size()];
 						for (int i = 0; i < strongs.length; i++) {
-							strongs[i] = Integer.parseInt(strongList.get(i));
+							if (strongList.get(i).matches("[GH][0-9]+")) {
+								strongsPrefixes[i] = strongList.get(i).charAt(0);
+								strongs[i] = Integer.parseInt(strongList.get(i).substring(1));
+							} else {
+								strongsPrefixes = null;
+								strongs[i] = Integer.parseInt(strongList.get(i));
+							}
 						}
 					}
 					String[] rmac = null;
@@ -573,8 +581,8 @@ public class ZefaniaXML implements RoundtripFormat {
 						strongs = null;
 					if (rmac != null && rmac.length == 0)
 						rmac = null;
-					if (strongs != null)
-						strongVisitor = strongVisitor.visitGrammarInformation(strongs, rmac, null);
+					if (strongs != null || rmac != null)
+						strongVisitor = strongVisitor.visitGrammarInformation(strongsPrefixes, strongs, rmac, null);
 					if (!parseContent(strongVisitor, gram.getContent(), abbrMap) && strongVisitor != visitor) {
 						visitEmptyMarker(strongVisitor);
 					}
@@ -827,14 +835,14 @@ public class ZefaniaXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			final GRAM gram = of.createGRAM();
 			result.add(new JAXBElement<GRAM>(new QName("gr"), GRAM.class, gram));
 			Visitor<IOException> nextVisitor = new CreateContentVisitor(of, gram.getContent(), null);
 			if (strongs != null) {
 				StringBuilder entryBuilder = new StringBuilder();
 				for (int i = 0; i < strongs.length; i++) {
-					entryBuilder.append((i > 0 ? " " : "") + strongs[i]);
+					entryBuilder.append((i > 0 ? " " : "") + (strongsPrefixes == null ? "" : "" + strongsPrefixes[i]) + strongs[i]);
 				}
 				String entry = entryBuilder.toString();
 				gram.setStr(entry);

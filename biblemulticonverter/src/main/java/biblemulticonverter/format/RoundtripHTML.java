@@ -501,12 +501,18 @@ public class RoundtripHTML implements RoundtripFormat {
 										prioChar == 's' ? ExtraAttributePriority.SKIP : null;
 						childVisitor = visitor.visitExtraAttribute(prio, m.group(2), m.group(3), m.group(4));
 					} else if (line.startsWith("<span class=\"g ", pos)) {
+						StringBuilder strongPfxL = new StringBuilder();
 						List<Integer> strongL = new ArrayList<Integer>();
 						List<String> rmacL = new ArrayList<String>();
 						List<Integer> sourceIndexL = new ArrayList<Integer>();
 						for (String part : line.substring(pos + 15, endPos - 1).split(" ")) {
 							if (part.startsWith("gs")) {
-								strongL.add(Integer.parseInt(part.substring(2)));
+								if (part.matches("gs[A-Z][0-9]+")) {
+									strongPfxL.append(part.charAt(2));
+									strongL.add(Integer.parseInt(part.substring(3)));
+								} else {
+									strongL.add(Integer.parseInt(part.substring(2)));
+								}
 							} else if (part.startsWith("gr-")) {
 								rmacL.add(part.substring(3).toUpperCase());
 							} else if (part.startsWith("gi")) {
@@ -515,6 +521,7 @@ public class RoundtripHTML implements RoundtripFormat {
 								throw new IOException(part);
 							}
 						}
+						char[] strongPfx = strongPfxL.length() == 0 ? null : strongPfxL.toString().toCharArray();
 						int[] strongs = strongL.size() == 0 ? null : new int[strongL.size()];
 						if (strongs != null) {
 							for (int i = 0; i < strongs.length; i++) {
@@ -528,7 +535,7 @@ public class RoundtripHTML implements RoundtripFormat {
 								sourceIndices[i] = sourceIndexL.get(i);
 							}
 						}
-						childVisitor = visitor.visitGrammarInformation(strongs, rmacs, sourceIndices);
+						childVisitor = visitor.visitGrammarInformation(strongPfx, strongs, rmacs, sourceIndices);
 					} else {
 						throw new IOException(line.substring(pos));
 					}
@@ -671,11 +678,11 @@ public class RoundtripHTML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			writer.write("<span class=\"g");
 			if (strongs != null) {
-				for (int str : strongs) {
-					writer.write(" gs" + str);
+				for (int i = 0; i < strongs.length; i++) {
+					writer.write(" gs" + (strongsPrefixes != null ? "" + strongsPrefixes[i] : "") + strongs[i]);
 				}
 			}
 			if (rmac != null) {

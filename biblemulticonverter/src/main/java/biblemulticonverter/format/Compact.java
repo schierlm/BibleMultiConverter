@@ -230,13 +230,19 @@ public class Compact implements RoundtripFormat {
 				case 'G':
 					lastPos = line.indexOf('>', pos) + 1;
 					args = line.substring(pos + 2, lastPos - 1).split(" ");
+					char[] strongsPrefixes = new char[args.length];
 					int[] strongs = new int[args.length];
 					String[] rmacs = new String[args.length];
 					int[] idxs = new int[args.length];
 					int scount = 0, rcount = 0, icount = 0;
 					for (int i = 0; i < args.length; i++) {
 						String[] parts = args[i].split(":");
-						strongs[i] = parts[0].isEmpty() ? -1 : Integer.parseInt(parts[0]);
+						String s = parts[0];
+						if (s.matches("[A-Z][0-9]+")) {
+							strongsPrefixes[i] = s.charAt(0);
+							s = s.substring(1);
+						}
+						strongs[i] = s.isEmpty() ? -1 : Integer.parseInt(s);
 						if (parts.length > 1 && !parts[1].isEmpty())
 							rmacs[i] = parts[1];
 						else
@@ -252,11 +258,12 @@ public class Compact implements RoundtripFormat {
 						if (idxs[i] != -1)
 							icount = i + 1;
 					}
+					strongsPrefixes = scount == 0 || strongsPrefixes[0] == 0 ? null : Arrays.copyOf(strongsPrefixes, scount);
 					strongs = scount == 0 ? null : Arrays.copyOf(strongs, scount);
 					rmacs = rcount == 0 ? null : Arrays.copyOf(rmacs, rcount);
 					idxs = icount == 0 ? null : Arrays.copyOf(idxs, icount);
 					visitorStack.add(visitor);
-					visitor = visitor.visitGrammarInformation(strongs, rmacs, idxs);
+					visitor = visitor.visitGrammarInformation(strongsPrefixes, strongs, rmacs, idxs);
 					break;
 				case 'D':
 					lastPos = line.indexOf('>', pos) + 1;
@@ -365,13 +372,15 @@ public class Compact implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			w.write("<G");
 			int max = Math.max(Math.max(strongs == null ? 0 : strongs.length, rmac == null ? 0 : rmac.length), sourceIndices == null ? 0 : sourceIndices.length);
 			for (int i = 0; i < max; i++) {
 				w.write(i > 0 ? " " : "");
 				boolean r = rmac != null && i < rmac.length;
 				boolean si = sourceIndices != null && i < sourceIndices.length;
+				if (strongsPrefixes != null && i < strongsPrefixes.length)
+					w.write("" + strongsPrefixes[i]);
 				if (strongs != null && i < strongs.length)
 					w.write("" + strongs[i]);
 				if (r || si) {

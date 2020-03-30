@@ -537,8 +537,9 @@
 
 						At least one type of grammar information needs to be present.
 
-						Strong numbers are just the numbers, the type (G or H) is determined by the Testament the current
-						verse is in.
+						If the strong numbers are just numbers, the prefix (G or H) is determined by the Testament the current
+						verse is in. In case the prefix is different (e. g. LXX bible), it can be given as well (as a single
+						letter).
 
 						RMAC codes should follow the RMACType rules to ensure that every RMAC can be converted
 						if required.
@@ -552,7 +553,13 @@
 						<extension base="tns:FormattedTextType">
 							<attribute name="strongs" use="optional">
 								<simpleType>
-									<list itemType="tns:positiveIntType" />
+									<list>
+										<simpleType>
+											<restriction base="string">
+												<pattern value="[A-Z]?[1-9][0-9]*"></pattern>
+											</restriction>
+										</simpleType>
+									</list>
 								</simpleType>
 							</attribute>
 							<attribute name="rmac" use="optional">

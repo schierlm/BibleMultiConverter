@@ -377,7 +377,7 @@ public class SoftProjector implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
 			System.out.println("WARNING: Grammar information is not supported");
 			return this;
 		}

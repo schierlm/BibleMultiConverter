@@ -235,11 +235,22 @@ public class RoundtripTaggedText implements RoundtripFormat {
 					break;
 				case "grammar":
 					parsedMultiContent = parseMultiTags(tagContent, "strong", "rmac", "idx", "");
-					int[] strong = parsedMultiContent.get(0).isEmpty() ? null : parsedMultiContent.get(0).stream().mapToInt(Integer::parseInt).toArray();
+					List<String> ss = parsedMultiContent.get(0);
+					char[] strongPfx = ss.isEmpty() ? null : new char[ss.size()];
+					int[] strong = ss.isEmpty() ? null : new int[ss.size()];
+					for (int i = 0; i < ss.size(); i++) {
+						if (ss.get(i).matches("[A-Z][0-9]+")) {
+							strongPfx[i] = ss.get(i).charAt(0);
+							strong[i] = Integer.parseInt(ss.get(i).substring(1));
+						} else {
+							strongPfx = null;
+							strong[i] = Integer.parseInt(ss.get(i));
+						}
+					}
 					String[] rmac = parsedMultiContent.get(1).isEmpty() ? null : parsedMultiContent.get(1).toArray(new String[0]);
 					int[] idx = parsedMultiContent.get(2).isEmpty() ? null : parsedMultiContent.get(2).stream().mapToInt(Integer::parseInt).toArray();
 					parseText(parsedMultiContent.get(3).isEmpty() ? null : parsedMultiContent.get(3).get(0),
-							vv.visitGrammarInformation(strong, rmac, idx));
+							vv.visitGrammarInformation(strongPfx, strong, rmac, idx));
 					break;
 				case "dictentry":
 					parsedContent = parseTags(tagContent, "dictionaryname", "entry", "");
@@ -404,14 +415,14 @@ public class RoundtripTaggedText implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			String[] attrValuePairs = new String[(strongs == null ? 0 : strongs.length * 2) + (rmac == null ? 0 : rmac.length * 2) + (sourceIndices == null ? 0 : sourceIndices.length * 2)];
 			int idx = 0;
 
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
 					attrValuePairs[idx++] = "strong";
-					attrValuePairs[idx++] = "" + strongs[i];
+					attrValuePairs[idx++] = (strongsPrefixes == null ? "" : "" + strongsPrefixes[i]) + strongs[i];
 				}
 			}
 			if (rmac != null) {

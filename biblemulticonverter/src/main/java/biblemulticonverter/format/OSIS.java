@@ -766,6 +766,8 @@ public class OSIS implements RoundtripFormat {
 			String src = elem.getAttribute("src");
 			Visitor<RuntimeException> v = vv;
 			int[] strong = null, idx = null;
+			char[] strongPfx = null;
+			StringBuilder strongPrefixes = new StringBuilder();
 			List<Integer> strongList = new ArrayList<Integer>();
 			for (String lemma : elem.getAttribute("lemma").trim().split(" +")) {
 				if (!lemma.startsWith("strong:G") && !lemma.startsWith("strong:H"))
@@ -777,11 +779,14 @@ public class OSIS implements RoundtripFormat {
 				}
 				String[] strs = rawStrong.split("-");
 				for (String str : strs) {
+					strongPrefixes.append(lemma.charAt(7));
 					strongList.add(Integer.parseInt(str));
 				}
 			}
-			if (!strongList.isEmpty())
+			if (!strongList.isEmpty()) {
 				strong = strongList.stream().mapToInt(s -> s).toArray();
+				strongPfx = strongPrefixes.toString().toCharArray();
+			}
 			List<String> rmac = new ArrayList<>();
 			for (String morph : elem.getAttribute("morph").trim().split(" +")) {
 				if (morph.startsWith("robinson:")) {
@@ -803,7 +808,7 @@ public class OSIS implements RoundtripFormat {
 			if (strong == null && rmac.isEmpty() && idx == null) {
 				printWarning("INFO: Skipped <w> tag without any usable information");
 			} else {
-				v = v.visitGrammarInformation(strong, rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), idx);
+				v = v.visitGrammarInformation(strongPfx, strong, rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), idx);
 			}
 			parseStructuredTextChildren(v, elem);
 		} else if (elem.getNodeName().equals("reference")) {
@@ -1128,15 +1133,15 @@ public class OSIS implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			Element w = target.getOwnerDocument().createElement("w");
 			target.appendChild(w);
 			if (strongs != null) {
 				StringBuilder lemma = new StringBuilder();
-				for (int strong : strongs) {
+				for (int i = 0; i < strongs.length; i++) {
 					if (lemma.length() > 0)
 						lemma.append(' ');
-					lemma.append("strong:" + (nt ? "G" : "H") + strong);
+					lemma.append("strong:" + (strongsPrefixes != null ? "" + strongsPrefixes[i] : nt ? "G" : "H") + strongs[i]);
 				}
 				w.setAttribute("lemma", lemma.toString());
 			}

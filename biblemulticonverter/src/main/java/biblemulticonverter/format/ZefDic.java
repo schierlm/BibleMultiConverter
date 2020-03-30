@@ -436,7 +436,7 @@ public class ZefDic implements RoundtripFormat {
 				}
 
 				@Override
-				public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+				public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 					System.out.println("WARNING: Grammar information is not supported");
 					return null;
 				}
@@ -543,7 +543,7 @@ public class ZefDic implements RoundtripFormat {
 				}
 
 				@Override
-				public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+				public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 					System.out.println("WARNING: Grammar information is not supported");
 					return null;
 				}

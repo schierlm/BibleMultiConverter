@@ -47,6 +47,8 @@ public class StrippedDiffable implements ExportFormat {
 			"- MergeIntroductionPrologs",
 			"- ExtractFootnotes",
 			"- RearrangeChapterBoundaries",
+			"- AddStrongsPrefixes",
+			"- RemoveStrongsPrefixes",
 			"- SelectVariation <Name>",
 			"- ChangeVerseStructure {Raw|Virtual|Range} [<VersificationFile> <VersificationName>]",
 			"- RenameBook <OldAbbr> <NewAbbr>",
@@ -73,6 +75,12 @@ public class StrippedDiffable implements ExportFormat {
 		} else if (exportArgs.length == 2 && exportArgs[1].equals("RearrangeChapterBoundaries")) {
 			rearrangeChapterBoundaries(bible);
 			out.println("Chapter boundaries rearranged.");
+		} else if (exportArgs.length == 2 && exportArgs[1].equals("AddStrongsPrefixes")) {
+			changeStrongsPrefixes(bible, true);
+			out.println("Strongs prefixes added.");
+		} else if (exportArgs.length == 2&&exportArgs[1].equals("RemoveStrongsPrefixes")) {
+			changeStrongsPrefixes(bible, false);
+			out.println("Strongs prefixes removed.");
 		} else if (exportArgs.length == 3 && exportArgs[1].equals("SelectVariation")) {
 			selectVariation(bible, exportArgs[2]);
 			out.println("Variation " + exportArgs[2] + " kept.");
@@ -350,6 +358,21 @@ public class StrippedDiffable implements ExportFormat {
 		}
 	}
 
+	private void changeStrongsPrefixes(Bible bible, boolean add) {
+		for (Book book : bible.getBooks()) {
+			for (Chapter chapter : book.getChapters()) {
+				List<Verse> verses = chapter.getVerses();
+				for (int i = 0; i < verses.size(); i++) {
+					Verse v1 = verses.get(i);
+					Verse v2 = new Verse(v1.getNumber());
+					v1.accept(new ChangeStrongsPrefixesVisitor(v2.getAppendVisitor(), book.getId().isNT() ? 'G' : 'H', add));
+					v2.finished();
+					verses.set(i, v2);
+				}
+			}
+		}
+	}
+
 	protected void selectVariation(Bible bible, String variation) {
 		for (Book book : bible.getBooks()) {
 			for (Chapter chapter : book.getChapters()) {
@@ -518,6 +541,7 @@ public class StrippedDiffable implements ExportFormat {
 		StripPrologs, StripFootnotes, StripHeadlines, StripVerseSeparators, InlineVerseSeparators,
 		StripCrossReferences, StripFormatting, StripGrammar, StripDictionaryReferences,
 		StripRawHTML, StripExtraAttributes, StripOrKeepExtraAttributes, StripLineBreaks, StripVariations,
+		StripStrongs, StripStrongsWithPrefixes, StripRMAC, StripSourceIndexes,
 		StripOldTestament, StripNewTestament, StripDeuterocanonicalBooks,
 		StripMetadataBook, StripIntroductionBooks, StripDictionaryEntries, StripAppendixBook
 	}
@@ -661,11 +685,26 @@ public class StrippedDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			if (isEnabled(Feature.StripGrammar, chosenFeatures, foundFeatures)) {
 				return this;
 			} else {
-				return new StripVisitor(next.visitGrammarInformation(strongs, rmac, sourceIndices), chosenFeatures, foundFeatures);
+				if (strongsPrefixes != null && isEnabled(Feature.StripStrongsWithPrefixes, chosenFeatures, foundFeatures)) {
+					strongsPrefixes = null;
+					strongs = null;
+				}
+				if (strongs != null && isEnabled(Feature.StripStrongs, chosenFeatures, foundFeatures)) {
+					strongs = null;
+					strongsPrefixes = null;
+				}
+				if (rmac != null && isEnabled(Feature.StripRMAC, chosenFeatures, foundFeatures))
+					rmac = null;
+				if (sourceIndices != null && isEnabled(Feature.StripSourceIndexes, chosenFeatures, foundFeatures))
+					sourceIndices = null;
+				if (strongs == null && rmac == null && sourceIndices == null) {
+					return this;
+				}
+				return new StripVisitor(next.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices), chosenFeatures, foundFeatures);
 			}
 		}
 
@@ -978,6 +1017,42 @@ public class StrippedDiffable implements ExportFormat {
 				verses.add(currentVerse);
 			}
 			return false;
+		}
+	}
+
+	private static class ChangeStrongsPrefixesVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
+
+		private final char defaultPrefix;
+		private final boolean add;
+
+		private ChangeStrongsPrefixesVisitor(Visitor<RuntimeException> next, char defaultPrefix, boolean add) throws RuntimeException {
+			super(next);
+			this.defaultPrefix = defaultPrefix;
+			this.add = add;
+		}
+
+		@Override
+		protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
+			return new ChangeStrongsPrefixesVisitor(childVisitor, defaultPrefix, add);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+			if (add && strongsPrefixes == null && strongs != null) {
+				strongsPrefixes = new char[strongs.length];
+				Arrays.fill(strongsPrefixes, defaultPrefix);
+			} else if (!add && strongsPrefixes != null) {
+				boolean allDefault = true;
+				for (int i = 0; i < strongsPrefixes.length; i++) {
+					if (strongsPrefixes[i] != defaultPrefix) {
+						allDefault = false;
+						break;
+					}
+				}
+				if (allDefault)
+					strongsPrefixes = null;
+			}
+			return super.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices);
 		}
 	}
 }

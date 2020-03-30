@@ -394,12 +394,18 @@ public class RoundtripODT implements RoundtripFormat {
 				}
 				if (endContent == null)
 					throw new IOException("Grammar tag not closed");
+				StringBuilder strongPfx = new StringBuilder();
 				List<Integer> strongs = new ArrayList<>(), sourceIndices = new ArrayList<>();
 				List<String> rmac = new ArrayList<>();
 				for (String part : endContent.substring(1).split("'")) {
 					String[] subparts = part.split(":");
 					if (subparts.length > 0 && !subparts[0].isEmpty()) {
-						strongs.add(Integer.parseInt(subparts[0]));
+						if (subparts[0].matches("[A-Z][0-9]+")) {
+							strongPfx.append(subparts[0].charAt(0));
+							strongs.add(Integer.parseInt(subparts[0].substring(1)));
+						} else {
+							strongs.add(Integer.parseInt(subparts[0]));
+						}
 					}
 					if (subparts.length > 1 && !subparts[1].isEmpty()) {
 						rmac.add(subparts[1]);
@@ -408,7 +414,7 @@ public class RoundtripODT implements RoundtripFormat {
 						sourceIndices.add(Integer.parseInt(subparts[2]));
 					}
 				}
-				ic.pushVisitor(ic.getVisitor().visitGrammarInformation(strongs.isEmpty() ? null : strongs.stream().mapToInt(s -> s).toArray(), rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), sourceIndices.isEmpty() ? null : sourceIndices.stream().mapToInt(s -> s).toArray()));
+				ic.pushVisitor(ic.getVisitor().visitGrammarInformation(strongPfx.length() == 0 ? null : strongPfx.toString().toCharArray(), strongs.isEmpty() ? null : strongs.stream().mapToInt(s -> s).toArray(), rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), sourceIndices.isEmpty() ? null : sourceIndices.stream().mapToInt(s -> s).toArray()));
 			} else if (!content.isEmpty()) {
 				throw new IOException("Invalid grammar value or nesting: " + content);
 			}
@@ -701,11 +707,14 @@ public class RoundtripODT implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			appendSpan(makeParagraph(), TEXT_STYLE_GRAMMAR, "[");
 			StringBuilder suffixBuilder = new StringBuilder("]");
 			int max = Math.max(Math.max(strongs == null ? 0 : strongs.length, rmac == null ? 0 : rmac.length), sourceIndices == null ? 0 : sourceIndices.length);
 			for (int i = 0; i < max; i++) {
+				if (strongsPrefixes != null && i < strongsPrefixes.length) {
+					suffixBuilder.append(strongsPrefixes[i]);
+				}
 				if (strongs != null && i < strongs.length) {
 					suffixBuilder.append(strongs[i]);
 				}

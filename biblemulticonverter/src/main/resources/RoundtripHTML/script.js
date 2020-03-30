@@ -224,7 +224,8 @@ function toggleGrammar() {
 				if (j > 0)
 					html += " ";
 				if (cn[j].substring(0, 2) == "gs") {
-					var strong = strongPrefix + cn[j].substring(2);
+					var num = cn[j].substring(2);
+					var strong = /^[A-Z]/.test(num) ? num : strongPrefix + num;
 					html += "<a class=\"gs\" onmouseover=\"hoverGrammar('." + cn[j] + "', '#80FF80');\" "
 							+ "onmouseout=\"hoverGrammar('." + cn[j] + "', '');\" href=\"../../strong/dict/" + strong
 							+ "_1.html\">" + strong + "</a>";

@@ -385,7 +385,7 @@ public class Volksbibel2000 implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			ensureInVerse();
 			StringBuilder strongSuffix = new StringBuilder(buildTag("SUP") + buildTag("FONT color=\"#008000\""));
 			if (strongs != null) {

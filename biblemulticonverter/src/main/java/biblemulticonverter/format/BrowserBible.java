@@ -292,14 +292,14 @@ public class BrowserBible implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			writer.write("<l");
 			if (strongs != null) {
 				writer.write(" s=\"");
 				for (int i = 0; i < strongs.length; i++) {
 					if (i > 0)
 						writer.write(" ");
-					writer.write((nt ? "G" : "H") + strongs[i]);
+					writer.write((strongsPrefixes != null ? "" + strongsPrefixes[i] : nt ? "G" : "H") + strongs[i]);
 				}
 				writer.write("\"");
 			}

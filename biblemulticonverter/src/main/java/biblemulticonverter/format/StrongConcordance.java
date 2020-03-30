@@ -193,14 +193,14 @@ public class StrongConcordance implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			if (strongs == null)
 				return this;
 			StringBuilder key = new StringBuilder();
-			for (int str : strongs) {
+			for (int i = 0; i < strongs.length; i++) {
 				if (key.length() > 0)
 					key.append('+');
-				key.append(prefix).append(str);
+				key.append(strongsPrefixes != null ? strongsPrefixes[i] : prefix).append(strongs[i]);
 			}
 			StringBuilder value = new StringBuilder();
 			List<StringBuilder> values = strongInfo.get(key.toString());

@@ -200,7 +200,7 @@ public class MobiPocket implements ExportFormat {
 					}
 
 					@Override
-					public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+					public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 						pushSuffix("");
 						return this;
 					}
@@ -283,7 +283,7 @@ public class MobiPocket implements ExportFormat {
 			}
 
 			@Override
-			public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+			public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 				pushSuffix("");
 				return this;
 			}

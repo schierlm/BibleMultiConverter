@@ -301,16 +301,28 @@ public class FormattedText {
 	}
 
 	private static class GrammarInformation extends FormattedTextElement {
+		private final char[] strongsPrefixes;
 		private final int[] strongs;
 		private final String[] rmac;
 		private final int[] sourceIndices;
 
-		private GrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) {
+		private GrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+			this.strongsPrefixes = strongsPrefixes;
 			this.strongs = strongs;
 			this.rmac = rmac;
 			this.sourceIndices = sourceIndices;
 			if (strongs == null && rmac == null && sourceIndices == null) {
 				throw new IllegalArgumentException("At least one grammar information type is required!");
+			}
+			if (strongsPrefixes != null) {
+				if (strongs == null)
+					throw new IllegalArgumentException("Prefixes without Strongs numbers are not supported!");
+				if (strongsPrefixes.length != strongs.length)
+					throw new IllegalArgumentException("Prefixes need to be same length as Strongs numbers");
+				for(char prefix : strongsPrefixes) {
+					if (prefix < 'A' || prefix >'Z')
+						throw new IllegalArgumentException("Invalid Strongs prefix letter: "+prefix);
+				}
 			}
 			if (strongs != null) {
 				if (strongs.length == 0) {
@@ -339,7 +351,7 @@ public class FormattedText {
 		}
 
 		public <T extends Throwable> void acceptThis(Visitor<T> visitor) throws T {
-			accept(visitor.visitGrammarInformation(strongs, rmac, sourceIndices));
+			accept(visitor.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices));
 		}
 	}
 
@@ -508,7 +520,7 @@ public class FormattedText {
 
 		public void visitLineBreak(LineBreakKind kind) throws T;
 
-		public Visitor<T> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws T;
+		public Visitor<T> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws T;
 
 		public Visitor<T> visitDictionaryEntry(String dictionary, String entry) throws T;
 
@@ -606,9 +618,9 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<T> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws T {
+		public Visitor<T> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws T {
 			beforeVisit();
-			return wrapChildVisitor(getVisitor() == null ? null : getVisitor().visitGrammarInformation(strongs, rmac, sourceIndices));
+			return wrapChildVisitor(getVisitor() == null ? null : getVisitor().visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices));
 		}
 
 		@Override
@@ -712,8 +724,8 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) {
-			return addAndVisit(new GrammarInformation(strongs, rmac, sourceIndices));
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+			return addAndVisit(new GrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices));
 		}
 
 		@Override
@@ -876,13 +888,13 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
 			if (context.ordinal() >= ValidationContext.LINK.ordinal())
 				throw new IllegalArgumentException("Invalid nested link");
 			visitInlineElement();
 			if (strongs != null) {
-				for (int strong : strongs) {
-					validateDictionaryEntry("strongs", (book.isNT() ? "G" : "H") + strong);
+				for (int i = 0; i < strongs.length; i++) {
+					validateDictionaryEntry("strongs", (strongsPrefixes != null ? "" + strongsPrefixes[i]: book.isNT() ? "G" : "H") + strongs[i]);
 				}
 			}
 			return createValidatingVisitor(ValidationContext.LINK);
@@ -1011,7 +1023,7 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
 			return visitNestedType('g');
 		}
 

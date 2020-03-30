@@ -621,7 +621,7 @@ public class Accordance implements RoundtripFormat {
 						if (nextFillVerse == vv.getNumber())
 							nextFillVerse++;
 						paraMarker = false;
-						AccordanceVisitor av = new AccordanceVisitor(formatRules, unformattedElements);
+						AccordanceVisitor av = new AccordanceVisitor(formatRules, unformattedElements, book.getId().isNT());
 						av.start();
 						if (bibleName != null) {
 							Visitor<RuntimeException> nv = av.visitElement("BIBN", DEFAULT_SKIP);
@@ -785,11 +785,13 @@ public class Accordance implements RoundtripFormat {
 		private final List<String> suffixStack = new ArrayList<String>();
 		private final Map<String, String[]> formatRules;
 		private final Set<String> unspecifiedFormattings;
+		private final boolean nt;
 		private String elementPrefix = "";
 
-		public AccordanceVisitor(Map<String, String[]> formatRules, Set<String> unspecifiedFormattings) {
+		public AccordanceVisitor(Map<String, String[]> formatRules, Set<String> unspecifiedFormattings, boolean nt) {
 			this.formatRules = formatRules;
 			this.unspecifiedFormattings = unspecifiedFormattings;
+			this.nt = nt;
 		}
 
 		public void start() {
@@ -924,7 +926,7 @@ public class Accordance implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
 			Visitor<RuntimeException> next = visitElement("GRAMMAR", DEFAULT_KEEP);
 			if (next == null)
 				return null;
@@ -933,8 +935,8 @@ public class Accordance implements RoundtripFormat {
 				String[] rule = getElementRule("STRONG", DEFAULT_SKIP);
 				if (rule.length > 0) {
 					StringBuilder sb = new StringBuilder();
-					for (int strong : strongs) {
-						sb.append(" G").append(strong);
+					for (int i = 0; i < strongs.length; i++) {
+						sb.append(" ").append(strongsPrefixes != null ? strongsPrefixes[i] : nt ? 'G' : 'H').append(strongs[i]);
 					}
 					appendRule(suffixes, rule, sb.toString().trim());
 				}

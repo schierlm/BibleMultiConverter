@@ -91,7 +91,7 @@ public class TheWord implements RoundtripFormat {
 								String word = m.group(1);
 								String tags = m.group(2);
 								m.appendReplacement(sb, "");
-								sb.append("<S%" + tags.substring(3, tags.length() - 1).replaceAll("><W[GH]", "%") + ">");
+								sb.append("<S%" + tags.substring(2, tags.length() - 1).replaceAll("><W", "%") + ">");
 								sb.append(word);
 								sb.append("<s%>");
 							}
@@ -223,12 +223,14 @@ public class TheWord implements RoundtripFormat {
 				int closePos = line.indexOf('>', pos);
 				if (parseLine(garbageVisitor, line, closePos + 1, "<s%>") != -1) {
 					String[] strongs = line.substring(pos + 3, closePos).split("%");
+					char[] strongNumberPrefixes = new char[strongs.length];
 					int[] strongNumbers = new int[strongs.length];
 					try {
 						for (int i = 0; i < strongs.length; i++) {
-							strongNumbers[i] = Integer.parseInt(strongs[i]);
+							strongNumberPrefixes[i] = strongs[i].charAt(0);
+							strongNumbers[i] = Integer.parseInt(strongs[i].substring(1));
 						}
-						pos = parseLine(visitor.visitGrammarInformation(strongNumbers, null, null), line, closePos + 1, "<s%>");
+						pos = parseLine(visitor.visitGrammarInformation(strongNumberPrefixes, strongNumbers, null, null), line, closePos + 1, "<s%>");
 						continue;
 					} catch (NumberFormatException ex) {
 						// malformed Strongs tag
@@ -238,7 +240,7 @@ public class TheWord implements RoundtripFormat {
 				int closePos = line.indexOf('>', pos);
 				try {
 					int number = Integer.parseInt(line.substring(pos + 4, closePos));
-					visitor.visitGrammarInformation(new int[] { number }, null, null);
+					visitor.visitGrammarInformation(new char[] {line.charAt(pos+3)}, new int[] { number }, null, null);
 					pos = closePos + 1;
 					continue;
 				} catch (NumberFormatException ex) {
@@ -473,11 +475,15 @@ public class TheWord implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			StringBuilder suffix = new StringBuilder();
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
-					suffix.append("<W").append(nt ? 'G' : 'H').append(strongs[i]).append('>');
+					String prefix = nt ? "G" : "H";
+					if (strongsPrefixes != null) {
+						prefix = ("GH".indexOf(strongsPrefixes[i]) != -1 ? "" : prefix) + strongsPrefixes[i];
+					}
+					suffix.append("<W").append(prefix).append(strongs[i]).append('>');
 				}
 			}
 			if (rmac != null) {

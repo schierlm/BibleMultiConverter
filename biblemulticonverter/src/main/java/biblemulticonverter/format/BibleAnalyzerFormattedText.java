@@ -302,11 +302,11 @@ public class BibleAnalyzerFormattedText implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			StringBuilder suffix = new StringBuilder();
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
-					suffix.append("[" + (hasStrongs ? (nt ? "G" : "H") : "") + strongs[i] + "]");
+					suffix.append("[" + (hasStrongs ? (strongsPrefixes != null ? "" + strongsPrefixes[i] : nt ? "G" : "H") : "") + strongs[i] + "]");
 				}
 			}
 			if (rmac != null && hasRMAC) {

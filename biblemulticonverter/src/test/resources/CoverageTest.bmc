@@ -3,7 +3,7 @@ BiMuCo-1.0:Coverage Test
 0 <btitle:</ Coverage Test Bible<B0<bdescription:</ Small sample bible used for coverage testing the export and roundtrip formats.<B2It should use every feature possible to provide good test coverage.<B0<bMore.Complex@Key-Example1:</ .<B0
 =Gn	Gen	Gen	Genesis
 0 This is some <<prolog>. <R2"<pre>Raw!</raw:1></pre><!-- endraw 1-->"O<R0!n!<R1!ff!line!<E1cat key value>Skipped</
- <G7225>In the beginning</ <G430>God</ <G1254>created</ the <G1>hea</<G2>vens</ and the earth.
+ <G7225>In the beginning</ <GH430>God</ <GG1254>created</ the <GL1>hea</<G2>vens</ and the earth.
 Now the earth was <Cborder: 0px;>formless and empty</.<H8Headline inside a verse</<Dx dark>>Darkness</ was on the surface of the deep. God`s Spirit was hovering over the surface of the waters.
 ++8 They heard the voice <bof <dYahweh</ <iGod</</ walking in the <igarden</ in the cool of the day, and the man and his wife hid themselves from the presence of <dYahweh</ God among the trees of the garden.
 =Ps	Ps	Ps	Psalm

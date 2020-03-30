@@ -344,11 +344,11 @@ public class ESwordHTML implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			StringBuilder newSuffix = new StringBuilder();
 			if (strongs != null) {
-				for (int strong : strongs) {
-					newSuffix.append("<sup class=\"str\">" + (nt ? "G" : "H") + strong + "</sup> ");
+				for (int i = 0; i < strongs.length; i++) {
+					newSuffix.append("<sup class=\"str\">" + (strongsPrefixes != null ? "" + strongsPrefixes[i] : nt ? "G" : "H") + strongs[i] + "</sup> ");
 				}
 			}
 			return new ESwordVisitor(newSuffix.toString(), this);

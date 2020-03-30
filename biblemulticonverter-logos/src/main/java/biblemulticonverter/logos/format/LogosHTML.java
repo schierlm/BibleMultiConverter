@@ -669,11 +669,16 @@ public class LogosHTML implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			List<String> links = new ArrayList<String>();
-			String type = nt ? "GreekStrongs:G" : "HebrewStrongs:H";
 			int max = Math.max(strongs == null ? 0 : strongs.length, rmac == null ? 0 : rmac.length);
 			for (int i = 0; i < max; i++) {
+				boolean useNT = nt;
+				if (strongsPrefixes != null && strongsPrefixes[i] == 'G')
+					useNT = true;
+				else if (strongsPrefixes != null && strongsPrefixes[i] == 'H')
+					useNT = false;
+				String type = useNT ? "GreekStrongs:G" : "HebrewStrongs:H";
 				if (strongs != null && i < strongs.length)
 					links.add(type + strongs[i]);
 				if (rmac != null && i < rmac.length)

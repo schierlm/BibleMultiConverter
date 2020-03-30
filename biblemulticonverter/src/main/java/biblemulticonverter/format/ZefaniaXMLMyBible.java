@@ -199,7 +199,7 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 						}
 
 						@Override
-						public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+						public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 							throw new RuntimeException("Grammar tags in prologs not supported");
 
 						}
@@ -410,7 +410,7 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 									}
 
 									@Override
-									public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+									public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 										GRAM gram = f.createGRAM();
 										if (strongs != null) {
 											StringBuilder entryBuilder = new StringBuilder();
@@ -539,7 +539,7 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 							}
 
 							@Override
-							public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+							public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 								GRAM gram = f.createGRAM();
 								if (strongs != null) {
 									StringBuilder entryBuilder = new StringBuilder();

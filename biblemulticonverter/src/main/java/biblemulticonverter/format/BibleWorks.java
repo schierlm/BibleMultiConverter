@@ -307,12 +307,12 @@ public class BibleWorks implements RoundtripFormat {
 				String[] rmac = morph2RMAC(morph);
 				Visitor<RuntimeException> vvv = vv.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "bibleworks", "morph", safeMorph);
 				if (rmac != null)
-					vvv = vvv.visitGrammarInformation(null, rmac, null);
+					vvv = vvv.visitGrammarInformation(null, null, rmac, null);
 				vvv.visitText(preText.substring(wPos));
 				start = pos;
 			} else if (tag.matches("[0-9]+")) {
 				vv.visitText(preText.substring(0, wPos));
-				vv.visitGrammarInformation(new int[] { Integer.parseInt(tag) }, null, null).visitText(preText.substring(wPos));
+				vv.visitGrammarInformation(null, new int[] { Integer.parseInt(tag) }, null, null).visitText(preText.substring(wPos));
 			} else if (tag.matches("[NR][0-9a-z*]+")) {
 				vv.visitText(preText);
 				if (footnoteMap == null)
@@ -566,7 +566,7 @@ public class BibleWorks implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			String suffix = "";
 			if (rmac != null && !suffixStack.get(suffixStack.size() - 1).startsWith("@")) {
 				for (String r : rmac) {
@@ -724,7 +724,7 @@ public class BibleWorks implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			skipFeature("Grammar information in footnote");
 			suffixStack.add("");
 			return this;

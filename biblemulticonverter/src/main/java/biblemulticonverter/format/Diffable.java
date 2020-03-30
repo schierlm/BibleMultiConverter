@@ -259,7 +259,7 @@ public class Diffable implements RoundtripFormat {
 			case "grammar":
 				validateTagArgs(tag, tagArgs, "strong", "rmac", "idx");
 				visitorStack.add(visitor);
-				visitor = visitor.visitGrammarInformation(intArray(tagArgs.get("strong")), tagArgs.get("rmac").length() == 0 ? null : tagArgs.get("rmac").split(","), intArray(tagArgs.get("idx")));
+				visitor = visitor.visitGrammarInformation(tagArgs.containsKey("strongpfx") ? tagArgs.get("strongpfx").toCharArray() : null, intArray(tagArgs.get("strong")), tagArgs.get("rmac").length() == 0 ? null : tagArgs.get("rmac").split(","), intArray(tagArgs.get("idx")));
 				break;
 			case "dict":
 				validateTagArgs(tag, tagArgs, "dictionary", "entry");
@@ -400,7 +400,7 @@ public class Diffable implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			checkLine();
 			w.write("<grammar strong=\"");
 			if (strongs != null) {
@@ -409,6 +409,10 @@ public class Diffable implements RoundtripFormat {
 						w.write(',');
 					w.write("" + strongs[i]);
 				}
+			}
+			if (strongsPrefixes != null) {
+				w.write("\" strongpfx=\"");
+				w.write(strongsPrefixes);
 			}
 			w.write("\" rmac=\"");
 			if (rmac != null) {

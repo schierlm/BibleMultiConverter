@@ -446,22 +446,36 @@ public class MyBibleZone implements RoundtripFormat {
 			if (text.startsWith("<S>")) {
 				pos = text.indexOf("</S>");
 				String[] txt = cleanText(text.substring(3, pos)).split(",");
+				char[] spfx = new char[txt.length];
 				int[] snum = new int[txt.length];
 				for (int i = 0; i < txt.length; i++) {
 					try {
-						String normalized = txt[i].trim().replaceAll(nt ? "^G" : "^H", "");
-						String stripped = normalized.replaceAll("^[GHLS]", "");
-						snum[i] = Integer.parseInt(stripped);
+						if (txt[i].matches("[A-Z][0-9]+")) {
+							spfx[i] = txt[i].charAt(0);
+							snum[i] = Integer.parseInt(txt[i].substring(1));
+						} else {
+							spfx[i] = nt ? 'G' : 'H';
+							snum[i] = Integer.parseInt(txt[i]);
+						}
 						if (snum[i] == 0) {
 							System.out.println("WARNING: Strong number may not be zero");
 							snum[i] = 99999;
-						} else if (!normalized.equals(stripped)) {
-							System.out.println("WARNING: Treating Strong number " + txt[i] + " as " + (nt ? "G" : "H") + stripped);
 						}
 					} catch (NumberFormatException ex) {
 						System.out.println("WARNING: Invalid Strong number: " + txt[i]);
 						snum[i] = 99999;
 					}
+				}
+				if (spfx.length > 0) {
+					boolean allStandard = true;
+					for (int i = 0; i < spfx.length; i++) {
+						if (spfx[i] != (nt ? 'G' : 'H')) {
+							allStandard = false;
+							break;
+						}
+					}
+					if (allStandard)
+						spfx = new char[0];
 				}
 				String rmac = null;
 				text = text.substring(pos + 4).replaceFirst("^ +<m>", "<m>");
@@ -477,7 +491,7 @@ public class MyBibleZone implements RoundtripFormat {
 				if (snum.length == 0 && rmac == null)
 					vv.visitText(strongsWord);
 				else
-					vv.visitGrammarInformation(snum.length == 0 ? null : snum, rmac == null ? null : new String[] { rmac }, null).visitText(strongsWord);
+					vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, rmac == null ? null : new String[] { rmac }, null).visitText(strongsWord);
 			} else if (text.startsWith("<n>")) {
 				text = convertFromVerse(text.substring(3), vv.visitCSSFormatting("font-style: italic; myBibleType=note"), footnoteDB, vnums, nt);
 				if (!text.startsWith("</n>"))
@@ -783,7 +797,7 @@ public class MyBibleZone implements RoundtripFormat {
 					}
 					StringBuilder vb = new StringBuilder();
 					Map<String, MyBibleHTMLVisitor> footnotes = new HashMap<>();
-					MyBibleVerseVisitor mbvv = new MyBibleVerseVisitor(vb, footnotes, unsupportedFeatures);
+					MyBibleVerseVisitor mbvv = new MyBibleVerseVisitor(vb, footnotes, unsupportedFeatures, bk.getId().isNT());
 					boolean first = true;
 					for (Verse v : vv.getVerses()) {
 						if (!first || !v.getNumber().equals("" + vv.getNumber()) && !(v.getNumber().equals("1/t") && vv.getNumber() == 0)) {
@@ -936,7 +950,7 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			unsupportedFeatures.add("grammar information " + locationText);
 			pushSuffix("");
 			return this;
@@ -956,13 +970,15 @@ public class MyBibleZone implements RoundtripFormat {
 		private final List<String> suffixStack = new ArrayList<>();
 		private final Set<String> unsupportedFeatures;
 		private final Map<String, MyBibleHTMLVisitor> footnotes;
+		private final boolean nt;
 		private int lastFootnote = 0;
 		private int lastDictionaryFootnote = 0;
 
-		public MyBibleVerseVisitor(StringBuilder builder, Map<String, MyBibleHTMLVisitor> footnotes, Set<String> unsupportedFeatures) {
+		public MyBibleVerseVisitor(StringBuilder builder, Map<String, MyBibleHTMLVisitor> footnotes, Set<String> unsupportedFeatures, boolean nt) {
 			this.builder = builder;
 			this.footnotes = footnotes;
 			this.unsupportedFeatures = unsupportedFeatures;
+			this.nt = nt;
 		}
 
 		public void reset() {
@@ -1083,7 +1099,7 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
 			int cnt = 0;
 			String suffix = "";
 			if (strongs != null)
@@ -1092,7 +1108,7 @@ public class MyBibleZone implements RoundtripFormat {
 				cnt = Math.max(cnt, rmac.length);
 			for (int i = 0; i < cnt; i++) {
 				if (strongs != null && i < strongs.length) {
-					suffix += "<S>" + strongs[i] + "</S>";
+					suffix += "<S>" + (strongsPrefixes == null || strongsPrefixes[i] == (nt ? 'G' : 'H') ? "" : "" + strongsPrefixes[i]) + strongs[i] + "</S>";
 				}
 				if (rmac != null && i < rmac.length) {
 					suffix += "<m>" + rmac[i] + "</m>";

@@ -106,10 +106,19 @@ public class RoundtripXML implements RoundtripFormat {
 				} else if (value instanceof FormattedTextType.GrammarInformation) {
 					FormattedTextType.GrammarInformation gi = (FormattedTextType.GrammarInformation) value;
 					int[] strongs = null;
+					char[] strongsPrefixes = null;
 					if (!gi.getStrongs().isEmpty()) {
+						strongsPrefixes = new char[gi.getStrongs().size()];
 						strongs = new int[gi.getStrongs().size()];
 						for (int i = 0; i < strongs.length; i++) {
-							strongs[i] = gi.getStrongs().get(i);
+							String s = gi.getStrongs().get(i);
+							if (s.matches("[A-Z][0-9]+")) {
+								strongsPrefixes[i] = s.charAt(0);
+								strongs[i] = Integer.parseInt(s.substring(1));
+							} else {
+								strongsPrefixes = null;
+								strongs[i] = Integer.parseInt(s);
+							}
 						}
 					}
 					String[] rmacs = null;
@@ -123,7 +132,7 @@ public class RoundtripXML implements RoundtripFormat {
 							sidxs[i] = gi.getSourceIndices().get(i);
 						}
 					}
-					next = visitor.visitGrammarInformation(strongs, rmacs, sidxs);
+					next = visitor.visitGrammarInformation(strongsPrefixes, strongs, rmacs, sidxs);
 				} else if (value instanceof FormattedTextType.FormattingInstruction) {
 					next = visitor.visitFormattingInstruction(FormattingInstructionKind.valueOf(((FormattedTextType.FormattingInstruction) value).getKind().name()));
 				} else if (value instanceof FormattedTextType.CssFormatting) {
@@ -294,11 +303,13 @@ public class RoundtripXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			FormattedTextType.GrammarInformation gi = of.createFormattedTextTypeGrammarInformation();
-			if (strongs != null)
-				for (int strong : strongs)
-					gi.getStrongs().add(strong);
+			if (strongs != null) {
+				for (int i = 0; i < strongs.length; i++) {
+					gi.getStrongs().add((strongsPrefixes == null ? "" : "" + strongsPrefixes[i]) + strongs[i]);
+				}
+			}
 			if (rmac != null)
 				gi.getRmac().addAll(Arrays.asList(rmac));
 			if (sourceIndices != null)

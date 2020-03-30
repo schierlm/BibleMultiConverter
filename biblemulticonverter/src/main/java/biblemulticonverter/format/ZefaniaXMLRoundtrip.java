@@ -491,6 +491,8 @@ public class ZefaniaXMLRoundtrip implements RoundtripFormat {
 					}
 					if (gram.getStr() == null && gram.getRmac() == null)
 						throw new IOException();
+					boolean realPrefixes = false;
+					char[] strongsPrefixes = null;
 					int[] strongs = null;
 					if (gram.getStr() != null) {
 						String strong = gram.getStr().trim().replaceAll(" ++", " ");
@@ -498,19 +500,20 @@ public class ZefaniaXMLRoundtrip implements RoundtripFormat {
 							strong = "0";
 						if (strong.equals("?"))
 							strong = "99111";
-						if (strong.startsWith("G")) {
-							strongVisitor = strongVisitor.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "zefania", "strong-prefix", "G");
-							strong = strong.replace("G", "");
-						} else if (strong.startsWith("H")) {
-							strongVisitor = strongVisitor.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "zefania", "strong-prefix", "H");
-							strong = strong.replace("H", "");
-						}
-						if (!strong.matches("[0-9]+( [0-9]+)*"))
+						if (!strong.matches("[GH]?[0-9]+( [GH]?[0-9]+)*"))
 							throw new IOException(strong);
 						String[] tmpStrongs = strong.split(" ");
+						strongsPrefixes = new char[tmpStrongs.length];
 						strongs = new int[tmpStrongs.length];
 						for (int i = 0; i < tmpStrongs.length; i++) {
-							strongs[i] = Integer.parseInt(tmpStrongs[i]);
+							if (tmpStrongs[i].matches("[GH][0-9]+")) {
+								strongsPrefixes[i] = tmpStrongs[i].charAt(0);
+								strongs[i] = Integer.parseInt(tmpStrongs[i].substring(1));
+								realPrefixes = true;
+							} else {
+								strongsPrefixes[i] = 'X';
+								strongs[i] = Integer.parseInt(tmpStrongs[i]);
+							}
 						}
 					}
 					String[] rmacs = null;
@@ -518,7 +521,7 @@ public class ZefaniaXMLRoundtrip implements RoundtripFormat {
 						String rmac = gram.getRmac();
 						rmacs = rmac.split(" ");
 					}
-					strongVisitor = strongVisitor.visitGrammarInformation(strongs, rmacs, null);
+					strongVisitor = strongVisitor.visitGrammarInformation(realPrefixes ? strongsPrefixes : null, strongs, rmacs, null);
 					if (!parseContent(strongVisitor, gram.getContent(), abbrMap)) {
 						visitEmptyMarker(strongVisitor);
 					}
@@ -833,7 +836,7 @@ public class ZefaniaXMLRoundtrip implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			final GRAM gram = of.createGRAM();
 			String gramName = "GRAM", prefix = "";
 			if (footnoteSource != null) {
@@ -852,7 +855,7 @@ public class ZefaniaXMLRoundtrip implements RoundtripFormat {
 			if (strongs != null) {
 				StringBuilder entryBuilder = new StringBuilder();
 				for (int i = 0; i < strongs.length; i++) {
-					entryBuilder.append((i > 0 ? " " : "") + prefix + strongs[i]);
+					entryBuilder.append((i > 0 ? " " : "") + prefix + (strongsPrefixes != null && strongsPrefixes[i] != 'X' ? "" + strongsPrefixes[i] : "") + strongs[i]);
 				}
 				String entry = entryBuilder.toString();
 				if (entry.equals("0"))

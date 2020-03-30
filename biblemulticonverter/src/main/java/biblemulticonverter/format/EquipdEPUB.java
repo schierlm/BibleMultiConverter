@@ -287,7 +287,7 @@ public class EquipdEPUB implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			if (rmac != null)
 				unsupportedFeatures.add("rmac" + featureSuffix);
 			if (sourceIndices != null)
@@ -298,7 +298,12 @@ public class EquipdEPUB implements ExportFormat {
 			}
 			if (strongs.length != 1)
 				unsupportedFeatures.add("multi strongs" + featureSuffix);
-			writer.write("<a href=\"" + (nt ? "" : "0") + strongs[0] + "\" class=\"strongs\">");
+			boolean useNT = nt;
+			if (strongsPrefixes != null && strongsPrefixes[0] == 'G')
+				useNT = true;
+			if (strongsPrefixes != null && strongsPrefixes[0] == 'H')
+				useNT = false;
+			writer.write("<a href=\"" + (useNT ? "" : "0") + strongs[0] + "\" class=\"strongs\">");
 			pushSuffix("</a>");
 			return this;
 		}

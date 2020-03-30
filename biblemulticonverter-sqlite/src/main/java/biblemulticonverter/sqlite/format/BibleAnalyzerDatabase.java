@@ -56,12 +56,12 @@ public class BibleAnalyzerDatabase extends BibleAnalyzerFormattedText {
 							}
 
 							@Override
-							public Visitor<RuntimeException> visitGrammarInformation(int[] strongs, String[] rmac, int[] sourceIndices) {
+							public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
 								if (strongs != null)
 									hasGrammar[0] = true;
 								if (rmac != null)
 									hasGrammar[1] = true;
-								return super.visitGrammarInformation(strongs, rmac, sourceIndices);
+								return super.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices);
 							}
 						});
 						hasStrongs = hasGrammar[0];
