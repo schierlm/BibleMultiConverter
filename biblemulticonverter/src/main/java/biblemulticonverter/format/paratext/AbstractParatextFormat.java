@@ -7,8 +7,10 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
@@ -670,6 +672,26 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		@Override
 		public Visitor<RuntimeException> visitCSSFormatting(String css) {
 			AutoClosingFormattingKind kind = ALL_FORMATTINGS_CSS.get(css);
+			if (kind == null && css.equals("font-style: italic; myBibleType=note")) {
+				kind = AutoClosingFormattingKind.ADDITION;
+			}
+			if (kind == null) {
+				// fuzzy search
+				Set<String> cleanedCSS = new HashSet<>(Arrays.asList(css.toLowerCase().replace(" ", "").split(";")));
+				if (cleanedCSS.contains("font-weight:bold") && cleanedCSS.contains("font-style:italic"))
+					kind = AutoClosingFormattingKind.BOLD_ITALIC;
+				else if (cleanedCSS.contains("font-weight:bold"))
+					kind = AutoClosingFormattingKind.BOLD;
+				else if (cleanedCSS.contains("font-style:italic"))
+					kind = AutoClosingFormattingKind.ITALIC;
+				else if (cleanedCSS.contains("font-variant:small-caps"))
+					kind = AutoClosingFormattingKind.SMALL_CAPS;
+				else if (cleanedCSS.contains("color:red"))
+					kind = AutoClosingFormattingKind.WORDS_OF_JESUS;
+				if (kind != null) {
+					System.out.println("WARNING: Replaced CSS formatting \"" + css + "\" by fuzzy match \"" + kind.getCss() + "\" (tag: \\" + kind.getTag() + ")");
+				}
+			}
 			if (kind == null) {
 				System.out.println("WARNING: No tag found for formatting: " + css);
 				return this;
