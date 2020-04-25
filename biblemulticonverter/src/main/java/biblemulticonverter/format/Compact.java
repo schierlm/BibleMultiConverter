@@ -33,6 +33,8 @@ public class Compact implements RoundtripFormat {
 	public static final String[] HELP_TEXT = {
 			"A text-format that is small and well-compressible.",
 			"",
+			"Usage (export): Compact <OutputFile>",
+			"",
 			"Basically, every verse will be put into its own line, similar to VPL.",
 			"But book, chapter, and verse information is omitted in case it can be inferred from the previous verse.",
 			"Also, formatting tags are cut as soon as they are unique (resulting in lots of 'unclosed' angle brackets)",
