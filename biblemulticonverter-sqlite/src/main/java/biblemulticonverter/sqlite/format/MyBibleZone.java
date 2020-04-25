@@ -307,7 +307,7 @@ public class MyBibleZone implements RoundtripFormat {
 				int b = (int) cursor.getInteger("book_number");
 				int c = (int) cursor.getInteger("chapter");
 				int v = (int) cursor.getInteger("verse");
-				String title = cursor.getString("title").trim();
+				String title = cursor.getString("title").replaceAll("[\0- ]+", " ").trim();
 				Book bk = bookIDMap.get(b);
 				if (bk == null) {
 					System.out.println("WARNING: Subheading for unknown book " + b + " skipped");
@@ -443,6 +443,10 @@ public class MyBibleZone implements RoundtripFormat {
 			text = text.substring(pos);
 			if (text.startsWith("<p>"))
 				text = "<pb/>" + text.substring(3); // AT.SQLite3
+			if (text.startsWith("<f>") && !rawFootnotes && footnoteDB == null) {
+				System.out.println("WARNING: footnote(s) found but *.commentaries.SQLite3 file missing");
+				rawFootnotes = true;
+			}
 			if (text.startsWith("<S>")) {
 				pos = text.indexOf("</S>");
 				String[] txt = cleanText(text.substring(3, pos)).split(",");
