@@ -64,7 +64,7 @@ public class RoundtripODT implements RoundtripFormat {
 	public static final String[] HELP_TEXT = {
 			"ODT export and re-import",
 			"",
-			"Usage: RoundtripODT <outfile>.odt [contrast|plain|printable|<styles.xml>]",
+			"Usage (export): RoundtripODT <outfile>.odt [contrast|plain|printable|<styles.xml>]",
 			"",
 			"Export into an OpenDocument Text file. All features are exported, but some might look",
 			"strange in OpenOffice/LibreOffice. The file can be edited in LibreOffice 6 and",

@@ -47,6 +47,8 @@ public class RoundtripXML implements RoundtripFormat {
 	public static final String[] HELP_TEXT = {
 			"Roundtrip XML Export",
 			"",
+			"Usage (export): RountripXML <OutputFile>",
+			"",
 			"Export into a XML file that contains all features supported by the import file."
 	};
 

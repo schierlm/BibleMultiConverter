@@ -25,7 +25,9 @@ import biblemulticonverter.data.VirtualVerse;
 public class SimpleJSON implements ExportFormat {
 
 	public static final String[] HELP_TEXT = {
-			"Very simple JSON bible export (verse text only)."
+			"Very simple JSON bible export (verse text only).",
+			"",
+			"Usage: SimpleJSON <OutputFile>"
 	};
 
 	@Override

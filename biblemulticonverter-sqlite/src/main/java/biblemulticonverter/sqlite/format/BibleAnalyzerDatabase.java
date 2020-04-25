@@ -24,6 +24,8 @@ public class BibleAnalyzerDatabase extends BibleAnalyzerFormattedText {
 	public static final String[] HELP_TEXT = {
 			"Database Export format for Bible Analyzer",
 			"",
+			"Usage: BibleAnalyzerDatabase <OutputFile>",
+			"",
 			"This format only supports bibles, not dictionaries.",
 			"",
 			"It directly writes the SQLite database consumed by Bible Analyzer, and therefore",

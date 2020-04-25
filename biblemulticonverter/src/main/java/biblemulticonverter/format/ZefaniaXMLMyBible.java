@@ -58,6 +58,8 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 	public static final String[] HELP_TEXT = {
 			"Zefania XML - well known bible format (with MyBible optimizations).",
 			"",
+			"Usage: ZefaniaXMLMyBible <OutputFile>",
+			"",
 			"This version will export Zefania XML modules optimized for use with MyBible.",
 	};
 

@@ -54,6 +54,8 @@ public class ZefDic implements RoundtripFormat {
 
 	public static final String[] HELP_TEXT = {
 			"Zefania Dictionary - dictionaries for well known bible format.",
+			"",
+			"Usage (export): ZefDic <OutputFile>"
 	};
 
 	private static final String[] INFORMATION_KEYS = {

@@ -76,6 +76,8 @@ public class ZefaniaXMLRoundtrip implements RoundtripFormat {
 	public static final String[] HELP_TEXT = {
 			"Zefania XML - well known bible format (Roundtrip converter).",
 			"",
+			"Usage (export): ZefaniaXMLRoundtrip <OutputFile>",
+			"",
 			"This version will reject Zefania XML files which cannot be exported to equivalent XML later.",
 	};
 

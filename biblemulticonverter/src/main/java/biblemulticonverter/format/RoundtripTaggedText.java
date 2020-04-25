@@ -34,6 +34,8 @@ public class RoundtripTaggedText implements RoundtripFormat {
 	public static final String[] HELP_TEXT = {
 			"A text-format that consistently uses numbered tags to make automated editing easy.",
 			"",
+			"Usage (export): RoundtripTaggedText <OutputFile>",
+			"",
 			"This format uses HTML-like tags, but every open tag is matched with a close tag,",
 			"and every occurrence of a tag (with its matching end tag) gets a unique number appended.",
 			"That way, corresponding end tags can be easily found using regular expressions.",

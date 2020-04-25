@@ -28,6 +28,8 @@ public class MobiPocket implements ExportFormat {
 
 	public static final String[] HELP_TEXT = {
 			"MobiPocket ebook format (predecessor of Kindle's format)",
+			"",
+			"Usage: MobiPocket <OutputFile>"
 	};
 
 	private static final String TITLEPREFIX = "Die Bibel - ";

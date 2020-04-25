@@ -37,6 +37,8 @@ public class BibleWorks implements RoundtripFormat {
 
 	public static final String[] HELP_TEXT = {
 			"Plain text import and export format for BibleWorks",
+			"",
+			"Usage (export): BibleWorks <OutputFile>"
 	};
 
 	private static Map<BookID, String> BOOK_NAME_MAP = new EnumMap<>(BookID.class);

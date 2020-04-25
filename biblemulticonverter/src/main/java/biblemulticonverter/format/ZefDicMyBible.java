@@ -48,7 +48,7 @@ public class ZefDicMyBible implements ExportFormat {
 	public static final String[] HELP_TEXT = {
 			"Zefania Dictionary exporter for MyBible.",
 			"",
-			"Usage: LogosHTML <outfile> [<idfields>]",
+			"Usage: ZefDicMyBible <outfile> [<idfields>]",
 			"",
 			"This version will export Zefania Dictionary modules optimized for use with MyBible.",
 			"In <idfields> you can optionally give a comma separated list of 'abbr', 'short' and 'long',",

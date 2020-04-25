@@ -59,6 +59,8 @@ public class OSIS implements RoundtripFormat {
 	public static final String[] HELP_TEXT = {
 			"Very rudimentary OSIS (Open Scripture Information Standard) import/export.",
 			"",
+			"Usage (export): OSIS <OutputFile> [-|verse|chapter|div|q][,...]",
+			"",
 			"When exporting to OSIS, you can pass a comma separated list of tag names you",
 			"like to have milestoned in the output file as second parameter. The default",
 			"is 'verse', the maximum is 'div,chapter,verse,q'."

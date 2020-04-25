@@ -28,6 +28,8 @@ public class BibleAnalyzerFormattedText implements ExportFormat {
 	public static final String[] HELP_TEXT = {
 			"Formatted Text Export format for Bible Analyzer",
 			"",
+			"Usage: BibleAnalyzerFormattedText <OutputFile>",
+			"",
 			"This format supports both bibles and dictionaries.",
 			"",
 			"It can be converted by the official module conversion tools, and is therefore",

@@ -29,7 +29,9 @@ import biblemulticonverter.data.VirtualVerse;
 public class YCHPalmBible implements RoundtripFormat {
 
 	public static final String[] HELP_TEXT = {
-			"YCHBibleConverter for PalmBible+"
+			"YCHBibleConverter for PalmBible+",
+			"",
+			"Usage (export): YCHPalmBible <OutputFile>"
 	};
 
 	private static final String CHAPTER_NAME = "Kapitel";

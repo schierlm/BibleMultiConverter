@@ -72,6 +72,8 @@ public class HaggaiXML implements RoundtripFormat {
 
 	public static final String[] HELP_TEXT = {
 			"Haggai XML - used by Free Scriptures project.",
+			"",
+			"Usage (export): HaggaiXML <OutputFile>"
 	};
 
 	private static final Map<MetadataBookKey, Pattern> INFORMATION_FIELDS = new EnumMap<MetadataBookKey, Pattern>(MetadataBookKey.class);

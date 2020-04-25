@@ -55,6 +55,8 @@ public class USFX extends AbstractParatextFormat {
 	public static final String[] HELP_TEXT = {
 			"XML Bible format based on USFM used by ebible.org",
 			"",
+			"Usage (export): USFX <OutputFile>",
+			"",
 			"Point the importer to .usfx files, not to directories!",
 	};
 

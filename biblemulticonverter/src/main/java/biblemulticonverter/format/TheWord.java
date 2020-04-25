@@ -40,6 +40,8 @@ public class TheWord implements RoundtripFormat {
 
 	public static final String[] HELP_TEXT = {
 			"Bible format used by theWord",
+			"",
+			"Usage (export): TheWord <OutputFileWithoutExtension>"
 	};
 
 	private static final BookID[] BOOK_ORDER = new BookID[66];

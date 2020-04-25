@@ -38,6 +38,8 @@ public class ParatextDump extends AbstractParatextFormat {
 	public static final String[] HELP_TEXT = {
 			"Dump a Paratext bible to diffable plain text",
 			"",
+			"Usage (export): ParatextDump <OutputFile>",
+			"",
 			"Point the importer to .txt files, not to directories!",
 	};
 

@@ -41,6 +41,8 @@ public class SoftProjector implements RoundtripFormat {
 	public static final String[] HELP_TEXT = {
 			"Bible format used by SoftProjector",
 			"",
+			"Usage (export): SoftProjector <OutputFile>",
+			"",
 			"For importing, the system property 'softprojector.verses' can be set to",
 			"'tagged' (default), 'original' or 'canonical'. The tagged format can be",
 			"converted back without loss of information, if the additional system",

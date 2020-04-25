@@ -32,6 +32,8 @@ public class Diffable implements RoundtripFormat {
 	public static final String[] HELP_TEXT = {
 			"A VPL-like text-format that can be diffed easily.",
 			"",
+			"Usage (export): Diffable <OutputFile>",
+			"",
 			"Every verse will be put into its own line, similar to VPL.",
 			"Linebreaks or headlines get their own lines.",
 			"Formatting is stored in HTML-like tags.",

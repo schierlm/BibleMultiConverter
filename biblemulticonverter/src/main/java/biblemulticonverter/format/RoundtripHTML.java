@@ -41,6 +41,8 @@ public class RoundtripHTML implements RoundtripFormat {
 	public static final String[] HELP_TEXT = {
 			"Roundtrip HTML Export",
 			"",
+			"Usage (export): RoundtripHTML <OutputDirectory>",
+			"",
 			"Export into a directory of HTML files. The resulting HTML files contain all features",
 			"supported by the import file. While it is perfectly usable (and indexable) without",
 			"JavaScript, some advanced features (like Navigation or Strongs highlighting) require",
