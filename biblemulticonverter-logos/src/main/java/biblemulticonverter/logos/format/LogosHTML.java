@@ -674,9 +674,9 @@ public class LogosHTML implements ExportFormat {
 			int max = Math.max(strongs == null ? 0 : strongs.length, rmac == null ? 0 : rmac.length);
 			for (int i = 0; i < max; i++) {
 				boolean useNT = nt;
-				if (strongsPrefixes != null && strongsPrefixes[i] == 'G')
+				if (strongsPrefixes != null && i < strongs.length && strongsPrefixes[i] == 'G')
 					useNT = true;
-				else if (strongsPrefixes != null && strongsPrefixes[i] == 'H')
+				else if (strongsPrefixes != null && i < strongs.length && strongsPrefixes[i] == 'H')
 					useNT = false;
 				String type = useNT ? "GreekStrongs:G" : "HebrewStrongs:H";
 				if (strongs != null && i < strongs.length)

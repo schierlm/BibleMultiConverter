@@ -642,6 +642,8 @@ public class OSIS implements RoundtripFormat {
 				kind = FormattingInstructionKind.ITALIC;
 			} else if (elem.getAttribute("type").equals("bold")) {
 				kind = FormattingInstructionKind.BOLD;
+			} else if (elem.getAttribute("type").equals("emphasis")) {
+				kind = FormattingInstructionKind.ITALIC;
 			} else {
 				kind = null;
 				printWarning("WARNING: Invalid hi type: " + elem.getAttribute("type"));
