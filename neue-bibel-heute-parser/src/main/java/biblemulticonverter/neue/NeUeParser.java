@@ -125,6 +125,8 @@ public class NeUeParser implements ImportFormat {
 		String mainFile = "NeUe.htm";
 		if (!new File(inputDirectory, mainFile).exists())
 			mainFile = "index.htm";
+		if (!new File(inputDirectory, mainFile).exists())
+			mainFile = "index.html";
 
 		try (BufferedReader br = createReader(inputDirectory, mainFile)) {
 			String line = br.readLine().trim();
@@ -318,6 +320,8 @@ public class NeUeParser implements ImportFormat {
 						} else {
 							p = Utils.compilePattern("");
 						}
+						int qd = quoteDepth;
+						quoteDepth = 0;
 						Matcher m = p.matcher(replaceEntities(headline));
 						if (m.matches()) {
 							hl.getAppendVisitor().visitText(m.group(1));
@@ -327,6 +331,7 @@ public class NeUeParser implements ImportFormat {
 							hl.getAppendVisitor().visitText(replaceEntities(headline));
 						}
 						headlines.add(hl);
+						quoteDepth = qd;
 					} else if (inParagraph && line.startsWith("<span class=\"vers\">")) {
 						int pos = line.indexOf("</span>");
 						if (pos == -1)
@@ -785,6 +790,7 @@ public class NeUeParser implements ImportFormat {
 		text = text.replace("&Aacute;", "Á").replace("&iacute;", "í").replace("&aacute;", "á");
 		text = text.replace("&eacute;", "é").replace("&copy;", "©");
 		text = text.replace("&bdquo;", "„").replace("&ldquo;", "“");
+		text = text.replace("&ocirc;", "ô").replace("&ecirc;", "ê");
 		text = text.replace("&frac12;", "½").replace("&nbsp;", "\u00A0").replace("&acute;", "´");
 		if (text.contains("&"))
 			throw new IOException(text);

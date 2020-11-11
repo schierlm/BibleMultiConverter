@@ -6,9 +6,15 @@ Engel Gottes* Hagar
 Hebron nach Sichem\.
 Hebron nach Sichem*.
 
+2mo.html
+Mutter kochen\.'
+Mutter kochen*.'
+
 3mo.html
 Silberst&uuml;cke\*\.
 Silberst&uuml;cke.
+Weihrauch legen,
+Weihrauch legen*,
 
 4mo.html
 <h4 id="20">Nach 40 Jahren an der Grenze des Landes</h4>¶<h4>Das Wasser von Meriba</h4>
@@ -33,6 +39,8 @@ sagte Abischai.</p>¶
 2sam.html
 Efod,
 Efod*,
+Priesterschurz bekleidet
+Priesterschurz* bekleidet
 
 2koe.html
 Gold\* an
@@ -53,6 +61,8 @@ hiob.html
 &nbsp;
 
 ps.html
+<tr>¶<td>
+<tr><td>
 von David.¶   <span class="vers">2</span>&nbsp;
 von David.</em>¶   <span class="vers">2</span>&nbsp;<em>
 (<div class="fn">1,3: .*?</div>¶)((?:.*?¶){1,10}<div class="fn">1,2: .*?</div>¶)
@@ -77,6 +87,10 @@ spr.html
 ¶<h4 id="16">(Sprichw&ouml;rter Salomos)</h4>¶<p class="poet" id="16">
 Frau\*</h4>¶<div class="fn">(31,10: .*?)</div>¶<p class="poet">((.*+¶)*?.*)</p>
 Frau</h4>¶<p class="poet">$2</p>¶<div class="fn">$1</div>
+
+pred.html
+</a>&nbsp;<p class="poet">
+</a>&nbsp;
 
 jes.html
 "fn">11\.10:
@@ -106,6 +120,12 @@ $1</p>¶
 (<div class="fn">12,7: .*?</div>¶)(<div class="fn">12,5: .*?</div>¶)
 $2$1
 
+mal.html
+<p></p>So wird
+<p>So wird
+Jerusalem gebracht wird.¶
+Jerusalem gebracht wird.</p>¶
+
 mt.html
 "fn">13,23:
 "fn">13,32:
@@ -129,8 +149,8 @@ Richtet nicht
 Richtet* nicht
 
 apg.html
-Stadtregenten Roms
-Stadtregenten* Roms
+Stadtregenten beschuldigten
+Stadtregenten* beschuldigten
 
 tit.html
 <div class="e">¶
@@ -222,6 +242,12 @@ jer.html
 "Weh, Herr!"
 »Weh, Herr!«
 
+sach.html
+	### 11:13 second level quote
+	###
+diesen "herrlichen Preis"
+diesen 'herrlichen Preis'
+
 mt.html
 	### 22:44 third level quote
 	###
@@ -232,6 +258,12 @@ gemacht habe.«'*
 sagen .von
 sagen 'von
 
+lk.html
+	### 7:30 quote closed twice
+	###
+abgelehnt."</p>
+abgelehnt.</p>
+
 apg.html
 	### 2:34 - 2:35 third level quote
 	###
@@ -239,4 +271,10 @@ Herrn: "Setz dich
 Herrn: »Setz dich
 \Qgemacht habe."'*\E
 gemacht habe.«'*
+
+hebr.html
+	### 8:9 move comma
+	###
+geachtet," spricht
+geachtet", spricht
 
