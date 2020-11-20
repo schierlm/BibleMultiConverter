@@ -5,3 +5,6 @@ bin
 .settings
 private
 /biblemulticonverter-logos/src/main/resources/logos-versemap.dat
+.idea/
+*.iml
+.DS_Store
