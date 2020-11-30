@@ -535,12 +535,14 @@ Trang version used: trang-20181222
             <xs:enumeration value="ord"/>
             <xs:enumeration value="pn"/>
             <xs:enumeration value="png"/>
+            <xs:enumeration value="rb"/>
             <xs:enumeration value="pro"/>
             <xs:enumeration value="qt"/>
             <xs:enumeration value="rq"/>
             <xs:enumeration value="sig"/>
             <xs:enumeration value="sls"/>
             <xs:enumeration value="tl"/>
+            <xs:enumeration value="w"/>
             <xs:enumeration value="wg"/>
             <xs:enumeration value="wh"/>
             <xs:enumeration value="wa"/>
