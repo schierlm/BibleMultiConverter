@@ -143,7 +143,6 @@ public class USX extends AbstractParatextFormat {
 		CHAR_KIND_MAP.put(AutoClosingFormattingKind.LIST_TOTAL, CharStyle.NO);
 		CHAR_KIND_MAP.put(AutoClosingFormattingKind.LIST_KEY, CharStyle.IT);
 		CHAR_KIND_MAP.put(AutoClosingFormattingKind.LIST_VALUE, CharStyle.NO);
-		CHAR_KIND_MAP.put(AutoClosingFormattingKind.LITURGICAL, CharStyle.NO);
 		CHAR_KIND_MAP.put(AutoClosingFormattingKind.PROPER_NAME_GEOGRAPHIC, CharStyle.NO);
 
 		NOTE_STYLE_MAP.put(NoteStyle.F, FootnoteXrefKind.FOOTNOTE);

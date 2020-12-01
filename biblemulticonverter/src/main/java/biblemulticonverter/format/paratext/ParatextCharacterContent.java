@@ -1,9 +1,5 @@
 package biblemulticonverter.format.paratext;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
@@ -11,6 +7,15 @@ import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentPart;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisitor;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
+import biblemulticonverter.format.paratext.model.Version;
+import biblemulticonverter.format.paratext.utilities.TagParser;
+
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class ParatextCharacterContent implements ParatextBookContentPart, ParatextCharacterContentContainer {
 
@@ -202,97 +207,156 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		}
 	}
 
-	public static enum AutoClosingFormattingKind {
+	public enum AutoClosingFormattingKind {
 
 		//@formatter:off
 
-		INTRODUCTION_OUTLINE_REFERENCE_RANGE("ior", FormattingInstructionKind.ITALIC),
-		INTRODUCTION_QUOTED_TEXT("iqt", FormattingInstructionKind.ITALIC),
+		INTRODUCTION_OUTLINE_REFERENCE_RANGE(Version.V1, "ior", FormattingInstructionKind.ITALIC),
+		INTRODUCTION_QUOTED_TEXT(Version.V2_2, "iqt", FormattingInstructionKind.ITALIC),
 
-		QUOTATION_REFERENCE("rq", FormattingInstructionKind.ITALIC),
-		VERSE_PRESENTATION("vp", FormattingInstructionKind.BOLD), // only very rudimentary
-		SELAH("qs", FormattingInstructionKind.ITALIC, FormattingInstructionKind.DIVINE_NAME),
-		ACROSTIC_CHARACTER("qac",  FormattingInstructionKind.BOLD,  FormattingInstructionKind.ITALIC),
+		QUOTATION_REFERENCE(Version.V1, "rq", FormattingInstructionKind.ITALIC),
+		VERSE_PRESENTATION(Version.V1, "vp", FormattingInstructionKind.BOLD), // only very rudimentary
+		SELAH(Version.V1, "qs", FormattingInstructionKind.ITALIC, FormattingInstructionKind.DIVINE_NAME),
+		ACROSTIC_CHARACTER(Version.V1, "qac", FormattingInstructionKind.BOLD, FormattingInstructionKind.ITALIC),
 
-		LIST_TOTAL("litl"),
-		LIST_KEY("lik", FormattingInstructionKind.ITALIC),
-		LIST_VALUE("liv"),
+		LIST_TOTAL(Version.V3, "litl"),
+		LIST_KEY(Version.V3, "lik", FormattingInstructionKind.ITALIC),
+		LIST_VALUE(Version.V3, "liv"),
+		LIST_VALUE_1(Version.V3, "liv1"),
+		LIST_VALUE_2(Version.V3, "liv2"),
+		LIST_VALUE_3(Version.V3, "liv3"),
+		LIST_VALUE_4(Version.V3, "liv4"),
+		LIST_VALUE_5(Version.V3, "liv5"),
 
-		FOOTNOTE_REFERENCE("fr", FormattingInstructionKind.BOLD),
-		FOOTNOTE_QUOTATION("fq", FormattingInstructionKind.ITALIC),
-		FOOTNOTE_QUOTATION_ALT("fqa", FormattingInstructionKind.ITALIC),
-		FOOTNOTE_KEYWORD("fk", FormattingInstructionKind.DIVINE_NAME),
-		FOOTNOTE_LABEL("fl"),
-		FOOTNOTE_PARAGRAPH("fp", null, null, LineBreakKind.PARAGRAPH, null),
-		FOOTNOTE_VERSE_NUMBER("fv", FormattingInstructionKind.SUPERSCRIPT),
-		FOOTNOTE_TEXT("ft"),
-		FOOTNOTE_DEUTEROCANONICAL_CONTENT("fdc", KeepIf.DC),
+		FOOTNOTE_REFERENCE(Version.V1, "fr", FormattingInstructionKind.BOLD),
+		FOOTNOTE_QUOTATION(Version.V1, "fq", FormattingInstructionKind.ITALIC),
+		FOOTNOTE_QUOTATION_ALT(Version.V1, "fqa", FormattingInstructionKind.ITALIC),
+		FOOTNOTE_KEYWORD(Version.V1, "fk", FormattingInstructionKind.DIVINE_NAME),
+		FOOTNOTE_LABEL(Version.V2_0_3, "fl"),
+		FOOTNOTE_PARAGRAPH(Version.V2_0_3, "fp", null, null, LineBreakKind.PARAGRAPH, null),
+		FOOTNOTE_WITNESS_LIST(Version.V3, "fw"),
+		FOOTNOTE_VERSE_NUMBER(Version.V1, "fv", FormattingInstructionKind.SUPERSCRIPT),
+		FOOTNOTE_TEXT(Version.V1, "ft"),
 
-		XREF_ORIGIN("xo", FormattingInstructionKind.BOLD),
-		XREF_KEYWORD("xk", FormattingInstructionKind.DIVINE_NAME),
-		XREF_QUOTATION("xq", FormattingInstructionKind.ITALIC),
-		XREF_TARGET("xt"),
-		XREF_OT_CONTENT("xot", KeepIf.OT),
-		XREF_NT_CONTENT("xnt", KeepIf.NT),
-		XREF_DEUTEROCANONICAL_CONTENT("xdc", KeepIf.DC),
+		// In version 3.0 this marker has been deprecated, it should be easy to replace with dc and remove it completely
+		// here.
+		// https://ubsicap.github.io/usfm/master/notes_basic/fnotes.html#fdc-fdc
+		FOOTNOTE_DEUTEROCANONICAL_CONTENT(Version.V1, "fdc", KeepIf.DC),
 
-		ADDITION("add", FormattingInstructionKind.ITALIC),
-		BOOK_TITLE("bk", FormattingInstructionKind.ITALIC),
-		DEUTEROCANONICAL_CONTENT("dc", KeepIf.DC),
-		KEYWORD("k"),
-		LITURGICAL("lit", FormattingInstructionKind.BOLD),
-		NAME_OF_DEITY("nd", FormattingInstructionKind.DIVINE_NAME, true),
-		ORDINAL("ord", FormattingInstructionKind.SUPERSCRIPT),
-		PROPER_NAME("pn"),
-		PROPER_NAME_GEOGRAPHIC("png"),
-		ADDED_PROPER_NAME("addpn", FormattingInstructionKind.ITALIC),
-		QUOTED_TEXT("qt", FormattingInstructionKind.ITALIC),
-		SIGNATURE("sig", FormattingInstructionKind.ITALIC),
-		SECONDARY_LANGUAGE_SOURCE("sls", FormattingInstructionKind.ITALIC),
-		TRANSLITERATED("tl", FormattingInstructionKind.ITALIC),
-		WORDS_OF_JESUS("wj", FormattingInstructionKind.WORDS_OF_JESUS, true),
+		XREF_ORIGIN(Version.V1, "xo", FormattingInstructionKind.BOLD),
+		XREF_PUBLISHED_ORIGIN(Version.V3, "xop", FormattingInstructionKind.BOLD),
+		XREF_KEYWORD(Version.V1, "xk", FormattingInstructionKind.DIVINE_NAME),
+		XREF_QUOTATION(Version.V1, "xq", FormattingInstructionKind.ITALIC),
 
-		EMPHASIS("em", FormattingInstructionKind.ITALIC),
-		BOLD("bd", FormattingInstructionKind.BOLD, true),
-		ITALIC("it", FormattingInstructionKind.ITALIC, true),
-		BOLD_ITALIC("bdit", FormattingInstructionKind.BOLD, FormattingInstructionKind.ITALIC),
-		NORMAL("no", "font-style: normal; font-weight: normal;"),
-		SMALL_CAPS("sc", FormattingInstructionKind.DIVINE_NAME),
+		// In version 3.0 one new attribute was introduced for this tag: "link-href" see:
+		// https://ubsicap.github.io/usx/usx3.0.3/notes.html#xt
+		XREF_TARGET_REFERENCES(Version.V1, "xt"),
+		XREF_TARGET_REFERENCES_TEXT(Version.V3, "xta"),
+		XREF_OT_CONTENT(Version.V2_2, "xot", KeepIf.OT),
+		XREF_NT_CONTENT(Version.V2_2, "xnt", KeepIf.NT),
 
-		INDEX_ENTRY("ndx"),
-		PRONUNCIATION("pro"),
-		WORDLIST("w"),
-		GREEK_WORD("wg"),
-		HEBREW_WORD("wh"),
+		// In version 3.0 this marker has been deprecated, it should be easy to replace with dc and remove it completely
+		// here.
+		// https://ubsicap.github.io/usfm/master/notes_basic/fnotes.html#fdc-fdc
+		XREF_DEUTEROCANONICAL_CONTENT(Version.V1, "xdc", KeepIf.DC),
 
-		PAGE_BREAK("pb", null, null, LineBreakKind.PARAGRAPH, null);
+		ADDITION(Version.V1, "add", FormattingInstructionKind.ITALIC),
+		QUOTED_BOOK_TITLE(Version.V1, "bk", FormattingInstructionKind.ITALIC),
+		DEUTEROCANONICAL_CONTENT(Version.V1, "dc", KeepIf.DC),
+		KEYWORD(Version.V1, "k"),
+		NAME_OF_DEITY(Version.V1, "nd", FormattingInstructionKind.DIVINE_NAME, true),
+		ORDINAL(Version.V1, "ord", FormattingInstructionKind.SUPERSCRIPT),
+		PROPER_NAME(Version.V1, "pn"),
+		PROPER_NAME_GEOGRAPHIC(Version.V3, "png"),
+
+		// In version 3.0 this tag has been deprecated
+		// https://ubsicap.github.io/usfm/characters/index.html#addpn-addpn
+		ADDED_PROPER_NAME(Version.V1, "addpn", FormattingInstructionKind.ITALIC),
+		QUOTED_TEXT(Version.V1, "qt", FormattingInstructionKind.ITALIC),
+		SIGNATURE(Version.V1, "sig", FormattingInstructionKind.ITALIC),
+		SECONDARY_LANGUAGE_SOURCE(Version.V1, "sls", FormattingInstructionKind.ITALIC),
+		TRANSLITERATED(Version.V1, "tl", FormattingInstructionKind.ITALIC),
+		WORDS_OF_JESUS(Version.V2, "wj", FormattingInstructionKind.WORDS_OF_JESUS, true),
+
+		EMPHASIS(Version.V2, "em", FormattingInstructionKind.ITALIC),
+		BOLD(Version.V1, "bd", FormattingInstructionKind.BOLD, true),
+		ITALIC(Version.V1, "it", FormattingInstructionKind.ITALIC, true),
+		BOLD_ITALIC(Version.V1, "bdit", FormattingInstructionKind.BOLD, FormattingInstructionKind.ITALIC),
+		NORMAL(Version.V1, "no", "font-style: normal; font-weight: normal;"),
+		SMALL_CAPS(Version.V1, "sc", FormattingInstructionKind.DIVINE_NAME),
+		SUPERSCRIPT(Version.V3, "sup", FormattingInstructionKind.SUPERSCRIPT),
+
+		INDEX_ENTRY(Version.V1, "ndx"),
+
+		// In version 3.0 this tag has been deprecated, rb should be used instead, see:
+		// https://ubsicap.github.io/usx/usx3.0.3/charstyles.html#pro
+		PRONUNCIATION(Version.V2, "pro"),
+
+		// In version 3.0 one new attributes have been added to this tag, see:
+		// https://ubsicap.github.io/usx/usx3.0.3/charstyles.html#w
+		WORDLIST(Version.V1, "w"),
+		GREEK_WORD(Version.V1, "wg"),
+		HEBREW_WORD(Version.V1, "wh"),
+		ARAMAIC_WORD(Version.V3, "wa"),
+
+		// TODO PAGE_BREAK is part of AutoClosingFormattingKind but should be part of ParagraphKind
+		// It is not mentioned in the USX 2/3 documentation but it can be found in the USX 2/3 schemas:
+		// https://github.com/ubsicap/usx/blob/650cc91f0c22d546aebd20fd72bd31d916db283a/schema/usx_2.6.rnc#L204
+		// https://github.com/ubsicap/usx/blob/650cc91f0c22d546aebd20fd72bd31d916db283a/schema/usx.rnc#L373
+		// It is also mentioned in the USFM 3 documentation, however under the subsection for character styles:
+		// See: https://ubsicap.github.io/usfm/characters/index.html#pb
+		// But the `Type` still says 'paragraph'.
+		PAGE_BREAK(Version.V1, "pb", null, null, LineBreakKind.PARAGRAPH, null);
 
 		//@formatter:on
 
-		private static final String[] WORDLIST_ENTRY_ATTRIBUTES = { "lemma", "strong" };
+		private static final String[] WORDLIST_ENTRY_ATTRIBUTES = {"lemma", "strong"};
 
+		private final Version since;
+		/**
+		 * The value of a numbered marker, if the marker is not numbered this value will be -1.
+		 */
+		private final int number;
+		private final String baseTag;
 		private final String tag;
 		private final FormattingInstructionKind format;
 		private final String css;
 		private final LineBreakKind lbk;
 		private final KeepIf keepIf;
 
-		private AutoClosingFormattingKind(String tag) {
-			this(tag, (KeepIf) null);
+		private AutoClosingFormattingKind(Version since, String tag) {
+			this(since, tag, (KeepIf) null);
 		}
 
-		private AutoClosingFormattingKind(String tag, KeepIf keepIf) {
-			this(tag, null, "-bmc-usfm-tag: " + tag + ";", null, keepIf);
+		private AutoClosingFormattingKind(Version since, String tag, KeepIf keepIf) {
+			this(since, tag, null, "-bmc-usfm-tag: " + tag + ";", null, keepIf);
 		}
 
-		private AutoClosingFormattingKind(String tag, FormattingInstructionKind... extraStyles) {
-			this(tag, null, buildCSS(extraStyles) + "-bmc-usfm-tag: " + tag + ";", null, null);
+		private AutoClosingFormattingKind(Version since, String tag, FormattingInstructionKind... extraStyles) {
+			this(since, tag, null, buildCSS(extraStyles) + "-bmc-usfm-tag: " + tag + ";", null, null);
 		}
 
-		private AutoClosingFormattingKind(String tag, FormattingInstructionKind kind, boolean primary) {
-			this(tag, kind, kind.getCss(), null, null);
+		private AutoClosingFormattingKind(Version since, String tag, FormattingInstructionKind kind, boolean primary) {
+			this(since, tag, kind, kind.getCss(), null, null);
 			if (!primary)
 				throw new IllegalStateException();
+		}
+
+		private AutoClosingFormattingKind(Version since, String tag, String extraCss) {
+			this(since, tag, null, extraCss + " -bmc-usfm-tag: " + tag + ";", null, null);
+		}
+
+		private AutoClosingFormattingKind(Version since, String tag, FormattingInstructionKind format, String css, LineBreakKind lbk, KeepIf keepIf) {
+			this.since = since;
+			this.tag = tag;
+			this.format = format;
+			this.css = css;
+			this.lbk = lbk;
+			this.keepIf = keepIf;
+			TagParser parser = new TagParser();
+			parser.parse(tag);
+			this.number = parser.getNumber();
+			this.baseTag = parser.getTag();
 		}
 
 		private static String buildCSS(FormattingInstructionKind[] extraStyles) {
@@ -301,18 +365,6 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 				result.append(k.getCss() + " ");
 			}
 			return result.toString();
-		}
-
-		private AutoClosingFormattingKind(String tag, String extraCss) {
-			this(tag, null, extraCss + " -bmc-usfm-tag: " + tag + ";", null, null);
-		}
-
-		private AutoClosingFormattingKind(String tag, FormattingInstructionKind format, String css, LineBreakKind lbk, KeepIf keepIf) {
-			this.tag = tag;
-			this.format = format;
-			this.css = css;
-			this.lbk = lbk;
-			this.keepIf = keepIf;
 		}
 
 		public String getTag() {
@@ -337,6 +389,32 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 
 		public String[] getDefaultAttributes() {
 			return this == WORDLIST ? WORDLIST_ENTRY_ATTRIBUTES : null;
+		}
+
+		/**
+		 * True if this AutoClosingFormattingKind has the same baseTag as the given AutoClosingFormattingKind.
+		 */
+		public boolean isSameBase(AutoClosingFormattingKind kind) {
+			return baseTag.equals(kind.baseTag);
+		}
+
+		/**
+		 * Returns this tags number.
+		 *
+		 * @return the tags number or -1 if the tag does not have a number.
+		 */
+		public int getNumber() {
+			return number;
+		}
+
+		public static Set<AutoClosingFormattingKind> allForVersion(Version version) {
+			Set<AutoClosingFormattingKind> result = EnumSet.noneOf(AutoClosingFormattingKind.class);
+			for (AutoClosingFormattingKind kind : values()) {
+				if (kind.since.isLowerOrEqualTo(version)) {
+					result.add(kind);
+				}
+			}
+			return result;
 		}
 
 		public static Map<String, AutoClosingFormattingKind> allTags() {
