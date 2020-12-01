@@ -1,6 +1,7 @@
 package biblemulticonverter.format.paratext;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.EnumMap;
@@ -14,6 +15,8 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamReader;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
@@ -21,6 +24,7 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 
+import biblemulticonverter.utilities.UnmarshallerLocationListener;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
@@ -85,6 +89,8 @@ public class USX extends AbstractParatextFormat {
 	private Map<AutoClosingFormattingKind, CharStyle> CHAR_KIND_MAP = new EnumMap<>(AutoClosingFormattingKind.class);
 	private Map<NoteStyle, FootnoteXrefKind> NOTE_STYLE_MAP = new EnumMap<>(NoteStyle.class);
 	private Map<FootnoteXrefKind, NoteStyle> NOTE_KIND_MAP = new EnumMap<>(FootnoteXrefKind.class);
+
+	private UnmarshallerLocationListener unmarshallerLocationListener = new UnmarshallerLocationListener();
 
 	public USX() {
 		Map<String, ParagraphKind> paraTags = ParagraphKind.allTags();
@@ -161,13 +167,21 @@ public class USX extends AbstractParatextFormat {
 			return null;
 		ValidateXML.validateFileBeforeParsing(getSchema(), inputFile);
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
+
+		XMLInputFactory xif = XMLInputFactory.newFactory();
+		XMLStreamReader xsr = xif.createXMLStreamReader(new FileInputStream(inputFile));
 		Unmarshaller u = ctx.createUnmarshaller();
-		Usx doc = (Usx) u.unmarshal(inputFile);
+		u.setListener(unmarshallerLocationListener);
+		unmarshallerLocationListener.setXMLStreamReader(xsr);
+		Usx doc = (Usx) u.unmarshal(xsr);
+		xsr.close();
+
 		ParatextID id = ParatextID.fromIdentifier(doc.getBook().getCode().toUpperCase());
 		if (id == null) {
 			System.out.println("WARNING: Skipping book with unknown ID: " + doc.getBook().getCode());
 			return null;
 		}
+
 		ParatextBook result = new ParatextBook(id, doc.getBook().getContent());
 		ParatextCharacterContent charContent = null;
 		for (Object o : doc.getParaOrTableOrChapter()) {
@@ -254,21 +268,12 @@ public class USX extends AbstractParatextFormat {
 				System.out.println("WARNING: Skipping optional break");
 			} else if (o instanceof Ref) {
 				Ref r = (Ref) o;
-				if (!r.getLoc().matches("[A-Z1-4]{3} [0-9]+:[0-9]+(-[0-9]+(:[0-9]+)?)?")) {
-					System.out.println("WARNING: Unsupported structured reference format - replaced by plain text: " + r.getLoc());
-					container.getContent().add(new Text(r.getContent()));
-				} else {
-					String[] parts = r.getLoc().split("[ :-]");
-					ParatextID id = ParatextID.fromIdentifier(parts[0]);
-					if (id == null) {
-						System.out.println("WARNING: Unsupported book in structured reference - replaced by plain text: " + parts[0]);
-						container.getContent().add(new Text(r.getContent()));
-					} else {
-						int c1 = Integer.parseInt(parts[1]), v1 = Integer.parseInt(parts[2]);
-						int c2 = parts.length == 5 ? Integer.parseInt(parts[3]) : c1;
-						int v2 = parts.length > 3 ? Integer.parseInt(parts[parts.length - 1]) : v1;
-						container.getContent().add(new Reference(id, c1, v1, c2, v2, r.getContent()));
-					}
+				try {
+					container.getContent().add(ParatextCharacterContent.Reference.parse(r.getLoc(), r.getContent()));
+				} catch (IllegalArgumentException e) {
+					String location = unmarshallerLocationListener.getHumanReadableLocation(o);
+					System.out.println("WARNING: Unsupported structured reference format at " + location + " - replaced by plain text: " + r.getLoc());
+					container.getContent().add(new ParatextCharacterContent.Text(r.getContent()));
 				}
 			} else if (o instanceof String) {
 				container.getContent().add(new Text((String) o));

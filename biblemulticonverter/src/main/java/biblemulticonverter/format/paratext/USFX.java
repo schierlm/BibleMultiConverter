@@ -253,6 +253,11 @@ public class USFX extends AbstractParatextFormat {
 		} else if (localName.equals("ref")) {
 			RefType rt = (RefType) element.getValue();
 			ParatextCharacterContentPart ref = new Text(normalize(rt.getContent()));
+
+			// TODO
+			// The following code does not seem to be exactly according to the specification found here:
+			// https://ebible.org/usfx/usfx_xsd.html#refType
+			// This code does not allow for a second book, as in: ISA.7.14-ISA.7.15.
 			if (rt.getTgt() == null || !rt.getTgt().matches("[A-Z1-4]{3}\\.[0-9]+\\.[0-9]+(-[0-9]+(\\.[0-9]+)?)?")) {
 				System.out.println("WARNING: Unsupported structured reference format - replaced by plain text: " + rt.getTgt());
 			} else {
@@ -261,10 +266,22 @@ public class USFX extends AbstractParatextFormat {
 				if (id == null) {
 					System.out.println("WARNING: Unsupported book in structured reference - replaced by plain text: " + parts[0]);
 				} else {
-					int c1 = Integer.parseInt(parts[1]), v1 = Integer.parseInt(parts[2]);
-					int c2 = parts.length == 5 ? Integer.parseInt(parts[3]) : c1;
-					int v2 = parts.length > 3 ? Integer.parseInt(parts[parts.length - 1]) : v1;
-					ref = new Reference(id, c1, v1, c2, v2, rt.getContent());
+					int c1 = Integer.parseInt(parts[1]);
+					String v1 = parts[2];
+					if(parts.length > 3) {
+						// second verse
+						String v2 = parts[parts.length - 1];
+						if(parts.length == 5) {
+							// second chapter
+							int c2 = Integer.parseInt(parts[3]);
+							ref = Reference.verseRange(id, c1, v1, c2, v2, rt.getContent());
+						} else {
+							// No second chapter, but we do have a second verse, use first chapter as second chapter.
+							ref = Reference.verseRange(id, c1, v1, c1, v2, rt.getContent());
+						}
+					} else {
+						ref = Reference.verse(id, c1, v1, rt.getContent());
+					}
 				}
 			}
 			containerStack.get(containerStack.size() - 1).getContent().add(ref);

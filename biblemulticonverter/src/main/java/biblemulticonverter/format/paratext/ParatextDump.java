@@ -109,8 +109,8 @@ public class ParatextDump extends AbstractParatextFormat {
 			}
 			break;
 		case "REFERENCE":
-			String[] subparts = parts[1].split("\\.");
-			target.add(new Reference(ParatextID.fromIdentifier(subparts[0]), Integer.parseInt(subparts[1]), Integer.parseInt(subparts[2]), Integer.parseInt(subparts[3]), Integer.parseInt(subparts[4]), parts[2]));
+			target.add(Reference.parse(parts[1], parts[2]));
+			break;
 		case "TEXT":
 			target.add(new Text(parts[2]));
 			break;
@@ -196,7 +196,7 @@ public class ParatextDump extends AbstractParatextFormat {
 
 		@Override
 		public void visitReference(Reference reference) throws IOException {
-			bw.write("REFERENCE\t" + reference.getBook().getIdentifier() + "." + reference.getFirstChapter() + "." + reference.getFirstVerse() + "." + reference.getLastChapter() + "." + reference.getLastVerse() + "\t" + reference.getContent());
+			bw.write("REFERENCE\t" + reference.toString() + "\t" + reference.getContent() + "\n");
 		}
 
 		@Override

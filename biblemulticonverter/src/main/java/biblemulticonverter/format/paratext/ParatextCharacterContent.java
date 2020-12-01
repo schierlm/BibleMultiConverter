@@ -8,6 +8,7 @@ import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisit
 import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
 import biblemulticonverter.format.paratext.model.Version;
+import biblemulticonverter.format.paratext.utilities.LocationParser;
 import biblemulticonverter.format.paratext.utilities.TagParser;
 
 import java.util.ArrayList;
@@ -441,14 +442,15 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 	}
 
 	public static class Reference implements ParatextCharacterContentPart {
+
 		private final ParatextID book;
 		private final int firstChapter;
-		private final int firstVerse;
+		private final String firstVerse;
 		private final int lastChapter;
-		private final int lastVerse;
+		private final String lastVerse;
 		private String content;
 
-		public Reference(ParatextID book, int firstChapter, int firstVerse, int lastChapter, int lastVerse, String content) {
+		private Reference(ParatextID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse, String content) {
 			this.book = book;
 			this.firstChapter = firstChapter;
 			this.firstVerse = firstVerse;
@@ -465,7 +467,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 			return firstChapter;
 		}
 
-		public int getFirstVerse() {
+		public String getFirstVerse() {
 			return firstVerse;
 		}
 
@@ -473,7 +475,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 			return lastChapter;
 		}
 
-		public int getLastVerse() {
+		public String getLastVerse() {
 			return lastVerse;
 		}
 
@@ -488,6 +490,108 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		@Override
 		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
 			visitor.visitReference(this);
+		}
+
+		/**
+		 * Create a new Reference by parsing the given location and using the given content. The location must be be
+		 * parsable by {@link LocationParser}
+		 *
+		 * @param location a raw location string that can be parsed using {@link LocationParser}. All
+		 *                 {@link LocationParser.Format} types are allowed except
+		 *                 {@link LocationParser.Format#BOOK_RANGE}, since Reference does not support book ranges.
+		 * @param content  the content for the Reference
+		 * @return a new Reference for the given location and with the given content.
+		 * @throws IllegalArgumentException if the given location cannot be parsed or is of the location matches the
+		 *                                  {@link LocationParser.Format#BOOK_RANGE} format.
+		 */
+		public static Reference parse(String location, String content) {
+			LocationParser parser = new LocationParser(false);
+			if (!parser.parse(location)) {
+				throw new IllegalArgumentException("Found invalid reference location: " + location);
+			}
+			switch (parser.getFormat()) {
+				case BOOK:
+					return Reference.book(parser.getStartBook(), content);
+				case CHAPTER:
+					return Reference.chapter(parser.getStartBook(), parser.getStartChapter(), content);
+				case CHAPTER_RANGE:
+					return Reference.chapterRange(parser.getStartBook(), parser.getStartChapter(), parser.getEndChapter(), content);
+				case VERSE:
+					return Reference.verse(parser.getStartBook(), parser.getStartChapter(), parser.getStartVerse(), content);
+				case VERSE_RANGE:
+					return Reference.verseRange(parser.getStartBook(), parser.getStartChapter(), parser.getStartVerse(), parser.getEndChapter(), parser.getEndVerse(), content);
+				case BOOK_RANGE:
+					throw new IllegalArgumentException("Found book range (" + location + "), book ranges are not supported to be in references");
+			}
+			throw new RuntimeException("Unimplement format found: " + parser.getFormat());
+		}
+
+		/**
+		 * E.g. MAT
+		 */
+		public static Reference book(ParatextID book, String content) {
+			return new Reference(book, -1, null, -1, null, content);
+		}
+
+		/**
+		 * E.g. MAT 3
+		 */
+		public static Reference chapter(ParatextID book, int firstChapter, String content) {
+			return new Reference(book, firstChapter, null, -1, null, content);
+		}
+
+		/**
+		 * E.g. MAT 3:1
+		 */
+		public static Reference verse(ParatextID book, int firstChapter, String firstVerse, String content) {
+			return new Reference(book, firstChapter, firstVerse, -1, null, content);
+		}
+
+		/**
+		 * E.g. MAT 3-4
+		 */
+		public static Reference chapterRange(ParatextID book, int firstChapter, int lastChapter, String content) {
+			return new Reference(book, firstChapter, null, lastChapter, null, content);
+		}
+
+		/**
+		 * E.g. MAT 3:4-5:2
+		 */
+		public static Reference verseRange(ParatextID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse, String content) {
+			return new Reference(book, firstChapter, firstVerse, lastChapter, lastVerse, content);
+		}
+
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder();
+			// Book
+			builder.append(book.getIdentifier());
+
+			if (firstChapter != -1) {
+
+				// Single chapter
+				builder.append(" ");
+				builder.append(firstChapter);
+
+				if (firstVerse != null) {
+
+					// Single verse
+					builder.append(":");
+					builder.append(firstVerse);
+					if (lastChapter != -1 && lastVerse != null) {
+						// Verse range
+						builder.append("-");
+						builder.append(lastChapter);
+						builder.append(":");
+						builder.append(lastVerse);
+					}
+				} else if (lastChapter != -1) {
+					// Chapter range
+					builder.append("-");
+					builder.append(lastChapter);
+				}
+			}
+			return builder.toString();
 		}
 	}
 

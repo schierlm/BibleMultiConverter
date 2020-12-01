@@ -263,14 +263,14 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 	protected List<ParatextBook> doImportAllBooks(File inputFile) throws Exception {
 		List<ParatextBook> result = new ArrayList<ParatextBook>();
 		if (!inputFile.isDirectory())
-			throw new IOException("Not a directory: "+inputFile);
+			throw new IOException("Not a directory: " + inputFile);
 		for (File file : inputFile.listFiles()) {
 			try {
 				ParatextBook book = doImportBook(file);
 				if (book != null)
 					result.add(book);
 			} catch (Exception ex) {
-				throw new RuntimeException("Failed parsing "+file.getName(), ex);
+				throw new RuntimeException("Failed parsing " + file.getName(), ex);
 			}
 		}
 		result.sort(Comparator.comparing(ParatextBook::getId));
@@ -472,7 +472,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				System.out.println("WARNING: Skipping text outside of verse/headline/prolog");
 				return;
 			}
-			getCurrentVisitor().visitCrossReference(ctx.bookAbbrs.get(reference.getBook()), reference.getBook().getId(), reference.getFirstChapter(), "" + reference.getFirstVerse(), reference.getLastChapter(), "" + reference.getLastVerse()).visitText(reference.getContent());
+			getCurrentVisitor().visitCrossReference(ctx.bookAbbrs.get(reference.getBook()), reference.getBook().getId(), reference.getFirstChapter(), reference.getFirstVerse(), reference.getLastChapter(), reference.getLastVerse()).visitText(reference.getContent());
 		}
 
 		@Override
@@ -634,15 +634,15 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) {
-			int firstVerseNumber, lastVerseNumber;
-			try {
-				firstVerseNumber = Integer.parseInt(firstVerse);
-				lastVerseNumber = Integer.parseInt(lastVerse);
-			} catch (NumberFormatException ex) {
-				System.out.println("WARNING: Ignoring non-numeric verse reference: " + firstVerse + "-" + lastVerse);
-				return this;
+			ParatextID paratextID = ParatextID.fromBookID(book);
+
+			// Book only or chapter only or book ranges are not supported by the internal format.
+			Reference reference;
+			if (firstChapter == lastChapter && firstVerse.equals(lastVerse)) {
+				reference = Reference.verse(paratextID, firstChapter, firstVerse, "");
+			} else {
+				reference = Reference.verseRange(paratextID, firstChapter, firstVerse, lastChapter, lastVerse, "");
 			}
-			final Reference reference = new Reference(ParatextID.fromBookID(book), firstChapter, firstVerseNumber, lastChapter, lastVerseNumber, "");
 			getCharContent().getContent().add(reference);
 			return new VisitorAdapter<RuntimeException>(this) {
 				boolean start = true;
