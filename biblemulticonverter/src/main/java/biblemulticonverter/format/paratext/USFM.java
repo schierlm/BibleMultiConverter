@@ -16,6 +16,9 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
+import biblemulticonverter.format.paratext.model.Version;
+import biblemulticonverter.format.paratext.utilities.ImportUtilities;
+import biblemulticonverter.format.paratext.utilities.StandardExportLogMessages;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -52,10 +55,14 @@ public class USFM extends AbstractParatextFormat {
 
 	public static final Set<String> KNOWN_CHARACTER_TAGS = new HashSet<>(Arrays.asList("f", "fe", "x"));
 
+	private static final Set<ParagraphKind> USFM_2_PARAGRAPH_KINDS = ParagraphKind.allForVersion(Version.V2_2);
+	private static final Set<AutoClosingFormattingKind> USFM_2_AUTO_CLOSING_FORMATTING_KINDS = AutoClosingFormattingKind.allForVersion(Version.V2_2);
 
 	public static final Map<String, ParagraphKind> PARAGRAPH_TAGS = ParagraphKind.allTags();
 	public static final Map<String, FootnoteXrefKind> FOOTNOTE_XREF_TAGS = FootnoteXrefKind.allTags();
 	public static final Map<String, AutoClosingFormattingKind> AUTO_CLOSING_TAGS = AutoClosingFormattingKind.allTags();
+
+	private final StandardExportLogMessages logger = new StandardExportLogMessages("USFM 2");
 
 	@Override
 	protected ParatextBook doImportBook(File inputFile) throws Exception {
@@ -66,7 +73,7 @@ public class USFM extends AbstractParatextFormat {
 		KNOWN_CHARACTER_TAGS.addAll(AUTO_CLOSING_TAGS.keySet());
 		if (!inputFile.getName().toLowerCase().endsWith(".usfm") && !inputFile.getName().toLowerCase().endsWith(".sfm"))
 			return null;
-		String data = new String(Files.readAllBytes(inputFile.toPath()), charset).replaceAll("[\\p{Cc}\\p{Z}]+", " ").trim() + "\\$EOF$";
+		String data = new String(Files.readAllBytes(inputFile.toPath()), charset).replaceAll("[\\p{Cc}]+", " ").trim() + "\\$EOF$";
 		if (!data.startsWith("\\id ")) {
 			System.out.println("WARNING: Skipping malformed file " + inputFile);
 			return null;
@@ -82,6 +89,10 @@ public class USFM extends AbstractParatextFormat {
 		ParatextBook result = new ParatextBook(id, idParts.length == 1 ? "" : idParts[1]);
 		List<ParatextCharacterContentContainer> containerStack = new ArrayList<>();
 		boolean ignoreAutoClosingTags = Boolean.getBoolean("biblemulticonverter.usfm.ignoreautoclosingtags");
+
+		VerseStart openVerse = null;
+		ChapterStart openChapter = null;
+
 		while (startPos < finalPos) {
 			if (data.charAt(startPos) != '\\')
 				throw new IllegalStateException();
@@ -106,7 +117,13 @@ public class USFM extends AbstractParatextFormat {
 			}
 			boolean closeCharacterAttributes = false;
 			if (PARAGRAPH_TAGS.containsKey(tag)) {
-				result.getContent().add(new ParagraphStart(PARAGRAPH_TAGS.get(tag)));
+
+				ParagraphKind kind = PARAGRAPH_TAGS.get(tag);
+				//if (kind.getCategory() != ParatextBook.ParagraphKindCategory.TEXT) {
+				// Close any open verse
+				//	openVerse = closeOpenVerse(result, openVerse, false);
+				//}
+				result.getContent().add(new ParagraphStart(kind));
 				closeCharacterAttributes = true;
 			} else if (tag.endsWith("*")) {
 				String rawTag = tag.substring(0, tag.length() - 1);
@@ -173,8 +190,9 @@ public class USFM extends AbstractParatextFormat {
 					}
 				}
 			} else if (tag.equals("v")) {
-				String[] parts = textPart.split(" ", 2);
+				ImportUtilities.closeOpenVerse(result, openVerse);
 
+				String[] parts = textPart.split(" ", 2);
 				ChapterStart chapter = result.findLastBookContent(ChapterStart.class);
 				if (chapter == null) {
 					throw new IllegalStateException("Verse \\v found before chapter start milestone");
@@ -182,15 +200,29 @@ public class USFM extends AbstractParatextFormat {
 
 				// A verse number in USFM 2 may be in the format 6-7, 6a or even 6-7a.
 				// Attempt to parse these numbers by first adding the book and chapter and then parsing it as a whole.
-				VerseIdentifier location = VerseIdentifier.fromStringOrThrow(chapter.getLocation() + ":" + parts[0]);
+				VerseIdentifier location = VerseIdentifier.fromStringOrThrow(openChapter.getLocation() + ":" + parts[0]);
 
-				containerStack.get(containerStack.size() - 1).getContent().add(new VerseStart(location, parts[0]));
+				openVerse = new VerseStart(location, parts[0]);
+
+				containerStack.get(containerStack.size() - 1).getContent().add(openVerse);
 				textPart = parts.length == 1 ? "" : parts[1];
 			} else if (tag.equals("c")) {
+
+				ImportUtilities.closeOpenVerse(result, openVerse);
+				openVerse = null;
+
+				// There is not really a good way to accurately determine where the end of a chapter should be placed
+				// based on USFM 2 content. Maybe a title above this chapter marker was already intended to be part of
+				// this chapter. This is basically a best guess. This should not really matter when converting from
+				// USFM 2 to USX 2 or USFX (which is based on USFM 2), however when up-converting to USX 3 this might
+				// lead to unexpected results.
+				ImportUtilities.closeOpenChapter(result, openChapter);
+
 				String[] parts = textPart.split(" ", 2);
 				if (!parts[0].matches("[0-9]+"))
 					throw new NumberFormatException("Invalid chapter number in \\c " + textPart);
-				result.getContent().add(new ChapterStart(new ChapterIdentifier(id, Integer.parseInt(parts[0]))));
+				openChapter = new ChapterStart(new ChapterIdentifier(id, Integer.parseInt(parts[0])));
+				result.getContent().add(openChapter);
 				closeCharacterAttributes = true;
 				textPart = parts.length == 1 ? "" : parts[1];
 			} else if (tag.matches("t[hc]r?[0-9]+")) {
@@ -223,6 +255,8 @@ public class USFM extends AbstractParatextFormat {
 						throw new IOException("Two charsets specified: " + charset + " and " + correctCharset);
 					}
 					return doImportBook(inputFile, correctCharset);
+				} else {
+					result.getAttributes().put(tag, textPart);
 				}
 				textPart = "";
 			} else if (BOOK_HEADER_ATTRIBUTE_TAGS.contains(tag)) {
@@ -244,6 +278,8 @@ public class USFM extends AbstractParatextFormat {
 				containerStack.get(containerStack.size() - 1).getContent().add(new ParatextCharacterContent.Text(textPart));
 			}
 		}
+		ImportUtilities.closeOpenVerse(result, openVerse);
+		ImportUtilities.closeOpenChapter(result, openChapter);
 		return result;
 	}
 
@@ -256,7 +292,7 @@ public class USFM extends AbstractParatextFormat {
 			}
 			book.accept(new ParatextBookContentVisitor<IOException>() {
 
-				private USFMExportContext context = new USFMExportContext();
+				private USFMExportContext context = new USFMExportContext(logger);
 
 				@Override
 				public void visitChapterStart(ChapterIdentifier location) throws IOException {
@@ -271,8 +307,36 @@ public class USFM extends AbstractParatextFormat {
 
 				@Override
 				public void visitParagraphStart(ParagraphKind kind) throws IOException {
-					bw.write("\n\\" + kind.getTag());
-					context.needSpace = true;
+					if (USFM_2_PARAGRAPH_KINDS.contains(kind)) {
+						bw.write("\n\\" + kind.getTag());
+						context.needSpace = true;
+					} else {
+						visitUnsupportedParagraphStart(kind);
+					}
+				}
+
+				private void visitUnsupportedParagraphStart(ParagraphKind kind) throws IOException {
+					if (kind == ParagraphKind.HEBREW_NOTE) {
+						// According to documentation this is very similar to `d` (ParagraphKind.DESCRIPTIVE_TITLE)
+						logger.logReplaceWarning(kind, ParagraphKind.DESCRIPTIVE_TITLE);
+						visitParagraphStart(ParagraphKind.DESCRIPTIVE_TITLE);
+					} else if (kind.isSameBase(ParagraphKind.SEMANTIC_DIVISION)) {
+						// TODO maybe add more than 1 blank line?
+						logger.logReplaceWarning(kind, ParagraphKind.BLANK_LINE);
+						visitParagraphStart(ParagraphKind.BLANK_LINE);
+					} else if (kind == ParagraphKind.PARAGRAPH_PO || kind == ParagraphKind.PARAGRAPH_LH || kind == ParagraphKind.PARAGRAPH_LF) {
+						logger.logReplaceWarning(kind, ParagraphKind.PARAGRAPH_P);
+						visitParagraphStart(ParagraphKind.PARAGRAPH_P);
+					} else if (kind.getTag().startsWith(ParagraphKind.PARAGRAPH_LIM.getTag())) {
+						// Documentation is not entirely clear on what the exact difference is between `lim#` and `li#`
+						// one is "embedded" the other is not: https://ubsicap.github.io/usfm/lists/index.html#lim
+						// The assumption is made here that `lim#` is directly replaceable with `li#`
+						ParagraphKind replacement = ParagraphKind.PARAGRAPH_LI.getWithNumber(kind.getNumber());
+						logger.logReplaceWarning(kind, replacement);
+						visitParagraphStart(replacement);
+					} else {
+						throw new RuntimeException("Could not export to USFM 2 because an unhandled paragraph type `" + kind + "` from a newer USFM/USX version was found.");
+					}
 				}
 
 				@Override
@@ -299,7 +363,12 @@ public class USFM extends AbstractParatextFormat {
 	}
 
 	private static class USFMExportContext {
+		StandardExportLogMessages logger;
 		boolean needSpace = false;
+
+		public USFMExportContext(StandardExportLogMessages logger) {
+			this.logger = logger;
+		}
 	}
 
 	private static class USFMCharacterContentVisitor implements ParatextCharacterContentVisitor<IOException> {
@@ -336,24 +405,79 @@ public class USFM extends AbstractParatextFormat {
 
 		@Override
 		public ParatextCharacterContentVisitor<IOException> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws IOException {
-			if (context.needSpace)
-				bw.write(" ");
-			AutoClosingFormattingKind lastTag = getLastTag();
-			String thisTag = (lastTag != null ? "+" : "") + kind.getTag();
-			bw.write("\\" + thisTag);
-			context.needSpace = true;
-			if (attributes.isEmpty()) {
-				pushSuffix(thisTag);
-			} else {
-				StringBuilder attrs = new StringBuilder("");
-				for (Map.Entry<String, String> entry : attributes.entrySet()) {
-					if (attrs.length() > 0)
-						attrs.append(" ");
-					attrs.append(entry.getKey() + "=\"" + entry.getValue() + "\"");
+			if (USFM_2_AUTO_CLOSING_FORMATTING_KINDS.contains(kind)) {
+				if (context.needSpace)
+					bw.write(" ");
+				AutoClosingFormattingKind lastTag = getLastTag();
+				String thisTag = (lastTag != null ? "+" : "") + kind.getTag();
+				bw.write("\\" + thisTag);
+				context.needSpace = true;
+				if (attributes.isEmpty()) {
+					pushSuffix(thisTag);
+				} else {
+					// TODO it can happen that newer attributes are unintentionally exported
+					StringBuilder attrs = new StringBuilder("");
+					for (Map.Entry<String, String> entry : attributes.entrySet()) {
+						if (attrs.length() > 0)
+							attrs.append(" ");
+						attrs.append(entry.getKey() + "=\"" + entry.getValue() + "\"");
+					}
+					pushSuffix(thisTag + "\t|" + attrs.toString());
 				}
-				pushSuffix(thisTag + "\t|" + attrs.toString());
+			} else {
+				return visitUnsupportedAutoClosingFormatting(kind, attributes);
 			}
 			return this;
+		}
+
+		private ParatextCharacterContentVisitor<IOException> visitUnsupportedAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws IOException {
+			if (kind == AutoClosingFormattingKind.LIST_TOTAL || kind == AutoClosingFormattingKind.LIST_KEY || kind.isSameBase(AutoClosingFormattingKind.LIST_VALUE)) {
+				// It should not be too much of an issue to just skip these list tags
+				// E.g.
+				// \li1 \lik Reuben\lik* \liv1 Eliezer son of Zichri\liv1*
+				// Wil become:
+				// \li1 Reuben Eliezer son of Zichri
+				context.logger.logSkippedWarning(kind);
+				return new USFMCharacterContentVisitor(bw, context);
+			} else if (kind == AutoClosingFormattingKind.FOOTNOTE_WITNESS_LIST) {
+				// The Footnote witness list is just extra markup found within a footnote, however according to
+				// documentation found here: https://ubsicap.github.io/usfm/v3.0.rc1/notes_basic/fnotes.html
+				// Each element within a footnote must start with it's appropriate tag. So we can't just skip this tag
+				// since it could contain text. It would be better to turn this into a text entry `ft`.
+				context.logger.logReplaceWarning(kind, AutoClosingFormattingKind.FOOTNOTE_TEXT);
+				return visitAutoClosingFormatting(AutoClosingFormattingKind.FOOTNOTE_TEXT, attributes);
+			} else if (kind == AutoClosingFormattingKind.XREF_PUBLISHED_ORIGIN) {
+				// Published cross reference origin texts do not exist in USFM 2.x
+				// There is not really a nice way to downgrade these, we cannot put the `xop` tag into `xo` because it
+				// might not follow the usual `<chapter><separator><verse>` pattern.
+				// TODO, maybe we can just write the contents to the parent target, just like FOOTNOTE_WITNESS_LIST?
+				context.logger.logRemovedWarning(kind);
+				return null;
+			} else if (kind == AutoClosingFormattingKind.XREF_TARGET_REFERENCES_TEXT) {
+				// "Target reference(s) extra / added text" does not exist in USFM 2.x
+				// We should be able to get away with just adding the raw content directly `target`.
+				context.logger.logSkippedWarning(kind);
+				return new USFMCharacterContentVisitor(bw, context);
+			} else if (kind == AutoClosingFormattingKind.SUPERSCRIPT) {
+				// There is not really a good way to represent superscript in USFM 2.x
+				// To avoid losing data, we skip the tag and just add the content directly to `target`.
+				// TODO, maybe we can use `sc` (Small caps) instead?
+				context.logger.logSkippedWarning(kind, "This might lead to text that is not separated by whitespace," +
+						"since the previous text and superscript text may not have had been separated by whitespace.");
+				return new USFMCharacterContentVisitor(bw, context);
+			} else if (kind == AutoClosingFormattingKind.ARAMAIC_WORD) {
+				// There is not really a good way to represent Aramaic words in USFM 2.x
+				// To avoid losing data, we skip the tag and just add the content directly to `target`.
+				context.logger.logSkippedWarning(kind);
+				return new USFMCharacterContentVisitor(bw, context);
+			} else if (kind == AutoClosingFormattingKind.PROPER_NAME_GEOGRAPHIC) {
+				// This marker just gives geographic names a different presentation, thus can easily be skipped without
+				// too much loss.
+				context.logger.logSkippedWarning(kind);
+				return new USFMCharacterContentVisitor(bw, context);
+			} else {
+				throw new RuntimeException("Could not export to USFM 2 because an unhandled char type `" + kind + "` from a newer USFM/USX version was found.");
+			}
 		}
 
 		@Override
@@ -365,12 +489,13 @@ public class USFM extends AbstractParatextFormat {
 		public void visitText(String text) throws IOException {
 			if (context.needSpace)
 				bw.write(" ");
-			context.needSpace = text.endsWith(" ");
-			if (context.needSpace) {
-				text = text.substring(0, text.length() - 1);
-			}
+			// context.needSpace = text.endsWith(" ");
+			// if (context.needSpace) {
+			// 	text = text.substring(0, text.length() - 1);
+			// }
 			AutoClosingFormattingKind lastTag = getLastTag();
 			bw.write(escape(text, lastTag != null && lastTag.getDefaultAttributes() != null));
+			context.needSpace = false;
 		}
 
 		@Override

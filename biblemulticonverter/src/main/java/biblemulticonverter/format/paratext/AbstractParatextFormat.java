@@ -322,6 +322,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					VerseIdentifier location = new VerseIdentifier(pid, cnum, v.getNumber());
 					v.accept(new ParatextExportVisitor("in verse", bk.getId().isNT(), ctx, null, ParagraphKind.PARAGRAPH_P, location));
 				}
+				ctx.endChapter(cnum);
 			}
 		}
 		doExportBooks(books, exportArgs);
@@ -524,6 +525,10 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			book.getContent().add(new ChapterStart(new ChapterIdentifier(book.getId(), cnum)));
 			currentParagraph = null;
 			charContent = null;
+		}
+
+		public void endChapter(int cnum) {
+			book.getContent().add(new ParatextBook.ChapterEnd(new ChapterIdentifier(book.getId(), cnum)));
 		}
 
 		public void closeParagraph() {
@@ -777,6 +782,9 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		@Override
 		public boolean visitEnd() {
+			if (verseLocation != null) {
+				getCharContent().getContent().add(new ParatextCharacterContent.VerseEnd(verseLocation));
+			}
 			return false;
 		}
 	}

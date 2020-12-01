@@ -63,6 +63,9 @@ public class ParatextDump extends AbstractParatextFormat {
 						break;
 					case "CHAPTER":
 						currentBook.getContent().add(new ChapterStart(new ChapterIdentifier(currentBook.getId(),Integer.parseInt(parts[1]))));
+					case "CHAPTER-END":
+						currentBook.getContent().add(new ParatextBook.ChapterEnd(ChapterIdentifier.fromLocationString(parts[1])));
+						break;
 					case "PARAGRAPH":
 						currentBook.getContent().add(new ParagraphStart(Objects.requireNonNull(allParagraphKinds.get(parts[1]))));
 						break;
@@ -89,6 +92,9 @@ public class ParatextDump extends AbstractParatextFormat {
 		switch (parts[0]) {
 			case "VERSE":
 				target.add(new VerseStart(VerseIdentifier.fromStringOrThrow(parts[2]), parts[3]));
+				break;
+			case "VERSE-END":
+				target.add(new ParatextCharacterContent.VerseEnd(VerseIdentifier.fromStringOrThrow(parts[2])));
 				break;
 			case "FOOTNOTE":
 				FootnoteXref fx = new FootnoteXref(Objects.requireNonNull(FootnoteXrefKind.allTags().get(parts[1])), parts[2]);
@@ -155,7 +161,7 @@ public class ParatextDump extends AbstractParatextFormat {
 
 			@Override
 			public void visitChapterEnd(ChapterIdentifier location) throws IOException {
-				
+				bw.write("CHAPTER-END\t" + location + "\n");
 			}
 
 			@Override
@@ -223,7 +229,7 @@ public class ParatextDump extends AbstractParatextFormat {
 
 		@Override
 		public void visitVerseEnd(VerseIdentifier location) throws IOException {
-			
+			bw.write("VERSE-END\t" + location + "\n");
 		}
 	}
 }
