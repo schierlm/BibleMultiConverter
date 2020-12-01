@@ -1,12 +1,12 @@
 package biblemulticonverter.format.paratext;
 
-
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentPart;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisitor;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
+import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.format.paratext.utilities.LocationParser;
 import biblemulticonverter.format.paratext.utilities.TagParser;
@@ -38,74 +38,38 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 	 * One of {@link VerseStart}, {@link FootnoteXref},
 	 * {@link AutoClosingFormatting}, {@link Reference} or {@link Text}.
 	 */
-	public static interface ParatextCharacterContentPart {
-		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T;
+	public interface ParatextCharacterContentPart {
+		<T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T;
 	}
 
-	public static interface ParatextCharacterContentVisitor<T extends Throwable> {
-		public void visitVerseStart(String verseNumber) throws T;
+	public interface ParatextCharacterContentVisitor<T extends Throwable> {
+		void visitVerseStart(VerseIdentifier location, String verseNumber) throws T;
 
-		public ParatextCharacterContentVisitor<T> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws T;
+		ParatextCharacterContentVisitor<T> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws T;
 
-		public ParatextCharacterContentVisitor<T> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws T;
+		ParatextCharacterContentVisitor<T> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws T;
 
-		public void visitReference(Reference reference) throws T;
+		void visitReference(Reference reference) throws T;
 
-		public void visitText(String text) throws T;
+		void visitText(String text) throws T;
 
-		public void visitEnd() throws T;
-	}
+		void visitEnd() throws T;
 
-	public static class ParatextCharacterAppendVisitor implements ParatextCharacterContentVisitor<RuntimeException> {
-
-		private ParatextCharacterContentContainer parent;
-
-		public ParatextCharacterAppendVisitor(ParatextCharacterContentContainer parent) {
-			this.parent = parent;
-		}
-
-		@Override
-		public void visitVerseStart(String verseNumber) throws RuntimeException {
-			parent.getContent().add(new VerseStart(verseNumber));
-		}
-
-		@Override
-		public ParatextCharacterContentVisitor<RuntimeException> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws RuntimeException {
-			return addAndVisit(new FootnoteXref(kind, caller));
-		}
-
-		@Override
-		public ParatextCharacterContentVisitor<RuntimeException> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws RuntimeException {
-			AutoClosingFormatting acf = new AutoClosingFormatting(kind, false);
-			acf.getAttributes().putAll(attributes);
-			return addAndVisit(acf);
-		}
-
-		@Override
-		public void visitReference(Reference reference) throws RuntimeException {
-			parent.getContent().add(reference);
-		}
-
-		@Override
-		public void visitText(String text) throws RuntimeException {
-			parent.getContent().add(new Text(text));
-		}
-
-		@Override
-		public void visitEnd() throws RuntimeException {
-		}
-
-		private <P extends ParatextCharacterContentPart & ParatextCharacterContentContainer> ParatextCharacterContentVisitor<RuntimeException> addAndVisit(P part) {
-			parent.getContent().add(part);
-			return new ParatextCharacterAppendVisitor(part);
-		}
+		void visitVerseEnd(VerseIdentifier verseLocation) throws T;
 	}
 
 	public static class VerseStart implements ParatextCharacterContentPart {
+
+		private final VerseIdentifier location;
 		private final String verseNumber;
 
-		public VerseStart(String verseNumber) {
+		public VerseStart(VerseIdentifier location, String verseNumber) {
+			this.location = location;
 			this.verseNumber = verseNumber;
+		}
+
+		public VerseIdentifier getLocation() {
+			return location;
 		}
 
 		public String getVerseNumber() {
@@ -114,7 +78,25 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 
 		@Override
 		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
-			visitor.visitVerseStart(verseNumber);
+			visitor.visitVerseStart(location, verseNumber);
+		}
+	}
+
+	public static class VerseEnd implements ParatextCharacterContentPart {
+
+		private final VerseIdentifier location;
+
+		public VerseEnd(VerseIdentifier location) {
+			this.location = location;
+		}
+
+		public VerseIdentifier getLocation() {
+			return location;
+		}
+
+		@Override
+		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
+			visitor.visitVerseEnd(location);
 		}
 	}
 

@@ -4,6 +4,7 @@ import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
+import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.format.paratext.utilities.TagParser;
 
@@ -47,6 +48,43 @@ public class ParatextBook {
 		return content;
 	}
 
+	/**
+	 * Finds the last instance of the given {@link ParatextBookContentPart} type in the content of this book.
+	 *
+	 * @return the last instance of the given type or null if not found.
+	 */
+	public <T extends ParatextBookContentPart> T findLastBookContent(Class<T> type) {
+		ListIterator<ParatextBookContentPart> iterator = content.listIterator(content.size());
+		while (iterator.hasPrevious()) {
+			ParatextBookContentPart part = iterator.previous();
+			if (type.isInstance(part)) {
+				return (T) part;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Finds the last instance of the given {@link ParatextCharacterContentPart} type in the content of this book.
+	 *
+	 * @return the last instance of the given type or null if not found.
+	 */
+	public <T extends ParatextCharacterContentPart> T findLastCharacterContent(Class<T> type) {
+		ListIterator<ParatextBookContentPart> iterator = content.listIterator(content.size());
+		while (iterator.hasPrevious()) {
+			ParatextBookContentPart part = iterator.previous();
+			if (type.isInstance(part)) {
+				return (T) part;
+			} else if (part instanceof ParatextCharacterContentContainer) {
+				T nestedPart = ((ParatextCharacterContentContainer) part).findLastContent(type);
+				if (nestedPart != null) {
+					return nestedPart;
+				}
+			}
+		}
+		return null;
+	}
+
 	public <T extends Throwable> void accept(ParatextBookContentVisitor<T> v) throws T {
 		for (ParatextBookContentPart p : content) {
 			p.acceptThis(v);
@@ -54,27 +92,48 @@ public class ParatextBook {
 	}
 
 	/**
-	 * One of {@link ChapterStart}, {@link ParagraphStart},
-	 * {@link TableCellStart} or {@link ParatextCharacterContent}.
+	 * One of {@link ChapterStart}, {@link ChapterEnd}, {@link ParagraphStart}, {@link TableCellStart} or
+	 * {@link ParatextCharacterContent}.
 	 */
 	public static interface ParatextBookContentPart {
 		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> v) throws T;
 	}
 
 	public static class ChapterStart implements ParatextBookContentPart {
-		private final int chapter;
+		private final ChapterIdentifier location;
 
-		public ChapterStart(int chapter) {
-			this.chapter = chapter;
+		public ChapterStart(ChapterIdentifier location) {
+			this.location = location;
 		}
 
 		public int getChapter() {
-			return chapter;
+			return location.chapter;
+		}
+
+		public ChapterIdentifier getLocation() {
+			return location;
 		}
 
 		@Override
 		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> v) throws T {
-			v.visitChapterStart(chapter);
+			v.visitChapterStart(location);
+		}
+	}
+
+	public static class ChapterEnd implements ParatextBookContentPart {
+		private final ChapterIdentifier location;
+
+		public ChapterEnd(ChapterIdentifier location) {
+			this.location = location;
+		}
+
+		public ChapterIdentifier getLocation() {
+			return location;
+		}
+
+		@Override
+		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> v) throws T {
+			v.visitChapterEnd(location);
 		}
 	}
 
@@ -389,7 +448,9 @@ public class ParatextBook {
 	}
 
 	public static interface ParatextBookContentVisitor<T extends Throwable> {
-		public void visitChapterStart(int chapter) throws T;
+		public void visitChapterStart(ChapterIdentifier chapter) throws T;
+
+		public void visitChapterEnd(ChapterIdentifier chapter) throws T;
 
 		public void visitParagraphStart(ParagraphKind kind) throws T;
 
@@ -398,39 +459,36 @@ public class ParatextBook {
 		public void visitParatextCharacterContent(ParatextCharacterContent content) throws T;
 	}
 
-	public static class ParatextBookAppendVisitor implements ParatextBookContentVisitor<RuntimeException> {
-		private final ParatextBook book;
+	/**
+	 * A container that can include character content.
+	 */
+	public interface ParatextCharacterContentContainer {
+		List<ParatextCharacterContentPart> getContent();
 
-		public ParatextBookAppendVisitor(ParatextBook book) {
-			this.book = book;
+		/**
+		 * Finds the last instance of the given {@link ParatextCharacterContentPart} type in the content of this
+		 * {@link ParatextCharacterContentContainer}.
+		 *
+		 * @return the last instance of the given type or null if not found.
+		 */
+		default <T extends ParatextCharacterContentPart> T findLastContent(Class<T> type) {
+			List<ParatextCharacterContentPart> content = getContent();
+			ListIterator<ParatextCharacterContentPart> iterator = content.listIterator(content.size());
+			while (iterator.hasPrevious()) {
+				ParatextCharacterContentPart part = iterator.previous();
+				if (type.isInstance(part)) {
+					return (T) part;
+				} else if (part instanceof ParatextCharacterContentContainer) {
+					T nestedPart = ((ParatextCharacterContentContainer) part).findLastContent(type);
+					if (nestedPart != null) {
+						return nestedPart;
+					}
+				}
+			}
+			return null;
 		}
 
-		@Override
-		public void visitChapterStart(int chapter) throws RuntimeException {
-			book.getContent().add(new ChapterStart(chapter));
-		}
-
-		@Override
-		public void visitParagraphStart(ParagraphKind kind) throws RuntimeException {
-			book.getContent().add(new ParagraphStart(kind));
-		}
-
-		@Override
-		public void visitTableCellStart(String tag) throws RuntimeException {
-			book.getContent().add(new TableCellStart(tag));
-		}
-
-		@Override
-		public void visitParatextCharacterContent(ParatextCharacterContent content) throws RuntimeException {
-			book.getContent().add(content);
-		}
-	}
-
-	/** A container that can include character content */
-	public static interface ParatextCharacterContentContainer {
-		public List<ParatextCharacterContentPart> getContent();
-
-		public default <T extends Throwable> void accept(ParatextCharacterContentVisitor<T> visitor) throws T {
+		default <T extends Throwable> void accept(ParatextCharacterContentVisitor<T> visitor) throws T {
 			if (visitor == null)
 				return;
 			for (ParatextCharacterContentPart part : getContent()) {

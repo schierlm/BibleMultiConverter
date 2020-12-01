@@ -45,6 +45,8 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextChar
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
+import biblemulticonverter.format.paratext.model.ChapterIdentifier;
+import biblemulticonverter.format.paratext.model.VerseIdentifier;
 
 /**
  * Base class for Paratext formats (USFM/USFX/USX).
@@ -52,6 +54,13 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 	private static Map<String, AutoClosingFormattingKind> ALL_FORMATTINGS_CSS = AutoClosingFormattingKind.allCSS();
+
+	protected static final Set<String> BOOK_HEADER_ATTRIBUTE_TAGS = new HashSet<>(Arrays.asList(
+			"ide",
+			"h", "h1", "h2", "h3",
+			"toc1", "toc2", "toc3", "toca1", "toca2", "toca3",
+			"rem", "usfm")
+	);
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
@@ -102,11 +111,12 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			book.accept(new ParatextBookContentVisitor<RuntimeException>() {
 
 				@Override
-				public void visitChapterStart(int newChapter) throws RuntimeException {
+				public void visitChapterStart(ChapterIdentifier location) throws RuntimeException {
 					if (ctx.cnum != -1 && !ctx.headlines.isEmpty()) {
 						System.out.println("WARNING: Ignoring unreferenced headlines");
 						ctx.headlines.clear();
 					}
+					int newChapter = location.chapter;
 					if (ctx.cnum == 0 && newChapter == 1) {
 						// we are in prolog (chapter already exists)
 						ctx.cnum = newChapter;
@@ -126,6 +136,11 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					ctx.currentVisitor = null;
 					ctx.currentVerse = null;
 					ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NONE;
+				}
+
+				@Override
+				public void visitChapterEnd(ChapterIdentifier location) throws RuntimeException {
+					// Not supported in the internal format
 				}
 
 				@Override
@@ -304,7 +319,8 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				if (cnum == 1)
 					ctx.startChapter(cnum);
 				for (Verse v : ch.getVerses()) {
-					v.accept(new ParatextExportVisitor("in verse", bk.getId().isNT(), ctx, null, ParagraphKind.PARAGRAPH_P, v.getNumber()));
+					VerseIdentifier location = new VerseIdentifier(pid, cnum, v.getNumber());
+					v.accept(new ParatextExportVisitor("in verse", bk.getId().isNT(), ctx, null, ParagraphKind.PARAGRAPH_P, location));
 				}
 			}
 		}
@@ -361,7 +377,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		}
 	}
 
-	public class ParatextImportVisitor implements ParatextCharacterContentVisitor<RuntimeException> {
+	public static class ParatextImportVisitor implements ParatextCharacterContentVisitor<RuntimeException> {
 
 		private ParatextImportContext ctx;
 		private List<Visitor<RuntimeException>> visitorStack = new ArrayList<>();
@@ -377,7 +393,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitVerseStart(String verseNumber) {
+		public void visitVerseStart(VerseIdentifier location, String verseNumber) {
 			if (visitorStack.size() != 1) {
 				System.out.println("WARNING: Skipping verse number nested deeply in character markup");
 				return;
@@ -488,6 +504,11 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		public void visitEnd() {
 			visitorStack.remove(visitorStack.size() - 1);
 		}
+
+		@Override
+		public void visitVerseEnd(VerseIdentifier verseLocation) {
+			// Internal format does not have verse end milestones
+		}
 	}
 
 	private static class ParatextExportContext {
@@ -500,7 +521,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		}
 
 		public void startChapter(int cnum) {
-			book.getContent().add(new ChapterStart(cnum));
+			book.getContent().add(new ChapterStart(new ChapterIdentifier(book.getId(), cnum)));
 			currentParagraph = null;
 			charContent = null;
 		}
@@ -531,15 +552,15 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		private final ParatextExportContext ctx;
 		private final ParatextCharacterContentContainer ccnt;
 		private final ParagraphKind paragraphKind;
-		private final String vnum;
+		private final VerseIdentifier verseLocation;
 
-		public ParatextExportVisitor(String location, boolean nt, ParatextExportContext ctx, ParatextCharacterContentContainer ccnt, ParagraphKind paragraphKind, String vnum) {
+		public ParatextExportVisitor(String location, boolean nt, ParatextExportContext ctx, ParatextCharacterContentContainer ccnt, ParagraphKind paragraphKind, VerseIdentifier verseLocation) {
 			this.location = location;
 			this.nt = nt;
 			this.ctx = ctx;
 			this.ccnt = ccnt;
 			this.paragraphKind = paragraphKind;
-			this.vnum = vnum;
+			this.verseLocation = verseLocation;
 			if ((ccnt == null) == (ctx == null))
 				throw new IllegalStateException();
 			if ((ctx == null) != (paragraphKind == null))
@@ -566,7 +587,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			}
 			ParagraphKind[] headlineKinds;
 			if (paragraphKind.isProlog()) {
-				headlineKinds = new ParagraphKind[] {
+				headlineKinds = new ParagraphKind[]{
 						ParagraphKind.INTRO_MAJOR_TITLE_1,
 						ParagraphKind.INTRO_SECTION_1,
 						ParagraphKind.INTRO_SECTION_2,
@@ -578,7 +599,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 						ParagraphKind.INTRO_SECTION_8,
 				};
 			} else {
-				headlineKinds = new ParagraphKind[] {
+				headlineKinds = new ParagraphKind[]{
 						ParagraphKind.MAJOR_TITLE_1,
 						ParagraphKind.MAJOR_SECTION_1,
 						ParagraphKind.MAJOR_SECTION_2,
@@ -597,8 +618,8 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		@Override
 		public void visitStart() {
-			if (vnum != null) {
-				getCharContent().getContent().add(new VerseStart(vnum));
+			if (verseLocation != null) {
+				getCharContent().getContent().add(new VerseStart(verseLocation, verseLocation.verse));
 			}
 		}
 

@@ -1,5 +1,22 @@
 package biblemulticonverter.format.paratext;
 
+import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
+import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
+import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
+import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisitor;
+import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
+import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
+import biblemulticonverter.format.paratext.ParatextBook.TableCellStart;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXrefKind;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
+import biblemulticonverter.format.paratext.model.ChapterIdentifier;
+import biblemulticonverter.format.paratext.model.VerseIdentifier;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -16,21 +33,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
-import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
-import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
-import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisitor;
-import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
-import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
-import biblemulticonverter.format.paratext.ParatextBook.TableCellStart;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXrefKind;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 
 /**
  * Importer and exporter for USFM.
@@ -50,8 +52,6 @@ public class USFM extends AbstractParatextFormat {
 
 	public static final Set<String> KNOWN_CHARACTER_TAGS = new HashSet<>(Arrays.asList("f", "fe", "x"));
 
-	public static final Set<String> ATTRIBUTE_TAGS = new HashSet<String>(Arrays.asList(
-			"sts", "rem", "h", "h1", "h2", "h3", "h4", "h5", "h6", "h7", "h8", "h9", "toc1", "toc2", "toc3", "cl"));
 
 	public static final Map<String, ParagraphKind> PARAGRAPH_TAGS = ParagraphKind.allTags();
 	public static final Map<String, FootnoteXrefKind> FOOTNOTE_XREF_TAGS = FootnoteXrefKind.allTags();
@@ -98,6 +98,7 @@ public class USFM extends AbstractParatextFormat {
 					textPart = textPart.substring(0, textPart.length() - 1);
 				}
 			}
+
 			if (containerStack.isEmpty() && (AUTO_CLOSING_TAGS.containsKey(tag) || tag.equals("v") || FOOTNOTE_XREF_TAGS.containsKey(tag))) {
 				ParatextCharacterContent container = new ParatextCharacterContent();
 				result.getContent().add(container);
@@ -173,13 +174,23 @@ public class USFM extends AbstractParatextFormat {
 				}
 			} else if (tag.equals("v")) {
 				String[] parts = textPart.split(" ", 2);
-				containerStack.get(containerStack.size() - 1).getContent().add(new VerseStart(parts[0]));
+
+				ChapterStart chapter = result.findLastBookContent(ChapterStart.class);
+				if (chapter == null) {
+					throw new IllegalStateException("Verse \\v found before chapter start milestone");
+				}
+
+				// A verse number in USFM 2 may be in the format 6-7, 6a or even 6-7a.
+				// Attempt to parse these numbers by first adding the book and chapter and then parsing it as a whole.
+				VerseIdentifier location = VerseIdentifier.fromStringOrThrow(chapter.getLocation() + ":" + parts[0]);
+
+				containerStack.get(containerStack.size() - 1).getContent().add(new VerseStart(location, parts[0]));
 				textPart = parts.length == 1 ? "" : parts[1];
 			} else if (tag.equals("c")) {
 				String[] parts = textPart.split(" ", 2);
 				if (!parts[0].matches("[0-9]+"))
-					throw new NumberFormatException("Invalid chapter number in \\c "+textPart);
-				result.getContent().add(new ChapterStart(Integer.parseInt(parts[0])));
+					throw new NumberFormatException("Invalid chapter number in \\c " + textPart);
+				result.getContent().add(new ChapterStart(new ChapterIdentifier(id, Integer.parseInt(parts[0]))));
 				closeCharacterAttributes = true;
 				textPart = parts.length == 1 ? "" : parts[1];
 			} else if (tag.matches("t[hc]r?[0-9]+")) {
@@ -214,7 +225,7 @@ public class USFM extends AbstractParatextFormat {
 					return doImportBook(inputFile, correctCharset);
 				}
 				textPart = "";
-			} else if (ATTRIBUTE_TAGS.contains(tag)) {
+			} else if (BOOK_HEADER_ATTRIBUTE_TAGS.contains(tag)) {
 				result.getAttributes().put(tag, textPart);
 				textPart = "";
 			} else {
@@ -245,31 +256,37 @@ public class USFM extends AbstractParatextFormat {
 			}
 			book.accept(new ParatextBookContentVisitor<IOException>() {
 
-				boolean[] needSpace = { false };
+				private USFMExportContext context = new USFMExportContext();
 
 				@Override
-				public void visitChapterStart(int chapter) throws IOException {
-					bw.write("\n\\c " + chapter);
-					needSpace[0] = true;
+				public void visitChapterStart(ChapterIdentifier location) throws IOException {
+					bw.write("\n\\c " + location.chapter);
+					context.needSpace = true;
+				}
+
+				@Override
+				public void visitChapterEnd(ChapterIdentifier location) throws IOException {
+					// Chapter end marker is not supported in USFM 2.
 				}
 
 				@Override
 				public void visitParagraphStart(ParagraphKind kind) throws IOException {
 					bw.write("\n\\" + kind.getTag());
-					needSpace[0] = true;
+					context.needSpace = true;
 				}
 
 				@Override
 				public void visitTableCellStart(String tag) throws IOException {
-					if (needSpace[0])
+					if (context.needSpace) {
 						bw.write(" ");
+					}
 					bw.write("\\" + tag);
-					needSpace[0] = true;
+					context.needSpace = true;
 				}
 
 				@Override
 				public void visitParatextCharacterContent(ParatextCharacterContent content) throws IOException {
-					content.accept(new USFMCharacterContentVisitor(bw, needSpace));
+					content.accept(new USFMCharacterContentVisitor(bw, context));
 				}
 			});
 		}
@@ -281,15 +298,19 @@ public class USFM extends AbstractParatextFormat {
 		return text.replace("\\", "\uFE68");
 	}
 
+	private static class USFMExportContext {
+		boolean needSpace = false;
+	}
+
 	private static class USFMCharacterContentVisitor implements ParatextCharacterContentVisitor<IOException> {
 
 		private final BufferedWriter bw;
-		private final boolean[] needSpace;
+		private final USFMExportContext context;
 		private final List<String> suffixStack = new ArrayList<>();
 
-		public USFMCharacterContentVisitor(BufferedWriter bw, boolean[] needSpace) {
+		public USFMCharacterContentVisitor(BufferedWriter bw, USFMExportContext context) {
 			this.bw = bw;
-			this.needSpace = needSpace;
+			this.context = context;
 			pushSuffix("");
 		}
 
@@ -298,29 +319,29 @@ public class USFM extends AbstractParatextFormat {
 		}
 
 		@Override
-		public void visitVerseStart(String verseNumber) throws IOException {
+		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
 			bw.write("\n\\v " + verseNumber);
-			needSpace[0] = true;
+			context.needSpace = true;
 		}
 
 		@Override
 		public ParatextCharacterContentVisitor<IOException> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws IOException {
-			if (needSpace[0])
+			if (context.needSpace)
 				bw.write(" ");
 			bw.write("\\" + kind.getTag() + " " + caller);
-			needSpace[0] = true;
+			context.needSpace = true;
 			pushSuffix(kind.getTag());
 			return this;
 		}
 
 		@Override
 		public ParatextCharacterContentVisitor<IOException> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws IOException {
-			if (needSpace[0])
+			if (context.needSpace)
 				bw.write(" ");
 			AutoClosingFormattingKind lastTag = getLastTag();
 			String thisTag = (lastTag != null ? "+" : "") + kind.getTag();
 			bw.write("\\" + thisTag);
-			needSpace[0] = true;
+			context.needSpace = true;
 			if (attributes.isEmpty()) {
 				pushSuffix(thisTag);
 			} else {
@@ -342,10 +363,10 @@ public class USFM extends AbstractParatextFormat {
 
 		@Override
 		public void visitText(String text) throws IOException {
-			if (needSpace[0])
+			if (context.needSpace)
 				bw.write(" ");
-			needSpace[0] = text.endsWith(" ");
-			if (needSpace[0]) {
+			context.needSpace = text.endsWith(" ");
+			if (context.needSpace) {
 				text = text.substring(0, text.length() - 1);
 			}
 			AutoClosingFormattingKind lastTag = getLastTag();
@@ -356,7 +377,7 @@ public class USFM extends AbstractParatextFormat {
 		public void visitEnd() throws IOException {
 			String suffix = suffixStack.remove(suffixStack.size() - 1);
 			if (!suffix.isEmpty()) {
-				if (needSpace[0])
+				if (context.needSpace)
 					bw.write(" ");
 				if (suffix.contains("\t")) {
 					String[] parts = suffix.split("\t", 2);
@@ -364,8 +385,13 @@ public class USFM extends AbstractParatextFormat {
 					suffix = parts[0];
 				}
 				bw.write("\\" + suffix + "*");
-				needSpace[0] = false;
+				context.needSpace = false;
 			}
+		}
+
+		@Override
+		public void visitVerseEnd(VerseIdentifier verse) throws IOException {
+			// USFM 2.x does not support verse end milestones, hence we don't add them.
 		}
 
 		private AutoClosingFormattingKind getLastTag() {

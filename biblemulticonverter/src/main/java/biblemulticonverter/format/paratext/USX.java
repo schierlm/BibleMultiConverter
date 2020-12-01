@@ -1,33 +1,5 @@
 package biblemulticonverter.format.paratext;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import javax.xml.XMLConstants;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamReader;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.validation.Schema;
-import javax.xml.validation.SchemaFactory;
-
-import biblemulticonverter.utilities.UnmarshallerLocationListener;
-import org.w3c.dom.Document;
-import org.xml.sax.SAXException;
-
 import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
@@ -42,6 +14,9 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextChar
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
+import biblemulticonverter.format.paratext.model.ChapterIdentifier;
+import biblemulticonverter.format.paratext.model.VerseIdentifier;
+import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.schema.usx.Cell;
 import biblemulticonverter.schema.usx.CellAlign;
 import biblemulticonverter.schema.usx.CellStyle;
@@ -62,105 +37,118 @@ import biblemulticonverter.schema.usx.Table;
 import biblemulticonverter.schema.usx.Usx;
 import biblemulticonverter.schema.usx.Verse;
 import biblemulticonverter.tools.ValidateXML;
+import biblemulticonverter.utilities.UnmarshallerLocationListener;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
+
+import javax.xml.XMLConstants;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamReader;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * Importer and exporter for USFX.
+ * Importer and exporter for USX.
  */
-public class USX extends AbstractParatextFormat {
+public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 
 	public static final String[] HELP_TEXT = {
-			"XML Bible format used by Paratext and the Digital Bible Library",
+			"Version 2 of the XML Bible format used by Paratext and the Digital Bible Library",
 			"",
 			"Usage (export): USX <outdir> <filenamepattern>",
 			"",
-			"Point the importer to a directory that contains the .usx files.",
+			"Point the importer to a directory that contains the .usx version 2 files.",
 			"",
 			"When exporting, you need to give a file name pattern. You can use # for ",
 			"the book number and * for the book name."
 	};
 
-	private Set<ParaStyle> PARA_STYLE_UNSUPPORTED = EnumSet.of(ParaStyle.IDE, ParaStyle.RESTORE, ParaStyle.LIT, ParaStyle.CP, ParaStyle.CL,
-			ParaStyle.K_1, ParaStyle.K_2);
-	private Map<ParaStyle, ParagraphKind> PARA_STYLE_MAP = new EnumMap<>(ParaStyle.class);
-	private Map<ParagraphKind, ParaStyle> PARA_KIND_MAP = new EnumMap<>(ParagraphKind.class);
+	private static final Set<AutoClosingFormattingKind> USX_2_AUTO_CLOSING_FORMATTING_KINDS = AutoClosingFormattingKind.allForVersion(Version.V2_2);
+	private static final Set<ParagraphKind> USX_2_PARAGRAPH_KINDS = ParagraphKind.allForVersion(Version.V2_2);
 
-	private Set<CharStyle> CHAR_STYLE_UNSUPPORTED = EnumSet.of(CharStyle.VA, CharStyle.CA, CharStyle.FM, CharStyle.EFM, CharStyle.CAT);
-	private Map<CharStyle, AutoClosingFormattingKind> CHAR_STYLE_MAP = new EnumMap<>(CharStyle.class);
-	private Map<AutoClosingFormattingKind, CharStyle> CHAR_KIND_MAP = new EnumMap<>(AutoClosingFormattingKind.class);
 	private Map<NoteStyle, FootnoteXrefKind> NOTE_STYLE_MAP = new EnumMap<>(NoteStyle.class);
 	private Map<FootnoteXrefKind, NoteStyle> NOTE_KIND_MAP = new EnumMap<>(FootnoteXrefKind.class);
 
 	private UnmarshallerLocationListener unmarshallerLocationListener = new UnmarshallerLocationListener();
 
 	public USX() {
-		Map<String, ParagraphKind> paraTags = ParagraphKind.allTags();
-		for (ParaStyle style : ParaStyle.values()) {
-			if (PARA_STYLE_UNSUPPORTED.contains(style) || style == ParaStyle.PB || USFM.ATTRIBUTE_TAGS.contains(style.value()))
-				continue;
-			ParagraphKind kind = Objects.requireNonNull(paraTags.get(style.value()));
-			PARA_STYLE_MAP.put(style, kind);
-			PARA_KIND_MAP.put(kind, style);
-		}
-		PARA_KIND_MAP.put(ParagraphKind.INTRO_SECTION_3, ParaStyle.IS_2);
-		PARA_KIND_MAP.put(ParagraphKind.INTRO_SECTION_4, ParaStyle.IS_2);
-		PARA_KIND_MAP.put(ParagraphKind.INTRO_SECTION_5, ParaStyle.IS_2);
-		PARA_KIND_MAP.put(ParagraphKind.INTRO_SECTION_6, ParaStyle.IS_2);
-		PARA_KIND_MAP.put(ParagraphKind.INTRO_SECTION_7, ParaStyle.IS_2);
-		PARA_KIND_MAP.put(ParagraphKind.INTRO_SECTION_8, ParaStyle.IS_2);
-		PARA_KIND_MAP.put(ParagraphKind.INTRO_PARAGRAPH_Q4, ParaStyle.IQ_3);
-		PARA_KIND_MAP.put(ParagraphKind.INTRO_PARAGRAPH_LI3, ParaStyle.ILI_2);
-		PARA_KIND_MAP.put(ParagraphKind.INTRO_PARAGRAPH_LI4, ParaStyle.ILI_2);
-		PARA_KIND_MAP.put(ParagraphKind.INTRO_MAJOR_TITLE_ENDING_3, ParaStyle.IMTE_2);
-		PARA_KIND_MAP.put(ParagraphKind.INTRO_MAJOR_TITLE_ENDING_4, ParaStyle.IMTE_2);
-		PARA_KIND_MAP.put(ParagraphKind.MAJOR_TITLE_ENDING_3, ParaStyle.MTE_2);
-		PARA_KIND_MAP.put(ParagraphKind.MAJOR_TITLE_ENDING_4, ParaStyle.MTE_2);
-		PARA_KIND_MAP.put(ParagraphKind.MAJOR_SECTION_4, ParaStyle.MS_3);
-		PARA_KIND_MAP.put(ParagraphKind.MAJOR_SECTION_5, ParaStyle.MS_3);
-		PARA_KIND_MAP.put(ParagraphKind.SECTION_5, ParaStyle.S_4);
-		PARA_KIND_MAP.put(ParagraphKind.SEMANTIC_DIVISION, ParaStyle.B);
-		PARA_KIND_MAP.put(ParagraphKind.SEMANTIC_DIVISION_1, ParaStyle.B);
-		PARA_KIND_MAP.put(ParagraphKind.SEMANTIC_DIVISION_2, ParaStyle.B);
-		PARA_KIND_MAP.put(ParagraphKind.SEMANTIC_DIVISION_3, ParaStyle.B);
-		PARA_KIND_MAP.put(ParagraphKind.SEMANTIC_DIVISION_4, ParaStyle.B);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_PI4, ParaStyle.PI_3);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_LH, ParaStyle.LI);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_LIM, ParaStyle.LI);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_LIM1, ParaStyle.LI_1);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_LIM2, ParaStyle.LI_2);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_LIM3, ParaStyle.LI_3);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_LIM4, ParaStyle.LI_4);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_LF, ParaStyle.LI);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_RIGHT, ParaStyle.P);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_HANGING, ParaStyle.P);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_HANGING1, ParaStyle.P);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_HANGING2, ParaStyle.P);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_HANGING3, ParaStyle.P);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_HANGING4, ParaStyle.P);
-		PARA_KIND_MAP.put(ParagraphKind.PARAGRAPH_QM4, ParaStyle.QM_3);
-
-		Map<String, AutoClosingFormattingKind> charTags = AutoClosingFormattingKind.allTags();
-		for (CharStyle style : CharStyle.values()) {
-			if (CHAR_STYLE_UNSUPPORTED.contains(style))
-				continue;
-			AutoClosingFormattingKind kind = Objects.requireNonNull(charTags.get(style.value()));
-			CHAR_STYLE_MAP.put(style, kind);
-			CHAR_KIND_MAP.put(kind, style);
-		}
-		CHAR_KIND_MAP.put(AutoClosingFormattingKind.LIST_TOTAL, CharStyle.NO);
-		CHAR_KIND_MAP.put(AutoClosingFormattingKind.LIST_KEY, CharStyle.IT);
-		CHAR_KIND_MAP.put(AutoClosingFormattingKind.LIST_VALUE, CharStyle.NO);
-		CHAR_KIND_MAP.put(AutoClosingFormattingKind.PROPER_NAME_GEOGRAPHIC, CharStyle.NO);
-
-		NOTE_STYLE_MAP.put(NoteStyle.F, FootnoteXrefKind.FOOTNOTE);
-		NOTE_STYLE_MAP.put(NoteStyle.EF, FootnoteXrefKind.FOOTNOTE);
-		NOTE_STYLE_MAP.put(NoteStyle.FE, FootnoteXrefKind.ENDNOTE);
-		NOTE_STYLE_MAP.put(NoteStyle.X, FootnoteXrefKind.XREF);
-		NOTE_STYLE_MAP.put(NoteStyle.EX, FootnoteXrefKind.XREF);
-		NOTE_KIND_MAP.put(FootnoteXrefKind.FOOTNOTE, NoteStyle.F);
-		NOTE_KIND_MAP.put(FootnoteXrefKind.ENDNOTE, NoteStyle.FE);
-		NOTE_KIND_MAP.put(FootnoteXrefKind.XREF, NoteStyle.X);
+		super(new ParaStyleWrapper(), new CharStyleWrapper());
+		prepareNoteMaps();
 	}
 
+	private void prepareNoteMaps() {
+		NOTE_STYLE_MAP.put(NoteStyle.F, ParatextCharacterContent.FootnoteXrefKind.FOOTNOTE);
+		NOTE_STYLE_MAP.put(NoteStyle.EF, ParatextCharacterContent.FootnoteXrefKind.FOOTNOTE);
+		NOTE_STYLE_MAP.put(NoteStyle.FE, ParatextCharacterContent.FootnoteXrefKind.ENDNOTE);
+		NOTE_STYLE_MAP.put(NoteStyle.X, ParatextCharacterContent.FootnoteXrefKind.XREF);
+		NOTE_STYLE_MAP.put(NoteStyle.EX, ParatextCharacterContent.FootnoteXrefKind.XREF);
+		NOTE_KIND_MAP.put(ParatextCharacterContent.FootnoteXrefKind.FOOTNOTE, NoteStyle.F);
+		NOTE_KIND_MAP.put(ParatextCharacterContent.FootnoteXrefKind.ENDNOTE, NoteStyle.FE);
+		NOTE_KIND_MAP.put(ParatextCharacterContent.FootnoteXrefKind.XREF, NoteStyle.X);
+	}
+
+	@Override
+	protected void setupCustomParaMappings() {
+		// These mappings are for markers that are known in the schema but without the right "number", and therefore mapped
+		// to the closest number that is known.
+		// TODO maybe it is better to add them to the schema, the tags are valid, it is just that the numbers are not
+		// known and this behaviour does not happen in the USFM export, since it does not use a schema it will just
+		// export these ParagraphKinds.
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_SECTION_3, ParaStyle.IS_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_SECTION_4, ParaStyle.IS_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_SECTION_5, ParaStyle.IS_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_SECTION_6, ParaStyle.IS_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_SECTION_7, ParaStyle.IS_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_SECTION_8, ParaStyle.IS_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_PARAGRAPH_Q4, ParaStyle.IQ_3);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_PARAGRAPH_LI3, ParaStyle.ILI_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_PARAGRAPH_LI4, ParaStyle.ILI_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_MAJOR_TITLE_ENDING_3, ParaStyle.IMTE_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_MAJOR_TITLE_ENDING_4, ParaStyle.IMTE_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.MAJOR_TITLE_ENDING_3, ParaStyle.MTE_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.MAJOR_TITLE_ENDING_4, ParaStyle.MTE_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.MAJOR_SECTION_4, ParaStyle.MS_3);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.MAJOR_SECTION_5, ParaStyle.MS_3);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.SECTION_5, ParaStyle.S_4);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_PI4, ParaStyle.PI_3);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_QM4, ParaStyle.QM_3);
+
+		// This one is a bit weird, see: https://github.com/ubsicap/usx/issues/48
+		// According to documentation the use of Paragraph style `ph#` is strongly discouraged, it is not deprecated
+		// or removed. However it is not part of the USX 2 schema, which is a bit weird. For now we do the recommended
+		// thing and map this one to the recommended alternative: `li#`
+		// https://ubsicap.github.io/usx/v2.5/parastyles.html#usx-parastyle-ph
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_HANGING, ParaStyle.LI);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_HANGING1, ParaStyle.LI_1);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_HANGING2, ParaStyle.LI_2);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_HANGING3, ParaStyle.LI_3);
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_HANGING4, ParaStyle.LI_4);
+
+		// The Paragraph style `pr` was deprecated in USX 2, however restored in V3. It was never fully removed, however
+		// it is not part of the USX 2 schema, the recommended alternative is PRM.
+		// https://ubsicap.github.io/usx/v2.5/parastyles.html#usx-parastyle-pr
+		// TODO instead add the `pr` style to the USX 2 schema?
+		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_RIGHT, ParaStyle.PMR);
+	}
+	
 	@Override
 	protected ParatextBook doImportBook(File inputFile) throws Exception {
 		if (!inputFile.getName().toLowerCase().endsWith(".usx"))
@@ -187,7 +175,7 @@ public class USX extends AbstractParatextFormat {
 		for (Object o : doc.getParaOrTableOrChapter()) {
 			if (o instanceof Para) {
 				Para para = (Para) o;
-				if (USFM.ATTRIBUTE_TAGS.contains(para.getStyle().value())) {
+				if (BOOK_HEADER_ATTRIBUTE_TAGS.contains(para.getStyle().value())) {
 					String value = "";
 					for (Object oo : para.getContent()) {
 						if (oo instanceof String) {
@@ -213,7 +201,7 @@ public class USX extends AbstractParatextFormat {
 					if (!para.getContent().isEmpty()) {
 						charContent = new ParatextCharacterContent();
 						result.getContent().add(charContent);
-						parseCharContent(para.getContent(), charContent);
+						parseCharContent(para.getContent(), charContent, result);
 					}
 				}
 			} else if (o instanceof Table) {
@@ -222,16 +210,15 @@ public class USX extends AbstractParatextFormat {
 					result.getContent().add(new ParagraphStart(ParagraphKind.TABLE_ROW));
 					for (Object oo : row.getVerseOrCell()) {
 						if (oo instanceof Verse) {
-							Verse verse = (Verse) oo;
 							charContent = new ParatextCharacterContent();
 							result.getContent().add(charContent);
-							charContent.getContent().add(new VerseStart(verse.getNumber()));
+							charContent.getContent().add(handleVerse(result, (Verse) oo));
 						} else if (oo instanceof Cell) {
 							Cell cell = (Cell) oo;
 							result.getContent().add(new ParatextBook.TableCellStart(cell.getStyle().value()));
 							charContent = new ParatextCharacterContent();
 							result.getContent().add(charContent);
-							parseCharContent(cell.getContent(), charContent);
+							parseCharContent(cell.getContent(), charContent, result);
 						} else {
 							throw new IOException("Unsupported table row element: " + o.getClass().getName());
 						}
@@ -239,7 +226,7 @@ public class USX extends AbstractParatextFormat {
 				}
 				charContent = null;
 			} else if (o instanceof Chapter) {
-				result.getContent().add(new ChapterStart(((Chapter) o).getNumber().intValue()));
+				result.getContent().add(new ChapterStart(new ChapterIdentifier(result.getId(), ((Chapter) o).getNumber().intValue())));
 				charContent = null;
 			} else if (o instanceof Note) {
 				if (charContent == null) {
@@ -249,7 +236,7 @@ public class USX extends AbstractParatextFormat {
 				Note note = (Note) o;
 				FootnoteXref nx = new FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller());
 				charContent.getContent().add(nx);
-				parseCharContent(note.getContent(), nx);
+				parseCharContent(note.getContent(), nx, result);
 			} else if (o instanceof Sidebar) {
 				System.out.println("WARNING: Skipping sidebar (study bible content)");
 				charContent = null;
@@ -261,7 +248,7 @@ public class USX extends AbstractParatextFormat {
 		return result;
 	}
 
-	private void parseCharContent(List<Object> content, ParatextCharacterContentContainer container) throws IOException {
+	private void parseCharContent(List<Object> content, ParatextCharacterContentContainer container, ParatextBook result) throws IOException {
 		for (Object o : content) {
 			if (o instanceof Optbreak) {
 				// is ignored in USFM as well
@@ -282,7 +269,7 @@ public class USX extends AbstractParatextFormat {
 			} else if (o instanceof Char) {
 				Char chr = (Char) o;
 				if (CHAR_STYLE_UNSUPPORTED.contains(chr.getStyle())) {
-					parseCharContent(chr.getContent(), container);
+					parseCharContent(chr.getContent(), container, result);
 				} else {
 					AutoClosingFormatting f = new AutoClosingFormatting(CHAR_STYLE_MAP.get(chr.getStyle()), false);
 					String lemma = chr.getLemma();
@@ -290,20 +277,30 @@ public class USX extends AbstractParatextFormat {
 						f.getAttributes().put("lemma", lemma);
 					}
 					container.getContent().add(f);
-					parseCharContent(chr.getContent(), f);
+					parseCharContent(chr.getContent(), f, result);
 				}
 			} else if (o instanceof Verse) {
-				Verse verse = (Verse) o;
-				container.getContent().add(new VerseStart(verse.getNumber()));
+				container.getContent().add(handleVerse(result, (Verse) o));
 			} else if (o instanceof Note) {
 				Note note = (Note) o;
 				FootnoteXref nx = new FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller());
 				container.getContent().add(nx);
-				parseCharContent(note.getContent(), nx);
+				parseCharContent(note.getContent(), nx, result);
 			} else {
 				throw new IOException("Unsupported character content element: " + o.getClass().getName());
 			}
 		}
+	}
+
+	private VerseStart handleVerse(ParatextBook result, Verse verse) throws IOException {
+		ChapterStart chapter = result.findLastBookContent(ChapterStart.class);
+		if (chapter == null) {
+			throw new IllegalStateException("Verse found before chapter start: " + verse.getNumber());
+		}
+		// A verse number in USX 2 may be in the format 6-7, 6a or even 6-7a.
+		// Attempt to parse these numbers by first adding the book and chapter and then parsing it as a whole.
+		VerseIdentifier location = VerseIdentifier.fromStringOrThrow(chapter.getLocation() + ":" + verse.getNumber());
+		return new VerseStart(location, verse.getNumber());
 	}
 
 	@Override
@@ -329,13 +326,18 @@ public class USX extends AbstractParatextFormat {
 			Table currentTable = null;
 
 			@Override
-			public void visitChapterStart(int chapter) throws IOException {
+			public void visitChapterStart(ChapterIdentifier location) throws IOException {
 				Chapter ch = new Chapter();
 				ch.setStyle("c");
-				ch.setNumber(BigInteger.valueOf(chapter));
+				ch.setNumber(BigInteger.valueOf(location.chapter));
 				usx.getParaOrTableOrChapter().add(ch);
 				currentContent = null;
 				currentTable = null;
+			}
+
+			@Override
+			public void visitChapterEnd(ChapterIdentifier location) throws IOException {
+				// Chapter end does not exist in USX 2
 			}
 
 			@Override
@@ -401,7 +403,7 @@ public class USX extends AbstractParatextFormat {
 		}
 
 		@Override
-		public void visitVerseStart(String verseNumber) throws IOException {
+		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
 			Verse verse = new Verse();
 			verse.setStyle("v");
 			verse.setNumber(verseNumber);
@@ -452,6 +454,86 @@ public class USX extends AbstractParatextFormat {
 
 		@Override
 		public void visitEnd() throws IOException {
+
+		}
+
+		@Override
+		public void visitVerseEnd(VerseIdentifier verseNumber) throws IOException {
+			// USX 2.x does not support verse end milestones, hence we don't add them.
+		}
+	}
+
+	@Override
+	boolean isAutoClosingFormattingKindSupported(AutoClosingFormattingKind kind) {
+		// See AutoClosingFormattingKind.PAGE_BREAK for why it is unsupported as AutoClosingFormattingKind.
+		return kind != AutoClosingFormattingKind.PAGE_BREAK
+				&& USX_2_AUTO_CLOSING_FORMATTING_KINDS.contains(kind);
+	}
+
+	@Override
+	boolean isParagraphKindSupported(ParagraphKind kind) {
+		return USX_2_PARAGRAPH_KINDS.contains(kind);
+	}
+
+	private static class CharStyleWrapper extends StyleWrapper<CharStyle> {
+
+		private static Set<CharStyle> CHAR_STYLE_UNSUPPORTED = Collections.unmodifiableSet(EnumSet.of(
+				CharStyle.VA,
+				CharStyle.CA,
+				CharStyle.FM,
+				CharStyle.EFM,
+				CharStyle.CAT
+		));
+
+		@Override
+		Class<CharStyle> getStyleClass() {
+			return CharStyle.class;
+		}
+
+		@Override
+		Set<CharStyle> getUnsupportedStyles() {
+			return CHAR_STYLE_UNSUPPORTED;
+		}
+
+		@Override
+		CharStyle[] values() {
+			return CharStyle.values();
+		}
+
+		@Override
+		String tag(CharStyle charStyle) {
+			return charStyle.value();
+		}
+	}
+
+	private static class ParaStyleWrapper extends StyleWrapper<ParaStyle> {
+
+		private static Set<ParaStyle> PARA_STYLE_UNSUPPORTED = Collections.unmodifiableSet(EnumSet.of(
+				ParaStyle.RESTORE,
+				ParaStyle.CP,
+				ParaStyle.CL,
+				ParaStyle.K_1,
+				ParaStyle.K_2
+		));
+
+		@Override
+		Class<ParaStyle> getStyleClass() {
+			return ParaStyle.class;
+		}
+
+		@Override
+		Set<ParaStyle> getUnsupportedStyles() {
+			return PARA_STYLE_UNSUPPORTED;
+		}
+
+		@Override
+		ParaStyle[] values() {
+			return ParaStyle.values();
+		}
+
+		@Override
+		String tag(ParaStyle paraStyle) {
+			return paraStyle.value();
 		}
 	}
 }

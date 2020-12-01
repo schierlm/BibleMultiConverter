@@ -1,13 +1,29 @@
 package biblemulticonverter.format.paratext;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
+import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
+import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
+import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
+import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
+import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
+import biblemulticonverter.format.paratext.ParatextBook.TableCellStart;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
+import biblemulticonverter.format.paratext.model.ChapterIdentifier;
+import biblemulticonverter.format.paratext.model.VerseIdentifier;
+import biblemulticonverter.schema.usfx.NoteContents;
+import biblemulticonverter.schema.usfx.ObjectFactory;
+import biblemulticonverter.schema.usfx.PType;
+import biblemulticonverter.schema.usfx.RefType;
+import biblemulticonverter.schema.usfx.StyledString;
+import biblemulticonverter.schema.usfx.Usfx;
+import biblemulticonverter.schema.usfx.Usfx.Book;
+import biblemulticonverter.tools.ValidateXML;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
 
 import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBContext;
@@ -22,30 +38,14 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
-
-import org.w3c.dom.Document;
-import org.xml.sax.SAXException;
-
-import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
-import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
-import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
-import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
-import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
-import biblemulticonverter.format.paratext.ParatextBook.TableCellStart;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
-import biblemulticonverter.schema.usfx.NoteContents;
-import biblemulticonverter.schema.usfx.ObjectFactory;
-import biblemulticonverter.schema.usfx.PType;
-import biblemulticonverter.schema.usfx.RefType;
-import biblemulticonverter.schema.usfx.StyledString;
-import biblemulticonverter.schema.usfx.Usfx;
-import biblemulticonverter.schema.usfx.Usfx.Book;
-import biblemulticonverter.tools.ValidateXML;
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Importer and exporter for USFX.
@@ -174,7 +174,7 @@ public class USFX extends AbstractParatextFormat {
 			} else {
 				throw new IllegalStateException(element.getValue().getClass().getName());
 			}
-			result.getContent().add(new ChapterStart(Integer.parseInt(id)));
+			result.getContent().add(new ChapterStart(new ChapterIdentifier(result.getId(), Integer.parseInt(id))));
 			containerStack.clear();
 		} else if (localName.equals("toc")) {
 			StyledString ss = (StyledString) element.getValue();
@@ -222,7 +222,12 @@ public class USFX extends AbstractParatextFormat {
 				containerStack.add(container);
 				result.getContent().add(container);
 			}
-			containerStack.get(containerStack.size() - 1).getContent().add(new VerseStart(id));
+			ChapterStart chapter = result.findLastBookContent(ChapterStart.class);
+			if (chapter == null) {
+				throw new IllegalStateException("Verse found before chapter start: " + id);
+			}
+			VerseIdentifier location = new VerseIdentifier(result.getId(), chapter.getChapter(), id);
+			containerStack.get(containerStack.size() - 1).getContent().add(new VerseStart(location, id));
 		} else if (Arrays.asList("f", "x", "fe").contains(localName)) {
 			NoteContents nc = (NoteContents) element.getValue();
 			String sfm = nc.getSfm();
