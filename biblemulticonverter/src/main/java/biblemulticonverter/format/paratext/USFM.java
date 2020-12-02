@@ -287,8 +287,12 @@ public class USFM extends AbstractParatextFormat {
 	protected void doExportBook(ParatextBook book, File outFile) throws IOException {
 		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outFile), StandardCharsets.UTF_8))) {
 			bw.write("\\id " + book.getId().getIdentifier() + " " + escape(book.getBibleName(), false));
+			bw.write("\n\\ide UTF-8");
 			for (Map.Entry<String, String> attr : book.getAttributes().entrySet()) {
-				bw.write("\n\\" + attr.getKey() + " " + escape(attr.getValue(), false));
+				// Never write a charset other than the charset we are using to write this file
+				if(!attr.getKey().equals("ide")) {
+					bw.write("\n\\" + attr.getKey() + " " + escape(attr.getValue(), false));
+				}
 			}
 			book.accept(new ParatextBookContentVisitor<IOException>() {
 
