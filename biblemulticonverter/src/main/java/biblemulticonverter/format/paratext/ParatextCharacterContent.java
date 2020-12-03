@@ -480,14 +480,16 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		 *
 		 * @param location a raw location string that can be parsed using {@link LocationParser}. All
 		 *                 {@link LocationParser.Format} types are allowed except
-		 *                 {@link LocationParser.Format#BOOK_RANGE}, since Reference does not support book ranges.
+		 *                 {@link LocationParser.Format#BOOK_RANGE}, since Reference does not support book ranges (they
+		 *                 should be encoded as "first reference only",
+		 *                 https://ubsicap.github.io/usx/v3.0.0/elements.html#ref).
 		 * @param content  the content for the Reference
 		 * @return a new Reference for the given location and with the given content.
 		 * @throws IllegalArgumentException if the given location cannot be parsed or is of the location matches the
 		 *                                  {@link LocationParser.Format#BOOK_RANGE} format.
 		 */
 		public static Reference parse(String location, String content) {
-			LocationParser parser = new LocationParser(false);
+			LocationParser parser = new LocationParser(true);
 			if (!parser.parse(location)) {
 				throw new IllegalArgumentException("Found invalid reference location: " + location);
 			}
