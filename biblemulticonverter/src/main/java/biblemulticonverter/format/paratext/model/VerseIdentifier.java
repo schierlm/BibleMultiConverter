@@ -8,7 +8,7 @@ import biblemulticonverter.format.paratext.utilities.LocationParser;
  */
 public class VerseIdentifier extends ChapterIdentifier {
 
-	public final String verse;
+	public final String startVerse;
 	public final String endVerse;
 
 	/**
@@ -28,8 +28,15 @@ public class VerseIdentifier extends ChapterIdentifier {
 		} else if (endVerse != null && !LocationParser.isValidVerseId(endVerse)) {
 			throw new IllegalArgumentException("Provided endVerse String is not a valid verse ID: " + endVerse);
 		}
-		this.verse = verse;
+		this.startVerse = verse;
 		this.endVerse = endVerse;
+	}
+	
+	/**
+	 * Returns this identifiers verse, this may be a range if endVerse is not null.
+	 */
+	public String verse() {
+		return startVerse + (endVerse != null ? "-" + endVerse : "");
 	}
 
 	/**
@@ -49,8 +56,16 @@ public class VerseIdentifier extends ChapterIdentifier {
 		throw new IllegalArgumentException("Given location string is not a valid verse location identifier: " + location);
 	}
 
+	/**
+	 * @return a VerseLocation if the location was parsed successfully, null if not.
+	 * @throws IllegalArgumentException if the given location is not a valid verse location identifier.
+	 */
+	public static VerseIdentifier fromVerseNumberRangeOrThrow(ParatextBook.ParatextID book, int chapter, String verseNumberRange) throws IllegalArgumentException {
+		return fromStringOrThrow(book.getIdentifier() + " " + chapter + ":" + verseNumberRange); 
+	}
+
 	@Override
 	public String toString() {
-		return super.toString() + ":" + verse + (endVerse != null ? "-" + endVerse : "");
+		return super.toString() + ":" + startVerse + (endVerse != null ? "-" + endVerse : "");
 	}
 }

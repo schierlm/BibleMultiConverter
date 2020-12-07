@@ -1,17 +1,5 @@
 package biblemulticonverter.format.paratext;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
@@ -47,6 +35,21 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
+import biblemulticonverter.format.paratext.utilities.LocationParser;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Base class for Paratext formats (USFM/USFX/USX).
@@ -97,131 +100,135 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		}
 		Bible bible = new Bible((bibleName == null || bibleName.isEmpty()) ? "Imported Bible" : bibleName);
 		for (ParatextBook book : books) {
-			String longName = book.getAttributes().get("toc1");
-			if (longName == null || longName.isEmpty())
-				longName = book.getId().getEnglishName();
-			String shortName = book.getAttributes().get("toc2");
-			if (shortName == null || shortName.isEmpty())
-				shortName = longName;
-			final Book bk = new Book(bookAbbrs.get(book.getId()), book.getId().getId(), shortName, longName);
-			bible.getBooks().add(bk);
-			final boolean forceProlog = book.getId().getId().getZefID() < 0;
-			final ParatextImportContext ctx = new ParatextImportContext();
-			ctx.bookAbbrs = bookAbbrs;
-			book.accept(new ParatextBookContentVisitor<RuntimeException>() {
+			bible.getBooks().add(importParatextBook(book, bookAbbrs));
+		}
+		return bible;
+	}
 
-				@Override
-				public void visitChapterStart(ChapterIdentifier location) throws RuntimeException {
-					if (ctx.cnum != -1 && !ctx.headlines.isEmpty()) {
-						System.out.println("WARNING: Ignoring unreferenced headlines");
-						ctx.headlines.clear();
+	protected final Book importParatextBook(ParatextBook book, Map<ParatextID, String> bookAbbrs) {
+		String longName = book.getAttributes().get("toc1");
+		if (longName == null || longName.isEmpty())
+			longName = book.getId().getEnglishName();
+		String shortName = book.getAttributes().get("toc2");
+		if (shortName == null || shortName.isEmpty())
+			shortName = longName;
+		final Book bk = new Book(bookAbbrs.get(book.getId()), book.getId().getId(), shortName, longName);
+		final boolean forceProlog = book.getId().getId().getZefID() < 0;
+		final ParatextImportContext ctx = new ParatextImportContext();
+		ctx.bookAbbrs = bookAbbrs;
+		book.accept(new ParatextBookContentVisitor<RuntimeException>() {
+
+			@Override
+			public void visitChapterStart(ChapterIdentifier location) throws RuntimeException {
+				if (ctx.cnum != -1 && !ctx.headlines.isEmpty()) {
+					System.out.println("WARNING: Ignoring unreferenced headlines");
+					ctx.headlines.clear();
+				}
+				int newChapter = location.chapter;
+				if (ctx.cnum == 0 && newChapter == 1) {
+					// we are in prolog (chapter already exists)
+					ctx.cnum = newChapter;
+				} else if (newChapter >= 1 && newChapter > ctx.cnum) {
+					if (ctx.cnum == -1)
+						ctx.cnum = 0;
+					while (ctx.cnum < newChapter - 1) {
+						bk.getChapters().add(new Chapter());
+						ctx.cnum++;
 					}
-					int newChapter = location.chapter;
-					if (ctx.cnum == 0 && newChapter == 1) {
-						// we are in prolog (chapter already exists)
-						ctx.cnum = newChapter;
-					} else if (newChapter >= 1 && newChapter > ctx.cnum) {
-						if (ctx.cnum == -1)
-							ctx.cnum = 0;
-						while (ctx.cnum < newChapter - 1) {
-							bk.getChapters().add(new Chapter());
-							ctx.cnum++;
-						}
-						ctx.currentChapter = new Chapter();
-						bk.getChapters().add(ctx.currentChapter);
-						ctx.cnum = newChapter;
-					} else {
-						System.out.println("WARNING: Ignoring chapter number " + newChapter + ", current chapter is " + ctx.cnum);
+					ctx.currentChapter = new Chapter();
+					bk.getChapters().add(ctx.currentChapter);
+					ctx.cnum = newChapter;
+				} else {
+					System.out.println("WARNING: Ignoring chapter number " + newChapter + ", current chapter is " + ctx.cnum);
+				}
+				ctx.currentVisitor = null;
+				ctx.currentVerse = null;
+				ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NONE;
+			}
+
+			@Override
+			public void visitChapterEnd(ChapterIdentifier location) throws RuntimeException {
+				// Not supported in the internal format
+			}
+
+			@Override
+			public void visitParagraphStart(ParagraphKind kind) throws RuntimeException {
+				if (ctx.currentParagraph != ParatextImportContext.CurrentParagraph.NONE) {
+					if (ctx.currentParagraph == ParatextImportContext.CurrentParagraph.PROLOG ||
+							(ctx.currentParagraph == ParatextImportContext.CurrentParagraph.NORMAL && ctx.currentVisitor != null)) {
+						ctx.currentVisitor.visitLineBreak(LineBreakKind.PARAGRAPH);
 					}
-					ctx.currentVisitor = null;
-					ctx.currentVerse = null;
 					ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NONE;
 				}
 
-				@Override
-				public void visitChapterEnd(ChapterIdentifier location) throws RuntimeException {
-					// Not supported in the internal format
-				}
-
-				@Override
-				public void visitParagraphStart(ParagraphKind kind) throws RuntimeException {
-					if (ctx.currentParagraph != ParatextImportContext.CurrentParagraph.NONE) {
-						if (ctx.currentParagraph == ParatextImportContext.CurrentParagraph.PROLOG ||
-								(ctx.currentParagraph == ParatextImportContext.CurrentParagraph.NORMAL && ctx.currentVisitor != null)) {
-							ctx.currentVisitor.visitLineBreak(LineBreakKind.PARAGRAPH);
-						}
-						ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NONE;
-					}
-
-					if (kind.getCategory() == ParagraphKindCategory.SKIP) {
-						// do nothing
-					} else if (kind.getCategory() == ParagraphKindCategory.HEADLINE) {
-						Headline hl = null;
-						if (kind.isJoinHeadlines() && !ctx.headlines.isEmpty()) {
-							hl = ctx.headlines.get(ctx.headlines.size() - 1);
-							if (hl.getDepth() == kind.getHeadlineDepth() || kind.getHeadlineDepth() == 0) {
-								hl.getAppendVisitor().visitText(" ");
-							} else {
-								hl = null;
-							}
-						}
-						if (hl == null) {
-							hl = new Headline(kind.getHeadlineDepth());
-							ctx.headlines.add(hl);
-						}
-						ctx.currentParagraph = ParatextImportContext.CurrentParagraph.HEADLINE;
-						ctx.currentVisitor = hl.getAppendVisitor();
-						if (kind.getExtraFormatting() != null) {
-							ctx.currentVisitor = ctx.currentVisitor.visitFormattingInstruction(kind.getExtraFormatting());
-						}
-					} else { // BLANK_LINE, TABLE_ROW, TEXT
-						if (kind.isProlog() || forceProlog) {
-							if (ctx.cnum == -1) {
-								ctx.cnum = 0;
-								ctx.currentChapter = new Chapter();
-								bk.getChapters().add(ctx.currentChapter);
-							}
-							if (ctx.currentChapter.getProlog() == null) {
-								ctx.currentChapter.setProlog(new FormattedText());
-							}
-							if (!ctx.currentChapter.getVerses().isEmpty()) {
-								System.out.println("WARNING: Adding to prolog after verses have been added!");
-							}
-							ctx.currentVisitor = ctx.currentChapter.getProlog().getAppendVisitor();
-							ctx.currentParagraph = ParatextImportContext.CurrentParagraph.PROLOG;
-							ctx.flushHeadlines();
+				if (kind.getCategory() == ParagraphKindCategory.SKIP) {
+					// do nothing
+				} else if (kind.getCategory() == ParagraphKindCategory.HEADLINE) {
+					Headline hl = null;
+					if (kind.isJoinHeadlines() && !ctx.headlines.isEmpty()) {
+						hl = ctx.headlines.get(ctx.headlines.size() - 1);
+						if (hl.getDepth() == kind.getHeadlineDepth() || kind.getHeadlineDepth() == 0) {
+							hl.getAppendVisitor().visitText(" ");
 						} else {
-							ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NORMAL;
+							hl = null;
 						}
 					}
-				}
-
-				@Override
-				public void visitTableCellStart(String tag) throws RuntimeException {
-					ctx.ensureParagraph();
-					if (!tag.matches("t[hc]r?1") && ctx.currentParagraph != ParatextImportContext.CurrentParagraph.HEADLINE && ctx.currentVisitor != null) {
-						ctx.currentVisitor.visitLineBreak(LineBreakKind.NEWLINE_WITH_INDENT);
+					if (hl == null) {
+						hl = new Headline(kind.getHeadlineDepth());
+						ctx.headlines.add(hl);
+					}
+					ctx.currentParagraph = ParatextImportContext.CurrentParagraph.HEADLINE;
+					ctx.currentVisitor = hl.getAppendVisitor();
+					if (kind.getExtraFormatting() != null) {
+						ctx.currentVisitor = ctx.currentVisitor.visitFormattingInstruction(kind.getExtraFormatting());
+					}
+				} else { // BLANK_LINE, TABLE_ROW, TEXT
+					if (kind.isProlog() || forceProlog) {
+						if (ctx.cnum == -1) {
+							ctx.cnum = 0;
+							ctx.currentChapter = new Chapter();
+							bk.getChapters().add(ctx.currentChapter);
+						}
+						if (ctx.currentChapter.getProlog() == null) {
+							ctx.currentChapter.setProlog(new FormattedText());
+						}
+						if (!ctx.currentChapter.getVerses().isEmpty()) {
+							System.out.println("WARNING: Adding to prolog after verses have been added!");
+						}
+						ctx.currentVisitor = ctx.currentChapter.getProlog().getAppendVisitor();
+						ctx.currentParagraph = ParatextImportContext.CurrentParagraph.PROLOG;
+						ctx.flushHeadlines();
+					} else {
+						ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NORMAL;
 					}
 				}
+			}
 
-				@Override
-				public void visitParatextCharacterContent(ParatextCharacterContent content) throws RuntimeException {
-					ctx.ensureParagraph();
-					content.accept(new ParatextImportVisitor(ctx));
+			@Override
+			public void visitTableCellStart(String tag) throws RuntimeException {
+				ctx.ensureParagraph();
+				if (!tag.matches("t[hc]r?1") && ctx.currentParagraph != ParatextImportContext.CurrentParagraph.HEADLINE && ctx.currentVisitor != null) {
+					ctx.currentVisitor.visitLineBreak(LineBreakKind.NEWLINE_WITH_INDENT);
 				}
-			});
-			if (!ctx.headlines.isEmpty()) {
-				System.out.println("WARNING: Ignoring unreferenced headlines");
-				ctx.headlines.clear();
 			}
-			for (Chapter ch : bk.getChapters()) {
-				if (ch.getProlog() != null)
-					ch.getProlog().finished();
-				for (Verse v : ch.getVerses())
-					v.finished();
+
+			@Override
+			public void visitParatextCharacterContent(ParatextCharacterContent content) throws RuntimeException {
+				ctx.ensureParagraph();
+				content.accept(new ParatextImportVisitor(ctx));
 			}
+		});
+		if (!ctx.headlines.isEmpty()) {
+			System.out.println("WARNING: Ignoring unreferenced headlines");
+			ctx.headlines.clear();
 		}
-		return bible;
+		for (Chapter ch : bk.getChapters()) {
+			if (ch.getProlog() != null)
+				ch.getProlog().finished();
+			for (Verse v : ch.getVerses())
+				v.finished();
+		}
+		return bk;
 	}
 
 	public final List<ParatextBook> doImportBooks(File inputFile) throws Exception {
@@ -298,34 +305,63 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
 		List<ParatextBook> books = new ArrayList<>();
 		for (Book bk : bible.getBooks()) {
-			ParatextID pid = ParatextID.fromBookID(bk.getId());
-			if (pid == null) {
-				System.out.println("WARNING: Skipping unsupported book " + bk.getId());
-				continue;
-			}
-			ParatextBook book = new ParatextBook(pid, bible.getName());
-			books.add(book);
-			book.getAttributes().put("toc1", bk.getLongName());
-			book.getAttributes().put("toc2", bk.getShortName());
-			book.getAttributes().put("toc3", bk.getAbbr());
-			ParatextExportContext ctx = new ParatextExportContext(book);
-			for (int cnum = 1; cnum <= bk.getChapters().size(); cnum++) {
-				Chapter ch = bk.getChapters().get(cnum - 1);
-				if (cnum > 1)
-					ctx.startChapter(cnum);
-				if (ch.getProlog() != null) {
-					ch.getProlog().accept(new ParatextExportVisitor("in prolog", bk.getId().isNT(), ctx, null, cnum == 1 ? ParagraphKind.INTRO_PARAGRAPH_P : ParagraphKind.CHAPTER_DESCRIPTION, null));
-				}
-				if (cnum == 1)
-					ctx.startChapter(cnum);
-				for (Verse v : ch.getVerses()) {
-					VerseIdentifier location = new VerseIdentifier(pid, cnum, v.getNumber());
-					v.accept(new ParatextExportVisitor("in verse", bk.getId().isNT(), ctx, null, ParagraphKind.PARAGRAPH_P, location));
-				}
-				ctx.endChapter(cnum);
+			ParatextBook book = exportToParatextBook(bk, bible.getName());
+			if (book != null) {
+				books.add(book);
 			}
 		}
 		doExportBooks(books, exportArgs);
+	}
+
+	protected ParatextBook exportToParatextBook(Book bk, String bibleName) {
+		ParatextID pid = ParatextID.fromBookID(bk.getId());
+		if (pid == null) {
+			System.out.println("WARNING: Skipping unsupported book " + bk.getId());
+			return null;
+		}
+		ParatextBook book = new ParatextBook(pid, bibleName);
+		book.getAttributes().put("toc1", bk.getLongName());
+		book.getAttributes().put("toc2", bk.getShortName());
+		book.getAttributes().put("toc3", bk.getAbbr());
+		ParatextExportContext ctx = new ParatextExportContext(book);
+		for (int cnum = 1; cnum <= bk.getChapters().size(); cnum++) {
+			Chapter ch = bk.getChapters().get(cnum - 1);
+			if (cnum > 1)
+				ctx.startChapter(cnum);
+			if (ch.getProlog() != null) {
+				ch.getProlog().accept(new ParatextExportVisitor("in prolog", bk.getId().isNT(), ctx, null, cnum == 1 ? ParagraphKind.INTRO_PARAGRAPH_P : ParagraphKind.CHAPTER_DESCRIPTION, null));
+			}
+			if (cnum == 1)
+				ctx.startChapter(cnum);
+			for (Verse v : ch.getVerses()) {
+				String verseNumber = internalVerseNumberToParatextVerseNumber(v.getNumber());
+				if (verseNumber == null) {
+					throw new IllegalArgumentException("Could not export verse " + ctx.book.getId().getIdentifier() + " " + cnum + ":" + v.getNumber() + " because the verse number could not be transformed to a valid Paratext verse number");
+				}
+				VerseIdentifier location = VerseIdentifier.fromVerseNumberRangeOrThrow(pid, cnum, verseNumber);
+				v.accept(new ParatextExportVisitor("in verse", bk.getId().isNT(), ctx, null, ParagraphKind.PARAGRAPH_P, location));
+			}
+			ctx.endChapter(cnum);
+		}
+		return book;
+	}
+
+	private String internalVerseNumberToParatextVerseNumber(String internalNumber) {
+		if (LocationParser.isValidVerseId(internalNumber)) {
+			return internalNumber;
+		} else {
+			// Try to parse the internal verse number:
+			Matcher matcher = Pattern.compile("([1-9][0-9a-z]*)(?:[,/.-]([1-9][0-9a-z]*))?").matcher(internalNumber);
+			if (matcher.matches()) {
+				if (matcher.group(2) == null) {
+					return matcher.group(1);
+				} else {
+					return matcher.group(1) + "-" + matcher.group(2);
+				}
+			} else {
+				return null;
+			}
+		}
 	}
 
 	public void doExportBooks(List<ParatextBook> books, String... exportArgs) throws Exception {
@@ -407,7 +443,21 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				System.out.println("WARNING: Skipping verse number outside of chapter");
 				return;
 			}
-			ctx.currentVerse = new Verse(verseNumber);
+
+			if (Verse.isValidNumber(verseNumber)) {
+				// Try the raw full number first, which can be 5, 6-7, 6-7a, or even 6a-7b.
+				ctx.currentVerse = new Verse(verseNumber);
+			} else if (Verse.isValidNumber(location.verse())) {
+				// Try the verse from the identifier if the above fails.
+				ctx.currentVerse = new Verse(location.verse());
+			} else if(Verse.isValidNumber(location.startVerse)) {
+				System.out.println("WARNING: Using shortened verse number (" + location.startVerse + "), because the full verse number (" + verseNumber + ") is not a valid number for conversion");
+				// raw full number and identifier verse are both not valid for the internal format, fallback to the first number which can be: 5, 6a etc.
+				ctx.currentVerse = new Verse(location.startVerse);
+			} else {
+				System.out.println("WARNING: Skipping verse number, because it is not a valid number for conversion: " + verseNumber);
+				return;
+			}
 			ctx.currentChapter.getVerses().add(ctx.currentVerse);
 			ctx.currentVisitor = ctx.currentVerse.getAppendVisitor();
 			ctx.flushHeadlines();
@@ -624,7 +674,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		@Override
 		public void visitStart() {
 			if (verseLocation != null) {
-				getCharContent().getContent().add(new VerseStart(verseLocation, verseLocation.verse));
+				getCharContent().getContent().add(new VerseStart(verseLocation, verseLocation.verse()));
 			}
 		}
 
