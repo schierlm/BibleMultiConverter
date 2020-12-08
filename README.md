@@ -11,10 +11,7 @@ Usage
 
 If you clone from Git or download a source zip, you will need a Java JDK 8 or above (tested up to 11),
 and Apache Maven 3.5 or above, to build. Just run "mvn package" and you will find
-a suitable distribution .zip file in the TARGET folder. Note that to build all modules
-(including SWORD and All-In-One), you will need to have built [JSword](https://github.com/crosswire/jsword/commit/1983dc1bd39d735a28accadbe282f4a043b225a9)
-first and installed it to your local maven repository. Alternatively, skip these modules
-by adding `-pl !biblemulticonverter-sword,!biblemulticonverter-allinone` to your Maven command line.
+a suitable distribution .zip file in the TARGET folder.
 
 If you download a precompiled .zip file, you will need a Java Runtime Environment
 8 or above, available from java.com. Just run
