@@ -2,7 +2,7 @@ package biblemulticonverter.format.paratext;
 
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
-import biblemulticonverter.format.paratext.utilities.UsxTextUtilities;
+import biblemulticonverter.format.paratext.utilities.TextUtilities;
 import biblemulticonverter.schema.usx3.*;
 import biblemulticonverter.tools.ValidateXML;
 import biblemulticonverter.utilities.UnmarshallerLocationListener;
@@ -219,7 +219,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 					container.getContent().add(new ParatextCharacterContent.Text(r.getContent()));
 				}
 			} else if (o instanceof String) {
-				String text = UsxTextUtilities.normalizeText((String) o);
+				String text = TextUtilities.normalizeTextFromXML((String) o);
 				if (!text.isEmpty()) {
 					container.getContent().add(new ParatextCharacterContent.Text(text));
 				}

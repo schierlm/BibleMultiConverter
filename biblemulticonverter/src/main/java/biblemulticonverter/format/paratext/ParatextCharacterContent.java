@@ -10,6 +10,7 @@ import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.format.paratext.utilities.LocationParser;
 import biblemulticonverter.format.paratext.utilities.TagParser;
+import biblemulticonverter.format.paratext.utilities.TextUtilities;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -583,7 +584,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		private String text;
 
 		public Text(String chars) {
-			this.text = chars;
+			this.text = TextUtilities.whitespaceNormalization(chars);
 		}
 
 		public String getChars() {

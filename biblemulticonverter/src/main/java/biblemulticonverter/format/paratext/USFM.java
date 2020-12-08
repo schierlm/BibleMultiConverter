@@ -19,6 +19,7 @@ import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.format.paratext.utilities.ImportUtilities;
 import biblemulticonverter.format.paratext.utilities.StandardExportLogMessages;
+import biblemulticonverter.format.paratext.utilities.TextUtilities;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -73,7 +74,7 @@ public class USFM extends AbstractParatextFormat {
 		KNOWN_CHARACTER_TAGS.addAll(AUTO_CLOSING_TAGS.keySet());
 		if (!inputFile.getName().toLowerCase().endsWith(".usfm") && !inputFile.getName().toLowerCase().endsWith(".sfm"))
 			return null;
-		String data = new String(Files.readAllBytes(inputFile.toPath()), charset).replaceAll("[\\p{Cc}]+", " ").trim() + "\\$EOF$";
+		String data = TextUtilities.whitespaceNormalization(new String(Files.readAllBytes(inputFile.toPath()), charset)) + "\\$EOF$";
 		if (!data.startsWith("\\id ")) {
 			System.out.println("WARNING: Skipping malformed file " + inputFile);
 			return null;

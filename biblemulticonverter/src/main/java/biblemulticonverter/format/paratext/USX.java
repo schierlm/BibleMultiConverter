@@ -18,7 +18,7 @@ import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.format.paratext.utilities.ImportUtilities;
 import biblemulticonverter.format.paratext.utilities.StandardExportLogMessages;
-import biblemulticonverter.format.paratext.utilities.UsxTextUtilities;
+import biblemulticonverter.format.paratext.utilities.TextUtilities;
 import biblemulticonverter.schema.usx.Cell;
 import biblemulticonverter.schema.usx.CellAlign;
 import biblemulticonverter.schema.usx.CellStyle;
@@ -282,7 +282,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 					container.getContent().add(new ParatextCharacterContent.Text(r.getContent()));
 				}
 			} else if (o instanceof String) {
-				String text = UsxTextUtilities.normalizeText((String) o);
+				String text = TextUtilities.normalizeTextFromXML((String) o);
 				if (!text.isEmpty()) {
 					container.getContent().add(new ParatextCharacterContent.Text(text));
 				}
