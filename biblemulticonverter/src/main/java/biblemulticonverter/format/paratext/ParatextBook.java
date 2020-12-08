@@ -172,7 +172,7 @@ public class ParatextBook {
 		TEXT, HEADLINE, TABLE_ROW, VERTICAL_WHITE_SPACE, SKIP
 	}
 
-	public enum ParagraphKind {
+	public static enum ParagraphKind {
 
 		//@formatter:off
 
@@ -476,13 +476,13 @@ public class ParatextBook {
 	/**
 	 * A container that can include character content.
 	 */
-	public interface ParatextCharacterContentContainer {
-		List<ParatextCharacterContentPart> getContent();
+	public static interface ParatextCharacterContentContainer {
+		public List<ParatextCharacterContentPart> getContent();
 
 		/**
 		 * @see #findLastCharacterContent(Class, ParatextCharacterContentPart)
 		 */
-		default <T extends ParatextCharacterContentPart> T findLastContent(Class<T> type) {
+		public default <T extends ParatextCharacterContentPart> T findLastContent(Class<T> type) {
 			return findLastContent(type, null);
 		}
 
@@ -494,7 +494,7 @@ public class ParatextBook {
 		 *                     occurs before this needle.
 		 * @return the last instance of the given type or null if not found.
 		 */
-		default <T extends ParatextCharacterContentPart> T findLastContent(Class<T> type, ParatextCharacterContentPart beforeNeedle) {
+		public default <T extends ParatextCharacterContentPart> T findLastContent(Class<T> type, ParatextCharacterContentPart beforeNeedle) {
 			List<ParatextCharacterContentPart> content = getContent();
 			ListIterator<ParatextCharacterContentPart> iterator = content.listIterator(content.size());
 			boolean didFindBeforeNeedle = beforeNeedle == null;
@@ -524,7 +524,7 @@ public class ParatextBook {
 		 * @param needle The needle to search for.
 		 * @return true if this {@link ParatextCharacterContentContainer} contains the given needle, false if not.
 		 */
-		default boolean contains(ParatextCharacterContentPart needle) {
+		public default boolean contains(ParatextCharacterContentPart needle) {
 			List<ParatextCharacterContentPart> content = getContent();
 			ListIterator<ParatextCharacterContentPart> iterator = content.listIterator(content.size());
 			while (iterator.hasPrevious()) {
@@ -541,7 +541,7 @@ public class ParatextBook {
 			return false;
 		}
 
-		default <T extends Throwable> void accept(ParatextCharacterContentVisitor<T> visitor) throws T {
+		public default <T extends Throwable> void accept(ParatextCharacterContentVisitor<T> visitor) throws T {
 			if (visitor == null)
 				return;
 			for (ParatextCharacterContentPart part : getContent()) {
@@ -551,7 +551,7 @@ public class ParatextBook {
 		}
 	}
 
-	public enum ParatextID {
+	public static enum ParatextID {
 
 		// @formatter:off
 

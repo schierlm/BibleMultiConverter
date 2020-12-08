@@ -39,24 +39,24 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 	 * One of {@link VerseStart}, {@link FootnoteXref},
 	 * {@link AutoClosingFormatting}, {@link Reference} or {@link Text}.
 	 */
-	public interface ParatextCharacterContentPart {
-		<T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T;
+	public static interface ParatextCharacterContentPart {
+		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T;
 	}
 
-	public interface ParatextCharacterContentVisitor<T extends Throwable> {
-		void visitVerseStart(VerseIdentifier location, String verseNumber) throws T;
+	public static interface ParatextCharacterContentVisitor<T extends Throwable> {
+		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws T;
 
-		ParatextCharacterContentVisitor<T> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws T;
+		public ParatextCharacterContentVisitor<T> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws T;
 
-		ParatextCharacterContentVisitor<T> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws T;
+		public ParatextCharacterContentVisitor<T> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws T;
 
-		void visitReference(Reference reference) throws T;
+		public void visitReference(Reference reference) throws T;
 
-		void visitText(String text) throws T;
+		public void visitText(String text) throws T;
 
-		void visitEnd() throws T;
+		public void visitEnd() throws T;
 
-		void visitVerseEnd(VerseIdentifier verseLocation) throws T;
+		public void visitVerseEnd(VerseIdentifier verseLocation) throws T;
 	}
 
 	public static class VerseStart implements ParatextCharacterContentPart {
@@ -191,7 +191,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		}
 	}
 
-	public enum AutoClosingFormattingKind {
+	public static enum AutoClosingFormattingKind {
 
 		//@formatter:off
 
