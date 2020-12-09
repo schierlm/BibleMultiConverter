@@ -9,7 +9,10 @@ import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import org.junit.Test;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -19,11 +22,11 @@ public class AbstractParatextFormatTest {
 	@Test
 	public void test_on_export_internal_verse_numbers_are_transformed_to_paratext_verse_numbers() {
 		// Dummy paratext book
-		Book book = new Book("1co", BookID.BOOK_1Cor, "1 Cor", "1 Corinthians");
+		Book book = new Book("1CO", BookID.BOOK_1Cor, "1 Cor", "1 Corinthians");
 		Chapter chapter = new Chapter();
 		book.getChapters().add(chapter);
-		addDummyVerse(chapter, "5");
-		addDummyVerse(chapter, "5/7");
+		addDummyVerse(chapter, "5", true);
+		addDummyVerse(chapter, "5/7", true);
 
 		AbstractParatextFormat format = new ParatextFormat();
 
@@ -64,11 +67,53 @@ public class AbstractParatextFormatTest {
 		assertEquals("6b", chapter.getVerses().get(1).getNumber());
 	}
 
-	private void addDummyVerse(Chapter chapter, String number) {
+	@Test
+	public void test_on_export_internal_cross_references_are_transformed_to_paratext_cross_references() {
+		// Dummy paratext book
+		Book book = new Book("1CO", BookID.BOOK_1Cor, "1 Cor", "1 Corinthians");
+		Chapter chapter = new Chapter();
+		book.getChapters().add(chapter);
+		addDummyVerse(chapter, "5", false).getAppendVisitor()
+				.visitCrossReference("1KI", BookID.BOOK_1Kgs, 1, "1", 999, "999")
+				.visitCrossReference("1KI", BookID.BOOK_1Kgs, 1, "1", 1, "999")
+				.visitCrossReference("1KI", BookID.BOOK_1Kgs, 6, "1", 6, "999")
+				.visitCrossReference("1KI", BookID.BOOK_1Kgs, 6, "5", 6, "999")
+				.visitCrossReference("1KI", BookID.BOOK_1Kgs, 11, "6a", 11, "6a")
+				.visitEnd();
+
+		AbstractParatextFormat format = new ParatextFormat();
+
+		ParatextBook paratextBook = format.exportToParatextBook(book, "test");
+
+		List<ParatextCharacterContent.Reference> resultReferences = new ArrayList<>();
+
+		ParatextCharacterContent.Reference reference = null;
+		while ((reference = paratextBook.findLastCharacterContent(ParatextCharacterContent.Reference.class, reference)) != null) {
+			resultReferences.add(reference);
+		}
+		Collections.reverse(resultReferences);
+
+		assertEqualsReference(ParatextBook.ParatextID.ID_1KI, -1, null, -1, null, resultReferences.get(0));
+		assertEqualsReference(ParatextBook.ParatextID.ID_1KI, 1, null, -1, null, resultReferences.get(1));
+		assertEqualsReference(ParatextBook.ParatextID.ID_1KI, 6, null, -1, null, resultReferences.get(2));
+		assertEqualsReference(ParatextBook.ParatextID.ID_1KI, 6, "5", 6, "999", resultReferences.get(3));
+		assertEqualsReference(ParatextBook.ParatextID.ID_1KI, 11, "6a", -1, null, resultReferences.get(4));
+	}
+
+	private void assertEqualsReference(ParatextBook.ParatextID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse, ParatextCharacterContent.Reference actual) {
+		assertEquals(book, actual.getBook());
+		assertEquals(firstChapter, actual.getFirstChapter());
+		assertEquals(lastChapter, actual.getLastChapter());
+		assertEquals(firstVerse, actual.getFirstVerse());
+		assertEquals(lastVerse, actual.getLastVerse());
+	}
+
+	private Verse addDummyVerse(Chapter chapter, String number, boolean close) {
 		Verse verse = new Verse(number);
 		verse.getAppendVisitor().visitText("Lorem Ipsum");
 		verse.getAppendVisitor().visitEnd();
 		chapter.getVerses().add(verse);
+		return verse;
 	}
 
 	private void addDummyVerse(ParatextCharacterContent content, VerseIdentifier identifier, String number) {

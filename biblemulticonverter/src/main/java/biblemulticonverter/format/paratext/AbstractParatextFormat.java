@@ -450,7 +450,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			} else if (Verse.isValidNumber(location.verse())) {
 				// Try the verse from the identifier if the above fails.
 				ctx.currentVerse = new Verse(location.verse());
-			} else if(Verse.isValidNumber(location.startVerse)) {
+			} else if (Verse.isValidNumber(location.startVerse)) {
 				System.out.println("WARNING: Using shortened verse number (" + location.startVerse + "), because the full verse number (" + verseNumber + ") is not a valid number for conversion");
 				// raw full number and identifier verse are both not valid for the internal format, fallback to the first number which can be: 5, 6a etc.
 				ctx.currentVerse = new Verse(location.startVerse);
@@ -710,15 +710,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) {
-			ParatextID paratextID = ParatextID.fromBookID(book);
-
-			// Book only or chapter only or book ranges are not supported by the internal format.
-			Reference reference;
-			if (firstChapter == lastChapter && firstVerse.equals(lastVerse)) {
-				reference = Reference.verse(paratextID, firstChapter, firstVerse, "");
-			} else {
-				reference = Reference.verseRange(paratextID, firstChapter, firstVerse, lastChapter, lastVerse, "");
-			}
+			Reference reference = internalCrossReferenceToParatextCrossReference(book, firstChapter, lastChapter, firstVerse, lastVerse);
 			getCharContent().getContent().add(reference);
 			return new VisitorAdapter<RuntimeException>(this) {
 				boolean start = true;
@@ -738,6 +730,30 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					}
 				}
 			};
+		}
+
+		/**
+		 * Transform a cross reference from the internal format to the Paratext format. This process involves
+		 * normalizing certain chapter and verse ranges to book and chapter references. For example MAT 1:1-999:999
+		 * is turned into a single book cross reference to MAT.
+		 */
+		private Reference internalCrossReferenceToParatextCrossReference(BookID book, int firstChapter, int lastChapter, String firstVerse, String lastVerse) {
+			final ParatextID paratextID = ParatextID.fromBookID(book);
+
+			// Attempt to "normalize" ranges a bit
+			if (firstChapter == 1 && lastChapter == 999 && firstVerse.equals("1") && lastVerse.equals("999")) {
+				// MAT 1:1-999:999 > MAT
+				return Reference.book(paratextID, "");
+			} else if (firstChapter == lastChapter && firstVerse.equals("1") && lastVerse.equals("999")) {
+				// MAT 5:1-5:999 > MAT 5
+				return Reference.chapter(paratextID, firstChapter, "");
+			} else if (firstChapter == lastChapter && firstVerse.equals(lastVerse)) {
+				// MAT 5:5-5:5 > MAT 5:5
+				return Reference.verse(paratextID, firstChapter, firstVerse, "");
+			} else {
+				// Anything else
+				return Reference.verseRange(paratextID, firstChapter, firstVerse, lastChapter, lastVerse, "");
+			}
 		}
 
 		@Override
