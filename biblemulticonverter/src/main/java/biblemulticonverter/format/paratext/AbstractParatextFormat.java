@@ -680,7 +680,10 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		@Override
 		public void visitText(String text) {
-			getCharContent().getContent().add(new Text(text));
+			final Text textContent = Text.from(text);
+			if(textContent != null) {
+				getCharContent().getContent().add(textContent);
+			}
 		}
 
 		@Override

@@ -583,8 +583,8 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 	public static class Text implements ParatextCharacterContentPart {
 		private String text;
 
-		public Text(String chars) {
-			this.text = TextUtilities.whitespaceNormalization(chars);
+		private Text(String chars) {
+			this.text = chars;
 		}
 
 		public String getChars() {
@@ -594,6 +594,15 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		@Override
 		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
 			visitor.visitText(text);
+		}
+		
+		public static Text from(String chars) {
+			final String text = TextUtilities.whitespaceNormalization(chars);
+			if (text.isEmpty()) {
+				return null;
+			} else {
+				return new Text(text);
+			}
 		}
 	}
 }

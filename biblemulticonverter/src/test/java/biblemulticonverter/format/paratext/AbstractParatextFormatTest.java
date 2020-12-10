@@ -109,7 +109,7 @@ public class AbstractParatextFormatTest {
 		content.getContent().add(
 				new ParatextCharacterContent.VerseStart(identifier, number)
 		);
-		content.getContent().add(new ParatextCharacterContent.Text("Lorem Ipsum"));
+		content.getContent().add(ParatextCharacterContent.Text.from("Lorem Ipsum"));
 		content.getContent().add(new ParatextCharacterContent.VerseEnd(identifier));
 	}
 

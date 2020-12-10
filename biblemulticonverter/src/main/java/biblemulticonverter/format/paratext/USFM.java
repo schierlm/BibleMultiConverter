@@ -269,14 +269,16 @@ public class USFM extends AbstractParatextFormat {
 			if (closeCharacterAttributes) {
 				containerStack.clear();
 			}
-			if (!textPart.isEmpty()) {
+
+			textPart = textPart.replace(" // ", " ").replace("~", "\u00A0");
+			ParatextCharacterContent.Text text = ParatextCharacterContent.Text.from(textPart);
+			if (text != null) {
 				if (containerStack.isEmpty()) {
 					ParatextCharacterContent container = new ParatextCharacterContent();
 					containerStack.add(container);
 					result.getContent().add(container);
 				}
-				textPart = textPart.replace(" // ", " ").replace("~", "\u00A0");
-				containerStack.get(containerStack.size() - 1).getContent().add(new ParatextCharacterContent.Text(textPart));
+				containerStack.get(containerStack.size() - 1).getContent().add(text);
 			}
 		}
 		ImportUtilities.closeOpenVerse(result, openVerse);

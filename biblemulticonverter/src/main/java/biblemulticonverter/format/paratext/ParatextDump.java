@@ -119,7 +119,10 @@ public class ParatextDump extends AbstractParatextFormat {
 				target.add(Reference.parse(parts[1], parts[2]));
 				break;
 			case "TEXT":
-				target.add(new Text(parts[2]));
+				Text text = Text.from(parts[2]);
+				if(text != null) {
+					target.add(text);
+				}
 				break;
 			default:
 				throw new IOException(line);

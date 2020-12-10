@@ -281,12 +281,15 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				} catch (IllegalArgumentException e) {
 					String location = unmarshallerLocationListener.getHumanReadableLocation(o);
 					System.out.println("WARNING: Unsupported structured reference format at " + location + " - replaced by plain text: " + r.getLoc());
-					container.getContent().add(new ParatextCharacterContent.Text(r.getContent()));
+					final ParatextCharacterContent.Text text = ParatextCharacterContent.Text.from(r.getContent());
+					if(text != null) {
+						container.getContent().add(text);
+					}
 				}
 			} else if (o instanceof String) {
-				String text = TextUtilities.normalizeTextFromXML((String) o);
-				if (!text.isEmpty()) {
-					container.getContent().add(new ParatextCharacterContent.Text(text));
+				final ParatextCharacterContent.Text text = ParatextCharacterContent.Text.from((String) o);
+				if(text != null) {
+					container.getContent().add(text);
 				}
 			} else if (o instanceof Figure) {
 				System.out.println("WARNING: Skipping figure");
