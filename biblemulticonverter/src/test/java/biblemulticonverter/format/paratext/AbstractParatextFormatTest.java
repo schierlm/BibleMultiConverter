@@ -3,7 +3,6 @@ package biblemulticonverter.format.paratext;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
-import biblemulticonverter.data.Verse;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import org.junit.Test;
@@ -22,17 +21,15 @@ public class AbstractParatextFormatTest {
 	@Test
 	public void test_on_export_internal_verse_numbers_are_transformed_to_paratext_verse_numbers() {
 		// Dummy paratext book
-		Book book = new Book("1CO", BookID.BOOK_1Cor, "1 Cor", "1 Corinthians");
-		Chapter chapter = new Chapter();
-		book.getChapters().add(chapter);
-		addDummyVerse(chapter, "5", true);
-		addDummyVerse(chapter, "5/7", true);
+		Book book = new BookBuilder(BookID.BOOK_1Cor).
+				addChapter()
+				.addVerse("5").endVerse()
+				.addVerse("5/7").endVerse()
+				.create();
 
-		AbstractParatextFormat format = new ParatextFormat();
+		final ParatextBook paratextBook = new ParatextFormat().exportToParatextBook(book, "test");
 
-		ParatextBook paratextBook = format.exportToParatextBook(book, "test");
 		ParatextCharacterContent.VerseStart verse2 = paratextBook.findLastCharacterContent(ParatextCharacterContent.VerseStart.class);
-
 		ParatextCharacterContent.VerseStart verse1 = paratextBook.findLastCharacterContent(ParatextCharacterContent.VerseStart.class, verse2);
 
 		assertEquals("5", verse1.getVerseNumber());
@@ -70,23 +67,21 @@ public class AbstractParatextFormatTest {
 	@Test
 	public void test_on_export_internal_cross_references_are_transformed_to_paratext_cross_references() {
 		// Dummy paratext book
-		Book book = new Book("1CO", BookID.BOOK_1Cor, "1 Cor", "1 Corinthians");
-		Chapter chapter = new Chapter();
-		book.getChapters().add(chapter);
-		addDummyVerse(chapter, "5", false).getAppendVisitor()
-				.visitCrossReference("1KI", BookID.BOOK_1Kgs, 1, "1", 999, "999")
-				.visitCrossReference("1KI", BookID.BOOK_1Kgs, 1, "1", 1, "999")
-				.visitCrossReference("1KI", BookID.BOOK_1Kgs, 6, "1", 6, "999")
-				.visitCrossReference("1KI", BookID.BOOK_1Kgs, 6, "5", 6, "999")
-				.visitCrossReference("1KI", BookID.BOOK_1Kgs, 11, "6a", 11, "6a")
-				.visitEnd();
+		final Book book = new BookBuilder(BookID.BOOK_1Cor)
+				.addChapter()
+				.addVerse("5")
+				.addCrossReference(BookID.BOOK_1Kgs, 1, "1", 999, "999")
+				.addCrossReference(BookID.BOOK_1Kgs, 1, "1", 1, "999")
+				.addCrossReference(BookID.BOOK_1Kgs, 6, "1", 6, "999")
+				.addCrossReference(BookID.BOOK_1Kgs, 6, "5", 6, "999")
+				.addCrossReference(BookID.BOOK_1Kgs, 11, "6a", 11, "6a")
+				.addCrossReference(BookID.BOOK_1Kgs, 5, "1", 11, "999")
+				.endVerse()
+				.create();
 
-		AbstractParatextFormat format = new ParatextFormat();
+		final ParatextBook paratextBook = new ParatextFormat().exportToParatextBook(book, "test");
 
-		ParatextBook paratextBook = format.exportToParatextBook(book, "test");
-
-		List<ParatextCharacterContent.Reference> resultReferences = new ArrayList<>();
-
+		final List<ParatextCharacterContent.Reference> resultReferences = new ArrayList<>();
 		ParatextCharacterContent.Reference reference = null;
 		while ((reference = paratextBook.findLastCharacterContent(ParatextCharacterContent.Reference.class, reference)) != null) {
 			resultReferences.add(reference);
@@ -98,6 +93,7 @@ public class AbstractParatextFormatTest {
 		assertEqualsReference(ParatextBook.ParatextID.ID_1KI, 6, null, -1, null, resultReferences.get(2));
 		assertEqualsReference(ParatextBook.ParatextID.ID_1KI, 6, "5", 6, "999", resultReferences.get(3));
 		assertEqualsReference(ParatextBook.ParatextID.ID_1KI, 11, "6a", -1, null, resultReferences.get(4));
+		assertEqualsReference(ParatextBook.ParatextID.ID_1KI, 5, null, 11, null, resultReferences.get(5));
 	}
 
 	private void assertEqualsReference(ParatextBook.ParatextID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse, ParatextCharacterContent.Reference actual) {
@@ -106,14 +102,6 @@ public class AbstractParatextFormatTest {
 		assertEquals(lastChapter, actual.getLastChapter());
 		assertEquals(firstVerse, actual.getFirstVerse());
 		assertEquals(lastVerse, actual.getLastVerse());
-	}
-
-	private Verse addDummyVerse(Chapter chapter, String number, boolean close) {
-		Verse verse = new Verse(number);
-		verse.getAppendVisitor().visitText("Lorem Ipsum");
-		verse.getAppendVisitor().visitEnd();
-		chapter.getVerses().add(verse);
-		return verse;
 	}
 
 	private void addDummyVerse(ParatextCharacterContent content, VerseIdentifier identifier, String number) {

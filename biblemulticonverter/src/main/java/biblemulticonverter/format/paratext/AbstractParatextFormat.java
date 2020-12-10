@@ -747,6 +747,9 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			} else if (firstChapter == lastChapter && firstVerse.equals("1") && lastVerse.equals("999")) {
 				// MAT 5:1-5:999 > MAT 5
 				return Reference.chapter(paratextID, firstChapter, "");
+			} else if(firstChapter != lastChapter && firstVerse.equals("1") && lastVerse.equals("999")) {
+				// MAT 5:1-7:999 > MAT 5-7
+				return Reference.chapterRange(paratextID, firstChapter, lastChapter, "");
 			} else if (firstChapter == lastChapter && firstVerse.equals(lastVerse)) {
 				// MAT 5:5-5:5 > MAT 5:5
 				return Reference.verse(paratextID, firstChapter, firstVerse, "");
