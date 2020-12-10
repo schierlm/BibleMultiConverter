@@ -1,11 +1,11 @@
 package biblemulticonverter.format.paratext.utilities;
 
-import biblemulticonverter.format.paratext.ParatextBook;
-import biblemulticonverter.format.paratext.ParatextCharacterContent;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.ListIterator;
+
+import biblemulticonverter.format.paratext.ParatextBook;
+import biblemulticonverter.format.paratext.ParatextCharacterContent;
 
 public class ImportUtilities {
 

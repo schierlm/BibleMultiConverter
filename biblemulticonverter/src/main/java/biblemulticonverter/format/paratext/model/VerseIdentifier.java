@@ -31,7 +31,7 @@ public class VerseIdentifier extends ChapterIdentifier {
 		this.startVerse = verse;
 		this.endVerse = endVerse;
 	}
-	
+
 	/**
 	 * Returns this identifiers verse, this may be a range if endVerse is not null.
 	 */
@@ -61,7 +61,7 @@ public class VerseIdentifier extends ChapterIdentifier {
 	 * @throws IllegalArgumentException if the given location is not a valid verse location identifier.
 	 */
 	public static VerseIdentifier fromVerseNumberRangeOrThrow(ParatextBook.ParatextID book, int chapter, String verseNumberRange) throws IllegalArgumentException {
-		return fromStringOrThrow(book.getIdentifier() + " " + chapter + ":" + verseNumberRange); 
+		return fromStringOrThrow(book.getIdentifier() + " " + chapter + ":" + verseNumberRange);
 	}
 
 	@Override

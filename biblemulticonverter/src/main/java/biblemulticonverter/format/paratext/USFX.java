@@ -1,5 +1,31 @@
 package biblemulticonverter.format.paratext;
 
+import javax.xml.XMLConstants;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBElement;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
+
 import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
@@ -23,30 +49,6 @@ import biblemulticonverter.schema.usfx.StyledString;
 import biblemulticonverter.schema.usfx.Usfx;
 import biblemulticonverter.schema.usfx.Usfx.Book;
 import biblemulticonverter.tools.ValidateXML;
-import org.w3c.dom.Document;
-import org.xml.sax.SAXException;
-
-import javax.xml.XMLConstants;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBElement;
-import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.validation.Schema;
-import javax.xml.validation.SchemaFactory;
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Importer and exporter for USFX.
@@ -95,9 +97,9 @@ public class USFX extends AbstractParatextFormat {
 	private static class ImportBookContext {
 		ChapterStart openChapter = null;
 	}
-	
+
 	private ParatextBook parseBook(Book book) {
-		
+
 		String bookID = book.getId();
 		if (!book.getContent().isEmpty() && book.getContent().get(0) instanceof JAXBElement<?> && ((JAXBElement<?>) book.getContent().get(0)).getName().getLocalPart().equals("id")) {
 			Usfx.Book.Id id = (Usfx.Book.Id) ((JAXBElement<?>) book.getContent().remove(0)).getValue();
@@ -238,7 +240,7 @@ public class USFX extends AbstractParatextFormat {
 			}
 			VerseIdentifier location = new VerseIdentifier(result.getId(), chapter.getChapter(), id);
 			containerStack.get(containerStack.size() - 1).getContent().add(new VerseStart(location, id));
-		} else if(localName.equals("ve")) {
+		} else if (localName.equals("ve")) {
 			VerseStart start = result.findLastCharacterContent(VerseStart.class);
 			if (start == null) {
 				throw new IllegalStateException("Verse end found before verse start!");
@@ -294,10 +296,10 @@ public class USFX extends AbstractParatextFormat {
 				} else {
 					int c1 = Integer.parseInt(parts[1]);
 					String v1 = parts[2];
-					if(parts.length > 3) {
+					if (parts.length > 3) {
 						// second verse
 						String v2 = parts[parts.length - 1];
-						if(parts.length == 5) {
+						if (parts.length == 5) {
 							// second chapter
 							int c2 = Integer.parseInt(parts[3]);
 							ref = Reference.verseRange(id, c1, v1, c2, v2, rt.getContent());

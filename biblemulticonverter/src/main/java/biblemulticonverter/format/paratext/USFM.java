@@ -1,5 +1,22 @@
 package biblemulticonverter.format.paratext;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
@@ -20,23 +37,6 @@ import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.format.paratext.utilities.ImportUtilities;
 import biblemulticonverter.format.paratext.utilities.StandardExportLogMessages;
 import biblemulticonverter.format.paratext.utilities.TextUtilities;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.nio.charset.Charset;
-import java.nio.charset.IllegalCharsetNameException;
-import java.nio.charset.StandardCharsets;
-import java.nio.charset.UnsupportedCharsetException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Importer and exporter for USFM.
@@ -291,7 +291,7 @@ public class USFM extends AbstractParatextFormat {
 			bw.write("\n\\ide UTF-8");
 			for (Map.Entry<String, String> attr : book.getAttributes().entrySet()) {
 				// Never write a charset other than the charset we are using to write this file
-				if(!attr.getKey().equals("ide")) {
+				if (!attr.getKey().equals("ide")) {
 					bw.write("\n\\" + attr.getKey() + " " + escape(attr.getValue(), false));
 				}
 			}

@@ -1,9 +1,9 @@
 package biblemulticonverter.format.paratext.utilities;
 
-import biblemulticonverter.format.paratext.ParatextBook;
-
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import biblemulticonverter.format.paratext.ParatextBook;
 
 /**
  * Parses USX location's such as used in the Reference loc attribute, or verse/chapter sid and eid attributes.

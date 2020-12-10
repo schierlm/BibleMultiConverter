@@ -1,13 +1,5 @@
 package biblemulticonverter.format.paratext;
 
-import biblemulticonverter.data.BookID;
-import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
-import biblemulticonverter.format.paratext.model.ChapterIdentifier;
-import biblemulticonverter.format.paratext.model.Version;
-import biblemulticonverter.format.paratext.utilities.TagParser;
-
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -16,6 +8,14 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
+
+import biblemulticonverter.data.BookID;
+import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
+import biblemulticonverter.format.paratext.model.ChapterIdentifier;
+import biblemulticonverter.format.paratext.model.Version;
+import biblemulticonverter.format.paratext.utilities.TagParser;
 
 /**
  * Represents a bible book in a Paratext format.

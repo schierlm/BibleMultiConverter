@@ -1,13 +1,5 @@
 package biblemulticonverter.format.paratext;
 
-import biblemulticonverter.format.paratext.model.ChapterIdentifier;
-import biblemulticonverter.format.paratext.model.VerseIdentifier;
-import biblemulticonverter.format.paratext.utilities.TextUtilities;
-import biblemulticonverter.schema.usx3.*;
-import biblemulticonverter.tools.ValidateXML;
-import biblemulticonverter.utilities.UnmarshallerLocationListener;
-import org.xml.sax.SAXException;
-
 import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
@@ -16,12 +8,45 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.xml.sax.SAXException;
+
+import biblemulticonverter.format.paratext.model.ChapterIdentifier;
+import biblemulticonverter.format.paratext.model.VerseIdentifier;
+import biblemulticonverter.format.paratext.utilities.TextUtilities;
+import biblemulticonverter.schema.usx3.Cell;
+import biblemulticonverter.schema.usx3.CellAlign;
+import biblemulticonverter.schema.usx3.CellStyle;
+import biblemulticonverter.schema.usx3.Chapter;
+import biblemulticonverter.schema.usx3.Char;
+import biblemulticonverter.schema.usx3.CharStyle;
+import biblemulticonverter.schema.usx3.Figure;
+import biblemulticonverter.schema.usx3.Note;
+import biblemulticonverter.schema.usx3.NoteStyle;
+import biblemulticonverter.schema.usx3.ObjectFactory;
+import biblemulticonverter.schema.usx3.Optbreak;
+import biblemulticonverter.schema.usx3.Para;
+import biblemulticonverter.schema.usx3.ParaStyle;
+import biblemulticonverter.schema.usx3.Ref;
+import biblemulticonverter.schema.usx3.Row;
+import biblemulticonverter.schema.usx3.Sidebar;
+import biblemulticonverter.schema.usx3.Table;
+import biblemulticonverter.schema.usx3.Usx;
+import biblemulticonverter.schema.usx3.Verse;
+import biblemulticonverter.tools.ValidateXML;
+import biblemulticonverter.utilities.UnmarshallerLocationListener;
 
 /**
  * Importer and exporter for USX3.

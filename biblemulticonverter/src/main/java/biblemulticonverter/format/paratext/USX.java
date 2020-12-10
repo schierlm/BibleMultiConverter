@@ -1,5 +1,28 @@
 package biblemulticonverter.format.paratext;
 
+import javax.xml.XMLConstants;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamReader;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.xml.sax.SAXException;
+
 import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
@@ -40,27 +63,6 @@ import biblemulticonverter.schema.usx.Usx;
 import biblemulticonverter.schema.usx.Verse;
 import biblemulticonverter.tools.ValidateXML;
 import biblemulticonverter.utilities.UnmarshallerLocationListener;
-import org.xml.sax.SAXException;
-
-import javax.xml.XMLConstants;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamReader;
-import javax.xml.validation.Schema;
-import javax.xml.validation.SchemaFactory;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Importer and exporter for USX.
@@ -151,7 +153,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		VerseStart openVerse = null;
 		ChapterStart openChapter = null;
 	}
-	
+
 	@Override
 	protected ParatextBook doImportBook(File inputFile) throws Exception {
 		if (!inputFile.getName().toLowerCase().endsWith(".usx"))
@@ -215,7 +217,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 					for (Object oo : row.getVerseOrCell()) {
 						if (oo instanceof Verse) {
 							ImportUtilities.closeOpenVerse(result, context.openVerse);
-							
+
 							context.openVerse = handleVerse(result, (Verse) oo);
 							charContent = new ParatextCharacterContent();
 							result.getContent().add(charContent);
@@ -235,7 +237,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 			} else if (o instanceof Chapter) {
 				ImportUtilities.closeOpenVerse(result, context.openVerse);
 				context.openVerse = null;
-				
+
 				// There is not really a good way to accurately determine where the end of a chapter should be placed
 				// based on USX 2 content. Maybe a title above this chapter marker was already intended to be part of
 				// this chapter. This is basically a best guess. This should not really matter when converting from
@@ -266,7 +268,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		ImportUtilities.closeOpenChapter(result, context.openChapter);
 		return result;
 	}
-	
+
 	private void parseCharContent(List<Object> content, ParatextCharacterContentContainer container, ParatextBook result, ImportContext context) throws IOException {
 		for (Object o : content) {
 			if (o instanceof Optbreak) {

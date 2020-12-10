@@ -1,6 +1,5 @@
 package biblemulticonverter.format.paratext;
 
-
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Map;

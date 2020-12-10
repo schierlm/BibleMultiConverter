@@ -1,5 +1,12 @@
 package biblemulticonverter.format.paratext;
 
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentPart;
@@ -11,13 +18,6 @@ import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.format.paratext.utilities.LocationParser;
 import biblemulticonverter.format.paratext.utilities.TagParser;
 import biblemulticonverter.format.paratext.utilities.TextUtilities;
-
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class ParatextCharacterContent implements ParatextBookContentPart, ParatextCharacterContentContainer {
 

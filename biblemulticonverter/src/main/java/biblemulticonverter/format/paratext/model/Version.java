@@ -6,7 +6,7 @@ public enum Version {
 	V2_0_3(2, 0, 3),
 	V2_2(2, 2, 0),
 	V3(3, 0, 0);
-	
+
 	private final int major;
 	private final int minor;
 	private final int patch;

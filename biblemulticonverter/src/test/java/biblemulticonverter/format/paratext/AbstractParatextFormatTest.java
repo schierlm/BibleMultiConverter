@@ -1,18 +1,19 @@
 package biblemulticonverter.format.paratext;
 
-import biblemulticonverter.data.Book;
-import biblemulticonverter.data.BookID;
-import biblemulticonverter.data.Chapter;
-import biblemulticonverter.format.paratext.model.ChapterIdentifier;
-import biblemulticonverter.format.paratext.model.VerseIdentifier;
-import org.junit.Test;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+
+import org.junit.Test;
+
+import biblemulticonverter.data.Book;
+import biblemulticonverter.data.BookID;
+import biblemulticonverter.data.Chapter;
+import biblemulticonverter.format.paratext.model.ChapterIdentifier;
+import biblemulticonverter.format.paratext.model.VerseIdentifier;
 
 import static org.junit.Assert.assertEquals;
 

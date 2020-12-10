@@ -17,7 +17,7 @@ public class Verse extends FormattedText {
 	public String getNumber() {
 		return number;
 	}
-	
+
 	public static boolean isValidNumber(String number) {
 		return VALID_VERSE_PATTERN.matcher(number).matches();
 	}

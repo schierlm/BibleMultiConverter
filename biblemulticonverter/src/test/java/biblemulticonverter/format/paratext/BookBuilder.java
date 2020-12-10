@@ -1,12 +1,12 @@
 package biblemulticonverter.format.paratext;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.Verse;
-
-import java.util.HashSet;
-import java.util.Set;
 
 public class BookBuilder {
 
