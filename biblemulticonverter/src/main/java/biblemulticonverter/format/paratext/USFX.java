@@ -64,6 +64,10 @@ public class USFX extends AbstractParatextFormat {
 			"Point the importer to .usfx files, not to directories!",
 	};
 
+	public USFX() {
+		super("USFX");
+	}
+
 	@Override
 	protected List<ParatextBook> doImportAllBooks(File inputFile) throws Exception {
 		ValidateXML.validateFileBeforeParsing(getSchema(), inputFile);

@@ -96,4 +96,26 @@ public class LocationParserTest {
 		assertNull(parser.getStartVerse());
 		assertNull(parser.getEndVerse());
 	}
+
+	@Test
+	public void test_isValidVerseId() {
+		assertTrue(LocationParser.isValidVerseId("10", false));
+		assertTrue(LocationParser.isValidVerseId("10a", false));
+		assertTrue(LocationParser.isValidVerseId("10c", false));
+		assertTrue(LocationParser.isValidVerseId("10d", false));
+		assertFalse(LocationParser.isValidVerseId("1-10", false));
+		assertFalse(LocationParser.isValidVerseId("1b-10", false));
+		assertFalse(LocationParser.isValidVerseId("5-8a", false));
+	}
+
+	@Test
+	public void test_isValidVerseId_with_ranges() {
+		assertTrue(LocationParser.isValidVerseId("10", true));
+		assertTrue(LocationParser.isValidVerseId("10a", true));
+		assertTrue(LocationParser.isValidVerseId("10c", true));
+		assertTrue(LocationParser.isValidVerseId("10d", true));
+		assertTrue(LocationParser.isValidVerseId("1-10", true));
+		assertTrue(LocationParser.isValidVerseId("1b-10", true));
+		assertTrue(LocationParser.isValidVerseId("5-8a", true));
+	}
 }

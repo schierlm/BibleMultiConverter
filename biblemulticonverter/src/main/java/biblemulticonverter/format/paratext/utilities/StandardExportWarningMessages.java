@@ -7,14 +7,14 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent;
  * A simple class that provides some standard log messages that can be used to make log messages consistent across
  * different exporters.
  */
-public class StandardExportLogMessages {
+public class StandardExportWarningMessages {
 
 	private final String targetFormat;
 
 	/**
 	 * @param targetFormat the target format that this logger should use in its messages, e.g. "USFM 2" or "USX 3"
 	 */
-	public StandardExportLogMessages(String targetFormat) {
+	public StandardExportWarningMessages(String targetFormat) {
 		this.targetFormat = targetFormat;
 	}
 
@@ -71,5 +71,14 @@ public class StandardExportLogMessages {
 	public void logRemovedWarning(ParatextCharacterContent.AutoClosingFormattingKind autoClosingFormatting) {
 		System.out.println("WARNING: Removed char style marker `" + autoClosingFormatting.getTag() + "`," +
 				"because this char style cannot be represented in " + targetFormat + ".");
+	}
+
+	/**
+	 * Log a message to indicate that a specific verse number could not be exported exactly the way it was because the
+	 * format is not supported.
+	 */
+	public void logVerseNumberDowngrade(String originalVerseNumber, String downgradedVerseNumber) {
+		System.out.println("WARNING: Verse number `" + originalVerseNumber + "` cannot be represented in " +
+				targetFormat + ", and has been replaced with " + downgradedVerseNumber + "`.");
 	}
 }

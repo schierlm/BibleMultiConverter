@@ -50,6 +50,7 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import biblemulticonverter.format.paratext.utilities.LocationParser;
+import biblemulticonverter.format.paratext.utilities.StandardExportWarningMessages;
 
 /**
  * Base class for Paratext formats (USFM/USFX/USX).
@@ -64,6 +65,14 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			"toc1", "toc2", "toc3", "toca1", "toca2", "toca3",
 			"rem", "usfm")
 	);
+	
+	private final String formatName;
+	protected final StandardExportWarningMessages warningLogger;
+	
+	public AbstractParatextFormat(String formatName) {
+		this.formatName = formatName;
+		this.warningLogger = new StandardExportWarningMessages(formatName);
+	}
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
@@ -347,16 +356,37 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 	}
 
 	private String internalVerseNumberToParatextVerseNumber(String internalNumber) {
-		if (LocationParser.isValidVerseId(internalNumber)) {
+		if (LocationParser.isValidVerseId(internalNumber, true)) {
 			return internalNumber;
 		} else {
-			// Try to parse the internal verse number:
-			Matcher matcher = Pattern.compile("([1-9][0-9a-z]*)(?:[,/.-]([1-9][0-9a-z]*))?").matcher(internalNumber);
+			// Try to parse the internal verse number
+			// A lot of different formats can be expected here:
+			// 5
+			// 5-6
+			// 5G
+			// 5/7
+			// 5/7/9
+			// 5.6G
+			Matcher matcher = Pattern.compile("([1-9][0-9a-zG]*)(?:([,/.-])([1-9][0-9a-zG]*))*").matcher(internalNumber);
 			if (matcher.matches()) {
 				if (matcher.group(2) == null) {
-					return matcher.group(1);
+					// Nothing after group 1, assume a single verse number
+					String paratextVerseNumber = matcher.group(1).replaceAll("G", "");
+					warningLogger.logVerseNumberDowngrade(internalNumber, paratextVerseNumber);
+					return paratextVerseNumber;
+				} else if(matcher.group(2).equals("-")) {
+					// Something found after group 1 with a dash, assume a verse range
+					// If group 2 is available, group 3 will also always be available.
+					String paratextVerseNumber = (matcher.group(1) + "-" + matcher.group(3)).replaceAll("G", "");
+					warningLogger.logVerseNumberDowngrade(internalNumber, paratextVerseNumber);
+					return paratextVerseNumber;
 				} else {
-					return matcher.group(1) + "-" + matcher.group(2);
+					// Something found after group 1 with either a slash, dot, or comma. Since we cannot represent those
+					// in Paratext use the first verse number only.
+					// Nothing after group 1, assume a single verse number
+					String paratextVerseNumber = matcher.group(1).replaceAll("G", "");
+					warningLogger.logVerseNumberDowngrade(internalNumber, paratextVerseNumber);
+					return paratextVerseNumber;
 				}
 			} else {
 				return null;

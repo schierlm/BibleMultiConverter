@@ -70,7 +70,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 	private UnmarshallerLocationListener unmarshallerLocationListener = new UnmarshallerLocationListener();
 
 	public USX3() {
-		super(new ParaStyleWrapper(), new CharStyleWrapper());
+		super("USX 3", new ParaStyleWrapper(), new CharStyleWrapper());
 		prepareNoteMaps();
 	}
 

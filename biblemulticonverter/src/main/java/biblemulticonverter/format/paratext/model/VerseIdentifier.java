@@ -23,9 +23,9 @@ public class VerseIdentifier extends ChapterIdentifier {
 	 */
 	public VerseIdentifier(ParatextBook.ParatextID book, int chapter, String verse, String endVerse) throws IllegalArgumentException {
 		super(book, chapter);
-		if (!LocationParser.isValidVerseId(verse)) {
+		if (!LocationParser.isValidVerseId(verse, false)) {
 			throw new IllegalArgumentException("Provided verse String is not a valid verse ID: " + verse);
-		} else if (endVerse != null && !LocationParser.isValidVerseId(endVerse)) {
+		} else if (endVerse != null && !LocationParser.isValidVerseId(endVerse, false)) {
 			throw new IllegalArgumentException("Provided endVerse String is not a valid verse ID: " + endVerse);
 		}
 		this.startVerse = verse;

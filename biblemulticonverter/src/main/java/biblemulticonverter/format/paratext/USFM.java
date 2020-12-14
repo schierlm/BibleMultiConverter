@@ -35,7 +35,7 @@ import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.format.paratext.utilities.ImportUtilities;
-import biblemulticonverter.format.paratext.utilities.StandardExportLogMessages;
+import biblemulticonverter.format.paratext.utilities.StandardExportWarningMessages;
 import biblemulticonverter.format.paratext.utilities.TextUtilities;
 
 /**
@@ -62,9 +62,11 @@ public class USFM extends AbstractParatextFormat {
 	public static final Map<String, ParagraphKind> PARAGRAPH_TAGS = ParagraphKind.allTags();
 	public static final Map<String, FootnoteXrefKind> FOOTNOTE_XREF_TAGS = FootnoteXrefKind.allTags();
 	public static final Map<String, AutoClosingFormattingKind> AUTO_CLOSING_TAGS = AutoClosingFormattingKind.allTags();
-
-	private final StandardExportLogMessages logger = new StandardExportLogMessages("USFM 2");
-
+	
+	public USFM() {
+		super("USFM 2");
+	}
+	
 	@Override
 	protected ParatextBook doImportBook(File inputFile) throws Exception {
 		return doImportBook(inputFile, StandardCharsets.UTF_8);
@@ -299,7 +301,7 @@ public class USFM extends AbstractParatextFormat {
 			}
 			book.accept(new ParatextBookContentVisitor<IOException>() {
 
-				private USFMExportContext context = new USFMExportContext(logger);
+				private final USFMExportContext context = new USFMExportContext(warningLogger);
 
 				@Override
 				public void visitChapterStart(ChapterIdentifier location) throws IOException {
@@ -325,21 +327,21 @@ public class USFM extends AbstractParatextFormat {
 				private void visitUnsupportedParagraphStart(ParagraphKind kind) throws IOException {
 					if (kind == ParagraphKind.HEBREW_NOTE) {
 						// According to documentation this is very similar to `d` (ParagraphKind.DESCRIPTIVE_TITLE)
-						logger.logReplaceWarning(kind, ParagraphKind.DESCRIPTIVE_TITLE);
+						warningLogger.logReplaceWarning(kind, ParagraphKind.DESCRIPTIVE_TITLE);
 						visitParagraphStart(ParagraphKind.DESCRIPTIVE_TITLE);
 					} else if (kind.isSameBase(ParagraphKind.SEMANTIC_DIVISION)) {
 						// TODO maybe add more than 1 blank line?
-						logger.logReplaceWarning(kind, ParagraphKind.BLANK_LINE);
+						warningLogger.logReplaceWarning(kind, ParagraphKind.BLANK_LINE);
 						visitParagraphStart(ParagraphKind.BLANK_LINE);
 					} else if (kind == ParagraphKind.PARAGRAPH_PO || kind == ParagraphKind.PARAGRAPH_LH || kind == ParagraphKind.PARAGRAPH_LF) {
-						logger.logReplaceWarning(kind, ParagraphKind.PARAGRAPH_P);
+						warningLogger.logReplaceWarning(kind, ParagraphKind.PARAGRAPH_P);
 						visitParagraphStart(ParagraphKind.PARAGRAPH_P);
 					} else if (kind.getTag().startsWith(ParagraphKind.PARAGRAPH_LIM.getTag())) {
 						// Documentation is not entirely clear on what the exact difference is between `lim#` and `li#`
 						// one is "embedded" the other is not: https://ubsicap.github.io/usfm/lists/index.html#lim
 						// The assumption is made here that `lim#` is directly replaceable with `li#`
 						ParagraphKind replacement = ParagraphKind.PARAGRAPH_LI.getWithNumber(kind.getNumber());
-						logger.logReplaceWarning(kind, replacement);
+						warningLogger.logReplaceWarning(kind, replacement);
 						visitParagraphStart(replacement);
 					} else {
 						throw new RuntimeException("Could not export to USFM 2 because an unhandled paragraph type `" + kind + "` from a newer USFM/USX version was found.");
@@ -370,10 +372,10 @@ public class USFM extends AbstractParatextFormat {
 	}
 
 	private static class USFMExportContext {
-		StandardExportLogMessages logger;
+		StandardExportWarningMessages logger;
 		boolean needSpace = false;
 
-		public USFMExportContext(StandardExportLogMessages logger) {
+		public USFMExportContext(StandardExportWarningMessages logger) {
 			this.logger = logger;
 		}
 	}

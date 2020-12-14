@@ -18,7 +18,8 @@ public abstract class AbstractUSXFormat<ParaStyle extends Enum<ParaStyle>, CharS
 	protected Set<CharStyle> CHAR_STYLE_UNSUPPORTED;
 	private final StyleWrapper<CharStyle> charStyleWrapper;
 
-	public AbstractUSXFormat(StyleWrapper<ParaStyle> paraStyleWrapper, StyleWrapper<CharStyle> charStyleWrapper) {
+	public AbstractUSXFormat(String formatName, StyleWrapper<ParaStyle> paraStyleWrapper, StyleWrapper<CharStyle> charStyleWrapper) {
+		super(formatName);
 		this.paraStyleWrapper = paraStyleWrapper;
 		PARA_STYLE_MAP = new EnumMap<>(paraStyleWrapper.getStyleClass());
 		PARA_STYLE_UNSUPPORTED = EnumSet.copyOf(paraStyleWrapper.getUnsupportedStyles());

@@ -1,8 +1,6 @@
 package biblemulticonverter.format.paratext;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -25,16 +23,22 @@ public class AbstractParatextFormatTest {
 		Book book = new BookBuilder(BookID.BOOK_1Cor).
 				addChapter()
 				.addVerse("5").endVerse()
-				.addVerse("5/7").endVerse()
+				.addVerse("11/13").endVerse()
+				.addVerse("4.6.9").endVerse()
+				.addVerse("2G").endVerse()
+				.addVerse("13-15a").endVerse()
+				.addVerse("10/12G").endVerse()
 				.create();
 
-		final ParatextBook paratextBook = new ParatextFormat().exportToParatextBook(book, "test");
-
-		ParatextCharacterContent.VerseStart verse2 = paratextBook.findLastCharacterContent(ParatextCharacterContent.VerseStart.class);
-		ParatextCharacterContent.VerseStart verse1 = paratextBook.findLastCharacterContent(ParatextCharacterContent.VerseStart.class, verse2);
-
-		assertEquals("5", verse1.getVerseNumber());
-		assertEquals("5-7", verse2.getVerseNumber());
+		final ParatextBook paratextBook = new TestParatextFormat().exportToParatextBook(book, "test");
+		
+		final List<ParatextCharacterContent.VerseStart> actualVerses = paratextBook.findAllCharacterContent(ParatextCharacterContent.VerseStart.class);
+		assertEquals("5", actualVerses.get(0).getVerseNumber());
+		assertEquals("11", actualVerses.get(1).getVerseNumber());
+		assertEquals("4", actualVerses.get(2).getVerseNumber());
+		assertEquals("2", actualVerses.get(3).getVerseNumber());
+		assertEquals("13-15a", actualVerses.get(4).getVerseNumber());
+		assertEquals("10", actualVerses.get(5).getVerseNumber());
 	}
 
 	@Test
@@ -50,10 +54,10 @@ public class AbstractParatextFormatTest {
 		addDummyVerse(characterContent, new VerseIdentifier(paratextBook.getId(), 1, "5", null), "5");
 
 		// Paratext only supported verse number
-		addDummyVerse(characterContent, new VerseIdentifier(paratextBook.getId(), 1, "6b", "7b"), "6b-7b");
+		addDummyVerse(characterContent, new VerseIdentifier(paratextBook.getId(), 1, "6b", "7a"), "6b-7a");
 		paratextBook.getContent().add(new ParatextBook.ChapterEnd(new ChapterIdentifier(paratextBook.getId(), 1)));
 
-		AbstractParatextFormat format = new ParatextFormat();
+		AbstractParatextFormat format = new TestParatextFormat();
 
 		Map<ParatextBook.ParatextID, String> abbrs = new EnumMap<>(ParatextBook.ParatextID.class);
 		abbrs.put(ParatextBook.ParatextID.ID_1CO, "1co");
@@ -80,15 +84,9 @@ public class AbstractParatextFormatTest {
 				.endVerse()
 				.create();
 
-		final ParatextBook paratextBook = new ParatextFormat().exportToParatextBook(book, "test");
+		final ParatextBook paratextBook = new TestParatextFormat().exportToParatextBook(book, "test");
 
-		final List<ParatextCharacterContent.Reference> resultReferences = new ArrayList<>();
-		ParatextCharacterContent.Reference reference = null;
-		while ((reference = paratextBook.findLastCharacterContent(ParatextCharacterContent.Reference.class, reference)) != null) {
-			resultReferences.add(reference);
-		}
-		Collections.reverse(resultReferences);
-
+		final List<ParatextCharacterContent.Reference> resultReferences = paratextBook.findAllCharacterContent(ParatextCharacterContent.Reference.class);
 		assertEqualsReference(ParatextBook.ParatextID.ID_1KI, -1, null, -1, null, resultReferences.get(0));
 		assertEqualsReference(ParatextBook.ParatextID.ID_1KI, 1, null, -1, null, resultReferences.get(1));
 		assertEqualsReference(ParatextBook.ParatextID.ID_1KI, 6, null, -1, null, resultReferences.get(2));
@@ -113,7 +111,11 @@ public class AbstractParatextFormatTest {
 		content.getContent().add(new ParatextCharacterContent.VerseEnd(identifier));
 	}
 
-	private static class ParatextFormat extends AbstractParatextFormat {
+	private static class TestParatextFormat extends AbstractParatextFormat {
+
+		public TestParatextFormat() {
+			super("TestParatextFormat");
+		}
 
 		@Override
 		protected ParatextBook doImportBook(File inputFile) throws Exception {

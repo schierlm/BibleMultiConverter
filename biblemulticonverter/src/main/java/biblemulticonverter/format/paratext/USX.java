@@ -40,8 +40,7 @@ import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.format.paratext.utilities.ImportUtilities;
-import biblemulticonverter.format.paratext.utilities.StandardExportLogMessages;
-import biblemulticonverter.format.paratext.utilities.TextUtilities;
+import biblemulticonverter.format.paratext.utilities.StandardExportWarningMessages;
 import biblemulticonverter.schema.usx.Cell;
 import biblemulticonverter.schema.usx.CellAlign;
 import biblemulticonverter.schema.usx.CellStyle;
@@ -86,11 +85,11 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 	private Map<NoteStyle, FootnoteXrefKind> NOTE_STYLE_MAP = new EnumMap<>(NoteStyle.class);
 	private Map<FootnoteXrefKind, NoteStyle> NOTE_KIND_MAP = new EnumMap<>(FootnoteXrefKind.class);
 
-	private final StandardExportLogMessages logger = new StandardExportLogMessages("USX 2");
+	private final StandardExportWarningMessages logger = new StandardExportWarningMessages("USX 2");
 	private UnmarshallerLocationListener unmarshallerLocationListener = new UnmarshallerLocationListener();
 
 	public USX() {
-		super(new ParaStyleWrapper(), new CharStyleWrapper());
+		super("USX 2", new ParaStyleWrapper(), new CharStyleWrapper());
 		prepareNoteMaps();
 	}
 
@@ -450,9 +449,9 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 
 	private class USXCharacterContentVisitor implements ParatextCharacterContentVisitor<IOException> {
 		private final List<Object> target;
-		private final StandardExportLogMessages logger;
+		private final StandardExportWarningMessages logger;
 
-		public USXCharacterContentVisitor(StandardExportLogMessages logger, List<Object> target) {
+		public USXCharacterContentVisitor(StandardExportWarningMessages logger, List<Object> target) {
 			this.target = target;
 			this.logger = logger;
 		}

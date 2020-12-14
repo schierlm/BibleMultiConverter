@@ -65,34 +65,43 @@ public class ParatextBook {
 	}
 
 	/**
-	 * @see #findLastCharacterContent(Class, ParatextCharacterContentPart)
+	 * Finds all instances of the given {@link ParatextCharacterContentPart} type in this {@link
+	 * ParatextBook} and nested {@link ParatextCharacterContentContainer ParatextCharaterContentContainers} if any.
+	 *
+	 * @return list of all found instances or null if no instances where found.
 	 */
-	public <T extends ParatextCharacterContentPart> T findLastCharacterContent(Class<T> type) {
-		return findLastCharacterContent(type, null);
+	public <T extends ParatextCharacterContentPart> List<T> findAllCharacterContent(Class<T> type) {
+		List<T> result = null;
+		for (ParatextBookContentPart part : content) {
+			if (part instanceof ParatextCharacterContentContainer) {
+				ParatextCharacterContentContainer content = ((ParatextCharacterContentContainer) part);
+				List<T> nestedResults = content.findAll(type);
+				if (nestedResults != null) {
+					if (result == null) {
+						result = nestedResults;
+					} else {
+						result.addAll(nestedResults);
+					}
+				}
+			}
+		}
+		return result;
 	}
 
 	/**
 	 * Finds the last instance of the given {@link ParatextCharacterContentPart} type in the content of this book.
 	 *
-	 * @param beforeNeedle if not null this needle is used to only return the last instance of the given type if it
-	 *                     occurs before this needle.
 	 * @return the last instance of the given type or null if not found.
 	 */
-	public <T extends ParatextCharacterContentPart> T findLastCharacterContent(Class<T> type, ParatextCharacterContentPart beforeNeedle) {
+	public <T extends ParatextCharacterContentPart> T findLastCharacterContent(Class<T> type) {
 		ListIterator<ParatextBookContentPart> iterator = content.listIterator(content.size());
-		boolean didFindNeedle = beforeNeedle == null;
 		while (iterator.hasPrevious()) {
 			ParatextBookContentPart part = iterator.previous();
 			if (part instanceof ParatextCharacterContentContainer) {
-				ParatextCharacterContentContainer content = ((ParatextCharacterContentContainer) part);
-				T nestedPart = content.findLastContent(type, didFindNeedle ? null : beforeNeedle);
+				final ParatextCharacterContentContainer content = ((ParatextCharacterContentContainer) part);
+				final T nestedPart = content.findLastContent(type);
 				if (nestedPart != null) {
 					return nestedPart;
-				} else if (!didFindNeedle) {
-					// type was not found, but maybe the nested content does contain the "before needle" so check for that.
-					if (content.contains(beforeNeedle)) {
-						didFindNeedle = true;
-					}
 				}
 			}
 		}
@@ -480,65 +489,63 @@ public class ParatextBook {
 		public List<ParatextCharacterContentPart> getContent();
 
 		/**
-		 * @see #findLastCharacterContent(Class, ParatextCharacterContentPart)
+		 * Finds all instances of the given {@link ParatextCharacterContentPart} type in this {@link
+		 * ParatextCharacterContentContainer} and nested ParatextCharacterContentContainers if any.
+		 *
+		 * @return list of all found instances or null if no instances where found.
 		 */
-		public default <T extends ParatextCharacterContentPart> T findLastContent(Class<T> type) {
-			return findLastContent(type, null);
+		public default <T extends ParatextCharacterContentPart> List<T> findAll(Class<T> type) {
+			List<T> result = null;
+			for (ParatextCharacterContentPart part : getContent()) {
+
+				// First search for `type` in nested containers
+				if (part instanceof ParatextCharacterContentContainer) {
+					List<T> nestedResults = ((ParatextCharacterContentContainer) part).findAll(type);
+					if (nestedResults != null) {
+						if (result == null) {
+							result = nestedResults;
+						} else {
+							result.addAll(nestedResults);
+						}
+					}
+				}
+				// "part" can be both the `type` being searched for as well as a ParatextCharacterContentContainer,
+				// hence two if-statements and not an if-else.
+				if (type.isInstance(part)) {
+					if (result == null) {
+						result = new ArrayList<>();
+					}
+					result.add((T) part);
+				}
+			}
+			return result;
 		}
 
 		/**
-		 * Finds the last instance of the given {@link ParatextCharacterContentPart} type in the content of this
+		 * Finds the last instance of the given ParatextCharacterContentPart type in the content of this
 		 * {@link ParatextCharacterContentContainer}.
 		 *
-		 * @param beforeNeedle if not null this needle is used to only return the last instance of the given type if it
-		 *                     occurs before this needle.
 		 * @return the last instance of the given type or null if not found.
 		 */
-		public default <T extends ParatextCharacterContentPart> T findLastContent(Class<T> type, ParatextCharacterContentPart beforeNeedle) {
-			List<ParatextCharacterContentPart> content = getContent();
-			ListIterator<ParatextCharacterContentPart> iterator = content.listIterator(content.size());
-			boolean didFindBeforeNeedle = beforeNeedle == null;
+		public default <T extends ParatextCharacterContentPart> T findLastContent(Class<T> type) {
+			final List<ParatextCharacterContentPart> content = getContent();
+			final ListIterator<ParatextCharacterContentPart> iterator = content.listIterator(content.size());
 			while (iterator.hasPrevious()) {
 				ParatextCharacterContentPart part = iterator.previous();
-				if (part == beforeNeedle) {
-					didFindBeforeNeedle = true;
-				} else if (didFindBeforeNeedle && type.isInstance(part)) {
-					return (T) part;
-				} else if (part instanceof ParatextCharacterContentContainer) {
-					T nestedPart = ((ParatextCharacterContentContainer) part).findLastContent(type, didFindBeforeNeedle ? null : beforeNeedle);
+
+				// First search for `type` in nested containers
+				if (part instanceof ParatextCharacterContentContainer) {
+					T nestedPart = ((ParatextCharacterContentContainer) part).findLastContent(type);
 					if (nestedPart != null) {
 						return nestedPart;
-					} else if (!didFindBeforeNeedle) {
-						// type was not found, but maybe the nested content does contain the "before needle" so check for that.
-						didFindBeforeNeedle = ((ParatextCharacterContentContainer) part).contains(beforeNeedle);
 					}
+				}
+				// Not found in a nested container, check if this part is the `type` being searched for.
+				if (type.isInstance(part)) {
+					return (T) part;
 				}
 			}
 			return null;
-		}
-
-		/**
-		 * Returns true if the content of this {@link ParatextCharacterContentContainer} contains the given needle.
-		 * Objects are compared by reference.
-		 *
-		 * @param needle The needle to search for.
-		 * @return true if this {@link ParatextCharacterContentContainer} contains the given needle, false if not.
-		 */
-		public default boolean contains(ParatextCharacterContentPart needle) {
-			List<ParatextCharacterContentPart> content = getContent();
-			ListIterator<ParatextCharacterContentPart> iterator = content.listIterator(content.size());
-			while (iterator.hasPrevious()) {
-				ParatextCharacterContentPart part = iterator.previous();
-				if (part == needle) {
-					return true;
-				} else if (part instanceof ParatextCharacterContentContainer) {
-					boolean found = ((ParatextCharacterContentContainer) part).contains(needle);
-					if (found) {
-						return true;
-					}
-				}
-			}
-			return false;
 		}
 
 		public default <T extends Throwable> void accept(ParatextCharacterContentVisitor<T> visitor) throws T {

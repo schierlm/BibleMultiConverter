@@ -10,10 +10,10 @@ import biblemulticonverter.format.paratext.ParatextBook;
  */
 public class LocationParser {
 
-	private static final Pattern LOCATION_PATTERN = Pattern.compile("^([A-Z1-4]{3})(?:-([A-Z1-4]{3})|(?: ([0-9]+)(?:(?:-([0-9]+))|(?::([a-z0-9]+)(?:-([0-9]+)(?::([a-z0-9]+))?)?))?))?$");
+	private static final Pattern LOCATION_PATTERN = Pattern.compile("^([A-Z1-4]{3})(?:-([A-Z1-4]{3})|(?: ([0-9]+)(?:(?:-([0-9]+))|(?::([a-z0-9]+)(?:-([a-z0-9]+)(?::([a-z0-9]+))?)?))?))?$");
 
 	private static final Pattern CHAPTER_ID_PATTERN = Pattern.compile("^[0-9]+$");
-	private static final Pattern VERSE_ID_PATTERN = Pattern.compile("^[a-z0-9]+$");
+	private static final Pattern VERSE_ID_PATTERN = Pattern.compile("^[a-z0-9]+(-[a-z0-9]+)?$");
 
 	private final boolean allowAbbreviatedVerseRanges;
 
@@ -146,8 +146,23 @@ public class LocationParser {
 		return endVerse;
 	}
 
-	public static boolean isValidVerseId(String id) {
-		return VERSE_ID_PATTERN.matcher(id).matches();
+	/**
+	 * Get whether the given verse id is a valid Paratext verse id.
+	 *
+	 * @param id              the id to validate.
+	 * @param allowVerseRange whether or not to accept verse ranges as in 6-8 or 5-7a etc.
+	 * @return true if the given id is deemed valid, false if not.
+	 */
+	public static boolean isValidVerseId(String id, boolean allowVerseRange) {
+		Matcher matcher = VERSE_ID_PATTERN.matcher(id);
+		if (matcher.matches()) {
+			if (matcher.group(1) != null && !allowVerseRange) {
+				return false;
+			} else {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public static boolean isValidChapterId(String id) {

@@ -44,6 +44,10 @@ public class ParatextDump extends AbstractParatextFormat {
 			"",
 			"Point the importer to .txt files, not to directories!",
 	};
+	
+	public ParatextDump() {
+		super("ParatextDump");
+	}
 
 	@Override
 	protected List<ParatextBook> doImportAllBooks(File inputFile) throws Exception {
