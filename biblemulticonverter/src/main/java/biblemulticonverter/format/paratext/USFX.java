@@ -161,10 +161,10 @@ public class USFX extends AbstractParatextFormat {
 	private void parseElement(ParatextBook result, List<ParatextCharacterContentContainer> containerStack, JAXBElement<?> element, ImportBookContext context) {
 		String localName = element.getName().getLocalPart();
 		if (localName.equals("rem") || localName.equals("cl")) {
-			result.getAttributes().put(localName, TextUtilities.whitespaceNormalization((String) element.getValue()));
+			result.getAttributes().put(localName, TextUtilities.whitespaceNormalization((String) element.getValue()).trim());
 		} else if (localName.equals("h")) {
 			Usfx.Book.H h = (Usfx.Book.H) element.getValue();
-			result.getAttributes().put("h" + (h.getLevel() == null ? "" : h.getLevel()), TextUtilities.whitespaceNormalization(h.getValue()));
+			result.getAttributes().put("h" + (h.getLevel() == null ? "" : h.getLevel()), TextUtilities.whitespaceNormalization(h.getValue()).trim());
 		} else if (Arrays.asList("p", "q", "d", "s", "mt", "b").contains(localName)) {
 			PType pt = (PType) element.getValue();
 			String tag = (pt.getSfm() == null ? localName : pt.getSfm()) + (pt.getLevel() == null ? "" : "" + pt.getLevel());
@@ -197,7 +197,7 @@ public class USFX extends AbstractParatextFormat {
 			containerStack.clear();
 		} else if (localName.equals("toc")) {
 			StyledString ss = (StyledString) element.getValue();
-			result.getAttributes().put("toc" + ss.getLevel(), TextUtilities.whitespaceNormalization(ss.getContent().stream().filter(c -> c instanceof String).map(Serializable::toString).collect(Collectors.joining())));
+			result.getAttributes().put("toc" + ss.getLevel(), TextUtilities.whitespaceNormalization(ss.getContent().stream().filter(c -> c instanceof String).map(Serializable::toString).collect(Collectors.joining())).trim());
 		} else if (localName.equals("table") && element.getValue() instanceof Usfx.Book.Table) {
 			Usfx.Book.Table table = (Usfx.Book.Table) element.getValue();
 			for (Usfx.Book.Table.Tr tr : table.getTr()) {

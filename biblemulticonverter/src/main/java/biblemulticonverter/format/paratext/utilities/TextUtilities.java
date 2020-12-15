@@ -13,6 +13,6 @@ public class TextUtilities {
 	 * @return the input text with normalized whitespaces.
 	 */
 	public static String whitespaceNormalization(String text) {
-		return WHITESPACE_NORMALIZATION_PATTERN.matcher(text).replaceAll(" ").trim();
+		return WHITESPACE_NORMALIZATION_PATTERN.matcher(text).replaceAll(" ");
 	}
 }

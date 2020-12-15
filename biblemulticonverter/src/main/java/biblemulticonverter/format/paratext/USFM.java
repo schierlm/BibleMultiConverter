@@ -76,7 +76,7 @@ public class USFM extends AbstractParatextFormat {
 		KNOWN_CHARACTER_TAGS.addAll(AUTO_CLOSING_TAGS.keySet());
 		if (!inputFile.getName().toLowerCase().endsWith(".usfm") && !inputFile.getName().toLowerCase().endsWith(".sfm"))
 			return null;
-		String data = TextUtilities.whitespaceNormalization(new String(Files.readAllBytes(inputFile.toPath()), charset)) + "\\$EOF$";
+		String data = TextUtilities.whitespaceNormalization(new String(Files.readAllBytes(inputFile.toPath()), charset)).trim() + "\\$EOF$";
 		if (!data.startsWith("\\id ")) {
 			System.out.println("WARNING: Skipping malformed file " + inputFile);
 			return null;
