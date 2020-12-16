@@ -11,7 +11,7 @@ import javax.xml.validation.SchemaFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Collections;
@@ -25,7 +25,7 @@ import org.xml.sax.SAXException;
 
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
-import biblemulticonverter.format.paratext.utilities.TextUtilities;
+import biblemulticonverter.format.paratext.utilities.UnifiedScriptureXMLWriter;
 import biblemulticonverter.schema.usx3.Cell;
 import biblemulticonverter.schema.usx3.CellAlign;
 import biblemulticonverter.schema.usx3.CellStyle;
@@ -381,8 +381,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
 		Marshaller m = ctx.createMarshaller();
 		m.setSchema(getSchema());
-		m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
-		m.marshal(usx, new FileOutputStream(outFile));
+		m.marshal(usx, new UnifiedScriptureXMLWriter(new FileWriter(outFile), "UTF-8"));
 	}
 
 	protected Schema getSchema() throws SAXException {

@@ -47,7 +47,7 @@ public class USX3Test {
 		File originalFile = getResource("/usfm2/GEN.usfm");
 		File resultFile = createTempFile("usx3-export", ".usx");
 
-		USFM usfm = new USFM();
+		USFM usfm = new USFM(true);
 		ParatextBook paratextBook = usfm.doImportBook(originalFile);
 		assertNotNull(paratextBook);
 
@@ -113,6 +113,36 @@ public class USX3Test {
 
 		USFM usfm = new USFM();
 		usfm.doExportBook(paratextBook, resultFile);
+	}
+
+	/**
+	 * Tests whether or not a single space between two XML nodes is preserved:
+	 * <p>
+	 * Sample:
+	 * <pre>
+	 * &lt;char style="nd&gt;Lorem&lt;/char&gt; &lt;note caller="+" style="f"&gt;Dolor&lt;/note&gt;Ipsum
+	 * </pre>
+	 * <p>
+	 * Expected result (without the note):
+	 * <pre>
+	 * Lorem Ipsum
+	 * </pre>
+	 * <p>
+	 * Wrong result:
+	 * <pre>
+	 * LoremIpsum
+	 * </pre>
+	 */
+	@Test
+	public void single_whitespace_between_xml_nodes_is_preserved() throws Exception {
+		File originalFile = getResource("/whitespace-test/input.usx");
+		File resultFile = createTempFile("dump", ".txt");
+
+		USX3 usx3 = new USX3();
+		ParatextBook paratextBook = usx3.doImportBook(originalFile);
+		dump(paratextBook, resultFile);
+
+		assertEqualLines(getResource("/whitespace-test/expected-output.txt"), resultFile);
 	}
 
 	private static void dump(ParatextBook book, File file) throws IOException {

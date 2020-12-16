@@ -62,11 +62,22 @@ public class USFM extends AbstractParatextFormat {
 	public static final Map<String, ParagraphKind> PARAGRAPH_TAGS = ParagraphKind.allTags();
 	public static final Map<String, FootnoteXrefKind> FOOTNOTE_XREF_TAGS = FootnoteXrefKind.allTags();
 	public static final Map<String, AutoClosingFormattingKind> AUTO_CLOSING_TAGS = AutoClosingFormattingKind.allTags();
-	
+
+	private final boolean preserveSpacesAtEndOfLines;
+
 	public USFM() {
-		super("USFM 2");
+		this(Boolean.parseBoolean(System.getProperty("biblemulticonverter.paratext.usfm.preserveSpacesAtEndOfLines")));
 	}
-	
+
+	/**
+	 * @param preserveSpacesAtEndOfLines when set to true the USFM normalization will preserve single spaces that might
+	 *                                   be present at the end of a line, which would otherwise be removed/ignored.
+	 */
+	public USFM(boolean preserveSpacesAtEndOfLines) {
+		super("USFM 2");
+		this.preserveSpacesAtEndOfLines = preserveSpacesAtEndOfLines;
+	}
+
 	@Override
 	protected ParatextBook doImportBook(File inputFile) throws Exception {
 		return doImportBook(inputFile, StandardCharsets.UTF_8);
@@ -76,7 +87,7 @@ public class USFM extends AbstractParatextFormat {
 		KNOWN_CHARACTER_TAGS.addAll(AUTO_CLOSING_TAGS.keySet());
 		if (!inputFile.getName().toLowerCase().endsWith(".usfm") && !inputFile.getName().toLowerCase().endsWith(".sfm"))
 			return null;
-		String data = TextUtilities.whitespaceNormalization(new String(Files.readAllBytes(inputFile.toPath()), charset)).trim() + "\\$EOF$";
+		String data = TextUtilities.usfmWhitespaceNormalization(new String(Files.readAllBytes(inputFile.toPath()), charset), preserveSpacesAtEndOfLines) + "\\$EOF$";
 		if (!data.startsWith("\\id ")) {
 			System.out.println("WARNING: Skipping malformed file " + inputFile);
 			return null;
