@@ -24,14 +24,6 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 
 	protected abstract VersificationScheme[] loadSchemes() throws IOException;
 
-	public VersificationScheme loadScheme(String name) throws IOException {
-		for (VersificationScheme scheme : loadSchemes()) {
-			if (scheme.getName().equals(name))
-				return scheme;
-		}
-		return null;
-	}
-
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
 		VersificationScheme[] schemes = loadSchemes();

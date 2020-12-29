@@ -9,8 +9,17 @@ import java.util.EnumMap;
 
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.tools.AbstractVersificationDetector;
+import biblemulticonverter.tools.AbstractVersificationDetector.VersificationScheme;
 
 public class LogosVersificationDetector extends AbstractVersificationDetector {
+
+	public VersificationScheme loadScheme(String name) throws IOException {
+		for (VersificationScheme scheme : loadSchemes()) {
+			if (scheme.getName().equals(name))
+				return scheme;
+		}
+		return null;
+	}
 
 	@Override
 	protected VersificationScheme[] loadSchemes() throws IOException {

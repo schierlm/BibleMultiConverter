@@ -67,6 +67,7 @@ public class LogosVerseMapDownloader {
 			"BiblePASSION",	"BibleRUERV", "BibleSRERV", "BibleTREGELLES", "BibleURERV", "BibleLBLA", "BibleZUNZ",
 			"BibleELBER2003", "BibleELBER2016", "BibleGNTTYN", "BibleLXXDE", "BibleLXXDEA", "BibleLXXDEKOMM",
 			"BibleNETS", "BibleNETSA", "BibleORTHSB",
+			"BibleBT4E","BibleCCB","BibleEHV","BibleESVCE","BibleNJBCT","BibleRHG",
 	};
 
 	public static String[] ALL_BOOK_NAMES = {
