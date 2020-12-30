@@ -3,6 +3,7 @@ package biblemulticonverter.tools;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -176,8 +177,10 @@ public class VersificationTool implements Tool {
 			System.out.println("Unsupported command: " + args[1]);
 		}
 		if (save) {
+			StringWriter sw = new StringWriter();
+			vs.saveTo(sw);
 			try (Writer w = new OutputStreamWriter(new FileOutputStream(dbFile), StandardCharsets.UTF_8)) {
-				vs.saveTo(w);
+				w.write(sw.toString());
 			}
 		}
 	}
