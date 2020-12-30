@@ -11,6 +11,8 @@ import java.io.StringReader;
 import java.io.Writer;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -119,6 +121,11 @@ public class LogosVerseMapDownloader {
 			parseVerseMap(builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8))), w);
 		}
 		System.out.println("Downloading Logos verse map done.");
+		if (new File(basedir, "target/classes").exists()) {
+			System.out.print("Copying Logos verse map to target/classes...");
+			Files.copy(versemap.toPath(), new File(new File(basedir, "target/classes"), versemap.getName()).toPath(), StandardCopyOption.REPLACE_EXISTING);
+			System.out.println("done");
+		}
 	}
 
 	private static void parseVerseMap(Document doc, Writer w) throws Exception {
