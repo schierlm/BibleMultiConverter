@@ -366,7 +366,7 @@ Versification schema:
 To cover these two variants, there are several options in the exporter.
 
 - By default, reordered verses will be sorted (and the format for the real verse
-  number can be given by the `VN=` option, `VN=BRACKETS+TEAL` is a good option),
+  number can be given by the `VN=` option, `VN=BRACKETS+CERULEAN` is a good option),
   but apart from that, verses will stay as they were in the import file. This option
   is often suitable for "Standard KJV" versification.
 

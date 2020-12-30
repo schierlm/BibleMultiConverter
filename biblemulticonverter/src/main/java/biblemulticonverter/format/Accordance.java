@@ -1159,7 +1159,7 @@ public class Accordance implements RoundtripFormat {
 		}
 	}
 
-	private static final String[] DEFAULT_KEEP = { "", "" }, DEFAULT_SKIP = {}, DEFAULT_VERSENO = { "<color=teal>(", ")</color>" };
+	private static final String[] DEFAULT_KEEP = { "", "" }, DEFAULT_SKIP = {}, DEFAULT_VERSENO = { "<color=cerulean>(", ")</color>" };
 
 	private static enum Format {
 		PARENS("(", ")"), BRACKETS("[", "]"), BRACES("{", "}"), NOBREAK("<nobreak>", "<nobreak>"), //
