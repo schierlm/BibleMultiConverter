@@ -49,6 +49,8 @@ public class AccordanceReferenceList implements VersificationFormat {
 		BOOK_NAME_MAP.put("Dan", BookID.BOOK_Dan);
 		BOOK_NAME_MAP.put("1Mac", BookID.BOOK_1Macc);
 		BOOK_NAME_MAP.put("2Mac", BookID.BOOK_2Macc);
+		BOOK_NAME_MAP.put("1Macc", BookID.BOOK_1Macc);
+		BOOK_NAME_MAP.put("2Macc", BookID.BOOK_2Macc);
 		BOOK_NAME_MAP.put("Judge", BookID.BOOK_Judg);
 		BOOK_NAME_MAP.put("1Thess", BookID.BOOK_1Thess);
 		BOOK_NAME_MAP.put("2Thess", BookID.BOOK_2Thess);

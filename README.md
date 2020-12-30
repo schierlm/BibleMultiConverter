@@ -394,6 +394,23 @@ To cover these two variants, there are several options in the exporter.
   at the end of the book will also be filled with `-`, and extra books will be
   merged with the previous book.
 
+- In some cases, the total verses of a book would follow an existing versification
+  exactly, except that the chapter boundaries are moved. There are two options how
+  this can be handled: either add a `#` sign to the `verseschema=` option (like
+  `verseschema=#<name>@<dbname>`), which means that the export will still follow the
+  verse schema exactly, only that in case a book contains both gaps (empty verses)
+  and merged verses, verse content gets shifted to keep every verse separate (adding
+  real verse numbers to the beginning of the verse text). Another option exploits an
+  implementation detail in Accordance 13: In some cases, it is possible to import for
+  a versification in case the total verse number matches but not the chapter boundaries
+  (e.g if a versification has chapters with 13 and 9 verses, and the bible has 12 and 10
+  verses, it imports fine). To allow that kind of verse number tweaking,  you can give a
+  `verseschemashift=<nbr>` option, where `<nbr>` is the number of verses that may
+  be added/removed from a single chapter. In case a chapter has gaps at the end of
+  one chapter and merged verses at the end of another chapter, the verse schema is
+  tweaked accordingly. If you want to see when this happens, add a `+` to the beginning
+  of the number.
+
 The usual workflow when using custom versifications is as follow
 
 1. Identify which versification formats you may want to use (or export all

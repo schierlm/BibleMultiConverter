@@ -72,10 +72,12 @@ public class Accordance implements RoundtripFormat {
 			" verseref=short           Output the shortest possible verse refs (only verse if needed)",
 			" verseref=medium          Output medium verse refs (always include chapter)",
 			" verseref=full            Output full verse refs (always include book and chapter)",
+			" verseschemashift=<nbr>   Shift chapter boundaries in verse schema up to given maximum of verses",
 			" verseschema=fillone      Fill missing verses starting from verse 1",
 			" verseschema=fillzero     In some psalms, fill from verse 0",
 			" verseschema=restrictkjv  Restrict allowed verses to KJV schema",
-			" verseschema=<name>@<db>  Use verse schema from database to restrict and fill verses"
+			" verseschema=<name>@<db>  Use verse schema from database to restrict and fill verses",
+			" verseschema=#<name>@<db> Use verse counts from verse schema from database to restrict and fill verses"
 	};
 
 	public static Map<BookID, String> BOOK_NAME_MAP = new EnumMap<>(BookID.class);
@@ -399,7 +401,7 @@ public class Accordance implements RoundtripFormat {
 		}
 		String lineEnding = "\n";
 		String[] encodings = null;
-		int verseSchema = -1, verseRef = 0;
+		int verseSchema = -1, verseRef = 0, verseSchemaShift = 0, verseSchemaShiftLogging = 0;
 		Versification versification = null;
 		BitSet psalmSet = null;
 		for (int i = 1; i < exportArgs.length; i++) {
@@ -431,6 +433,17 @@ public class Accordance implements RoundtripFormat {
 				psalmSet.set(138, 145 + 1);
 			} else if (exportArgs[i].toLowerCase().equals("verseschema=restrictkjv")) {
 				verseSchema = -2;
+			} else if (exportArgs[i].toLowerCase().startsWith("verseschemashift=")) {
+				String maxCount = exportArgs[i].substring(17);
+				while (maxCount.startsWith("+")) {
+					verseSchemaShiftLogging++;
+					maxCount = maxCount.substring(1);
+				}
+				verseSchemaShift = Integer.parseInt(maxCount);
+			} else if (exportArgs[i].toLowerCase().startsWith("verseschema=#")) {
+				String[] params = exportArgs[i].substring(13).split("@", 2);
+				versification = new VersificationSet(new File(params[1])).findVersification(params[0]);
+				verseSchema = 3;
 			} else if (exportArgs[i].toLowerCase().startsWith("verseschema=")) {
 				String[] params = exportArgs[i].substring(12).split("@", 2);
 				versification = new VersificationSet(new File(params[1])).findVersification(params[0]);
@@ -454,7 +467,7 @@ public class Accordance implements RoundtripFormat {
 				int cnumber = 0;
 				List<Chapter> chapters = book.getChapters();
 				List<List<Integer>> allReferences = new ArrayList<>();
-				if (verseSchema == 2) {
+				if (verseSchema == 2 || verseSchema == 3) {
 					for (int i = 0; i < versification.getVerseCount(); i++) {
 						Reference r = versification.getReference(i);
 						if (r.getBook() != book.getId())
@@ -512,15 +525,168 @@ public class Accordance implements RoundtripFormat {
 						for (int ch = allowedChapters; ch < chapters.size(); ch++) {
 							int cnum = ch + cnumber + 1;
 							for (Verse v : chapters.get(ch).getVerses()) {
-								Verse vv = new Verse(cnum + "," + v.getNumber());
-								v.accept(vv.getAppendVisitor());
-								vv.finished();
-								lastAllowedChapter.getVerses().add(vv);
+								if (v.getNumber().contains(",")) {
+									lastAllowedChapter.getVerses().add(v);
+								} else {
+									Verse vv = new Verse(cnum + "," + v.getNumber());
+									v.accept(vv.getAppendVisitor());
+									vv.finished();
+									lastAllowedChapter.getVerses().add(vv);
+								}
 							}
 						}
 						while (chapters.size() >= allowedChapters)
 							chapters.remove(chapters.size() - 1);
 						chapters.add(lastAllowedChapter);
+					}
+					if (verseSchemaShift > 0) {
+						// determine how many verses can be removed / added
+						int[] removableVerses = new int[allReferences.size()];
+						for (int rnum = 0; rnum < allReferences.size() - 1; rnum++) {
+							List<Integer> refs = allReferences.get(rnum);
+							if (refs.isEmpty())
+								continue;
+							int cnum = rnum - cnumber - 1;
+							if (cnum >= chapters.size() || chapters.get(cnum).getVerses().isEmpty()) {
+								removableVerses[rnum] = Math.min(verseSchemaShift, refs.size() - 1);
+								continue;
+							}
+							List<Verse> verses = chapters.get(cnum).getVerses();
+							int normalVvCount = countVirtualVerses(verseSchema, verses, refs);
+							// try removing
+							List<Integer> reducedRefs = new ArrayList<>(refs);
+							for (int i = 0; i < verseSchemaShift; i++) {
+								reducedRefs.remove(reducedRefs.size() - 1);
+								if (reducedRefs.isEmpty() || countVirtualVerses(verseSchema, verses, reducedRefs) < normalVvCount)
+									break;
+								removableVerses[rnum]++;
+							}
+							// try adding
+							if (removableVerses[rnum] == 0) {
+								int nextVerseNum = refs.get(refs.size() - 1)+1;
+								List<Integer> augmentedRefs = new ArrayList<>(refs);
+								for (int i = 0; i < verseSchemaShift; i++) {
+									while(augmentedRefs.contains(nextVerseNum)) nextVerseNum++;
+									augmentedRefs.add(nextVerseNum);
+									nextVerseNum++;
+								}
+								int maxVvCount = countVirtualVerses(verseSchema, verses, augmentedRefs);
+								if (maxVvCount > normalVvCount) {
+									nextVerseNum = refs.get(refs.size() - 1)+1;
+									augmentedRefs = new ArrayList<>(refs);
+									for (int i = 0; i < verseSchemaShift; i++) {
+										while(augmentedRefs.contains(nextVerseNum)) nextVerseNum++;
+										augmentedRefs.add(nextVerseNum);
+										nextVerseNum++;
+										removableVerses[rnum]--;
+										if (countVirtualVerses(verseSchema, verses, augmentedRefs) == maxVvCount) {
+											break;
+										}
+									}
+								}
+							}
+						}
+						// normalize so that the sum is zero
+						int removableSum = Arrays.stream(removableVerses).sum();
+						for (int i = removableVerses.length - 1; i >= 0; i--) {
+							if (removableSum == 0)
+								break;
+							if (removableVerses[i] > 0 && removableSum > 0) {
+								int maxFix = Math.min(removableVerses[i], removableSum);
+								removableVerses[i] -= maxFix;
+								removableSum -= maxFix;
+							} else if (removableVerses[i] < 0 && removableSum < 0) {
+								int maxFix = Math.min(-removableVerses[i], -removableSum);
+								removableVerses[i] += maxFix;
+								removableSum += maxFix;
+							}
+						}
+						if (removableSum != 0)
+							throw new IllegalStateException("Unable to normalize removable verses");
+						for (int i = 0; i < removableVerses.length; i++) {
+							if (removableVerses[i] == 0)
+								continue;
+							List<Integer> refs = allReferences.get(i);
+							if (verseSchemaShiftLogging > 0) {
+								System.out.println("INFO: Changing chapter " + book.getAbbr() + " " + i + " from " + refs.size() + " to " + (refs.size() - removableVerses[i]));
+								if (verseSchemaShiftLogging > 1)
+									System.out.println("\t Old value: " + refs);
+							}
+							if (removableVerses[i] > 0) {
+								refs.subList(refs.size() - removableVerses[i], refs.size()).clear();
+							} else if (removableVerses[i] < 0) {
+								int nextVerseNum = refs.get(refs.size() - 1)+1;
+								for (int j = 0; j < -removableVerses[i]; j++) {
+									while(refs.contains(nextVerseNum)) nextVerseNum++;
+									refs.add(nextVerseNum);
+									nextVerseNum++;
+								}
+							}
+							if (verseSchemaShiftLogging > 1) {
+								System.out.println("\t New value: " + refs);
+							}
+						}
+					}
+					if (verseSchema == 3) {
+						chapters = new ArrayList<>(chapters);
+						for (int i = 0; i < chapters.size() - 1; i++) {
+							Chapter ch = new Chapter();
+							ch.setProlog(chapters.get(i).getProlog());
+							ch.getVerses().addAll(chapters.get(i).getVerses());
+							chapters.set(i, ch);
+						}
+						int holeCount = allReferences.stream().mapToInt(refs -> refs.size()).sum() - chapters.stream().mapToInt(ch -> ch.getVerses().size()).sum();
+						int chapterToRead = 0;
+						for (int i = 0; i < chapters.size() - 1; i++) {
+							if (chapterToRead < i + 1)
+								chapterToRead = i + 1;
+							while (chapterToRead < chapters.size() && chapters.get(chapterToRead).getProlog() == null && chapters.get(chapterToRead).getVerses().isEmpty()) {
+								chapterToRead++;
+							}
+							List<Verse> verses = chapters.get(i).getVerses();
+							List<Integer> refs = allReferences.get(i + cnumber + 1);
+							int holesHere = refs.size() - verses.size();
+							holeCount -= holesHere;
+							if (chapters.get(chapterToRead).getProlog() != null) {
+								// cannot shuffle verses
+								continue;
+							}
+							if (holesHere < 0 && holeCount >= -holesHere) {
+								holeCount += holesHere;
+								int cnum = i + cnumber + 1;
+								for (int j = 0; j < -holesHere; j++) {
+									Verse v = verses.remove(verses.size() - 1);
+									if (v.getNumber().contains(",")) {
+										chapters.get(i + 1).getVerses().add(0, v);
+									} else {
+										Verse vv = new Verse(cnum + "," + v.getNumber());
+										v.accept(vv.getAppendVisitor());
+										vv.finished();
+										chapters.get(i + 1).getVerses().add(0, vv);
+									}
+									chapterToRead = 0;
+								}
+							} else if (holesHere > 0 && holeCount < 0) {
+								for (int j = 0; j < holesHere; j++) {
+									while (chapterToRead < chapters.size() && chapters.get(chapterToRead).getProlog() == null && chapters.get(chapterToRead).getVerses().isEmpty()) {
+										chapterToRead++;
+									}
+									if (chapters.get(chapterToRead).getProlog() != null)
+										break;
+									holeCount++;
+									Verse v = chapters.get(chapterToRead).getVerses().remove(0);
+									int cnum = chapterToRead + cnumber + 1;
+									if (v.getNumber().contains(",")) {
+										verses.add(0, v);
+									} else {
+										Verse vv = new Verse(cnum + "," + v.getNumber());
+										v.accept(vv.getAppendVisitor());
+										vv.finished();
+										verses.add(0, vv);
+									}
+								}
+							}
+						}
 					}
 				}
 				bnw.write(bookName.replace(".", "") + "\t" + book.getAbbr().replace(".", "") + lineEnding);
@@ -586,6 +752,52 @@ public class Accordance implements RoundtripFormat {
 						BitSet verseBits = new BitSet(lastFillVerse + 1);
 						verseBits.set(1, lastFillVerse + 1);
 						vvs = dummyChapter.createVirtualVerses(false, verseBits, false);
+					} else if (verseSchema == 3) {
+						verseNumberMap = new HashMap<>();
+						if (cnumber >= allReferences.size() || allReferences.get(cnumber).isEmpty()) {
+							System.out.println("WARNING: Skipping export of " + book.getAbbr() + " " + cnumber + " as it is not contained in versification!");
+							continue;
+						}
+						List<Integer> references = allReferences.get(cnumber);
+						Chapter emptyChapter = new Chapter();
+						for (int i = 0; i < references.size(); i++) {
+							emptyChapter.getVerses().add(new Verse("" + (i + 1)));
+							verseNumberMap.put("" + (i + 1), "" + references.get(i));
+						}
+						vvs = emptyChapter.createVirtualVerses(false, false);
+						while (vvs.size() > chapter.getVerses().size())
+							vvs.remove(vvs.size() - 1);
+						int nextExtraVerse = 1;
+						for (int i = 0; i < chapter.getVerses().size(); i++) {
+							Verse v = chapter.getVerses().get(i);
+							VirtualVerse viv;
+							if (i < vvs.size()) {
+								viv = vvs.get(i);
+								viv.getVerses().clear();
+							} else {
+								viv = vvs.get(vvs.size() - 1);
+							}
+							String vnumber = v.getNumber().equals("1/t") ? "0" : v.getNumber();
+							int idx;
+							try {
+								int vnum = Integer.parseInt(vnumber);
+								idx = references.indexOf(vnum);
+							} catch (NumberFormatException ex) {
+								idx = -1;
+							}
+							String newNum = "" + (idx + 1);
+							if (idx == -1) {
+								newNum = nextExtraVerse + "x";
+								nextExtraVerse++;
+								verseNumberMap.put(newNum, vnumber);
+							}
+							Verse vv = new Verse(newNum);
+							v.accept(vv.getAppendVisitor());
+							vv.finished();
+							viv.getVerses().add(vv);
+						}
+						nextFillVerse = 1;
+						lastFillVerse = references.size();
 					} else {
 						vvs = chapter.createVirtualVerses(true, false);
 					}
@@ -765,6 +977,47 @@ public class Accordance implements RoundtripFormat {
 			suffix.insert(0, fmt.suffix);
 		}
 		return new String[] { prefix.toString(), suffix.toString() };
+	}
+
+	private int countVirtualVerses(int verseSchema, List<Verse> verses, List<Integer> refs) {
+		if (verseSchema == 2) {
+			Chapter dummyChapter = new Chapter();
+			int nextExtraVerse = 1, maxSeenRealVerse = -2;
+			for (Verse v : verses) {
+				String vnumber = v.getNumber().equals("1/t") ? "0" : v.getNumber();
+				int idx;
+				try {
+					int vnum = Integer.parseInt(vnumber);
+					maxSeenRealVerse = Math.max(vnum, maxSeenRealVerse);
+					idx = refs.indexOf(vnum);
+				} catch (NumberFormatException ex) {
+					idx = -1;
+				}
+				String newNum = "" + (idx + 1);
+				if (idx == -1) {
+					if (vnumber.startsWith("" + (maxSeenRealVerse + 1)) && refs.contains(maxSeenRealVerse + 1)) {
+						maxSeenRealVerse++;
+						Verse dv = new Verse("" + maxSeenRealVerse);
+						dv.finished();
+						dummyChapter.getVerses().add(dv);
+					}
+					newNum = nextExtraVerse + "x";
+					nextExtraVerse++;
+				}
+				Verse vv = new Verse(newNum);
+				v.accept(vv.getAppendVisitor());
+				vv.finished();
+				dummyChapter.getVerses().add(vv);
+			}
+			int lastFillVerse = refs.size();
+			BitSet verseBits = new BitSet(lastFillVerse + 1);
+			verseBits.set(1, lastFillVerse + 1);
+			return dummyChapter.createVirtualVerses(false, verseBits, false).size();
+		} else if (verseSchema == 3) {
+			return Math.min(refs.size(), verses.size());
+		} else {
+			throw new IllegalStateException("Virtual verses cannot be counted without a versemap to be adjusted");
+		}
 	}
 
 	@Override
