@@ -80,6 +80,7 @@ public class ReportHTML implements VersificationFormat {
 					"td.diff {color: red; }\n" +
 					"tr.same th, tr.same td {color: gray; padding: 1px; font-size: 50%; }\n" +
 					"td.skipped { text-align: center;}\n" +
+					":root { color-scheme: light dark; }\n" +
 					"</style>\n" +
 					"</head>\n" +
 					"<body>\n" +
@@ -216,7 +217,51 @@ public class ReportHTML implements VersificationFormat {
 					"body { font-family: Verdana, Arial, Helvetica, sans-serif; }\n" +
 					"table {border-collapse: collapse; }\n" +
 					"td, th {border: 1px solid #777; white-space: nowrap; text-align: left; vertical-align: top; }\n" +
+					"td.highlight, th.highlight, tr.highlight td, tr.highlight th { background-color: yellow; }\n" +
+					"tr.highlight td.highlight, tr.highlight th.highlight { background-color: orange; }\n" +
+					":root { color-scheme: light dark; }\n" +
+					"@media (prefers-color-scheme: dark) {\n" +
+					"    td.highlight, th.highlight, tr.highlight td, tr.highlight th { background-color: blue; }\n" +
+					"    tr.highlight td.highlight, tr.highlight th.highlight { background-color: magenta; }\n" +
+					"}" +
 					"</style>\n" +
+					"<script>\n" +
+					"function getElementIndex (elem) {\n" +
+					"    if ('from' in Array)\n" +
+					"        return Array.from(elem.parentNode.children).indexOf(elem);\n" +
+					"    else\n" +
+					"	// IE 11\n" +
+					"        return Array.prototype.indexOf.call(elem.parentNode.children, elem);\n" +
+					"}\n" +
+					"\n" +
+					"function toggleClass(elem) {\n" +
+					"    if (elem.className == \"highlight\")\n" +
+					"        elem.className = \"\";\n" +
+					"    else\n" +
+					"        elem.className = \"highlight\";\n" +
+					"}\n" +
+					"\n" +
+					"function addLinks(elems) {\n" +
+					"    for(var i = 0; i < elems.length; i++) {\n" +
+					"        elems[i].onclick = function() {\n" +
+					"            if (getElementIndex(this.parentNode) != 0) toggleClass(this.parentNode);\n" +
+					"            var x = getElementIndex(this);\n" +
+					"            if (x != 0) {\n" +
+					"                var rows = this.parentNode.parentNode.children;\n" +
+					"                for(var i = 0; i < rows.length; i++) {\n" +
+					"                    toggleClass(rows[i].children[x]);\n" +
+					"                }\n" +
+					"            }\n" +
+					"        }\n" +
+					"    }\n" +
+					"}\n" +
+					"\n" +
+					"window.onload = function() {\n" +
+					"    addLinks(document.getElementsByTagName(\"td\"));\n" +
+					"    addLinks(document.getElementsByTagName(\"th\"));\n" +
+					"};\n" +
+					"</script>\n" +
+					"" +
 					"</head>\n" +
 					"<body>\n" +
 					"<h1>Versification report</h1>\n" +
