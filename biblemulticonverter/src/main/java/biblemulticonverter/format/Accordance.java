@@ -387,7 +387,7 @@ public class Accordance implements RoundtripFormat {
 		File booknameFile = new File(exportArgs[0] + "-booknames.txt");
 		Map<String, String[]> formatRules = new HashMap<>();
 		Set<String> unformattedElements = new HashSet<>();
-		parseFormatRule("VN=BOLD", formatRules);
+		parseFormatRule("VN=CERULEAN", formatRules);
 		parseFormatRule("BIBN=-", formatRules);
 		parseFormatRule("BKSN=-", formatRules);
 		parseFormatRule("BKLN=-", formatRules);
@@ -542,13 +542,18 @@ public class Accordance implements RoundtripFormat {
 					if (verseSchemaShift > 0) {
 						// determine how many verses can be removed / added
 						int[] removableVerses = new int[allReferences.size()];
-						for (int rnum = 0; rnum < allReferences.size() - 1; rnum++) {
+						for (int rnum = 0; rnum < allReferences.size(); rnum++) {
 							List<Integer> refs = allReferences.get(rnum);
 							if (refs.isEmpty())
 								continue;
 							int cnum = rnum - cnumber - 1;
 							if (cnum >= chapters.size() || chapters.get(cnum).getVerses().isEmpty()) {
-								removableVerses[rnum] = Math.min(verseSchemaShift, refs.size() - 1);
+								int removableRefs = refs.size() - 1;
+								if (rnum == allReferences.size() - 1) {
+									// last chapter may be empty
+									removableRefs++;
+								}
+								removableVerses[rnum] = Math.min(verseSchemaShift, removableRefs);
 								continue;
 							}
 							List<Verse> verses = chapters.get(cnum).getVerses();
@@ -677,12 +682,12 @@ public class Accordance implements RoundtripFormat {
 									Verse v = chapters.get(chapterToRead).getVerses().remove(0);
 									int cnum = chapterToRead + cnumber + 1;
 									if (v.getNumber().contains(",")) {
-										verses.add(0, v);
+										verses.add(v);
 									} else {
 										Verse vv = new Verse(cnum + "," + v.getNumber());
 										v.accept(vv.getAppendVisitor());
 										vv.finished();
-										verses.add(0, vv);
+										verses.add(vv);
 									}
 								}
 							}
