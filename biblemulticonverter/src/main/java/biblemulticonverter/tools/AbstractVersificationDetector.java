@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -29,10 +31,14 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 		VersificationScheme[] schemes = loadSchemes();
 		Set<String> totalVerses = new HashSet<String>();
 		boolean includeXref = exportArgs.length > 0 && exportArgs[0].equals("-xref");
-		XrefCountVisitor xcv = includeXref ? new XrefCountVisitor(schemes, totalVerses) : null;
+		Set<BookID> usedBooks = EnumSet.noneOf(BookID.class);
+		XrefCountVisitor xcv = includeXref ? new XrefCountVisitor(schemes, totalVerses, usedBooks) : null;
+		int usedArgCount = (includeXref ? 1 : 0);
+		boolean limitBooks = exportArgs.length > usedArgCount && exportArgs[usedArgCount].equals("-limitBooks");
 
 		// fill missing verses
 		for (Book book : bible.getBooks()) {
+			usedBooks.add(book.getId());
 			for (int cc = 0; cc < book.getChapters().size(); cc++) {
 				Chapter chapter = book.getChapters().get(cc);
 				if (includeXref && chapter.getProlog() != null) {
@@ -57,6 +63,14 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 			}
 		}
 
+		// limit to used books
+		if (limitBooks) {
+			usedArgCount++;
+			for(VersificationScheme scheme: schemes) {
+				scheme.limitToBooks(usedBooks);
+			}
+		}
+
 		// sort them
 		Arrays.sort(schemes);
 
@@ -75,10 +89,10 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 		}
 
 		// print selected schemes
-		if (exportArgs.length > (includeXref ? 1 : 0)) {
+		if (exportArgs.length > usedArgCount) {
 			System.out.println();
 			System.out.println("Selected schemes:");
-			for (int i = includeXref ? 1 : 0; i < exportArgs.length; i++) {
+			for (int i = usedArgCount; i < exportArgs.length; i++) {
 				boolean found = false;
 				for (VersificationScheme scheme : schemes) {
 					if (scheme.getName().equals(exportArgs[i])) {
@@ -132,7 +146,7 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 	public static final class VersificationScheme implements Comparable<VersificationScheme> {
 		private final String name;
 		private final Map<BookID, BitSet[]> coveredBooks;
-		private final int verseCount;
+		private int verseCount;
 		private final List<String> missingChapters = new ArrayList<String>();
 		private final List<String> missingVerses = new ArrayList<String>();
 
@@ -146,6 +160,18 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 				}
 			}
 			this.verseCount = verseCount;
+		}
+
+		private void limitToBooks(Collection<BookID> books) {
+			Set<BookID> booksToRemove = EnumSet.noneOf(BookID.class);
+			booksToRemove.addAll(coveredBooks.keySet());
+			booksToRemove.removeAll(books);
+			for(BookID book : booksToRemove) {
+				BitSet[] chapters = coveredBooks.remove(book);
+				for (BitSet chapter : chapters) {
+					verseCount -= chapter.cardinality();
+				}
+			}
 		}
 
 		public List<String> getMissingChapters() {
@@ -182,11 +208,13 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 	private class XrefCountVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
 		private final VersificationScheme[] schemes;
 		private final Set<String> totalVerses;
+		private Set<BookID> usedBooks;
 
-		public XrefCountVisitor(VersificationScheme[] schemes, Set<String> totalVerses) {
+		public XrefCountVisitor(VersificationScheme[] schemes, Set<String> totalVerses, Set<BookID> usedBooks) {
 			super(null);
 			this.schemes = schemes;
 			this.totalVerses = totalVerses;
+			this.usedBooks = usedBooks;
 		}
 
 		@Override
@@ -196,6 +224,7 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+			usedBooks.add(book);
 			try {
 				countVerse(schemes, totalVerses, bookAbbr, book, firstChapter, Integer.parseInt(firstVerse));
 				countVerse(schemes, totalVerses, bookAbbr, book, lastChapter, Integer.parseInt(lastVerse));

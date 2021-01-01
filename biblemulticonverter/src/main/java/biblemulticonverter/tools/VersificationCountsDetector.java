@@ -27,7 +27,7 @@ public class VersificationCountsDetector implements ExportFormat {
 	public static final String[] HELP_TEXT = {
 			"Detect what versification most closely matches a module, looking on chapter/verse counts only",
 			"",
-			"Usage: VersificationCountsDetector <dbfile> [-nochapter|-lowchapter] [-xref] [schemes]",
+			"Usage: VersificationCountsDetector <dbfile> [-nochapter|-lowchapter] [-xref] [-limitBooks] [schemes]",
 	};
 
 	@Override
@@ -36,10 +36,14 @@ public class VersificationCountsDetector implements ExportFormat {
 		VersificationSet vs = new VersificationSet(new File(exportArgs[0]));
 		ChapterMode chapterMode = (exportArgs.length > 1 && exportArgs[1].equals("-nochapter")) ? ChapterMode.IGNORE : //
 				(exportArgs.length > 1 && exportArgs[1].equals("-lowchapter")) ? ChapterMode.LOW_PRIO : ChapterMode.HIGH_PRIO;
-		boolean includeXref = false;
+		boolean includeXref = false, limitBooks = false;
 		int exportArgsIdx = (chapterMode != ChapterMode.HIGH_PRIO ? 2 : 1);
 		if (exportArgs.length > exportArgsIdx && exportArgs[exportArgsIdx].equals("-xref")) {
 			includeXref = true;
+			exportArgsIdx++;
+		}
+		if (exportArgs.length > exportArgsIdx && exportArgs[exportArgsIdx].equals("-limitBooks")) {
+			limitBooks = true;
 			exportArgsIdx++;
 		}
 
@@ -77,6 +81,8 @@ public class VersificationCountsDetector implements ExportFormat {
 			Set<String> foundChapters = new HashSet<>();
 			for (int j = 0; j < vn.getVerseCount(); j++) {
 				Reference r = vn.getReference(j);
+				if (limitBooks && !bibleCounts.containsKey(r.getBook()))
+					continue;
 				int[] cCounts = vsCounts.computeIfAbsent(r.getBook(), x -> new int[2]);
 				if (foundChapters.add(r.getBook().name() + " " + r.getChapter()))
 					cCounts[0]++;

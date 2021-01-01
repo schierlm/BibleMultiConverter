@@ -12,7 +12,7 @@ public class VersificationDetector extends AbstractVersificationDetector {
 	public static final String[] HELP_TEXT = {
 			"Detect what versification most closely matches a module",
 			"",
-			"Usage: VersificationDetector <dbfile> [-range|-title] [-ignoreheadlines] [-xref]",
+			"Usage: VersificationDetector <dbfile> [-range|-title] [-ignoreheadlines] [-xref] [-limitBooks]",
 	};
 
 	private boolean useRanges, titleAsVerseZero, ignoreHeadlines;
