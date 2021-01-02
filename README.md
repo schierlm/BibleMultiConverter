@@ -3,7 +3,7 @@ BibleMultiConverter
 
 Converter written in Java to convert between different Bible program formats
 
-Copyright (c) 2007-2018 Michael Schierl
+Copyright (c) 2007-2021 Michael Schierl
 Licensed unter MIT License; for details, see the LICENSE file.
 
 Usage
