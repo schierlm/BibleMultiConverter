@@ -349,7 +349,17 @@ public class LogosHTML implements ExportFormat {
 			chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, null, null, null, usedHeadlines, null));
 			bw.write("\n<br/>\n");
 		}
-		for (VerseRange vr : chapter.createVerseRanges()) {
+		Chapter verseChapter = chapter;
+		if (!verseChapter.getVerses().isEmpty() && verseChapter.getVerses().get(0).getNumber().equals("1/t") && thisChapterVerses.get(1000)) {
+			verseChapter = new Chapter();
+			verseChapter.getVerses().addAll(chapter.getVerses());
+			Verse v1 = verseChapter.getVerses().remove(0);
+			Verse v0 = new Verse("1000");
+			v1.accept(v0.getAppendVisitor());
+			v0.finished();
+			verseChapter.getVerses().add(0, v0);
+		}
+		for (VerseRange vr : verseChapter.createVerseRanges()) {
 			String versePrefix = "", versePrefixBeforeHeadline = "", versePrefixAfterHeadline = "";
 			if (writeChapterNumber) {
 				versePrefix = "<b style=\"font-size: 20pt\">[[" + chapterRef + "]]" + cname + "</b>" + verseSeparator;
@@ -389,6 +399,14 @@ public class LogosHTML implements ExportFormat {
 			for (Verse v : vr.getVerses()) {
 				bw.write(verseSeparator);
 				String verseNumber = "<b>" + v.getNumber() + "</b> ";
+				if (v.getNumber().equals("1/t")) {
+					verseNumber = "<b>" + NAMED_VERSES[0] + "</b> ";
+				} else if (v.getNumber().matches("1[0-4][0-9][0-9]")) {
+					int numVerse = Integer.parseInt(v.getNumber());
+					if (numVerse >= 1000 && numVerse < 1000 + NAMED_VERSES.length) {
+						verseNumber = "<b>" + NAMED_VERSES[numVerse - 1000] + "</b> ";
+					}
+				}
 				v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, versePrefix + verseNumber, versePrefixBeforeHeadline, versePrefixAfterHeadline + verseNumber, usedHeadlines, formatMilestone(milestone, "%c", "")));
 				versePrefix = "";
 				versePrefixBeforeHeadline = "";
