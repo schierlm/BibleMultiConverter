@@ -94,7 +94,7 @@ public class QuickBible implements ExportFormat {
 							h.accept(new QuickBibleVisitor(pericopeSection, true, false, "\n", null, null, null));
 						}
 						verseSection.append("verse\t" + bNumber + "\t" + cNumber + "\t" + vNumber + "\t");
-						boolean hasFormatting = false;
+						boolean hasFormatting = vv.getVerses().size() > 1;
 						for (Verse v : vv.getVerses()) {
 							if (!v.getNumber().equals("" + vv.getNumber()) || !v.getElementTypes(1).equals("t")) {
 								hasFormatting = true;
@@ -106,11 +106,13 @@ public class QuickBible implements ExportFormat {
 						StringBuilder verseBuilder = new StringBuilder();
 						List<StringBuilder> footnotes = new ArrayList<>();
 						List<List<StringBuilder>> footnoteXrefs = new ArrayList<>();
+						boolean firstVerse = true;
 						for (Verse v : vv.getVerses()) {
-							if (!v.getNumber().equals("" + vv.getNumber())) {
+							if (!firstVerse || !v.getNumber().equals("" + vv.getNumber())) {
 								verseBuilder.append(" @9(" + v.getNumber() + ")@7 ");
 							}
 							v.accept(new QuickBibleVisitor(verseBuilder, true, true, "", footnotes, footnoteXrefs, null));
+							firstVerse = false;
 						}
 						int xrefCounter = 0;
 						for (int i = 0; i < footnotes.size(); i++) {

@@ -69,11 +69,13 @@ public class SimpleJSON implements ExportFormat {
 						bw.write("\t{\"osisID\": {\"_value\": \"" +
 								json(bk.getId().getOsisID() + "." + ch + "." + vv.getNumber()) + "\"},\"vnumber\":" +
 								vv.getNumber() + ",\"_text\": \"");
+						boolean firstVerse = true;
 						for (Verse v : vv.getVerses()) {
-							if (!v.getNumber().equals("" + vv.getNumber())) {
+							if (!firstVerse || !v.getNumber().equals("" + vv.getNumber())) {
 								bw.write(" (" + v.getNumber() + ") ");
 							}
 							v.accept(sjv);
+							firstVerse = false;
 						}
 						bw.write("\"}");
 						first = false;

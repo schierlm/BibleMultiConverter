@@ -702,8 +702,9 @@ public class ZefaniaXML implements RoundtripFormat {
 					}
 					VERS vers = of.createVERS();
 					vers.setVnumber(BigInteger.valueOf(vv.getNumber()));
+					boolean firstVerse = true;
 					for (Verse v : vv.getVerses()) {
-						if (!v.getNumber().equals("" + vv.getNumber())) {
+						if (!firstVerse || !v.getNumber().equals("" + vv.getNumber())) {
 							STYLE verseNum = of.createSTYLE();
 							verseNum.setCss("font-weight: bold");
 							verseNum.getContent().add("(" + v.getNumber() + ")");
@@ -711,6 +712,7 @@ public class ZefaniaXML implements RoundtripFormat {
 							vers.getContent().add(" ");
 						}
 						v.accept(new CreateContentVisitor(of, vers.getContent(), vers));
+						firstVerse = false;
 					}
 					cc.getPROLOGOrCAPTIONOrVERS().add(vers);
 				}

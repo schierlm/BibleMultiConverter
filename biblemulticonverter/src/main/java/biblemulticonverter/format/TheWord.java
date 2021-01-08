@@ -323,12 +323,14 @@ public class TheWord implements RoundtripFormat {
 								twv.reset();
 								bw.write("<Ts>");
 							}
+							boolean firstVerse = true;
 							for (Verse v : vv.getVerses()) {
-								if (!v.getNumber().equals("" + vv.getNumber())) {
+								if (!firstVerse || !v.getNumber().equals("" + vv.getNumber())) {
 									bw.write(" (" + v.getNumber() + ")");
 								}
 								v.accept(twv);
 								twv.reset();
+								firstVerse = false;
 							}
 							bw.write("\r\n");
 							nextVerse++;

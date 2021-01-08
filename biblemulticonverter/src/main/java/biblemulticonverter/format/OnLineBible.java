@@ -169,11 +169,13 @@ public class OnLineBible implements ExportFormat {
 										h.accept(new OnLineBibleVisitor(text, includeStrongs));
 										text.append("\\$} ");
 									}
+									boolean firstVerse = true;
 									for (Verse v : vv.getVerses()) {
-										if (!v.getNumber().equals("" + vv.getNumber())) {
+										if (!firstVerse || !v.getNumber().equals("" + vv.getNumber())) {
 											text.append("\\\\(" + v.getNumber() + ")\\\\ ");
 										}
 										v.accept(new OnLineBibleVisitor(text, includeStrongs));
+										firstVerse = false;
 									}
 								}
 							}

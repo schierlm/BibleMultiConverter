@@ -551,8 +551,9 @@ public class HaggaiXML implements RoundtripFormat {
 					}
 					VERSE vers = of.createVERSE();
 					vers.setVnumber(BigInteger.valueOf(vv.getNumber()));
+					boolean firstVerse = true;
 					for (Verse v : vv.getVerses()) {
-						if (!v.getNumber().equals("" + vv.getNumber())) {
+						if (!firstVerse || !v.getNumber().equals("" + vv.getNumber())) {
 							STYLE verseNum = of.createSTYLE();
 							verseNum.setFs(TStyleFix.BOLD);
 							verseNum.getContent().add("(" + v.getNumber() + ")");
@@ -560,6 +561,7 @@ public class HaggaiXML implements RoundtripFormat {
 							vers.getContent().add(" ");
 						}
 						v.accept(new CreateContentVisitor(of, vers.getContent(), vers));
+						firstVerse = false;
 					}
 					cc.getCAPTIONOrPARAGRAPHOrVERSE().add(new JAXBElement<VERSE>(new QName("VERSE"), VERSE.class, vers));
 				}

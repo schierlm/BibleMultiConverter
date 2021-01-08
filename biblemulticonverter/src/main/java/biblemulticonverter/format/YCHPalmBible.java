@@ -134,11 +134,13 @@ public class YCHPalmBible implements RoundtripFormat {
 						}
 						if (needVersText)
 							bw.write("<VERSTEXT>");
+						boolean firstVerse = true;
 						for (Verse vv : v.getVerses()) {
-							if (!vv.getNumber().equals("" + v.getNumber())) {
+							if (!firstVerse || !vv.getNumber().equals("" + v.getNumber())) {
 								bw.write("{" + vv.getNumber() + "} ");
 							}
 							vv.accept(contentVisitor);
+							firstVerse = false;
 						}
 						bw.write("</VERSE>");
 						verse++;

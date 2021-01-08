@@ -164,11 +164,13 @@ public class BibleAnalyzerFormattedText implements ExportFormat {
 				handleProlog(info.abbr, cnumber, chapter.getProlog());
 				for (VirtualVerse vv : chapter.createVirtualVerses()) {
 					Writer[] vw = startVerse(w, info.abbr, cnumber, vv);
+					boolean firstVerse = true;
 					for (Verse v : vv.getVerses()) {
-						if (!v.getNumber().equals("" + vv.getNumber())) {
+						if (!firstVerse || !v.getNumber().equals("" + vv.getNumber())) {
 							vw[0].append(" <b>(" + v.getNumber() + ")</b> ");
 						}
 						v.accept(new BibleAnalyzerVisitor(vw[0], vw[1], nextFootnote, book.getId().isNT(), "", hasStrongs, hasRMAC));
+						firstVerse = false;
 					}
 					finishVerse(vw);
 				}

@@ -188,11 +188,13 @@ public class EquipdEPUB implements ExportFormat {
 				sw.write("<a id=\"c" + cnum + "_v" + vv.getNumber() + "\"></a>");
 			}
 			sw.write("<span class=\"vn\">" + vv.getNumber() + "</span> ");
+			boolean firstVerse = true;
 			for (Verse v : vv.getVerses()) {
-				if (!v.getNumber().equals("" + vv.getNumber())) {
+				if (!firstVerse || !v.getNumber().equals("" + vv.getNumber())) {
 					sw.write(" <b>(" + v.getNumber() + ")</b> ");
 				}
 				v.accept(new EquipdVisitor(sw, "", unsupportedFeatures, " in verse", footnoteWriter, footnoteCounter, book.getId().isNT()));
+				firstVerse = false;
 			}
 		}
 		closeParagraph(sw);

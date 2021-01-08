@@ -945,14 +945,16 @@ public class OSIS implements RoundtripFormat {
 					Element verse = doc.createElement("verse");
 					chapter.appendChild(verse);
 					verse.setAttribute("osisID", osisID);
+					boolean firstVerse = true;
 					for (Verse v : vv.getVerses()) {
-						if (!v.getNumber().equals("" + vv.getNumber())) {
+						if (!firstVerse || !v.getNumber().equals("" + vv.getNumber())) {
 							elem = doc.createElement("hi");
 							verse.appendChild(elem);
 							elem.setAttribute("type", "bold");
 							elem.appendChild(doc.createTextNode("(" + v.getNumber() + ")"));
 						}
 						v.accept(new OSISVisitor(verse, bk.getId().isNT()));
+						firstVerse = false;
 					}
 				}
 			}

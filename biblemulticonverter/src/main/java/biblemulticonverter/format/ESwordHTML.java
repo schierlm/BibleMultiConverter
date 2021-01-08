@@ -203,8 +203,9 @@ public class ESwordHTML implements ExportFormat {
 							hl.accept(new ESwordVisitor(parsedVerse, marker, book.getId().isNT(), "", "", null, null));
 							parsedVerse.append("</b><br />");
 						}
+						boolean firstVerse = true;
 						for (Verse v : vv.getVerses()) {
-							if (!v.getNumber().equals("" + vnumber)) {
+							if (!firstVerse || !v.getNumber().equals("" + vnumber)) {
 								parsedVerse.append("<b>(" + v.getNumber() + ")</b>");
 							}
 							StringBuilder comments = new StringBuilder();
@@ -216,6 +217,7 @@ public class ESwordHTML implements ExportFormat {
 							v.accept(new ESwordVisitor(comments, marker, book.getId().isNT(), "<b>", "</b>", "", ""));
 							if (comments.toString().contains("<!--keep-->"))
 								parsedCommentary.append(comments.toString());
+							firstVerse = false;
 						}
 						if (parsedVerse.length() == 0)
 							parsedVerse.append("-");
