@@ -345,6 +345,7 @@ public class LogosHTML implements ExportFormat {
 			}
 		}
 		footnoteNumber = 0;
+		String[] verseNumbersToSkip = System.getProperty("biblemulticonverter.logos.skipversenumbers", "").split(",");
 		if (chapter.getProlog() != null) {
 			chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, null, null, null, usedHeadlines, null));
 			bw.write("\n<br/>\n");
@@ -405,6 +406,12 @@ public class LogosHTML implements ExportFormat {
 					int numVerse = Integer.parseInt(v.getNumber());
 					if (numVerse >= 1000 && numVerse < 1000 + NAMED_VERSES.length) {
 						verseNumber = "<b>" + NAMED_VERSES[numVerse - 1000] + "</b> ";
+					}
+				}
+				for (String skipped : verseNumbersToSkip) {
+					if (verseNumber.equalsIgnoreCase("<b>" + skipped + "</b> ")) {
+						verseNumber = "";
+						break;
 					}
 				}
 				v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, versePrefix + verseNumber, versePrefixBeforeHeadline, versePrefixAfterHeadline + verseNumber, usedHeadlines, formatMilestone(milestone, "%c", "")));
