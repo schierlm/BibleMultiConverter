@@ -44,7 +44,7 @@ public class LogosHTML implements ExportFormat {
 	public static final String[] HELP_TEXT = {
 			"HTML Export format for Logos Bible Software",
 			"",
-			"Usage: LogosHTML <outfile> [<versemap> [<template> [-inline|-nochapter]]]",
+			"Usage: LogosHTML <outfile> [<versemap> [<template> [-inline|-nochapter] [-notitle]]]",
 			"",
 			"Open the resulting HTML file in LibreOffice 4.4 (as Writer, not as Writer/Web), and",
 			"save as MS Office 2007 .docx format. The resulting file can be imported in Logos",
@@ -53,7 +53,8 @@ public class LogosHTML implements ExportFormat {
 			"Use a template in case you want to add a header text (like copyright) automatically.",
 			"Use the -inline option to add more than one verse on the same line, or the -nochapter",
 			"option to additionally not write headlines for chapters (if the book has a different",
-			"headline structure). In that case you can give the template as '-' to use none."
+			"headline structure). The -notitle option will omit the title headline, and shift all other",
+			"headlines up by one level. In these cases you can give the template as '-' to use none."
 	};
 
 	private static Map<BookID, String> LOGOS_BOOKS = new EnumMap<>(BookID.class);
@@ -219,7 +220,8 @@ public class LogosHTML implements ExportFormat {
 		String title = bible.getName();
 		String verseSeparator = "<br />";
 		lineSeparator = "<br />";
-		boolean noChapterHeadings = false;
+		int bookHeadlineLevel = 2;
+		boolean noChapterHeadings = false, noTitle = false;
 		if (exportArgs.length > 3 && exportArgs[3].equals("-inline")) {
 			verseSeparator = " ";
 			lineSeparator = "<br />&nbsp;&nbsp;&nbsp;&nbsp; ";
@@ -227,6 +229,10 @@ public class LogosHTML implements ExportFormat {
 			verseSeparator = " ";
 			lineSeparator = "<br />&nbsp;&nbsp;&nbsp;&nbsp; ";
 			noChapterHeadings = true;
+		}
+		if ((exportArgs.length > 3 && exportArgs[3].equals("-notitle")) || (exportArgs.length > 4 && exportArgs[4].equals("-notitle"))) {
+			noTitle = true;
+			bookHeadlineLevel = 1;
 		}
 		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(exportArgs[0])), StandardCharsets.UTF_8))) {
 			bw.write("<html><head>\n" +
@@ -261,7 +267,7 @@ public class LogosHTML implements ExportFormat {
 						template = template.replace("${" + key + "}", mb.getValue(key));
 				}
 				bw.write(template);
-			} else {
+			} else if (!noTitle) {
 				bw.write("<h1>" + title.replace("&", "&amp").replace("<", "&lt;").replace(">", "&gt;") + "</h1>\n");
 			}
 
@@ -281,7 +287,7 @@ public class LogosHTML implements ExportFormat {
 					Chapter chapter = book.getChapters().get(0);
 					if (chapter.getVerses().size() == 0 && chapter.getProlog() != null) {
 						// prolog only book
-						bw.write("<h2>");
+						bw.write("<h" + bookHeadlineLevel + ">");
 						if (book.getId() == BookID.DICTIONARY_ENTRY) {
 							if (bible.getName().toUpperCase().contains("STRONG") && book.getShortName().matches("[GH][1-9][0-9]*")) {
 								bw.write("[[@" + (book.getShortName().startsWith("G") ? "Greek" : "Hebrew") + "Strongs:" + book.getShortName() + "]]");
@@ -295,7 +301,7 @@ public class LogosHTML implements ExportFormat {
 								}
 							}
 						}
-						bw.write(book.getLongName() + "</h2>\n");
+						bw.write(book.getLongName() + "</h" + bookHeadlineLevel + ">\n");
 						footnoteNumber = 0;
 						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, versemap, scheme, null, null, null, 2, null));
 						bw.write("\n<br/>\n");
@@ -306,7 +312,7 @@ public class LogosHTML implements ExportFormat {
 					System.out.println("WARNING: Skipping book " + book.getId());
 					continue;
 				}
-				bw.write("<h2>[[@" + formatMilestone(milestone, "", "") + "]]" + book.getLongName() + " (" + book.getAbbr() + ")</h2>\n");
+				bw.write("<h" + bookHeadlineLevel + ">[[@" + formatMilestone(milestone, "", "") + "]]" + book.getLongName() + " (" + book.getAbbr() + ")</h" + bookHeadlineLevel + ">\n");
 				int cnumber = 0;
 				for (Chapter chapter : book.getChapters()) {
 					cnumber++;
@@ -321,10 +327,10 @@ public class LogosHTML implements ExportFormat {
 							vv.finished();
 							prologue.getVerses().add(vv);
 						}
-						exportChapter(milestone, "Prologue", prologue, versemap, scheme, verseSeparator, noChapterHeadings, bw, footnotes, book, chapterVerses, prologueVerses);
+						exportChapter(milestone, "Prologue", prologue, versemap, scheme, verseSeparator, bookHeadlineLevel, noChapterHeadings, bw, footnotes, book, chapterVerses, prologueVerses);
 					}
 					BitSet thisChapterVerses = chapterVerses != null && cnumber <= chapterVerses.length ? chapterVerses[cnumber - 1] : null;
-					exportChapter(milestone, "" + cnumber, chapter, versemap, scheme, verseSeparator, noChapterHeadings, bw, footnotes, book, chapterVerses, thisChapterVerses);
+					exportChapter(milestone, "" + cnumber, chapter, versemap, scheme, verseSeparator, bookHeadlineLevel, noChapterHeadings, bw, footnotes, book, chapterVerses, thisChapterVerses);
 				}
 			}
 			bw.write(footnotes.toString());
@@ -332,16 +338,16 @@ public class LogosHTML implements ExportFormat {
 		}
 	}
 
-	protected void exportChapter(String milestone, String cname, Chapter chapter, String versemap, VersificationScheme scheme, String verseSeparator, boolean noChapterHeadings, BufferedWriter bw, StringWriter footnotes, Book book, BitSet[] chapterVerses, BitSet thisChapterVerses) throws IOException {
+	protected void exportChapter(String milestone, String cname, Chapter chapter, String versemap, VersificationScheme scheme, String verseSeparator, int bookHeadlineLevel, boolean noChapterHeadings, BufferedWriter bw, StringWriter footnotes, Book book, BitSet[] chapterVerses, BitSet thisChapterVerses) throws IOException {
 		String chapterRef = "@" + formatMilestone(milestone, cname, "");
 		boolean writeChapterNumber = false;
-		int usedHeadlines = 2;
+		int usedHeadlines = bookHeadlineLevel;
 		if (book.getChapters().size() > 1) {
 			if (noChapterHeadings) {
 				writeChapterNumber = true;
 			} else {
-				usedHeadlines = 3;
-				bw.write("<h3>[[" + chapterRef + "]]{{~ " + book.getAbbr() + " " + cname + " }}</h3>\n");
+				usedHeadlines++;
+				bw.write("<h" + usedHeadlines + ">[[" + chapterRef + "]]{{~ " + book.getAbbr() + " " + cname + " }}</h" + usedHeadlines + ">\n");
 			}
 		}
 		footnoteNumber = 0;
