@@ -415,9 +415,17 @@ public class USFM extends AbstractParatextFormat {
 
 		@Override
 		public ParatextCharacterContentVisitor<IOException> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws IOException {
-			if (context.needSpace)
+			if (context.needSpace) {
 				bw.write(" ");
-			bw.write("\\" + kind.getTag() + " " + caller);
+			}
+			final String normalizedCaller;
+			if(caller == null) {
+				context.logger.logFootnoteCallerMissingWarning('+');
+				normalizedCaller = "+";
+			} else {
+				normalizedCaller = caller;
+			}
+			bw.write("\\" + kind.getTag() + " " + normalizedCaller);
 			context.needSpace = true;
 			pushSuffix(kind.getTag());
 			return this;

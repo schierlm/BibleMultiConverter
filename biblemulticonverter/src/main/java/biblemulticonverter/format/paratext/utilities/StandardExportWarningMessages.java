@@ -79,6 +79,14 @@ public class StandardExportWarningMessages {
 	 */
 	public void logVerseNumberDowngrade(String originalVerseNumber, String downgradedVerseNumber) {
 		System.out.println("WARNING: Verse number `" + originalVerseNumber + "` cannot be represented in " +
-				targetFormat + ", and has been replaced with " + downgradedVerseNumber + "`.");
+				targetFormat + ", and has been replaced with `" + downgradedVerseNumber + "`.");
+	}
+
+	/**
+	 * Log a message to indicate that a specific footnote caller was missing.
+	 */
+	public void logFootnoteCallerMissingWarning(char replacement) {
+		System.out.println("WARNING: Footnote caller was not found but must be present to export to " +
+				targetFormat + ", therefore it has been filled-in with `" + replacement + "`.");
 	}
 }
