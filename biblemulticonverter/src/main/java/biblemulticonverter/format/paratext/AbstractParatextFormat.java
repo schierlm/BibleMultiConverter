@@ -367,24 +367,18 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			// 5/7
 			// 5/7/9
 			// 5.6G
-			Matcher matcher = Pattern.compile("([1-9][0-9a-zG]*)(?:([,/.-])([1-9][0-9a-zG]*))?.*").matcher(internalNumber);
+			Matcher matcher = Pattern.compile("([1-9][0-9a-zG]*)(?:-([1-9][0-9a-zG]*))?.*").matcher(internalNumber);
 			if (matcher.matches()) {
 				if (matcher.group(2) == null) {
-					// Nothing after group 1, assume a single verse number
+					// - Nothing after group 1, assume a single verse number
+					// - Something found after group 1 which does not start with a dash.
+					//   Since we cannot represent those in Paratext, use the first verse number only
 					String paratextVerseNumber = matcher.group(1).replaceAll("G", "");
-					warningLogger.logVerseNumberDowngrade(internalNumber, paratextVerseNumber);
-					return paratextVerseNumber;
-				} else if(matcher.group(2).equals("-")) {
-					// Something found after group 1 with a dash, assume a verse range
-					// If group 2 is available, group 3 will also always be available.
-					String paratextVerseNumber = (matcher.group(1) + "-" + matcher.group(3)).replaceAll("G", "");
 					warningLogger.logVerseNumberDowngrade(internalNumber, paratextVerseNumber);
 					return paratextVerseNumber;
 				} else {
-					// Something found after group 1 with either a slash, dot, or comma. Since we cannot represent those
-					// in Paratext use the first verse number only.
-					// Nothing after group 1, assume a single verse number
-					String paratextVerseNumber = matcher.group(1).replaceAll("G", "");
+					// Something found after group 1 with a dash, assume a verse range
+					String paratextVerseNumber = (matcher.group(1) + "-" + matcher.group(2)).replaceAll("G", "");
 					warningLogger.logVerseNumberDowngrade(internalNumber, paratextVerseNumber);
 					return paratextVerseNumber;
 				}
