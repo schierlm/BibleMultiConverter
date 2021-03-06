@@ -59,7 +59,8 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<RoundtripFormat>("Accordance", "Bible format for Accordance", Accordance.HELP_TEXT, Accordance.class));
 		result.add(new Module<RoundtripFormat>("USFM", "Bible format used by Paratext", USFM.HELP_TEXT, USFM.class));
 		result.add(new Module<RoundtripFormat>("USFX", "XML Bible format based on USFM used by ebible.org", USFX.HELP_TEXT, USFX.class));
-		result.add(new Module<RoundtripFormat>("USX", "XML Bible format used by Paratext and the Digital Bible Library", USX.HELP_TEXT, USX.class));
+		result.add(new Module<RoundtripFormat>("USX", "XML Bible format used by Paratext and the Digital Bible Library (version 2)", USX.HELP_TEXT, USX.class));
+		result.add(new Module<RoundtripFormat>("USX3", "XML Bible format used by Paratext and the Digital Bible Library (version 3)", USX3.HELP_TEXT, USX3.class));
 		result.add(new Module<RoundtripFormat>("ParatextDump", "Dump a Paratext bible to diffable plain text", ParatextDump.HELP_TEXT, ParatextDump.class));
 		result.add(new Module<RoundtripFormat>("RoundtripODT", "ODT export and re-import", RoundtripODT.HELP_TEXT, RoundtripODT.class));
 		result.add(new Module<RoundtripFormat>("BibleWorks", "Plain text import and export format for BibleWorks", BibleWorks.HELP_TEXT, BibleWorks.class));
