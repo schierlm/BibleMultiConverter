@@ -18,13 +18,17 @@ public class ParatextConverter implements Tool {
 			"",
 			"Usage: ParatextConverter <ImportFormat> <ImportFile> <ExportFormat> [<ExportArgs>...]",
 			"",
-			"You can use this tool to convert between Paratext formats (USFM/USFX/USX) without",
+			"You can use this tool to convert between Paratext formats (USFM 2, USX 2, USX 3) and USFX without",
 			"losing information. Unlike the normal converter, which converts everything to",
 			"BibleMultiConverter's internal XML format, this will only parse the input file to",
 			"a paratext AST and then write it out in the other format again.",
 			"",
 			"Use the option -Dbiblemulticonverter.paratext.keepparts option (supported values are",
-			"OT, NT and DC; separate multiple values by comma) to remove conditional parts."
+			"OT, NT and DC; separate multiple values by comma) to remove conditional parts.",
+			"",
+			"Use the option -Dbiblemulticonverter.paratext.usfm.preserveSpacesAtEndOfLines to keep",
+			"single spaces at the end of lines when importing from USFM (sometimes these spaces are",
+			"significant). Supported values are true and false (defaults to false)."
 	};
 
 	@Override
