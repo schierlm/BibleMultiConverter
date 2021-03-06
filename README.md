@@ -83,18 +83,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[SoftProjector](https://softprojector.org/)**: import and export
 - **Paratext:**
   - **[USFM 2](https://markups.paratext.org/usfm/)**: import and export
-  - **[USX 2](https://markups.paratext.org/usx/)**: import and export
-  - **[USX 3](https://markups.paratext.org/usx/)**: import and export
-  - For both USFM/USX most tags are supported, not supported are `ca cp va vp fig fm`.
-  - Not all verse number formats are supported by Paratext, the following conversions can occur
-    when converting from a non Paratext format to a Paratext format (warnings will be generated shown
-    when these occur):
-    - 11/13 becomes 11
-    - 4.6.9 becomes 4
-    - 2G becomes 2
-    - 10/12G becomes 10
-    - 1-4.7 becomes 1-4
-    - 1.4-7 becomes 1
+  - **[USX 2/USX 3](https://markups.paratext.org/usx/)**: import and export
 - **[USFX](https://ebible.org/usfx/)**: import only
 
 In combination with third party tools, other export formats are available:
@@ -274,6 +263,22 @@ by a slash, and use this as the filename.
 In case you do not have a SWORD module directory locally, you can use the **SWORDDownloader**
 tool to download some bibles from a SWORD http repository into a new module directory.
 
+
+Paratext formats (USFM/USX)
+---------------------------
+
+For both USFM/USX most tags are supported, not supported are `ca cp va vp fig fm`.
+
+Not all verse number formats are supported by Paratext, the following conversions can occur
+when converting from a non Paratext format to a Paratext format (warnings will be shown
+when these occur):
+
+    - 11/13 becomes 11
+    - 4.6.9 becomes 4
+    - 2G becomes 2
+    - 10/12G becomes 10
+    - 1-4.7 becomes 1-4
+    - 1.4-7 becomes 1
 
 E-Sword export
 --------------
