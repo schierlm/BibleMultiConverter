@@ -66,7 +66,7 @@ public class USFM extends AbstractParatextFormat {
 	private final boolean preserveSpacesAtEndOfLines;
 
 	public USFM() {
-		this(Boolean.parseBoolean(System.getProperty("biblemulticonverter.paratext.usfm.preserveSpacesAtEndOfLines")));
+		this(Boolean.getBoolean("biblemulticonverter.paratext.usfm.preserveSpacesAtEndOfLines"));
 	}
 
 	/**

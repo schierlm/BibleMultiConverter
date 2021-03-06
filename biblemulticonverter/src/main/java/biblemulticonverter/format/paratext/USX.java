@@ -458,6 +458,8 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 
 		@Override
 		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
+			if (!target.isEmpty() && verseSeparatorText != null)
+				target.add(verseSeparatorText);
 			Verse verse = new Verse();
 			verse.setStyle("v");
 			verse.setNumber(verseNumber);

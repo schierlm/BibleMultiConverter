@@ -12,6 +12,7 @@ public abstract class AbstractUSXFormat<ParaStyle extends Enum<ParaStyle>, CharS
 	protected Map<ParaStyle, ParatextBook.ParagraphKind> PARA_STYLE_MAP;
 	protected Set<ParaStyle> PARA_STYLE_UNSUPPORTED;
 	private final StyleWrapper<ParaStyle> paraStyleWrapper;
+	protected String verseSeparatorText = System.getProperty("biblemulticonverter.paratext.usx.verseseparatortext");
 
 	protected Map<ParatextCharacterContent.AutoClosingFormattingKind, CharStyle> CHAR_KIND_MAP = new EnumMap<>(ParatextCharacterContent.AutoClosingFormattingKind.class);
 	protected Map<CharStyle, ParatextCharacterContent.AutoClosingFormattingKind> CHAR_STYLE_MAP;
