@@ -28,6 +28,8 @@ public class AbstractParatextFormatTest {
 				.addVerse("2G").endVerse()
 				.addVerse("13-15a").endVerse()
 				.addVerse("10/12G").endVerse()
+				.addVerse("1-4.7").endVerse()
+				.addVerse("1.4-7").endVerse()
 				.create();
 
 		final ParatextBook paratextBook = new TestParatextFormat().exportToParatextBook(book, "test");
@@ -39,6 +41,8 @@ public class AbstractParatextFormatTest {
 		assertEquals("2", actualVerses.get(3).getVerseNumber());
 		assertEquals("13-15a", actualVerses.get(4).getVerseNumber());
 		assertEquals("10", actualVerses.get(5).getVerseNumber());
+		assertEquals("1-4", actualVerses.get(6).getVerseNumber());
+		assertEquals("1", actualVerses.get(7).getVerseNumber());
 	}
 
 	@Test

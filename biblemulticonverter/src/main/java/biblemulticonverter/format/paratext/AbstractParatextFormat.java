@@ -367,7 +367,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			// 5/7
 			// 5/7/9
 			// 5.6G
-			Matcher matcher = Pattern.compile("([1-9][0-9a-zG]*)(?:([,/.-])([1-9][0-9a-zG]*))*").matcher(internalNumber);
+			Matcher matcher = Pattern.compile("([1-9][0-9a-zG]*)(?:([,/.-])([1-9][0-9a-zG]*))?.*").matcher(internalNumber);
 			if (matcher.matches()) {
 				if (matcher.group(2) == null) {
 					// Nothing after group 1, assume a single verse number
