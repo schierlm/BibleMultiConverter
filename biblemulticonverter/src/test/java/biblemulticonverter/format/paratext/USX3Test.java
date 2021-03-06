@@ -1,7 +1,11 @@
 package biblemulticonverter.format.paratext;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.Iterator;
@@ -170,8 +174,19 @@ public class USX3Test {
 
 	private static File getResource(String path) {
 		try {
-			return new File(USX3Test.class.getResource(path).toURI());
-		} catch (URISyntaxException e) {
+			URI pathUri = USX3Test.class.getResource(path).toURI();
+			if (pathUri.getScheme().equals("file"))
+				return new File(pathUri);
+			File tempFile = createTempFile("input", path.substring(path.lastIndexOf('.')));
+			try (InputStream in = USX3Test.class.getResourceAsStream(path);
+					OutputStream out = new FileOutputStream(tempFile)) {
+				byte[] buf = new byte[4096];
+				int len;
+				while ((len = in.read(buf)) != -1)
+					out.write(buf, 0, len);
+			}
+			return tempFile;
+		} catch (URISyntaxException | IOException e) {
 			throw new RuntimeException(e);
 		}
 	}
