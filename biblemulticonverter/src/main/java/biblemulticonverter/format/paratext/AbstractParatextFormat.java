@@ -442,6 +442,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		private ParatextImportContext ctx;
 		private List<Visitor<RuntimeException>> visitorStack = new ArrayList<>();
+		private FootnoteXrefKind justOpenedFootnote = null;
 
 		public Visitor<RuntimeException> getCurrentVisitor() {
 			Visitor<RuntimeException> v = visitorStack.get(visitorStack.size() - 1);
@@ -455,6 +456,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		@Override
 		public void visitVerseStart(VerseIdentifier location, String verseNumber) {
+			justOpenedFootnote = null;
 			if (visitorStack.size() != 1) {
 				System.out.println("WARNING: Skipping verse number nested deeply in character markup");
 				return;
@@ -493,6 +495,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				System.out.println("WARNING: Skipping footnote/xref outside of verse/headline/prolog");
 				return null;
 			}
+			justOpenedFootnote = kind;
 			Visitor<RuntimeException> v = getCurrentVisitor().visitFootnote();
 			if (kind == FootnoteXrefKind.XREF)
 				v.visitText(FormattedText.XREF_MARKER);
@@ -550,9 +553,13 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				} else {
 					newVisitor = getCurrentVisitor().visitGrammarInformation(strongsPrefixes.toString().toCharArray(), strongsArray, rmacs.isEmpty() ? null : rmacs.toArray(new String[rmacs.size()]), null);
 				}
+			} else if (justOpenedFootnote != null && kind.equals(justOpenedFootnote.equals(FootnoteXrefKind.XREF) ? AutoClosingFormattingKind.XREF_TARGET_REFERENCES : AutoClosingFormattingKind.FOOTNOTE_TEXT)) {
+				// footnote consists of just text; skip the start tag
+				newVisitor = getCurrentVisitor();
 			} else {
 				newVisitor = getCurrentVisitor().visitCSSFormatting(kind.getCss());
 			}
+			justOpenedFootnote = null;
 			visitorStack.add(newVisitor);
 			return this;
 		}
@@ -563,6 +570,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				System.out.println("WARNING: Skipping text outside of verse/headline/prolog");
 				return;
 			}
+			justOpenedFootnote = null;
 			getCurrentVisitor().visitCrossReference(ctx.bookAbbrs.get(reference.getBook()), reference.getBook().getId(), reference.getFirstChapter(), reference.getFirstVerse(), reference.getLastChapter(), reference.getLastVerse()).visitText(reference.getContent());
 		}
 
@@ -572,6 +580,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				System.out.println("WARNING: Skipping text outside of verse/headline/prolog");
 				return;
 			}
+			justOpenedFootnote = null;
 			getCurrentVisitor().visitText(text);
 		}
 
@@ -731,6 +740,28 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				@Override
 				protected void beforeVisit() throws RuntimeException {
 					start = false;
+				}
+
+				@Override
+				public boolean visitEnd() throws RuntimeException {
+					ParatextExportVisitor next = (ParatextExportVisitor) getVisitor();
+					if (!next.getCharContent().getContent().isEmpty()) {
+						boolean isXref = footnote.getKind().equals(FootnoteXrefKind.XREF);
+						ParatextCharacterContentPart firstPart = next.getCharContent().getContent().get(0);
+						if (firstPart instanceof AutoClosingFormatting) {
+							if (((AutoClosingFormatting) firstPart).getKind().getTag().startsWith(isXref ? "x" : "f")) {
+								// we already have \f? or \x? tags, do not synthesize!
+								return super.visitEnd();
+							}
+						}
+						// wrap with \ft / \xt tag
+						AutoClosingFormattingKind kind = isXref ? AutoClosingFormattingKind.XREF_TARGET_REFERENCES : AutoClosingFormattingKind.FOOTNOTE_TEXT;
+						final AutoClosingFormatting formatting = new AutoClosingFormatting(kind, false);
+						formatting.getContent().addAll(next.getCharContent().getContent());
+						next.getCharContent().getContent().clear();
+						next.getCharContent().getContent().add(formatting);
+					}
+					return super.visitEnd();
 				}
 			};
 		}
