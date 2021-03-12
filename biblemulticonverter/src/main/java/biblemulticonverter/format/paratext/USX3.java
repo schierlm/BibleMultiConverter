@@ -23,74 +23,54 @@ import java.util.Set;
 
 import org.xml.sax.SAXException;
 
-import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
-import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
-import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
-import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisitor;
-import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
-import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXrefKind;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
-import biblemulticonverter.format.paratext.model.Version;
-import biblemulticonverter.format.paratext.utilities.ImportUtilities;
-import biblemulticonverter.format.paratext.utilities.StandardExportWarningMessages;
 import biblemulticonverter.format.paratext.utilities.UnifiedScriptureXMLWriter;
-import biblemulticonverter.schema.usx.Cell;
-import biblemulticonverter.schema.usx.CellAlign;
-import biblemulticonverter.schema.usx.CellStyle;
-import biblemulticonverter.schema.usx.Chapter;
-import biblemulticonverter.schema.usx.Char;
-import biblemulticonverter.schema.usx.CharStyle;
-import biblemulticonverter.schema.usx.Figure;
-import biblemulticonverter.schema.usx.Note;
-import biblemulticonverter.schema.usx.NoteStyle;
-import biblemulticonverter.schema.usx.ObjectFactory;
-import biblemulticonverter.schema.usx.Optbreak;
-import biblemulticonverter.schema.usx.Para;
-import biblemulticonverter.schema.usx.ParaStyle;
-import biblemulticonverter.schema.usx.Ref;
-import biblemulticonverter.schema.usx.Row;
-import biblemulticonverter.schema.usx.Sidebar;
-import biblemulticonverter.schema.usx.Table;
-import biblemulticonverter.schema.usx.Usx;
-import biblemulticonverter.schema.usx.Verse;
+import biblemulticonverter.schema.usx3.Cell;
+import biblemulticonverter.schema.usx3.CellAlign;
+import biblemulticonverter.schema.usx3.CellStyle;
+import biblemulticonverter.schema.usx3.Chapter;
+import biblemulticonverter.schema.usx3.Char;
+import biblemulticonverter.schema.usx3.CharStyle;
+import biblemulticonverter.schema.usx3.Figure;
+import biblemulticonverter.schema.usx3.Note;
+import biblemulticonverter.schema.usx3.NoteStyle;
+import biblemulticonverter.schema.usx3.ObjectFactory;
+import biblemulticonverter.schema.usx3.Optbreak;
+import biblemulticonverter.schema.usx3.Para;
+import biblemulticonverter.schema.usx3.ParaStyle;
+import biblemulticonverter.schema.usx3.Ref;
+import biblemulticonverter.schema.usx3.Row;
+import biblemulticonverter.schema.usx3.Sidebar;
+import biblemulticonverter.schema.usx3.Table;
+import biblemulticonverter.schema.usx3.Usx;
+import biblemulticonverter.schema.usx3.Verse;
 import biblemulticonverter.tools.ValidateXML;
 import biblemulticonverter.utilities.UnmarshallerLocationListener;
 
 /**
- * Importer and exporter for USX.
+ * Importer and exporter for USX3.
  */
-public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
+public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 
 	public static final String[] HELP_TEXT = {
-			"Version 2 of the XML Bible format used by Paratext and the Digital Bible Library",
+			"Version 3 of the XML Bible format used by Paratext and the Digital Bible Library",
 			"",
 			"Usage (export): USX <outdir> <filenamepattern>",
 			"",
-			"Point the importer to a directory that contains the .usx version 2 files.",
+			"Point the importer to a directory that contains the .usx version 3 files.",
 			"",
 			"When exporting, you need to give a file name pattern. You can use # for ",
 			"the book number and * for the book name."
 	};
 
-	private static final Set<AutoClosingFormattingKind> USX_2_AUTO_CLOSING_FORMATTING_KINDS = AutoClosingFormattingKind.allForVersion(Version.V2_2);
-	private static final Set<ParagraphKind> USX_2_PARAGRAPH_KINDS = ParagraphKind.allForVersion(Version.V2_2);
+	private Map<NoteStyle, ParatextCharacterContent.FootnoteXrefKind> NOTE_STYLE_MAP = new EnumMap<>(NoteStyle.class);
+	private Map<ParatextCharacterContent.FootnoteXrefKind, NoteStyle> NOTE_KIND_MAP = new EnumMap<>(ParatextCharacterContent.FootnoteXrefKind.class);
 
-	private Map<NoteStyle, FootnoteXrefKind> NOTE_STYLE_MAP = new EnumMap<>(NoteStyle.class);
-	private Map<FootnoteXrefKind, NoteStyle> NOTE_KIND_MAP = new EnumMap<>(FootnoteXrefKind.class);
-
-	private final StandardExportWarningMessages logger = new StandardExportWarningMessages("USX 2");
 	private UnmarshallerLocationListener unmarshallerLocationListener = new UnmarshallerLocationListener();
 
-	public USX() {
-		super("USX 2", new ParaStyleWrapper(), new CharStyleWrapper());
+	public USX3() {
+		super("USX 3", new ParaStyleWrapper(), new CharStyleWrapper());
 		prepareNoteMaps();
 	}
 
@@ -107,11 +87,8 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 
 	@Override
 	protected void setupCustomParaMappings() {
-		// These mappings are for markers that are known in the schema but without the right "number", and therefore mapped
-		// to the closest number that is known.
-		// TODO maybe it is better to add them to the schema, the tags are valid, it is just that the numbers are not
-		// known and this behaviour does not happen in the USFM export, since it does not use a schema it will just
-		// export these ParagraphKinds.
+		// See: USX.setupCustomParaMappings()
+
 		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_SECTION_3, ParaStyle.IS_2);
 		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_SECTION_4, ParaStyle.IS_2);
 		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.INTRO_SECTION_5, ParaStyle.IS_2);
@@ -131,27 +108,12 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_PI4, ParaStyle.PI_3);
 		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_QM4, ParaStyle.QM_3);
 
-		// This one is a bit weird, see: https://github.com/ubsicap/usx/issues/48
-		// According to documentation the use of Paragraph style `ph#` is strongly discouraged, it is not deprecated
-		// or removed. However it is not part of the USX 2 schema, which is a bit weird. For now we do the recommended
-		// thing and map this one to the recommended alternative: `li#`
-		// https://ubsicap.github.io/usx/v2.5/parastyles.html#usx-parastyle-ph
+		// See: USX.setupCustomParaMappings() and https://ubsicap.github.io/usx/v3.0.0/parastyles.html#ph
 		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_HANGING, ParaStyle.LI);
 		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_HANGING1, ParaStyle.LI_1);
 		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_HANGING2, ParaStyle.LI_2);
 		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_HANGING3, ParaStyle.LI_3);
 		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_HANGING4, ParaStyle.LI_4);
-
-		// The Paragraph style `pr` was deprecated in USX 2, however restored in V3. It was never fully removed, however
-		// it is not part of the USX 2 schema, the recommended alternative is PRM.
-		// https://ubsicap.github.io/usx/v2.5/parastyles.html#usx-parastyle-pr
-		// TODO instead add the `pr` style to the USX 2 schema?
-		PARA_KIND_MAP.put(ParatextBook.ParagraphKind.PARAGRAPH_RIGHT, ParaStyle.PMR);
-	}
-
-	private static class ImportContext {
-		VerseStart openVerse = null;
-		ChapterStart openChapter = null;
 	}
 
 	@Override
@@ -169,15 +131,13 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		Usx doc = (Usx) u.unmarshal(xsr);
 		xsr.close();
 
-		ParatextID id = ParatextID.fromIdentifier(doc.getBook().getCode().toUpperCase());
+		ParatextBook.ParatextID id = ParatextBook.ParatextID.fromIdentifier(doc.getBook().getCode().toUpperCase());
 		if (id == null) {
 			System.out.println("WARNING: Skipping book with unknown ID: " + doc.getBook().getCode());
 			return null;
 		}
-
 		ParatextBook result = new ParatextBook(id, doc.getBook().getContent());
 		ParatextCharacterContent charContent = null;
-		ImportContext context = new ImportContext();
 		for (Object o : doc.getParaOrTableOrChapter()) {
 			if (o instanceof Para) {
 				Para para = (Para) o;
@@ -197,37 +157,36 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 						charContent = new ParatextCharacterContent();
 						result.getContent().add(charContent);
 					}
-					charContent.getContent().add(new AutoClosingFormatting(AutoClosingFormattingKind.PAGE_BREAK, false));
+					charContent.getContent().add(new ParatextCharacterContent.AutoClosingFormatting(ParatextCharacterContent.AutoClosingFormattingKind.PAGE_BREAK, false));
 				} else if (PARA_STYLE_UNSUPPORTED.contains(para.getStyle())) {
 					// skip
 					charContent = null;
 				} else {
-					result.getContent().add(new ParagraphStart(PARA_STYLE_MAP.get(para.getStyle())));
+					result.getContent().add(new ParatextBook.ParagraphStart(PARA_STYLE_MAP.get(para.getStyle())));
 					charContent = null;
 					if (!para.getContent().isEmpty()) {
 						charContent = new ParatextCharacterContent();
 						result.getContent().add(charContent);
-						parseCharContent(para.getContent(), charContent, result, context);
+						parseCharContent(para.getContent(), charContent);
 					}
 				}
 			} else if (o instanceof Table) {
 				Table table = (Table) o;
 				for (Row row : table.getRow()) {
-					result.getContent().add(new ParagraphStart(ParagraphKind.TABLE_ROW));
+					result.getContent().add(new ParatextBook.ParagraphStart(ParatextBook.ParagraphKind.TABLE_ROW));
 					for (Object oo : row.getVerseOrCell()) {
 						if (oo instanceof Verse) {
-							ImportUtilities.closeOpenVerse(result, context.openVerse);
-
-							context.openVerse = handleVerse(result, (Verse) oo);
+							Verse verse = (Verse) oo;
+							ParatextCharacterContent.ParatextCharacterContentPart verseStartOrEnd = handleVerse(verse);
 							charContent = new ParatextCharacterContent();
 							result.getContent().add(charContent);
-							charContent.getContent().add(context.openVerse);
+							charContent.getContent().add(verseStartOrEnd);
 						} else if (oo instanceof Cell) {
 							Cell cell = (Cell) oo;
 							result.getContent().add(new ParatextBook.TableCellStart(cell.getStyle().value()));
 							charContent = new ParatextCharacterContent();
 							result.getContent().add(charContent);
-							parseCharContent(cell.getContent(), charContent, result, context);
+							parseCharContent(cell.getContent(), charContent);
 						} else {
 							throw new IOException("Unsupported table row element: " + o.getClass().getName());
 						}
@@ -235,18 +194,20 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				}
 				charContent = null;
 			} else if (o instanceof Chapter) {
-				ImportUtilities.closeOpenVerse(result, context.openVerse);
-				context.openVerse = null;
-
-				// There is not really a good way to accurately determine where the end of a chapter should be placed
-				// based on USX 2 content. Maybe a title above this chapter marker was already intended to be part of
-				// this chapter. This is basically a best guess. This should not really matter when converting from
-				// USX 2 to USFM 2 or USFX (which is based on USFM 2), however when up-converting to USX 3 or USFM 3
-				// this might lead to unexpected results.
-				ImportUtilities.closeOpenChapter(result, context.openChapter);
-
-				context.openChapter = new ChapterStart(new ChapterIdentifier(result.getId(), ((Chapter) o).getNumber().intValue()));
-				result.getContent().add(context.openChapter);
+				Chapter chapter = (Chapter) o;
+				if (chapter.getSid() != null) {
+					// Assume start chapter
+					result.getContent().add(new ParatextBook.ChapterStart(new ChapterIdentifier(result.getId(), ((Chapter) o).getNumber().intValue())));
+				} else if (chapter.getEid() != null) {
+					// Assume end chapter
+					ChapterIdentifier location = ChapterIdentifier.fromLocationString(chapter.getEid());
+					if (location == null) {
+						throw new IOException("Invalid chapter eid found: " + chapter.getEid());
+					}
+					result.getContent().add(new ParatextBook.ChapterEnd(location));
+				} else {
+					throw new IOException("Invalid chapter found, both sid and eid are undefined: " + chapter);
+				}
 				charContent = null;
 			} else if (o instanceof Note) {
 				if (charContent == null) {
@@ -254,9 +215,9 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 					result.getContent().add(charContent);
 				}
 				Note note = (Note) o;
-				FootnoteXref nx = new FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller());
+				ParatextCharacterContent.FootnoteXref nx = new ParatextCharacterContent.FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller());
 				charContent.getContent().add(nx);
-				parseCharContent(note.getContent(), nx, result, context);
+				parseCharContent(note.getContent(), nx);
 			} else if (o instanceof Sidebar) {
 				System.out.println("WARNING: Skipping sidebar (study bible content)");
 				charContent = null;
@@ -264,12 +225,11 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				throw new IOException("Unsupported book level element: " + o.getClass().getName());
 			}
 		}
-		ImportUtilities.closeOpenVerse(result, context.openVerse);
-		ImportUtilities.closeOpenChapter(result, context.openChapter);
+
 		return result;
 	}
 
-	private void parseCharContent(List<Object> content, ParatextCharacterContentContainer container, ParatextBook result, ImportContext context) throws IOException {
+	private void parseCharContent(List<Object> content, ParatextBook.ParatextCharacterContentContainer container) throws IOException {
 		for (Object o : content) {
 			if (o instanceof Optbreak) {
 				// is ignored in USFM as well
@@ -296,47 +256,51 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 			} else if (o instanceof Char) {
 				Char chr = (Char) o;
 				if (CHAR_STYLE_UNSUPPORTED.contains(chr.getStyle())) {
-					parseCharContent(chr.getContent(), container, result, context);
+					parseCharContent(chr.getContent(), container);
 				} else {
-					AutoClosingFormatting f = new AutoClosingFormatting(CHAR_STYLE_MAP.get(chr.getStyle()), false);
+					ParatextCharacterContent.AutoClosingFormatting f = new ParatextCharacterContent.AutoClosingFormatting(CHAR_STYLE_MAP.get(chr.getStyle()), false);
 					String lemma = chr.getLemma();
-					if (f.getKind() == AutoClosingFormattingKind.WORDLIST && lemma != null && !lemma.isEmpty()) {
+					if (f.getKind() == ParatextCharacterContent.AutoClosingFormattingKind.WORDLIST && lemma != null && !lemma.isEmpty()) {
 						f.getAttributes().put("lemma", lemma);
 					}
 					container.getContent().add(f);
-					parseCharContent(chr.getContent(), f, result, context);
+					parseCharContent(chr.getContent(), f);
 				}
 			} else if (o instanceof Verse) {
-				ImportUtilities.closeOpenVerse(result, context.openVerse);
-				context.openVerse = handleVerse(result, (Verse) o);
-				container.getContent().add(context.openVerse);
+				container.getContent().add(handleVerse((Verse) o));
 			} else if (o instanceof Note) {
 				Note note = (Note) o;
-				FootnoteXref nx = new FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller());
+				ParatextCharacterContent.FootnoteXref nx = new ParatextCharacterContent.FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller());
 				container.getContent().add(nx);
-				parseCharContent(note.getContent(), nx, result, context);
+				parseCharContent(note.getContent(), nx);
 			} else {
 				throw new IOException("Unsupported character content element: " + o.getClass().getName());
 			}
 		}
 	}
 
-	private VerseStart handleVerse(ParatextBook result, Verse verse) throws IOException {
-		ChapterStart chapter = result.findLastBookContent(ChapterStart.class);
-		if (chapter == null) {
-			throw new IllegalStateException("Verse found before chapter start: " + verse.getNumber());
+	private ParatextCharacterContent.ParatextCharacterContentPart handleVerse(Verse verse) throws IOException {
+		try {
+			if (verse.getSid() != null) {
+				return new ParatextCharacterContent.VerseStart(
+						VerseIdentifier.fromStringOrThrow(verse.getSid()),
+						verse.getNumber());
+			} else if (verse.getEid() != null) {
+				return new ParatextCharacterContent.VerseEnd(
+						VerseIdentifier.fromStringOrThrow(verse.getEid()));
+			} else {
+				throw new IOException("Invalid verse found, both sid and eid are undefined: " + verse);
+			}
+		} catch (IllegalArgumentException e) {
+			throw new IOException(e);
 		}
-		// A verse number in USX 2 may be in the format 6-7, 6a or even 6-7a.
-		// Attempt to parse these numbers by first adding the book and chapter and then parsing it as a whole.
-		VerseIdentifier location = VerseIdentifier.fromStringOrThrow(chapter.getLocation() + ":" + verse.getNumber());
-		return new VerseStart(location, verse.getNumber());
 	}
 
 	@Override
 	protected void doExportBook(ParatextBook book, File outFile) throws Exception {
 		ObjectFactory of = new ObjectFactory();
 		Usx usx = of.createUsx();
-		usx.setVersion("2.5");
+		usx.setVersion("3.0");
 		usx.setBook(of.createBook());
 		usx.getBook().setStyle("id");
 		usx.getBook().setCode(book.getId().getIdentifier());
@@ -349,7 +313,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 			usx.getParaOrTableOrChapter().add(para);
 		}
 
-		book.accept(new ParatextBookContentVisitor<IOException>() {
+		book.accept(new ParatextBook.ParatextBookContentVisitor<IOException>() {
 
 			List<Object> currentContent = null;
 			Table currentTable = null;
@@ -358,6 +322,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 			public void visitChapterStart(ChapterIdentifier location) throws IOException {
 				Chapter ch = new Chapter();
 				ch.setStyle("c");
+				ch.setSid(location.toString());
 				ch.setNumber(BigInteger.valueOf(location.chapter));
 				usx.getParaOrTableOrChapter().add(ch);
 				currentContent = null;
@@ -366,53 +331,28 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 
 			@Override
 			public void visitChapterEnd(ChapterIdentifier location) throws IOException {
-				// Chapter end does not exist in USX 2
+				Chapter ch = new Chapter();
+				ch.setEid(location.toString());
+				usx.getParaOrTableOrChapter().add(ch);
+				currentContent = null;
+				currentTable = null;
 			}
 
 			@Override
-			public void visitParagraphStart(ParagraphKind kind) throws IOException {
-				if (kind == ParagraphKind.TABLE_ROW) {
+			public void visitParagraphStart(ParatextBook.ParagraphKind kind) throws IOException {
+				if (kind == ParatextBook.ParagraphKind.TABLE_ROW) {
 					if (currentTable == null) {
 						currentTable = new Table();
 						usx.getParaOrTableOrChapter().add(currentTable);
 					}
 					currentTable.getRow().add(new Row());
 					currentContent = currentTable.getRow().get(currentTable.getRow().size() - 1).getVerseOrCell();
-				}
-				if (USX_2_PARAGRAPH_KINDS.contains(kind)) {
-					ParaStyle style = PARA_KIND_MAP.get(kind);
-					if (style == null) {
-						throw new RuntimeException("Error could not get ParaStyle for ParagraphKind: " + kind);
-					}
+				} else {
 					Para para = new Para();
-					para.setStyle(style);
+					para.setStyle(PARA_KIND_MAP.get(kind));
 					usx.getParaOrTableOrChapter().add(para);
 					currentContent = para.getContent();
 					currentTable = null;
-				} else {
-					visitUnsupportedParagraphStart(kind);
-				}
-			}
-
-			private void visitUnsupportedParagraphStart(ParagraphKind kind) throws IOException {
-				if (kind == ParagraphKind.HEBREW_NOTE) {
-					// See: USFM.visitUnsupportedParagraphStart
-					visitParagraphStart(ParagraphKind.DESCRIPTIVE_TITLE);
-					logger.logReplaceWarning(kind, ParagraphKind.DESCRIPTIVE_TITLE);
-				} else if (kind.isSameBase(ParagraphKind.SEMANTIC_DIVISION)) {
-					// See: USFM.visitUnsupportedParagraphStart
-					visitParagraphStart(ParagraphKind.BLANK_LINE);
-					logger.logReplaceWarning(kind, ParagraphKind.BLANK_LINE);
-				} else if (kind == ParagraphKind.PARAGRAPH_PO || kind == ParagraphKind.PARAGRAPH_LH || kind == ParagraphKind.PARAGRAPH_LF) {
-					// See: USFM.visitUnsupportedParagraphStart
-					logger.logReplaceWarning(kind, ParagraphKind.PARAGRAPH_P);
-					visitParagraphStart(ParagraphKind.PARAGRAPH_P);
-				} else if (kind.getTag().startsWith(ParagraphKind.PARAGRAPH_LIM.getTag())) {
-					ParagraphKind replacement = ParagraphKind.PARAGRAPH_LI.getWithNumber(kind.getNumber());
-					logger.logReplaceWarning(kind, replacement);
-					visitParagraphStart(replacement);
-				} else {
-					throw new RuntimeException("Could not export to USX 2 because an unhandled paragraph type `" + kind + "` from a newer USFM/USX version was found.");
 				}
 			}
 
@@ -433,10 +373,11 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 			@Override
 			public void visitParatextCharacterContent(ParatextCharacterContent content) throws IOException {
 				if (currentContent == null)
-					visitParagraphStart(ParagraphKind.PARAGRAPH_P);
-				content.accept(new USXCharacterContentVisitor(logger, currentContent));
+					visitParagraphStart(ParatextBook.ParagraphKind.PARAGRAPH_P);
+				content.accept(new USX3.USXCharacterContentVisitor(currentContent));
 			}
 		});
+
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
 		Marshaller m = ctx.createMarshaller();
 		m.setSchema(getSchema());
@@ -444,16 +385,14 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 	}
 
 	protected Schema getSchema() throws SAXException {
-		return SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI).newSchema(ObjectFactory.class.getResource("/usx.xsd"));
+		return SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI).newSchema(ObjectFactory.class.getResource("/usx3.xsd"));
 	}
 
-	private class USXCharacterContentVisitor implements ParatextCharacterContentVisitor<IOException> {
-		private final List<Object> target;
-		private final StandardExportWarningMessages logger;
+	private class USXCharacterContentVisitor implements ParatextCharacterContent.ParatextCharacterContentVisitor<IOException> {
+		private List<Object> target;
 
-		public USXCharacterContentVisitor(StandardExportWarningMessages logger, List<Object> target) {
+		public USXCharacterContentVisitor(List<Object> target) {
 			this.target = target;
-			this.logger = logger;
 		}
 
 		@Override
@@ -462,77 +401,38 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				target.add(verseSeparatorText);
 			Verse verse = new Verse();
 			verse.setStyle("v");
+			verse.setSid(location.toString());
 			verse.setNumber(verseNumber);
 			target.add(verse);
 		}
 
 		@Override
-		public ParatextCharacterContentVisitor<IOException> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws IOException {
+		public ParatextCharacterContent.ParatextCharacterContentVisitor<IOException> visitFootnoteXref(ParatextCharacterContent.FootnoteXrefKind kind, String caller) throws IOException {
 			Note note = new Note();
 			note.setCaller(caller);
 			note.setStyle(NOTE_KIND_MAP.get(kind));
 			target.add(note);
-			return new USXCharacterContentVisitor(USX.this.logger, note.getContent());
+			return new USX3.USXCharacterContentVisitor(note.getContent());
 		}
 
 		@Override
-		public ParatextCharacterContentVisitor<IOException> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws IOException {
-			if (USX_2_AUTO_CLOSING_FORMATTING_KINDS.contains(kind)) {
-				CharStyle style = CHAR_KIND_MAP.get(kind);
-				if (style == null) {
-					throw new RuntimeException("Error could not get CharStyle for AutoClosingFormattingKind: " + kind);
-				}
+		public ParatextCharacterContent.ParatextCharacterContentVisitor<IOException> visitAutoClosingFormatting(ParatextCharacterContent.AutoClosingFormattingKind kind, Map<String, String> attributes) throws IOException {
+			if (kind == ParatextCharacterContent.AutoClosingFormattingKind.PAGE_BREAK) {
+				System.out.println("WARNING: Ignored page break");
+				return null;
+			} else {
 				Char chr = new Char();
 				chr.setLemma(attributes.get("lemma"));
+				chr.setStrong(attributes.get("strong"));
+				chr.setSrcloc(attributes.get("srcloc"));
 				chr.setStyle(CHAR_KIND_MAP.get(kind));
 				target.add(chr);
-				return new USXCharacterContentVisitor(USX.this.logger, chr.getContent());
-			} else {
-				return visitUnsupportedAutoClosingFormatting(kind, attributes);
-			}
-		}
-
-		private ParatextCharacterContentVisitor<IOException> visitUnsupportedAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws IOException {
-			if (kind == AutoClosingFormattingKind.PAGE_BREAK) {
-				USX.this.logger.logRemovedWarning(kind);
-				return null;
-			} else if (kind == AutoClosingFormattingKind.LIST_TOTAL || kind == AutoClosingFormattingKind.LIST_KEY || kind.isSameBase(AutoClosingFormattingKind.LIST_VALUE)) {
-				// see: USFM.visitUnsupportedAutoClosingFormatting
-				USX.this.logger.logSkippedWarning(kind);
-				return new USXCharacterContentVisitor(USX.this.logger, target);
-			} else if (kind == AutoClosingFormattingKind.FOOTNOTE_WITNESS_LIST) {
-				// see: USFM.visitUnsupportedAutoClosingFormatting
-				USX.this.logger.logReplaceWarning(kind, AutoClosingFormattingKind.FOOTNOTE_TEXT);
-				return visitUnsupportedAutoClosingFormatting(AutoClosingFormattingKind.FOOTNOTE_TEXT, attributes);
-			} else if (kind == AutoClosingFormattingKind.XREF_PUBLISHED_ORIGIN) {
-				// see: USFM.visitUnsupportedAutoClosingFormatting
-				USX.this.logger.logRemovedWarning(kind);
-				return null;
-			} else if (kind == AutoClosingFormattingKind.XREF_TARGET_REFERENCES_TEXT) {
-				// see: USFM.visitUnsupportedAutoClosingFormatting
-				USX.this.logger.logSkippedWarning(kind);
-				return new USXCharacterContentVisitor(USX.this.logger, target);
-			} else if (kind == AutoClosingFormattingKind.SUPERSCRIPT) {
-				// see: USFM.visitUnsupportedAutoClosingFormatting
-				USX.this.logger.logSkippedWarning(kind, "This might lead to text that is not" +
-						"separated by whitespace, since the previous text and superscript text may not have had been" +
-						"separated by whitespace.");
-				return new USXCharacterContentVisitor(USX.this.logger, target);
-			} else if (kind == AutoClosingFormattingKind.ARAMAIC_WORD) {
-				// see: USFM.visitUnsupportedAutoClosingFormatting
-				USX.this.logger.logSkippedWarning(kind);
-				return new USXCharacterContentVisitor(USX.this.logger, target);
-			} else if (kind == AutoClosingFormattingKind.PROPER_NAME_GEOGRAPHIC) {
-				// see: USFM.visitUnsupportedAutoClosingFormatting
-				USX.this.logger.logSkippedWarning(kind);
-				return new USXCharacterContentVisitor(USX.this.logger, target);
-			} else {
-				throw new RuntimeException("Could not export to USX 2 because an unhandled char type `" + kind + "` from a newer USFM/USX version was found.");
+				return new USX3.USXCharacterContentVisitor(chr.getContent());
 			}
 		}
 
 		@Override
-		public void visitReference(Reference reference) throws IOException {
+		public void visitReference(ParatextCharacterContent.Reference reference) throws IOException {
 			Ref ref = new Ref();
 			String loc = reference.getBook().getIdentifier() + " " + reference.getFirstChapter() + ":" + reference.getFirstVerse();
 			if (reference.getLastChapter() != reference.getFirstChapter()) {
@@ -552,35 +452,45 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 
 		@Override
 		public void visitEnd() throws IOException {
-
 		}
 
 		@Override
-		public void visitVerseEnd(VerseIdentifier verseNumber) throws IOException {
-			// USX 2.x does not support verse end milestones, hence we don't add them.
+		public void visitVerseEnd(VerseIdentifier location) throws IOException {
+			Verse verse = new Verse();
+			verse.setEid(location.toString());
+			target.add(verse);
 		}
 	}
 
 	@Override
-	boolean isAutoClosingFormattingKindSupported(AutoClosingFormattingKind kind) {
+	boolean isAutoClosingFormattingKindSupported(ParatextCharacterContent.AutoClosingFormattingKind kind) {
 		// See AutoClosingFormattingKind.PAGE_BREAK for why it is unsupported as AutoClosingFormattingKind.
-		return kind != AutoClosingFormattingKind.PAGE_BREAK
-				&& USX_2_AUTO_CLOSING_FORMATTING_KINDS.contains(kind);
+		return kind != ParatextCharacterContent.AutoClosingFormattingKind.PAGE_BREAK;
 	}
 
 	@Override
-	boolean isParagraphKindSupported(ParagraphKind kind) {
-		return USX_2_PARAGRAPH_KINDS.contains(kind);
+	boolean isParagraphKindSupported(ParatextBook.ParagraphKind kind) {
+		return true;
 	}
 
 	private static class CharStyleWrapper extends StyleWrapper<CharStyle> {
 
 		private static Set<CharStyle> CHAR_STYLE_UNSUPPORTED = Collections.unmodifiableSet(EnumSet.of(
+				// "Second (alternate) verse number"
 				CharStyle.VA,
+				// "Second (alternate) chapter number"
 				CharStyle.CA,
+				// "Reference to caller of previous footnote"
 				CharStyle.FM,
+				// "Reference to caller of previous footnote in a study Bible"
 				CharStyle.EFM,
-				CharStyle.CAT
+				// "Note category (study Bible)"
+				CharStyle.CAT,
+				// Linking attributes (https://ubsicap.github.io/usx/v3.0.0/linking.html) are not supported, therefore also
+				// the special JMP placeholder is not supported.
+				CharStyle.JMP,
+				// Handling of Ruby glossing is currently not supported
+				CharStyle.RB
 		));
 
 		@Override
@@ -611,7 +521,11 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				ParaStyle.CP,
 				ParaStyle.CL,
 				ParaStyle.K_1,
-				ParaStyle.K_2
+				ParaStyle.K_2,
+				// No documentation available on the TS tag except for the small comment available in the Relax NG spec
+				// for USX 3.0:
+				// "Translators chunk (to identify chunks of text suitable for translating at one time)"
+				ParaStyle.TS
 		));
 
 		@Override

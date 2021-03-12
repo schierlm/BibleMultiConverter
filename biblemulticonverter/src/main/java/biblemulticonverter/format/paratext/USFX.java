@@ -1,14 +1,5 @@
 package biblemulticonverter.format.paratext;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBElement;
@@ -22,6 +13,15 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
@@ -38,6 +38,10 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextChar
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
+import biblemulticonverter.format.paratext.model.ChapterIdentifier;
+import biblemulticonverter.format.paratext.model.VerseIdentifier;
+import biblemulticonverter.format.paratext.utilities.ImportUtilities;
+import biblemulticonverter.format.paratext.utilities.TextUtilities;
 import biblemulticonverter.schema.usfx.NoteContents;
 import biblemulticonverter.schema.usfx.ObjectFactory;
 import biblemulticonverter.schema.usfx.PType;
@@ -59,6 +63,10 @@ public class USFX extends AbstractParatextFormat {
 			"",
 			"Point the importer to .usfx files, not to directories!",
 	};
+
+	public USFX() {
+		super("USFX");
+	}
 
 	@Override
 	protected List<ParatextBook> doImportAllBooks(File inputFile) throws Exception {
@@ -91,7 +99,12 @@ public class USFX extends AbstractParatextFormat {
 		return result;
 	}
 
+	private static class ImportBookContext {
+		ChapterStart openChapter = null;
+	}
+
 	private ParatextBook parseBook(Book book) {
+
 		String bookID = book.getId();
 		if (!book.getContent().isEmpty() && book.getContent().get(0) instanceof JAXBElement<?> && ((JAXBElement<?>) book.getContent().get(0)).getName().getLocalPart().equals("id")) {
 			Usfx.Book.Id id = (Usfx.Book.Id) ((JAXBElement<?>) book.getContent().remove(0)).getValue();
@@ -105,11 +118,13 @@ public class USFX extends AbstractParatextFormat {
 		}
 		ParatextBook result = new ParatextBook(id, idParts.length == 1 ? "" : idParts[1]);
 		List<ParatextCharacterContentContainer> containerStack = new ArrayList<>();
-		parseElements(result, containerStack, book.getContent());
+		ImportBookContext context = new ImportBookContext();
+		parseElements(result, containerStack, book.getContent(), context);
+		ImportUtilities.closeOpenChapter(result, context.openChapter);
 		return result;
 	}
 
-	private void parseElements(ParatextBook result, List<ParatextCharacterContentContainer> containerStack, List<Serializable> elements) {
+	private void parseElements(ParatextBook result, List<ParatextCharacterContentContainer> containerStack, List<Serializable> elements, ImportBookContext context) {
 		for (int i = 0; i < elements.size() - 1; i++) {
 			Serializable s1 = elements.get(i);
 			Serializable s2 = elements.get(i + 1);
@@ -125,29 +140,31 @@ public class USFX extends AbstractParatextFormat {
 		}
 		for (Serializable s : elements) {
 			if (s instanceof String) {
-				if (s.toString().isEmpty())
+				Text text = Text.from((String) s);
+				if(text == null) {
 					continue;
+				}
 				if (containerStack.isEmpty()) {
 					ParatextCharacterContent container = new ParatextCharacterContent();
 					containerStack.add(container);
 					result.getContent().add(container);
 				}
-				containerStack.get(containerStack.size() - 1).getContent().add(new Text(normalize(s.toString())));
+				containerStack.get(containerStack.size() - 1).getContent().add(text);
 			} else if (s instanceof JAXBElement<?>) {
-				parseElement(result, containerStack, (JAXBElement<?>) s);
+				parseElement(result, containerStack, (JAXBElement<?>) s, context);
 			} else {
 				System.out.println("WARNING: Skipping unsupported content inside of book " + s);
 			}
 		}
 	}
 
-	private void parseElement(ParatextBook result, List<ParatextCharacterContentContainer> containerStack, JAXBElement<?> element) {
+	private void parseElement(ParatextBook result, List<ParatextCharacterContentContainer> containerStack, JAXBElement<?> element, ImportBookContext context) {
 		String localName = element.getName().getLocalPart();
 		if (localName.equals("rem") || localName.equals("cl")) {
-			result.getAttributes().put(localName, normalize((String) element.getValue()));
+			result.getAttributes().put(localName, TextUtilities.whitespaceNormalization((String) element.getValue()).trim());
 		} else if (localName.equals("h")) {
 			Usfx.Book.H h = (Usfx.Book.H) element.getValue();
-			result.getAttributes().put("h" + (h.getLevel() == null ? "" : h.getLevel()), normalize(h.getValue()));
+			result.getAttributes().put("h" + (h.getLevel() == null ? "" : h.getLevel()), TextUtilities.whitespaceNormalization(h.getValue()).trim());
 		} else if (Arrays.asList("p", "q", "d", "s", "mt", "b").contains(localName)) {
 			PType pt = (PType) element.getValue();
 			String tag = (pt.getSfm() == null ? localName : pt.getSfm()) + (pt.getLevel() == null ? "" : "" + pt.getLevel());
@@ -158,12 +175,13 @@ public class USFX extends AbstractParatextFormat {
 			}
 			result.getContent().add(new ParagraphStart(kind));
 			containerStack.clear();
-			parseElements(result, containerStack, pt.getContent());
+			parseElements(result, containerStack, pt.getContent(), context);
 		} else if (Arrays.asList("sectionBoundary", "ca", "milestone", "va", "fm", "fig", "gw", "cs", "wr").contains(localName)) {
 			System.out.println("WARNING: Skipping unsupported tag: " + localName);
-		} else if (Arrays.asList("generated", "ve", "cp", "vp", "wtp", "da", "fs").contains(localName)) {
+		} else if (Arrays.asList("generated", "cp", "vp", "wtp", "da", "fs").contains(localName)) {
 			// to be skipped
 		} else if (localName.equals("c")) {
+			ImportUtilities.closeOpenChapter(result, context.openChapter);
 			String id;
 			if (element.getValue() instanceof Usfx.Book.C) {
 				Usfx.Book.C c = (Usfx.Book.C) element.getValue();
@@ -174,11 +192,12 @@ public class USFX extends AbstractParatextFormat {
 			} else {
 				throw new IllegalStateException(element.getValue().getClass().getName());
 			}
-			result.getContent().add(new ChapterStart(Integer.parseInt(id)));
+			context.openChapter = new ChapterStart(new ChapterIdentifier(result.getId(), Integer.parseInt(id)));
+			result.getContent().add(context.openChapter);
 			containerStack.clear();
 		} else if (localName.equals("toc")) {
 			StyledString ss = (StyledString) element.getValue();
-			result.getAttributes().put("toc" + ss.getLevel(), normalize(ss.getContent().stream().filter(c -> c instanceof String).map(Serializable::toString).collect(Collectors.joining())));
+			result.getAttributes().put("toc" + ss.getLevel(), TextUtilities.whitespaceNormalization(ss.getContent().stream().filter(c -> c instanceof String).map(Serializable::toString).collect(Collectors.joining())).trim());
 		} else if (localName.equals("table") && element.getValue() instanceof Usfx.Book.Table) {
 			Usfx.Book.Table table = (Usfx.Book.Table) element.getValue();
 			for (Usfx.Book.Table.Tr tr : table.getTr()) {
@@ -186,7 +205,7 @@ public class USFX extends AbstractParatextFormat {
 				for (JAXBElement<PType> cell : tr.getThOrThrOrTc()) {
 					result.getContent().add(new TableCellStart(cell.getName().getLocalPart() + cell.getValue().getLevel()));
 					containerStack.clear();
-					parseElements(result, containerStack, cell.getValue().getContent());
+					parseElements(result, containerStack, cell.getValue().getContent(), context);
 				}
 			}
 		} else if (localName.equals("table") && element.getValue() instanceof PType.Table) {
@@ -196,14 +215,17 @@ public class USFX extends AbstractParatextFormat {
 				for (JAXBElement<PType> cell : tr.getThOrThrOrTc()) {
 					result.getContent().add(new TableCellStart(cell.getName().getLocalPart() + cell.getValue().getLevel()));
 					containerStack.clear();
-					parseElements(result, containerStack, cell.getValue().getContent());
+					parseElements(result, containerStack, cell.getValue().getContent(), context);
 				}
 			}
 		} else if (localName.equals("periph")) {
 			result.getContent().add(new ParagraphStart(ParagraphKind.PERIPHERALS));
 			containerStack.clear();
 			ParatextCharacterContent container = new ParatextCharacterContent();
-			container.getContent().add(new Text(normalize((String) element.getValue())));
+			Text text = Text.from((String) element.getValue());
+			if(text != null) {
+				container.getContent().add(text);
+			}
 			containerStack.add(container);
 			result.getContent().add(container);
 		} else if (localName.equals("v")) {
@@ -222,7 +244,23 @@ public class USFX extends AbstractParatextFormat {
 				containerStack.add(container);
 				result.getContent().add(container);
 			}
-			containerStack.get(containerStack.size() - 1).getContent().add(new VerseStart(id));
+			ChapterStart chapter = result.findLastBookContent(ChapterStart.class);
+			if (chapter == null) {
+				throw new IllegalStateException("Verse found before chapter start: " + id);
+			}
+			VerseIdentifier location = new VerseIdentifier(result.getId(), chapter.getChapter(), id);
+			containerStack.get(containerStack.size() - 1).getContent().add(new VerseStart(location, id));
+		} else if (localName.equals("ve")) {
+			VerseStart start = result.findLastCharacterContent(VerseStart.class);
+			if (start == null) {
+				throw new IllegalStateException("Verse end found before verse start!");
+			}
+			if (containerStack.isEmpty()) {
+				ParatextCharacterContent container = new ParatextCharacterContent();
+				containerStack.add(container);
+				result.getContent().add(container);
+			}
+			containerStack.get(containerStack.size() - 1).getContent().add(new ParatextCharacterContent.VerseEnd(start.getLocation()));
 		} else if (Arrays.asList("f", "x", "fe").contains(localName)) {
 			NoteContents nc = (NoteContents) element.getValue();
 			String sfm = nc.getSfm();
@@ -234,7 +272,7 @@ public class USFX extends AbstractParatextFormat {
 			FootnoteXref nextContainer = new FootnoteXref(USFM.FOOTNOTE_XREF_TAGS.get(sfm), caller);
 			containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
 			containerStack.add(nextContainer);
-			parseElements(result, containerStack, nc.getContent());
+			parseElements(result, containerStack, nc.getContent(), context);
 			containerStack.remove(nextContainer);
 		} else if (Arrays.asList("fp", "fr", "fk", "fq", "fqa", "fl", "fdc", "fv", "ft", "fm", "xo", "xk", "xq", "xt", "xot", "xnt", "xdc").contains(localName)
 				|| (Arrays.asList("nd", "c", "tl", "it", "qt", "sls", "dc", "bdit", "bk", "pn", "k", "ord", "add", "bd", "sc", "wh", "wg", "wr", "wj", "cs", "em").contains(localName) && element.getValue() instanceof NoteContents)) {
@@ -246,13 +284,18 @@ public class USFX extends AbstractParatextFormat {
 			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(sfm), false);
 			containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
 			containerStack.add(nextContainer);
-			parseElements(result, containerStack, nc.getContent());
+			parseElements(result, containerStack, nc.getContent(), context);
 			containerStack.remove(nextContainer);
 		} else if (localName.equals("optionalLineBreak")) {
 			System.out.println("WARNING: Skipping optional line break");
 		} else if (localName.equals("ref")) {
 			RefType rt = (RefType) element.getValue();
-			ParatextCharacterContentPart ref = new Text(normalize(rt.getContent()));
+			ParatextCharacterContentPart ref = Text.from(rt.getContent());
+
+			// TODO
+			// The following code does not seem to be exactly according to the specification found here:
+			// https://ebible.org/usfx/usfx_xsd.html#refType
+			// This code does not allow for a second book, as in: ISA.7.14-ISA.7.15.
 			if (rt.getTgt() == null || !rt.getTgt().matches("[A-Z1-4]{3}\\.[0-9]+\\.[0-9]+(-[0-9]+(\\.[0-9]+)?)?")) {
 				System.out.println("WARNING: Unsupported structured reference format - replaced by plain text: " + rt.getTgt());
 			} else {
@@ -261,13 +304,27 @@ public class USFX extends AbstractParatextFormat {
 				if (id == null) {
 					System.out.println("WARNING: Unsupported book in structured reference - replaced by plain text: " + parts[0]);
 				} else {
-					int c1 = Integer.parseInt(parts[1]), v1 = Integer.parseInt(parts[2]);
-					int c2 = parts.length == 5 ? Integer.parseInt(parts[3]) : c1;
-					int v2 = parts.length > 3 ? Integer.parseInt(parts[parts.length - 1]) : v1;
-					ref = new Reference(id, c1, v1, c2, v2, rt.getContent());
+					int c1 = Integer.parseInt(parts[1]);
+					String v1 = parts[2];
+					if (parts.length > 3) {
+						// second verse
+						String v2 = parts[parts.length - 1];
+						if (parts.length == 5) {
+							// second chapter
+							int c2 = Integer.parseInt(parts[3]);
+							ref = Reference.verseRange(id, c1, v1, c2, v2, rt.getContent());
+						} else {
+							// No second chapter, but we do have a second verse, use first chapter as second chapter.
+							ref = Reference.verseRange(id, c1, v1, c1, v2, rt.getContent());
+						}
+					} else {
+						ref = Reference.verse(id, c1, v1, rt.getContent());
+					}
 				}
 			}
-			containerStack.get(containerStack.size() - 1).getContent().add(ref);
+			if(ref != null) {
+				containerStack.get(containerStack.size() - 1).getContent().add(ref);
+			}
 		} else if (localName.equals("w")) {
 			PType.W w = (PType.W) element.getValue();
 			String sfm = w.getSfm();
@@ -286,23 +343,29 @@ public class USFX extends AbstractParatextFormat {
 				nextContainer.getAttributes().put("x-plural", "" + w.isPlural());
 			containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
 			containerStack.add(nextContainer);
-			parseElements(result, containerStack, w.getContent());
+			parseElements(result, containerStack, w.getContent(), context);
 			containerStack.remove(nextContainer);
 		} else if (localName.equals("quoteStart")) {
 			PType.QuoteStart qs = (PType.QuoteStart) element.getValue();
-			if (containerStack.isEmpty()) {
-				ParatextCharacterContent container = new ParatextCharacterContent();
-				containerStack.add(container);
-				result.getContent().add(container);
+			Text text = Text.from(qs.getValue());
+			if(text != null) {
+				if (containerStack.isEmpty()) {
+					ParatextCharacterContent container = new ParatextCharacterContent();
+					containerStack.add(container);
+					result.getContent().add(container);
+				}
+				containerStack.get(containerStack.size() - 1).getContent().add(text);
 			}
-			containerStack.get(containerStack.size() - 1).getContent().add(new Text(normalize(qs.getValue())));
 		} else if (localName.equals("quoteRemind") || localName.equals("quoteEnd")) {
-			if (containerStack.isEmpty()) {
-				ParatextCharacterContent container = new ParatextCharacterContent();
-				containerStack.add(container);
-				result.getContent().add(container);
+			Text text = Text.from((String) element.getValue());
+			if(text != null) {
+				if (containerStack.isEmpty()) {
+					ParatextCharacterContent container = new ParatextCharacterContent();
+					containerStack.add(container);
+					result.getContent().add(container);
+				}
+				containerStack.get(containerStack.size() - 1).getContent().add(text);
 			}
-			containerStack.get(containerStack.size() - 1).getContent().add(new Text(normalize(element.getValue().toString())));
 		} else if (Arrays.asList("rq", "em", "qt", "nd", "tl", "qs", "qac", "sls", "dc", "bk", "k", "add", "sig", "bd", "it", "bdit", "sc", "wj").contains(localName)) {
 			PType v = (PType) element.getValue();
 			String sfm = v.getSfm();
@@ -311,21 +374,21 @@ public class USFX extends AbstractParatextFormat {
 			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(sfm), false);
 			containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
 			containerStack.add(nextContainer);
-			parseElements(result, containerStack, v.getContent());
+			parseElements(result, containerStack, v.getContent(), context);
 			containerStack.remove(nextContainer);
 		} else if (Arrays.asList("pn", "ord", "no", "ndx", "wh", "wg", "ior").contains(localName)) {
 			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(localName), false);
 			containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
-			nextContainer.getContent().add(new ParatextCharacterContent.Text((String) element.getValue()));
+			
+			Text text = Text.from((String) element.getValue());
+			if(text != null) {
+				nextContainer.getContent().add(text);
+			}
 		} else {
 			System.out.println("WARNING: Unexpected tag: " + localName);
 		}
 	}
-
-	private String normalize(String value) {
-		return value.replaceAll("[ \r\n\t]+", " ");
-	}
-
+	
 	@Override
 	protected ParatextBook doImportBook(File inputFile) throws Exception {
 		throw new UnsupportedOperationException();

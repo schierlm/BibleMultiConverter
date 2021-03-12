@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<usx version="3.0">
+	<book code="GEN" style="id">Whitespace Test Bible</book>
+	<chapter number="1" style="c" sid="GEN 1"/>
+	<para style="p">
+		<verse number="1" style="v" sid="GEN 1:1"/>Lorem <char style="nd">Ipsum</char> <note caller="+" style="f"><char style="fr" closed="false">1:1</char><char style="ft" closed="false">Phasellus</char></note>dolor sit amet<verse eid="GEN 1:1"/>
+	</para>
+	<chapter eid="GEN 1"/>
+</usx>

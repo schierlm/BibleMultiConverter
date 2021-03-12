@@ -1,9 +1,11 @@
 package biblemulticonverter.format.paratext;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
@@ -11,6 +13,11 @@ import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentPart;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisitor;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
+import biblemulticonverter.format.paratext.model.VerseIdentifier;
+import biblemulticonverter.format.paratext.model.Version;
+import biblemulticonverter.format.paratext.utilities.LocationParser;
+import biblemulticonverter.format.paratext.utilities.TagParser;
+import biblemulticonverter.format.paratext.utilities.TextUtilities;
 
 public class ParatextCharacterContent implements ParatextBookContentPart, ParatextCharacterContentContainer {
 
@@ -37,7 +44,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 	}
 
 	public static interface ParatextCharacterContentVisitor<T extends Throwable> {
-		public void visitVerseStart(String verseNumber) throws T;
+		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws T;
 
 		public ParatextCharacterContentVisitor<T> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws T;
 
@@ -48,58 +55,22 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		public void visitText(String text) throws T;
 
 		public void visitEnd() throws T;
-	}
 
-	public static class ParatextCharacterAppendVisitor implements ParatextCharacterContentVisitor<RuntimeException> {
-
-		private ParatextCharacterContentContainer parent;
-
-		public ParatextCharacterAppendVisitor(ParatextCharacterContentContainer parent) {
-			this.parent = parent;
-		}
-
-		@Override
-		public void visitVerseStart(String verseNumber) throws RuntimeException {
-			parent.getContent().add(new VerseStart(verseNumber));
-		}
-
-		@Override
-		public ParatextCharacterContentVisitor<RuntimeException> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws RuntimeException {
-			return addAndVisit(new FootnoteXref(kind, caller));
-		}
-
-		@Override
-		public ParatextCharacterContentVisitor<RuntimeException> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws RuntimeException {
-			AutoClosingFormatting acf = new AutoClosingFormatting(kind, false);
-			acf.getAttributes().putAll(attributes);
-			return addAndVisit(acf);
-		}
-
-		@Override
-		public void visitReference(Reference reference) throws RuntimeException {
-			parent.getContent().add(reference);
-		}
-
-		@Override
-		public void visitText(String text) throws RuntimeException {
-			parent.getContent().add(new Text(text));
-		}
-
-		@Override
-		public void visitEnd() throws RuntimeException {
-		}
-
-		private <P extends ParatextCharacterContentPart & ParatextCharacterContentContainer> ParatextCharacterContentVisitor<RuntimeException> addAndVisit(P part) {
-			parent.getContent().add(part);
-			return new ParatextCharacterAppendVisitor(part);
-		}
+		public void visitVerseEnd(VerseIdentifier verseLocation) throws T;
 	}
 
 	public static class VerseStart implements ParatextCharacterContentPart {
+
+		private final VerseIdentifier location;
 		private final String verseNumber;
 
-		public VerseStart(String verseNumber) {
+		public VerseStart(VerseIdentifier location, String verseNumber) {
+			this.location = location;
 			this.verseNumber = verseNumber;
+		}
+
+		public VerseIdentifier getLocation() {
+			return location;
 		}
 
 		public String getVerseNumber() {
@@ -108,7 +79,25 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 
 		@Override
 		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
-			visitor.visitVerseStart(verseNumber);
+			visitor.visitVerseStart(location, verseNumber);
+		}
+	}
+
+	public static class VerseEnd implements ParatextCharacterContentPart {
+
+		private final VerseIdentifier location;
+
+		public VerseEnd(VerseIdentifier location) {
+			this.location = location;
+		}
+
+		public VerseIdentifier getLocation() {
+			return location;
+		}
+
+		@Override
+		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
+			visitor.visitVerseEnd(location);
 		}
 	}
 
@@ -206,93 +195,152 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 
 		//@formatter:off
 
-		INTRODUCTION_OUTLINE_REFERENCE_RANGE("ior", FormattingInstructionKind.ITALIC),
-		INTRODUCTION_QUOTED_TEXT("iqt", FormattingInstructionKind.ITALIC),
+		INTRODUCTION_OUTLINE_REFERENCE_RANGE(Version.V1, "ior", FormattingInstructionKind.ITALIC),
+		INTRODUCTION_QUOTED_TEXT(Version.V2_2, "iqt", FormattingInstructionKind.ITALIC),
 
-		QUOTATION_REFERENCE("rq", FormattingInstructionKind.ITALIC),
-		VERSE_PRESENTATION("vp", FormattingInstructionKind.BOLD), // only very rudimentary
-		SELAH("qs", FormattingInstructionKind.ITALIC, FormattingInstructionKind.DIVINE_NAME),
-		ACROSTIC_CHARACTER("qac",  FormattingInstructionKind.BOLD,  FormattingInstructionKind.ITALIC),
+		QUOTATION_REFERENCE(Version.V1, "rq", FormattingInstructionKind.ITALIC),
+		VERSE_PRESENTATION(Version.V1, "vp", FormattingInstructionKind.BOLD), // only very rudimentary
+		SELAH(Version.V1, "qs", FormattingInstructionKind.ITALIC, FormattingInstructionKind.DIVINE_NAME),
+		ACROSTIC_CHARACTER(Version.V1, "qac", FormattingInstructionKind.BOLD, FormattingInstructionKind.ITALIC),
 
-		LIST_TOTAL("litl"),
-		LIST_KEY("lik", FormattingInstructionKind.ITALIC),
-		LIST_VALUE("liv"),
+		LIST_TOTAL(Version.V3, "litl"),
+		LIST_KEY(Version.V3, "lik", FormattingInstructionKind.ITALIC),
+		LIST_VALUE(Version.V3, "liv"),
+		LIST_VALUE_1(Version.V3, "liv1"),
+		LIST_VALUE_2(Version.V3, "liv2"),
+		LIST_VALUE_3(Version.V3, "liv3"),
+		LIST_VALUE_4(Version.V3, "liv4"),
+		LIST_VALUE_5(Version.V3, "liv5"),
 
-		FOOTNOTE_REFERENCE("fr", FormattingInstructionKind.BOLD),
-		FOOTNOTE_QUOTATION("fq", FormattingInstructionKind.ITALIC),
-		FOOTNOTE_QUOTATION_ALT("fqa", FormattingInstructionKind.ITALIC),
-		FOOTNOTE_KEYWORD("fk", FormattingInstructionKind.DIVINE_NAME),
-		FOOTNOTE_LABEL("fl"),
-		FOOTNOTE_PARAGRAPH("fp", null, null, LineBreakKind.PARAGRAPH, null),
-		FOOTNOTE_VERSE_NUMBER("fv", FormattingInstructionKind.SUPERSCRIPT),
-		FOOTNOTE_TEXT("ft"),
-		FOOTNOTE_DEUTEROCANONICAL_CONTENT("fdc", KeepIf.DC),
+		FOOTNOTE_REFERENCE(Version.V1, "fr", FormattingInstructionKind.BOLD),
+		FOOTNOTE_QUOTATION(Version.V1, "fq", FormattingInstructionKind.ITALIC),
+		FOOTNOTE_QUOTATION_ALT(Version.V1, "fqa", FormattingInstructionKind.ITALIC),
+		FOOTNOTE_KEYWORD(Version.V1, "fk", FormattingInstructionKind.DIVINE_NAME),
+		FOOTNOTE_LABEL(Version.V2_0_3, "fl"),
+		FOOTNOTE_PARAGRAPH(Version.V2_0_3, "fp", null, null, LineBreakKind.PARAGRAPH, null),
+		FOOTNOTE_WITNESS_LIST(Version.V3, "fw"),
+		FOOTNOTE_VERSE_NUMBER(Version.V1, "fv", FormattingInstructionKind.SUPERSCRIPT),
+		FOOTNOTE_TEXT(Version.V1, "ft"),
 
-		XREF_ORIGIN("xo", FormattingInstructionKind.BOLD),
-		XREF_KEYWORD("xk", FormattingInstructionKind.DIVINE_NAME),
-		XREF_QUOTATION("xq", FormattingInstructionKind.ITALIC),
-		XREF_TARGET("xt"),
-		XREF_OT_CONTENT("xot", KeepIf.OT),
-		XREF_NT_CONTENT("xnt", KeepIf.NT),
-		XREF_DEUTEROCANONICAL_CONTENT("xdc", KeepIf.DC),
+		// In version 3.0 this marker has been deprecated, it should be easy to replace with dc and remove it completely
+		// here.
+		// https://ubsicap.github.io/usfm/master/notes_basic/fnotes.html#fdc-fdc
+		FOOTNOTE_DEUTEROCANONICAL_CONTENT(Version.V1, "fdc", KeepIf.DC),
 
-		ADDITION("add", FormattingInstructionKind.ITALIC),
-		BOOK_TITLE("bk", FormattingInstructionKind.ITALIC),
-		DEUTEROCANONICAL_CONTENT("dc", KeepIf.DC),
-		KEYWORD("k"),
-		LITURGICAL("lit", FormattingInstructionKind.BOLD),
-		NAME_OF_DEITY("nd", FormattingInstructionKind.DIVINE_NAME, true),
-		ORDINAL("ord", FormattingInstructionKind.SUPERSCRIPT),
-		PROPER_NAME("pn"),
-		PROPER_NAME_GEOGRAPHIC("png"),
-		ADDED_PROPER_NAME("addpn", FormattingInstructionKind.ITALIC),
-		QUOTED_TEXT("qt", FormattingInstructionKind.ITALIC),
-		SIGNATURE("sig", FormattingInstructionKind.ITALIC),
-		SECONDARY_LANGUAGE_SOURCE("sls", FormattingInstructionKind.ITALIC),
-		TRANSLITERATED("tl", FormattingInstructionKind.ITALIC),
-		WORDS_OF_JESUS("wj", FormattingInstructionKind.WORDS_OF_JESUS, true),
+		XREF_ORIGIN(Version.V1, "xo", FormattingInstructionKind.BOLD),
+		XREF_PUBLISHED_ORIGIN(Version.V3, "xop", FormattingInstructionKind.BOLD),
+		XREF_KEYWORD(Version.V1, "xk", FormattingInstructionKind.DIVINE_NAME),
+		XREF_QUOTATION(Version.V1, "xq", FormattingInstructionKind.ITALIC),
 
-		EMPHASIS("em", FormattingInstructionKind.ITALIC),
-		BOLD("bd", FormattingInstructionKind.BOLD, true),
-		ITALIC("it", FormattingInstructionKind.ITALIC, true),
-		BOLD_ITALIC("bdit", FormattingInstructionKind.BOLD, FormattingInstructionKind.ITALIC),
-		NORMAL("no", "font-style: normal; font-weight: normal;"),
-		SMALL_CAPS("sc", FormattingInstructionKind.DIVINE_NAME),
+		// In version 3.0 one new attribute was introduced for this tag: "link-href" see:
+		// https://ubsicap.github.io/usx/usx3.0.3/notes.html#xt
+		XREF_TARGET_REFERENCES(Version.V1, "xt"),
+		XREF_TARGET_REFERENCES_TEXT(Version.V3, "xta"),
+		XREF_OT_CONTENT(Version.V2_2, "xot", KeepIf.OT),
+		XREF_NT_CONTENT(Version.V2_2, "xnt", KeepIf.NT),
 
-		INDEX_ENTRY("ndx"),
-		PRONUNCIATION("pro"),
-		WORDLIST("w"),
-		GREEK_WORD("wg"),
-		HEBREW_WORD("wh"),
+		// In version 3.0 this marker has been deprecated, it should be easy to replace with dc and remove it completely
+		// here.
+		// https://ubsicap.github.io/usfm/master/notes_basic/fnotes.html#fdc-fdc
+		XREF_DEUTEROCANONICAL_CONTENT(Version.V1, "xdc", KeepIf.DC),
 
-		PAGE_BREAK("pb", null, null, LineBreakKind.PARAGRAPH, null);
+		ADDITION(Version.V1, "add", FormattingInstructionKind.ITALIC),
+		QUOTED_BOOK_TITLE(Version.V1, "bk", FormattingInstructionKind.ITALIC),
+		DEUTEROCANONICAL_CONTENT(Version.V1, "dc", KeepIf.DC),
+		KEYWORD(Version.V1, "k"),
+		NAME_OF_DEITY(Version.V1, "nd", FormattingInstructionKind.DIVINE_NAME, true),
+		ORDINAL(Version.V1, "ord", FormattingInstructionKind.SUPERSCRIPT),
+		PROPER_NAME(Version.V1, "pn"),
+		PROPER_NAME_GEOGRAPHIC(Version.V3, "png"),
+
+		// In version 3.0 this tag has been deprecated
+		// https://ubsicap.github.io/usfm/characters/index.html#addpn-addpn
+		ADDED_PROPER_NAME(Version.V1, "addpn", FormattingInstructionKind.ITALIC),
+		QUOTED_TEXT(Version.V1, "qt", FormattingInstructionKind.ITALIC),
+		SIGNATURE(Version.V1, "sig", FormattingInstructionKind.ITALIC),
+		SECONDARY_LANGUAGE_SOURCE(Version.V1, "sls", FormattingInstructionKind.ITALIC),
+		TRANSLITERATED(Version.V1, "tl", FormattingInstructionKind.ITALIC),
+		WORDS_OF_JESUS(Version.V2, "wj", FormattingInstructionKind.WORDS_OF_JESUS, true),
+
+		EMPHASIS(Version.V2, "em", FormattingInstructionKind.ITALIC),
+		BOLD(Version.V1, "bd", FormattingInstructionKind.BOLD, true),
+		ITALIC(Version.V1, "it", FormattingInstructionKind.ITALIC, true),
+		BOLD_ITALIC(Version.V1, "bdit", FormattingInstructionKind.BOLD, FormattingInstructionKind.ITALIC),
+		NORMAL(Version.V1, "no", "font-style: normal; font-weight: normal;"),
+		SMALL_CAPS(Version.V1, "sc", FormattingInstructionKind.DIVINE_NAME),
+		SUPERSCRIPT(Version.V3, "sup", FormattingInstructionKind.SUPERSCRIPT),
+
+		INDEX_ENTRY(Version.V1, "ndx"),
+
+		// In version 3.0 this tag has been deprecated, rb should be used instead, see:
+		// https://ubsicap.github.io/usx/usx3.0.3/charstyles.html#pro
+		PRONUNCIATION(Version.V2, "pro"),
+
+		// In version 3.0 one new attributes have been added to this tag, see:
+		// https://ubsicap.github.io/usx/usx3.0.3/charstyles.html#w
+		WORDLIST(Version.V1, "w"),
+		GREEK_WORD(Version.V1, "wg"),
+		HEBREW_WORD(Version.V1, "wh"),
+		ARAMAIC_WORD(Version.V3, "wa"),
+
+		// TODO PAGE_BREAK is part of AutoClosingFormattingKind but should be part of ParagraphKind
+		// It is not mentioned in the USX 2/3 documentation but it can be found in the USX 2/3 schemas:
+		// https://github.com/ubsicap/usx/blob/650cc91f0c22d546aebd20fd72bd31d916db283a/schema/usx_2.6.rnc#L204
+		// https://github.com/ubsicap/usx/blob/650cc91f0c22d546aebd20fd72bd31d916db283a/schema/usx.rnc#L373
+		// It is also mentioned in the USFM 3 documentation, however under the subsection for character styles:
+		// See: https://ubsicap.github.io/usfm/characters/index.html#pb
+		// But the `Type` still says 'paragraph'.
+		PAGE_BREAK(Version.V1, "pb", null, null, LineBreakKind.PARAGRAPH, null);
 
 		//@formatter:on
 
-		private static final String[] WORDLIST_ENTRY_ATTRIBUTES = { "lemma", "strong" };
+		private static final String[] WORDLIST_ENTRY_ATTRIBUTES = {"lemma", "strong"};
 
+		private final Version since;
+		/**
+		 * The value of a numbered marker, if the marker is not numbered this value will be -1.
+		 */
+		private final int number;
+		private final String baseTag;
 		private final String tag;
 		private final FormattingInstructionKind format;
 		private final String css;
 		private final LineBreakKind lbk;
 		private final KeepIf keepIf;
 
-		private AutoClosingFormattingKind(String tag) {
-			this(tag, (KeepIf) null);
+		private AutoClosingFormattingKind(Version since, String tag) {
+			this(since, tag, (KeepIf) null);
 		}
 
-		private AutoClosingFormattingKind(String tag, KeepIf keepIf) {
-			this(tag, null, "-bmc-usfm-tag: " + tag + ";", null, keepIf);
+		private AutoClosingFormattingKind(Version since, String tag, KeepIf keepIf) {
+			this(since, tag, null, "-bmc-usfm-tag: " + tag + ";", null, keepIf);
 		}
 
-		private AutoClosingFormattingKind(String tag, FormattingInstructionKind... extraStyles) {
-			this(tag, null, buildCSS(extraStyles) + "-bmc-usfm-tag: " + tag + ";", null, null);
+		private AutoClosingFormattingKind(Version since, String tag, FormattingInstructionKind... extraStyles) {
+			this(since, tag, null, buildCSS(extraStyles) + "-bmc-usfm-tag: " + tag + ";", null, null);
 		}
 
-		private AutoClosingFormattingKind(String tag, FormattingInstructionKind kind, boolean primary) {
-			this(tag, kind, kind.getCss(), null, null);
+		private AutoClosingFormattingKind(Version since, String tag, FormattingInstructionKind kind, boolean primary) {
+			this(since, tag, kind, kind.getCss(), null, null);
 			if (!primary)
 				throw new IllegalStateException();
+		}
+
+		private AutoClosingFormattingKind(Version since, String tag, String extraCss) {
+			this(since, tag, null, extraCss + " -bmc-usfm-tag: " + tag + ";", null, null);
+		}
+
+		private AutoClosingFormattingKind(Version since, String tag, FormattingInstructionKind format, String css, LineBreakKind lbk, KeepIf keepIf) {
+			this.since = since;
+			this.tag = tag;
+			this.format = format;
+			this.css = css;
+			this.lbk = lbk;
+			this.keepIf = keepIf;
+			TagParser parser = new TagParser();
+			parser.parse(tag);
+			this.number = parser.getNumber();
+			this.baseTag = parser.getTag();
 		}
 
 		private static String buildCSS(FormattingInstructionKind[] extraStyles) {
@@ -301,18 +349,6 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 				result.append(k.getCss() + " ");
 			}
 			return result.toString();
-		}
-
-		private AutoClosingFormattingKind(String tag, String extraCss) {
-			this(tag, null, extraCss + " -bmc-usfm-tag: " + tag + ";", null, null);
-		}
-
-		private AutoClosingFormattingKind(String tag, FormattingInstructionKind format, String css, LineBreakKind lbk, KeepIf keepIf) {
-			this.tag = tag;
-			this.format = format;
-			this.css = css;
-			this.lbk = lbk;
-			this.keepIf = keepIf;
 		}
 
 		public String getTag() {
@@ -339,6 +375,32 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 			return this == WORDLIST ? WORDLIST_ENTRY_ATTRIBUTES : null;
 		}
 
+		/**
+		 * True if this AutoClosingFormattingKind has the same baseTag as the given AutoClosingFormattingKind.
+		 */
+		public boolean isSameBase(AutoClosingFormattingKind kind) {
+			return baseTag.equals(kind.baseTag);
+		}
+
+		/**
+		 * Returns this tags number.
+		 *
+		 * @return the tags number or -1 if the tag does not have a number.
+		 */
+		public int getNumber() {
+			return number;
+		}
+
+		public static Set<AutoClosingFormattingKind> allForVersion(Version version) {
+			Set<AutoClosingFormattingKind> result = EnumSet.noneOf(AutoClosingFormattingKind.class);
+			for (AutoClosingFormattingKind kind : values()) {
+				if (kind.since.isLowerOrEqualTo(version)) {
+					result.add(kind);
+				}
+			}
+			return result;
+		}
+
 		public static Map<String, AutoClosingFormattingKind> allTags() {
 			Map<String, AutoClosingFormattingKind> result = new HashMap<>();
 			for (AutoClosingFormattingKind kind : values()) {
@@ -363,14 +425,15 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 	}
 
 	public static class Reference implements ParatextCharacterContentPart {
+
 		private final ParatextID book;
 		private final int firstChapter;
-		private final int firstVerse;
+		private final String firstVerse;
 		private final int lastChapter;
-		private final int lastVerse;
+		private final String lastVerse;
 		private String content;
 
-		public Reference(ParatextID book, int firstChapter, int firstVerse, int lastChapter, int lastVerse, String content) {
+		private Reference(ParatextID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse, String content) {
 			this.book = book;
 			this.firstChapter = firstChapter;
 			this.firstVerse = firstVerse;
@@ -387,7 +450,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 			return firstChapter;
 		}
 
-		public int getFirstVerse() {
+		public String getFirstVerse() {
 			return firstVerse;
 		}
 
@@ -395,7 +458,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 			return lastChapter;
 		}
 
-		public int getLastVerse() {
+		public String getLastVerse() {
 			return lastVerse;
 		}
 
@@ -411,12 +474,116 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
 			visitor.visitReference(this);
 		}
+
+		/**
+		 * Create a new Reference by parsing the given location and using the given content. The location must be be
+		 * parsable by {@link LocationParser}
+		 *
+		 * @param location a raw location string that can be parsed using {@link LocationParser}. All
+		 *                 {@link LocationParser.Format} types are allowed except
+		 *                 {@link LocationParser.Format#BOOK_RANGE}, since Reference does not support book ranges (they
+		 *                 should be encoded as "first reference only",
+		 *                 https://ubsicap.github.io/usx/v3.0.0/elements.html#ref).
+		 * @param content  the content for the Reference
+		 * @return a new Reference for the given location and with the given content.
+		 * @throws IllegalArgumentException if the given location cannot be parsed or is of the location matches the
+		 *                                  {@link LocationParser.Format#BOOK_RANGE} format.
+		 */
+		public static Reference parse(String location, String content) {
+			LocationParser parser = new LocationParser(true);
+			if (!parser.parse(location)) {
+				throw new IllegalArgumentException("Found invalid reference location: " + location);
+			}
+			switch (parser.getFormat()) {
+				case BOOK:
+					return Reference.book(parser.getStartBook(), content);
+				case CHAPTER:
+					return Reference.chapter(parser.getStartBook(), parser.getStartChapter(), content);
+				case CHAPTER_RANGE:
+					return Reference.chapterRange(parser.getStartBook(), parser.getStartChapter(), parser.getEndChapter(), content);
+				case VERSE:
+					return Reference.verse(parser.getStartBook(), parser.getStartChapter(), parser.getStartVerse(), content);
+				case VERSE_RANGE:
+					return Reference.verseRange(parser.getStartBook(), parser.getStartChapter(), parser.getStartVerse(), parser.getEndChapter(), parser.getEndVerse(), content);
+				case BOOK_RANGE:
+					throw new IllegalArgumentException("Found book range (" + location + "), book ranges are not supported to be in references");
+			}
+			throw new RuntimeException("Unimplement format found: " + parser.getFormat());
+		}
+
+		/**
+		 * E.g. MAT
+		 */
+		public static Reference book(ParatextID book, String content) {
+			return new Reference(book, -1, null, -1, null, content);
+		}
+
+		/**
+		 * E.g. MAT 3
+		 */
+		public static Reference chapter(ParatextID book, int firstChapter, String content) {
+			return new Reference(book, firstChapter, null, -1, null, content);
+		}
+
+		/**
+		 * E.g. MAT 3:1
+		 */
+		public static Reference verse(ParatextID book, int firstChapter, String firstVerse, String content) {
+			return new Reference(book, firstChapter, firstVerse, -1, null, content);
+		}
+
+		/**
+		 * E.g. MAT 3-4
+		 */
+		public static Reference chapterRange(ParatextID book, int firstChapter, int lastChapter, String content) {
+			return new Reference(book, firstChapter, null, lastChapter, null, content);
+		}
+
+		/**
+		 * E.g. MAT 3:4-5:2
+		 */
+		public static Reference verseRange(ParatextID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse, String content) {
+			return new Reference(book, firstChapter, firstVerse, lastChapter, lastVerse, content);
+		}
+
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder();
+			// Book
+			builder.append(book.getIdentifier());
+
+			if (firstChapter != -1) {
+
+				// Single chapter
+				builder.append(" ");
+				builder.append(firstChapter);
+
+				if (firstVerse != null) {
+
+					// Single verse
+					builder.append(":");
+					builder.append(firstVerse);
+					if (lastChapter != -1 && lastVerse != null) {
+						// Verse range
+						builder.append("-");
+						builder.append(lastChapter);
+						builder.append(":");
+						builder.append(lastVerse);
+					}
+				} else if (lastChapter != -1) {
+					// Chapter range
+					builder.append("-");
+					builder.append(lastChapter);
+				}
+			}
+			return builder.toString();
+		}
 	}
 
 	public static class Text implements ParatextCharacterContentPart {
 		private String text;
 
-		public Text(String chars) {
+		private Text(String chars) {
 			this.text = chars;
 		}
 
@@ -427,6 +594,15 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		@Override
 		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
 			visitor.visitText(text);
+		}
+		
+		public static Text from(String chars) {
+			final String text = TextUtilities.whitespaceNormalization(chars);
+			if (text.isEmpty()) {
+				return null;
+			} else {
+				return new Text(text);
+			}
 		}
 	}
 }

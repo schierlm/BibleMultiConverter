@@ -141,6 +141,19 @@
 							<packageName>biblemulticonverter.schema.usx</packageName>
 						</configuration>
 					</execution>
+					<execution>
+						<id>xjc-usx3</id>
+						<goals>
+							<goal>xjc</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>target/generated-sources/xjc9</outputDirectory>
+							<sources>
+								<source>src/main/resources/usx3.xsd</source>
+							</sources>
+							<packageName>biblemulticonverter.schema.usx3</packageName>
+						</configuration>
+					</execution>
 				</executions>
 				<configuration>
 					<locale>en</locale>
