@@ -313,6 +313,9 @@ public class Accordance implements RoundtripFormat {
 			if (text.startsWith("</", start))
 				return start;
 			int pos = text.indexOf('>', start);
+			if (pos == -1) {
+				throw new IOException("Unclosed tag: " + text.substring(start));
+			}
 			String tag = text.substring(start + 1, pos).toUpperCase();
 			start = pos + 1;
 			if (tag.startsWith("COLOR=")) {
