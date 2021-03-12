@@ -847,7 +847,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			}
 			if (kind == null) {
 				System.out.println("WARNING: No tag found for formatting: " + css);
-				return this;
+				return new ParatextExportVisitor(location, nt, ctx, ccnt, paragraphKind, null);
 			}
 			final AutoClosingFormatting formatting = new AutoClosingFormatting(kind, false);
 			getCharContent().getContent().add(formatting);
@@ -889,7 +889,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) {
-			return this;
+			return new ParatextExportVisitor(location, nt, ctx, ccnt, paragraphKind, null);
 		}
 
 		@Override
