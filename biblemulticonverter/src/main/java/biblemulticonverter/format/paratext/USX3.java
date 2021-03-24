@@ -434,13 +434,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		@Override
 		public void visitReference(ParatextCharacterContent.Reference reference) throws IOException {
 			Ref ref = new Ref();
-			String loc = reference.getBook().getIdentifier() + " " + reference.getFirstChapter() + ":" + reference.getFirstVerse();
-			if (reference.getLastChapter() != reference.getFirstChapter()) {
-				loc += "-" + reference.getLastChapter() + ":" + reference.getLastVerse();
-			} else if (reference.getLastVerse() != reference.getFirstVerse()) {
-				loc += "-" + reference.getLastVerse();
-			}
-			ref.setLoc(loc);
+			ref.setLoc(reference.toString());
 			ref.setContent(reference.getContent());
 			target.add(ref);
 		}

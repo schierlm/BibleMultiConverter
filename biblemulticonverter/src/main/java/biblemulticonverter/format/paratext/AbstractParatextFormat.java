@@ -571,7 +571,23 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				return;
 			}
 			justOpenedFootnote = null;
-			getCurrentVisitor().visitCrossReference(ctx.bookAbbrs.get(reference.getBook()), reference.getBook().getId(), reference.getFirstChapter(), reference.getFirstVerse(), reference.getLastChapter(), reference.getLastVerse()).visitText(reference.getContent());
+
+			int firstChapter = reference.getFirstChapter(), lastChapter = reference.getLastChapter();
+			String firstVerse = reference.getFirstVerse(), lastVerse = reference.getLastVerse();
+
+			// "denormalize" ranges (see ParatextExportVisitor.internalCrossReferenceToParatextCrossReference)
+			if (firstChapter == -1) {
+				firstChapter = 1; lastChapter = 999;
+			} else if (lastChapter == -1) {
+				lastChapter = firstChapter;
+			}
+			if (firstVerse == null) {
+				firstVerse = "1"; lastVerse = "999";
+			} else if (lastVerse == null) {
+				lastVerse = firstVerse;
+			}
+
+			getCurrentVisitor().visitCrossReference(ctx.bookAbbrs.getOrDefault(reference.getBook(), reference.getBook().getId().getOsisID()), reference.getBook().getId(), firstChapter,firstVerse, lastChapter, lastVerse).visitText(reference.getContent());
 		}
 
 		@Override
