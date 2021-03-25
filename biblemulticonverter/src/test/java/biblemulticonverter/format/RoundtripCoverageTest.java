@@ -35,7 +35,7 @@ public class RoundtripCoverageTest {
 			while ((len = r.read(buffer)) != -1) {
 				sw.write(buffer, 0, len);
 			}
-			testFile = sw.toString();
+			testFile = sw.toString().replace("\r\n", "\n").replace('\r', '\n');
 		}
 		Compact compact = new Compact();
 		Bible bible = compact.doImport(new BufferedReader(new StringReader(testFile)));
