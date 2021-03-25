@@ -536,6 +536,8 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		 * E.g. MAT 3-4
 		 */
 		public static Reference chapterRange(ParatextID book, int firstChapter, int lastChapter, String content) {
+			if (firstChapter > lastChapter)
+				throw new IllegalArgumentException("Invalid chapter range: " + firstChapter + "-" + lastChapter);
 			return new Reference(book, firstChapter, null, lastChapter, null, content);
 		}
 
@@ -543,6 +545,8 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		 * E.g. MAT 3:4-5:2
 		 */
 		public static Reference verseRange(ParatextID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse, String content) {
+			if (firstChapter > lastChapter)
+				throw new IllegalArgumentException("Invalid chapter range: " + firstChapter + "-" + lastChapter);
 			return new Reference(book, firstChapter, firstVerse, lastChapter, lastVerse, content);
 		}
 

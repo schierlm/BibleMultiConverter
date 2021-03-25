@@ -15,11 +15,13 @@ import java.util.Map;
 public class UnmarshallerLocationListener extends Unmarshaller.Listener {
 
 	private XMLStreamReader xsr;
+	private String filename;
 	private Map<Object, Location> locations = new HashMap<>();
 
-	public void setXMLStreamReader(XMLStreamReader xsr) {
+	public void setXMLStreamReader(String filename, XMLStreamReader xsr) {
 		locations.clear();
 		this.xsr = xsr;
+		this.filename = filename;
 	}
 
 	@Override
@@ -34,9 +36,9 @@ public class UnmarshallerLocationListener extends Unmarshaller.Listener {
 	public String getHumanReadableLocation(Object o) {
 		Location location = getLocation(o);
 		if (location == null) {
-			return "unknown";
+			return filename;
 		} else {
-			return "line " + location.getLineNumber() + ", column " + location.getColumnNumber();
+			return filename + " line " + location.getLineNumber() + ", column " + location.getColumnNumber();
 		}
 	}
 }

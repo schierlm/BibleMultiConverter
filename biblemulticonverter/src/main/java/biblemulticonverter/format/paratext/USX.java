@@ -165,7 +165,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		XMLStreamReader xsr = xif.createXMLStreamReader(new FileInputStream(inputFile));
 		Unmarshaller u = ctx.createUnmarshaller();
 		u.setListener(unmarshallerLocationListener);
-		unmarshallerLocationListener.setXMLStreamReader(xsr);
+		unmarshallerLocationListener.setXMLStreamReader(inputFile.getName(), xsr);
 		Usx doc = (Usx) u.unmarshal(xsr);
 		xsr.close();
 
