@@ -38,6 +38,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<ExportFormat>("VersificationCountsDetector", "Detect what versification most closely matches a module, looking on chapter/verse counts only", VersificationCountsDetector.HELP_TEXT, VersificationCountsDetector.class));
 		result.add(new Module<ExportFormat>("VersificationMappedDiffable", "Export like Diffable, but change the Versification first.", VersificationMappedDiffable.HELP_TEXT, VersificationMappedDiffable.class));
 		result.add(new Module<ExportFormat>("HeatMapHTML", "Create HTML page that shows which verses contain certain features.", HeatMapHTML.HELP_TEXT, HeatMapHTML.class));
+		result.add(new Module<ExportFormat>("SwordSearcher", "Export format for SwordSearcher", SwordSearcher.HELP_TEXT, SwordSearcher.class));
 		return result;
 	}
 
