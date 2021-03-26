@@ -1,7 +1,10 @@
 package biblemulticonverter.format;
 
 import java.io.BufferedWriter;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -15,7 +18,6 @@ import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
-import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -142,7 +144,7 @@ public class OnLineBible implements ExportFormat {
 			}
 		}
 
-		try (BufferedWriter bw = new BufferedWriter(new FileWriter(outFile))) {
+		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outFile), StandardCharsets.UTF_8))) {
 			for (BookMeta bm : BOOK_META) {
 				String prefix = "";
 				if (bm.id == BookID.BOOK_Matt && includeStrongs) {
@@ -155,7 +157,7 @@ public class OnLineBible implements ExportFormat {
 					int maxVerse = verseCount[i];
 					BitSet allowedNumbers = new BitSet(maxVerse + 1);
 					allowedNumbers.set(1, maxVerse + 1);
-					List<VirtualVerse> vvs = ch == null ? null : ch.createVirtualVerses(null);
+					List<VirtualVerse> vvs = ch == null ? null : ch.createVirtualVerses(false, allowedNumbers, false);
 					for (int vnum = 1; vnum <= verseCount[i]; vnum++) {
 
 						bw.write("$$$ " + bm.abbr + " " + (i + 1) + ":" + vnum + " ");
@@ -164,11 +166,6 @@ public class OnLineBible implements ExportFormat {
 						if (vvs != null) {
 							for (VirtualVerse vv : vvs) {
 								if (vv.getNumber() == vnum) {
-									for (Headline h : vv.getHeadlines()) {
-										text.append(" {\\$");
-										h.accept(new OnLineBibleVisitor(text, includeStrongs));
-										text.append("\\$} ");
-									}
 									boolean firstVerse = true;
 									for (Verse v : vv.getVerses()) {
 										if (!firstVerse || !v.getNumber().equals("" + vv.getNumber())) {
@@ -227,7 +224,8 @@ public class OnLineBible implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitHeadline(int depth) throws RuntimeException {
-			throw new RuntimeException("Headlines should have been exported before");
+			content.append(" {\\$");
+			return new OnLineBibleVisitor(content, includeStrongs, "\\$} ");
 		}
 
 		@Override
