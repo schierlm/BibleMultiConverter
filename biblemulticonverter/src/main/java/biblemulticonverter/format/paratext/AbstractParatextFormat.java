@@ -167,6 +167,9 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 							(ctx.currentParagraph == ParatextImportContext.CurrentParagraph.NORMAL && ctx.currentVisitor != null)) {
 						ctx.currentVisitor.visitLineBreak(LineBreakKind.PARAGRAPH);
 					}
+					if (ctx.currentParagraph != ParatextImportContext.CurrentParagraph.NORMAL) {
+						ctx.currentVisitor = null;
+					}
 					ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NONE;
 				}
 
@@ -446,6 +449,10 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		public Visitor<RuntimeException> getCurrentVisitor() {
 			Visitor<RuntimeException> v = visitorStack.get(visitorStack.size() - 1);
+			if (v == null && ctx.currentVisitor == null && ctx.currentVerse != null) {
+				ctx.currentVisitor = ctx.currentVerse.getAppendVisitor();
+				ctx.flushHeadlines();
+			}
 			return v != null ? v : ctx.currentVisitor;
 		}
 
