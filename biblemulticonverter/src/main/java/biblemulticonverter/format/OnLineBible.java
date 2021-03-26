@@ -30,7 +30,7 @@ public class OnLineBible implements ExportFormat {
 	public static final String[] HELP_TEXT = {
 			"Export format for importing into OnLine Bible",
 			"",
-			"Usage: OnLineBible <outfile> [<namesfile>] [IncludeStrongs]",
+			"Usage: OnLineBible <outfile> [<namesfile>] [IncludeStrongs] [IgnoreKJV]",
 			"",
 			"Put <namesfile> as NewBkNms.Lst into the note control directory of the Bible notes set."
 	};
@@ -107,16 +107,24 @@ public class OnLineBible implements ExportFormat {
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
 		String outFile = exportArgs[0], namesFile = null;
-		;
+		boolean writeEmptyVerses = Boolean.getBoolean("biblemulticonverter.onlinebible.writeemptyverses");
 		boolean includeStrongs = false;
+		boolean ignoreKJV = false;
 		if (exportArgs.length > 1) {
 			if (exportArgs[1].equals("IncludeStrongs")) {
 				includeStrongs = true;
+			} else if (exportArgs[1].equals("IgnoreKJV")) {
+				ignoreKJV = true;
 			} else {
 				namesFile = exportArgs[1];
 			}
 			if (exportArgs.length > 2 && exportArgs[2].equals("IncludeStrongs")) {
 				includeStrongs = true;
+				if (exportArgs.length > 3 && exportArgs[3].equals("IgnoreKJV")) {
+					ignoreKJV = true;
+				}
+			} else if (exportArgs.length > 2 && exportArgs[2].equals("IgnoreKJV")) {
+				ignoreKJV = true;
 			}
 		}
 
@@ -152,6 +160,13 @@ public class OnLineBible implements ExportFormat {
 				}
 				Book bk = bookMap.remove(bm.id);
 				int[] verseCount = StandardVersification.KJV.getVerseCount(bm.id);
+				if (bk != null && ignoreKJV) {
+					verseCount = new int[bk.getChapters().size()];
+					for (int i = 0; i < verseCount.length; i++) {
+						verseCount[i] = bk.getChapters().get(i).createVirtualVerses(false, false).stream()
+								.mapToInt(vv -> vv.getNumber()).max().orElse(1);
+					}
+				}
 				for (int i = 0; i < verseCount.length; i++) {
 					Chapter ch = bk != null && i < bk.getChapters().size() ? bk.getChapters().get(i) : null;
 					int maxVerse = verseCount[i];
@@ -159,9 +174,6 @@ public class OnLineBible implements ExportFormat {
 					allowedNumbers.set(1, maxVerse + 1);
 					List<VirtualVerse> vvs = ch == null ? null : ch.createVirtualVerses(false, allowedNumbers, false);
 					for (int vnum = 1; vnum <= verseCount[i]; vnum++) {
-
-						bw.write("$$$ " + bm.abbr + " " + (i + 1) + ":" + vnum + " ");
-						bw.newLine();
 						StringBuilder text = new StringBuilder(prefix);
 						if (vvs != null) {
 							for (VirtualVerse vv : vvs) {
@@ -176,6 +188,10 @@ public class OnLineBible implements ExportFormat {
 									}
 								}
 							}
+						}
+						if (text.length() > 0 || writeEmptyVerses) {
+							bw.write("$$$ " + bm.abbr + " " + (i + 1) + ":" + vnum + " ");
+							bw.newLine();
 						}
 						if (text.length() > 0) {
 							bw.write(text.toString().replaceAll("  +", " "));
