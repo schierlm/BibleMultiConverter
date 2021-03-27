@@ -181,7 +181,7 @@ public class OnLineBible implements ExportFormat {
 									boolean firstVerse = true;
 									for (Verse v : vv.getVerses()) {
 										if (!firstVerse || !v.getNumber().equals("" + vv.getNumber())) {
-											text.append("\\\\(" + v.getNumber() + ")\\\\ ");
+											text.append("\\!(" + (i + 1) + ":" + v.getNumber() + ")\\! ");
 										}
 										v.accept(new OnLineBibleVisitor(text, includeStrongs));
 										firstVerse = false;
