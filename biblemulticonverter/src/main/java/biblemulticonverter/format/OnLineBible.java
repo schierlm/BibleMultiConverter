@@ -35,6 +35,8 @@ public class OnLineBible implements ExportFormat {
 			"Put <namesfile> as NewBkNms.Lst into the note control directory of the Bible notes set."
 	};
 
+	private static final Map<BookID, String> BOOK_TO_ABBR = new EnumMap<>(BookID.class);
+
 	private static final BookMeta[] BOOK_META = new BookMeta[] {
 			new BookMeta("Ge", BookID.BOOK_Gen),
 			new BookMeta("Ex", BookID.BOOK_Exod),
@@ -153,20 +155,29 @@ public class OnLineBible implements ExportFormat {
 		}
 
 		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outFile), StandardCharsets.UTF_8))) {
+			bw.write("\uFEFF");
 			for (BookMeta bm : BOOK_META) {
 				String prefix = "";
 				if (bm.id == BookID.BOOK_Matt && includeStrongs) {
 					prefix = "0 ";
 				}
 				Book bk = bookMap.remove(bm.id);
-				int[] verseCount = StandardVersification.KJV.getVerseCount(bm.id);
 				if (bk != null && ignoreKJV) {
-					verseCount = new int[bk.getChapters().size()];
-					for (int i = 0; i < verseCount.length; i++) {
-						verseCount[i] = bk.getChapters().get(i).createVirtualVerses(false, false).stream()
-								.mapToInt(vv -> vv.getNumber()).max().orElse(1);
+					for (int i = 0; i < bk.getChapters().size(); i++) {
+						Chapter ch = bk.getChapters().get(i);
+						for (Verse v : ch.getVerses()) {
+							bw.write("$$$ " + bm.abbr + " " + (i + 1) + ":" + v.getNumber() + " ");
+							bw.newLine();
+							StringBuilder text = new StringBuilder(prefix);
+							v.accept(new OnLineBibleVisitor(text, includeStrongs));
+							bw.write(text.toString().replaceAll("  +", " "));
+							bw.newLine();
+							prefix = "";
+						}
 					}
+					continue;
 				}
+				int[] verseCount = StandardVersification.KJV.getVerseCount(bm.id);
 				for (int i = 0; i < verseCount.length; i++) {
 					Chapter ch = bk != null && i < bk.getChapters().size() ? bk.getChapters().get(i) : null;
 					int maxVerse = verseCount[i];
@@ -214,6 +225,7 @@ public class OnLineBible implements ExportFormat {
 		public BookMeta(String abbr, BookID id) {
 			this.abbr = abbr;
 			this.id = id;
+			BOOK_TO_ABBR.put(id, abbr);
 		}
 	}
 
@@ -268,6 +280,14 @@ public class OnLineBible implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+			if (BOOK_TO_ABBR.containsKey(book) && firstChapter == lastChapter) {
+				content.append("\\\\#" + BOOK_TO_ABBR.get(book) + " " + firstChapter + ":" + firstVerse);
+				if (!firstVerse.equals(lastVerse))
+					content.append("-" + lastVerse);
+				content.append("\\\\");
+				return null;
+			}
+			System.out.println("WARNING: Cross reference references more than one book: " + bookAbbr + " " + firstChapter + ":" + firstVerse + "-" + lastChapter + ":" + lastVerse + " - replacing by plain text");
 			return new OnLineBibleVisitor(content, includeStrongs);
 		}
 
