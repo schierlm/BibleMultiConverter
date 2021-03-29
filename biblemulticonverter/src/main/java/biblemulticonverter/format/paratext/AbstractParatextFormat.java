@@ -125,6 +125,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		final boolean forceProlog = book.getId().getId().getZefID() < 0;
 		final ParatextImportContext ctx = new ParatextImportContext();
 		ctx.bookAbbrs = bookAbbrs;
+		book.fixTrailingWhitespace();
 		book.accept(new ParatextBookContentVisitor<RuntimeException>() {
 
 			@Override
@@ -445,6 +446,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		private ParatextImportContext ctx;
 		private List<Visitor<RuntimeException>> visitorStack = new ArrayList<>();
+		int inFootnoteDepth = -1;
 		private FootnoteXrefKind justOpenedFootnote = null;
 
 		public Visitor<RuntimeException> getCurrentVisitor() {
@@ -458,7 +460,13 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		public ParatextImportVisitor(ParatextImportContext ctx) {
 			this.ctx = ctx;
-			visitorStack.add(null);
+			visitorStackAdd(null);
+		}
+
+		private void visitorStackAdd(Visitor<RuntimeException> v) {
+			if (inFootnoteDepth >= 0)
+				inFootnoteDepth++;
+			visitorStack.add(v);
 		}
 
 		@Override
@@ -506,7 +514,8 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			Visitor<RuntimeException> v = getCurrentVisitor().visitFootnote();
 			if (kind == FootnoteXrefKind.XREF)
 				v.visitText(FormattedText.XREF_MARKER);
-			visitorStack.add(v);
+			visitorStackAdd(v);
+			inFootnoteDepth = 0;
 			return this;
 		}
 
@@ -567,7 +576,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				newVisitor = getCurrentVisitor().visitCSSFormatting(kind.getCss());
 			}
 			justOpenedFootnote = null;
-			visitorStack.add(newVisitor);
+			visitorStackAdd(newVisitor);
 			return this;
 		}
 
@@ -594,7 +603,14 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				lastVerse = firstVerse;
 			}
 
-			getCurrentVisitor().visitCrossReference(ctx.bookAbbrs.getOrDefault(reference.getBook(), reference.getBook().getId().getOsisID()), reference.getBook().getId(), firstChapter,firstVerse, lastChapter, lastVerse).visitText(reference.getContent());
+			Visitor<RuntimeException> v = getCurrentVisitor();
+
+			if (inFootnoteDepth == -1 && !Boolean.getBoolean("paratext.allowrefsoutsidefootnotes")) {
+				v.visitText(reference.getContent());
+				v = v.visitFootnote();
+			}
+
+			v.visitCrossReference(ctx.bookAbbrs.getOrDefault(reference.getBook(), reference.getBook().getId().getOsisID()), reference.getBook().getId(), firstChapter, firstVerse, lastChapter, lastVerse).visitText(reference.getContent());
 		}
 
 		@Override
@@ -609,6 +625,8 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		@Override
 		public void visitEnd() {
+			if (inFootnoteDepth >= 0)
+				inFootnoteDepth--;
 			visitorStack.remove(visitorStack.size() - 1);
 		}
 

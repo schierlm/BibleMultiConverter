@@ -11,8 +11,11 @@ import java.util.Set;
 
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseEnd;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.format.paratext.utilities.TagParser;
@@ -112,6 +115,61 @@ public class ParatextBook {
 		for (ParatextBookContentPart p : content) {
 			p.acceptThis(v);
 		}
+	}
+
+	/**
+	 * Before converting to non-Paratext format, remove (unformatted) whitespace
+	 * at the end of a verse. Also move whitespace at the end of character
+	 * content outside of it. This can be introduced by importing USX2 bibles.
+	 * The whitespace should remain when converting to other Paratext formats,
+	 * therefore only strip it when converting to non-Paratext formats.
+	 */
+	public void fixTrailingWhitespace() {
+		boolean seenVerseEnd = false;
+		for (int i = content.size() - 1; i >= 0; i--) {
+			if (content.get(i) instanceof ParatextCharacterContent) {
+				ParatextCharacterContent cc = (ParatextCharacterContent) content.get(i);
+				fixTrailingWhitespace(cc);
+				for (int j = cc.getContent().size() - 1; j >= 0; j--) {
+					if (seenVerseEnd && cc.getContent().get(j) instanceof Text) {
+						Text oldText = (Text) cc.getContent().get(j);
+						cc.getContent().set(j, Text.from(oldText.getChars().replaceFirst(" +$", "")));
+					}
+					seenVerseEnd = (cc.getContent().get(j) instanceof VerseEnd);
+				}
+			} else {
+				seenVerseEnd = false;
+			}
+		}
+	}
+
+	private void fixTrailingWhitespace(ParatextCharacterContentContainer cc) {
+		for (int i = 0; i < cc.getContent().size(); i++) {
+			if (cc.getContent().get(i) instanceof ParatextCharacterContentContainer) {
+				fixTrailingWhitespace((ParatextCharacterContentContainer) cc.getContent().get(i));
+			}
+			if (cc.getContent().get(i) instanceof AutoClosingFormatting) {
+				String suffix = extractTrailingWhitespace((AutoClosingFormatting) cc.getContent().get(i));
+				if (!suffix.isEmpty()) {
+					cc.getContent().add(i + 1, Text.from(suffix));
+				}
+			}
+		}
+	}
+
+	private String extractTrailingWhitespace(AutoClosingFormatting container) {
+		ParatextCharacterContentPart last = container.getContent().get(container.getContent().size() - 1);
+		if (last instanceof AutoClosingFormatting) {
+			return extractTrailingWhitespace((AutoClosingFormatting) last);
+		} else if (last instanceof Text) {
+			String oldText = ((Text) last).getChars();
+			String newText = oldText.replaceFirst(" +$", "");
+			if (!newText.equals(oldText)) {
+				container.getContent().set(container.getContent().size() - 1, Text.from(newText));
+				return oldText.substring(newText.length());
+			}
+		}
+		return "";
 	}
 
 	/**
