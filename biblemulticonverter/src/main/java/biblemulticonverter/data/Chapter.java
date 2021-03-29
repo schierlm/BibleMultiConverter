@@ -43,10 +43,10 @@ public class Chapter {
 			lastVerse = vv.getNumber();
 			vv.validate(bible, book, bookAbbr, cnumber, danglingReferences, dictionaryEntries);
 		}
-		List<VerseRange> ranges = createVerseRanges();
+		List<VerseRange> ranges = createVerseRanges(false);
 		for (VerseRange vr : ranges) {
 			for (VerseRange vr2 : ranges) {
-				if (vr != vr2 && vr.overlaps(vr2))
+				if (vr != vr2 && vr.overlaps(vr2, false))
 					throw new IllegalStateException("Overlapping verse ranges: " + vr.getMinVerse() + "-" + vr.getMaxVerse() + " and " + vr2.getMinVerse() + "-" + vr2.getMaxVerse());
 			}
 			vr.validate(bible, book, bookAbbr, cnumber, danglingReferences, dictionaryEntries);
@@ -271,7 +271,7 @@ public class Chapter {
 		return result;
 	}
 
-	public List<VerseRange> createVerseRanges() {
+	public List<VerseRange> createVerseRanges(boolean ascending) {
 
 		// create individual verse range for every verse
 		final List<VerseRange> individualRanges = new ArrayList<>();
@@ -315,7 +315,7 @@ public class Chapter {
 			// do checking backwards: Consider ranges 2, 5, 1, 3, 4.6 for example 
 			for (int i = result.size() - 1; i >= 0; i--) {
 				VerseRange r2 = result.get(i);
-				if (current.overlaps(r2)) {
+				if (current.overlaps(r2, ascending)) {
 					// merge all ranges up to that point
 					while (result.size() > i) {
 						current = new VerseRange(result.remove(result.size() - 1), current);

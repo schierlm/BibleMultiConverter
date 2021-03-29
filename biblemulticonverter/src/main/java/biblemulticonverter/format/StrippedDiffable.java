@@ -50,7 +50,7 @@ public class StrippedDiffable implements ExportFormat {
 			"- AddStrongsPrefixes",
 			"- RemoveStrongsPrefixes",
 			"- SelectVariation <Name>",
-			"- ChangeVerseStructure {Raw|Virtual|Range} [<VersificationFile> <VersificationName>]",
+			"- ChangeVerseStructure {Raw|Virtual|Virtual_ignoring_Headlines|Range|Range_Ascending} [<VersificationFile> <VersificationName>]",
 			"- RenameBook <OldAbbr> <NewAbbr>",
 			"- OptimizeFormatting [<OldFormatting>=<NewFormatting>[&<NewFormatting>[...]] [...]"
 	};
@@ -86,7 +86,7 @@ public class StrippedDiffable implements ExportFormat {
 			out.println("Variation " + exportArgs[2] + " kept.");
 		} else if (exportArgs.length == 3 && exportArgs[1].equals("ChangeVerseStructure")) {
 			changeVerseStructure(bible, VerseStructureFormat.valueOf(exportArgs[2].toUpperCase()), null);
-		} else if (exportArgs.length == 5 && exportArgs[1].equals("ChangeVerseStructure") && exportArgs[2].equalsIgnoreCase(VerseStructureFormat.VIRTUAL.name())) {
+		} else if (exportArgs.length == 5 && exportArgs[1].equals("ChangeVerseStructure") && (exportArgs[2].equalsIgnoreCase(VerseStructureFormat.VIRTUAL.name()) || exportArgs[2].equalsIgnoreCase(VerseStructureFormat.VIRTUAL_IGNORING_HEADLINES.name()))) {
 			changeVerseStructure(bible, VerseStructureFormat.VIRTUAL, new VersificationSet(new File(exportArgs[3])).findVersification(exportArgs[4]).toNewVersificationScheme(false));
 		} else if (exportArgs.length == 4 && exportArgs[1].equals("RenameBook")) {
 			renameBookInXref(bible, exportArgs[2], exportArgs[3], true);
@@ -490,13 +490,15 @@ public class StrippedDiffable implements ExportFormat {
 					}
 					break;
 				case RANGE:
-					for (VerseRange range : chap.createVerseRanges()) {
+				case RANGE_ASCENDING:
+					for (VerseRange range : chap.createVerseRanges(format.equals(VerseStructureFormat.RANGE_ASCENDING))) {
 						String verseNumber = (range.getMinVerse() == range.getMaxVerse() ? "" : range.getMinVerse() + "-") + range.getMaxVerse();
 						verseNumber = (range.getChapter() == 0 ? "" : range.getChapter() + ",") + verseNumber;
 						groupedVerses.add(new GroupedVerse(verseNumber, Collections.emptyList(), range.getVerses()));
 					}
 					break;
 				case VIRTUAL:
+				case VIRTUAL_IGNORING_HEADLINES:
 					BitSet allowedNumbers = null;
 					if (vs != null) {
 						BitSet[] bookInfo = vs.getCoveredBooks().get(book.getId());
@@ -504,7 +506,7 @@ public class StrippedDiffable implements ExportFormat {
 							allowedNumbers = bookInfo[i];
 						}
 					}
-					for (VirtualVerse vv : chap.createVirtualVerses(allowedNumbers)) {
+					for (VirtualVerse vv : chap.createVirtualVerses(false, allowedNumbers, format.equals(VerseStructureFormat.VIRTUAL))) {
 						groupedVerses.add(new GroupedVerse("" + vv.getNumber(), vv.getHeadlines(), vv.getVerses()));
 					}
 					break;
@@ -934,7 +936,7 @@ public class StrippedDiffable implements ExportFormat {
 	}
 
 	private static enum VerseStructureFormat {
-		VIRTUAL, RANGE, RAW
+		VIRTUAL, VIRTUAL_IGNORING_HEADLINES, RANGE, RANGE_ASCENDING, RAW
 	}
 
 	private static class GroupedVerse {

@@ -45,7 +45,7 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 					chapter.getProlog().accept(xcv);
 				}
 				if (useVerseRanges()) {
-					for (VerseRange vr : chapter.createVerseRanges()) {
+					for (VerseRange vr : chapter.createVerseRanges(false)) {
 						int cnumber = vr.getChapter() == 0 ? cc + 1 : vr.getChapter();
 						countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), cnumber, vr.getMinVerse());
 						countVerse(schemes, totalVerses, book.getAbbr(), book.getId(), cnumber, vr.getMaxVerse());

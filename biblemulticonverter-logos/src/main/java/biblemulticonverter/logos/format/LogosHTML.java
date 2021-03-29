@@ -366,7 +366,7 @@ public class LogosHTML implements ExportFormat {
 			v0.finished();
 			verseChapter.getVerses().add(0, v0);
 		}
-		for (VerseRange vr : verseChapter.createVerseRanges()) {
+		for (VerseRange vr : verseChapter.createVerseRanges(false)) {
 			String versePrefix = "", versePrefixBeforeHeadline = "", versePrefixAfterHeadline = "";
 			if (writeChapterNumber) {
 				versePrefix = "<b style=\"font-size: 20pt\">[[" + chapterRef + "]]" + cname + "</b>" + verseSeparator;

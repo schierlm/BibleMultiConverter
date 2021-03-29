@@ -52,8 +52,8 @@ public class VerseRange {
 		this.verses = Collections.unmodifiableList(verses);
 	}
 
-	protected boolean overlaps(VerseRange other) {
-		return chapter == other.chapter && maxVerse >= other.minVerse && other.maxVerse >= minVerse;
+	protected boolean overlaps(VerseRange other, boolean ascending) {
+		return chapter == other.chapter && (ascending || maxVerse >= other.minVerse) && other.maxVerse >= minVerse;
 	}
 
 	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries) {
