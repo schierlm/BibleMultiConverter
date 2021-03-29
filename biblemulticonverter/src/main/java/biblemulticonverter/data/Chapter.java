@@ -70,14 +70,32 @@ public class Chapter {
 	}
 
 	public List<VirtualVerse> createVirtualVerses(boolean titleAsVerseZero, boolean extractHeadlines) {
+		List<VirtualVerse> result = new ArrayList<VirtualVerse>();
+		if (Boolean.getBoolean("virtualverses.fromverseranges") && !extractHeadlines) {
+			// create virtual verses from verse ranges
+			for(VerseRange vr : createVerseRanges(true)) {
+				VirtualVerse vv = new VirtualVerse(vr.getMinVerse());
+				vv.getVerses().addAll(vr.getVerses());
+				result.add(vv);
+			}
+			return result;
+		}
 
 		// split up verses to separate headlines
 		final List<VirtualVerse> tempVerses = new ArrayList<VirtualVerse>();
 		BitSet numericVerseNumbers = new BitSet(verses.size());
+		boolean movemixed = Boolean.getBoolean("virtualverses.movemixed");
+		boolean movesplit = Boolean.getBoolean("virtualverses.movesplit");
 		for (final Verse verse : verses) {
 			int num;
 			try {
-				num = Integer.parseInt(verse.getNumber());
+				String number = verse.getNumber();
+				if (movemixed && number.matches("[1-9][0-9]*[/.-][1-9]")) {
+					number = number.split("[/.-]")[0];
+				} else if (movesplit && number.matches("[1-9][0-9]*[a-zG].*")) {
+					number = number.split("[a-zG]")[0];
+				}
+				num = Integer.parseInt(number);
 				numericVerseNumbers.set(num);
 			} catch (NumberFormatException ex) {
 				// ignore nonnumeric verse numbers
@@ -141,7 +159,6 @@ public class Chapter {
 		}
 
 		// group verses sensibly
-		List<VirtualVerse> result = new ArrayList<VirtualVerse>();
 		VirtualVerse current = null;
 		int nextverse = titleAsVerseZero ? 0 : 1;
 		for (VirtualVerse vv : tempVerses) {
