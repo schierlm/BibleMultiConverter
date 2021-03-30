@@ -133,7 +133,11 @@ public class ParatextBook {
 				for (int j = cc.getContent().size() - 1; j >= 0; j--) {
 					if (seenVerseEnd && cc.getContent().get(j) instanceof Text) {
 						Text oldText = (Text) cc.getContent().get(j);
-						cc.getContent().set(j, Text.from(oldText.getChars().replaceFirst(" +$", "")));
+						if (oldText.getChars().matches(" +")) {
+							cc.getContent().remove(j);
+						} else {
+							cc.getContent().set(j, Text.from(oldText.getChars().replaceFirst(" +$", "")));
+						}
 					}
 					seenVerseEnd = (cc.getContent().get(j) instanceof VerseEnd);
 				}
