@@ -84,7 +84,7 @@ public class ScrambledDiffable implements ExportFormat {
 		newText.finished();
 	}
 
-	private static class Scrambler {
+	public static class Scrambler {
 
 		private final SecureRandom rnd;
 		private final int offset;
@@ -164,6 +164,12 @@ public class ScrambledDiffable implements ExportFormat {
 						ch++;
 				} else if (ch >= '\u03B1' && ch <= '\u03C9') {
 					ch = (char) ('\u03B1' + scrambleChar(ch - '\u03B1', 25));
+				} else if (cipher == null && Character.isLetter(ch) && Character.isUpperCase(ch)) {
+					ch = (char) ('A' + scrambleChar(0, 26));
+				} else if (cipher == null && Character.isLetter(ch)) {
+					ch = (char) ('a' + scrambleChar(0, 26));
+				} else if (cipher == null && Character.isDigit(ch)) {
+					ch = (char) ('0' + scrambleChar(0, 10));
 				}
 				data[i] = ch;
 			}
