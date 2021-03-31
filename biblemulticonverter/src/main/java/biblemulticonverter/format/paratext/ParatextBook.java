@@ -139,10 +139,10 @@ public class ParatextBook {
 							cc.getContent().set(j, Text.from(oldText.getChars().replaceFirst(" +$", "")));
 						}
 					}
-					seenVerseEnd = (cc.getContent().get(j) instanceof VerseEnd);
+					seenVerseEnd = j < cc.getContent().size() && (cc.getContent().get(j) instanceof VerseEnd);
 				}
 			} else {
-				seenVerseEnd = false;
+				seenVerseEnd = content.get(i) instanceof TableCellStart;
 			}
 		}
 	}
@@ -168,6 +168,10 @@ public class ParatextBook {
 		} else if (last instanceof Text) {
 			String oldText = ((Text) last).getChars();
 			String newText = oldText.replaceFirst(" +$", "");
+			if (newText.isEmpty()) {
+				container.getContent().remove(container.getContent().size()-1);
+				return oldText;
+			}
 			if (!newText.equals(oldText)) {
 				container.getContent().set(container.getContent().size() - 1, Text.from(newText));
 				return oldText.substring(newText.length());

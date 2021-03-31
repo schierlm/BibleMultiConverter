@@ -423,9 +423,15 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		private CurrentParagraph currentParagraph = CurrentParagraph.NONE;
 		private Map<ParatextID, String> bookAbbrs;
 
+		private static final boolean allowMixedHeadlineDepth = Boolean.getBoolean("paratext.allowmixedheadlinedepth");
+
 		private void flushHeadlines() {
+			int lastDepth = 0;
 			for (Headline hl : headlines) {
-				hl.accept(currentVisitor.visitHeadline(hl.getDepth()));
+				if (allowMixedHeadlineDepth)
+					lastDepth = 0;
+				lastDepth = Math.max(lastDepth == 9 ? 9 : lastDepth + 1, hl.getDepth());
+				hl.accept(currentVisitor.visitHeadline(lastDepth));
 			}
 			headlines.clear();
 		}
