@@ -170,7 +170,7 @@ public class OnLineBible implements ExportFormat {
 							bw.newLine();
 							StringBuilder text = new StringBuilder(prefix);
 							v.accept(new OnLineBibleVisitor(text, includeStrongs));
-							bw.write(text.toString().replaceAll("  +", " "));
+							bw.write(postprocessVerse(text.toString()));
 							bw.newLine();
 							prefix = "";
 						}
@@ -205,7 +205,7 @@ public class OnLineBible implements ExportFormat {
 							bw.newLine();
 						}
 						if (text.length() > 0) {
-							bw.write(text.toString().replaceAll("  +", " "));
+							bw.write(postprocessVerse(text.toString()));
 							bw.newLine();
 						}
 						prefix = "";
@@ -215,6 +215,17 @@ public class OnLineBible implements ExportFormat {
 		}
 		if (!bookMap.isEmpty())
 			throw new IllegalStateException("Remaining books: " + bookMap.keySet());
+	}
+
+	private String postprocessVerse(String verse) {
+		verse = verse.replaceAll("  +", " ").replaceAll("\\} ?((?![{\\\\])\\p{Punct})", "} !!$1");
+		if (verse.endsWith("\\&")) {
+			verse = verse.substring(0, verse.length() - 2);
+		}
+		if (verse.endsWith("-") && !verse.endsWith("--")) {
+			verse = verse.substring(0, verse.length() - 1) + "!!-";
+		}
+		return verse;
 	}
 
 	private static class BookMeta {
