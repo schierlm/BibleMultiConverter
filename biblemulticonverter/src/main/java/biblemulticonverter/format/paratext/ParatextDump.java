@@ -95,7 +95,7 @@ public class ParatextDump extends AbstractParatextFormat {
 		String[] parts = line.split("\t", 3);
 		switch (parts[0]) {
 			case "VERSE":
-				target.add(new VerseStart(VerseIdentifier.fromStringOrThrow(parts[2]), parts[3]));
+				target.add(new VerseStart(VerseIdentifier.fromStringOrThrow(parts[1]), parts[2]));
 				break;
 			case "VERSE-END":
 				target.add(new ParatextCharacterContent.VerseEnd(VerseIdentifier.fromStringOrThrow(parts[2])));
@@ -201,7 +201,7 @@ public class ParatextDump extends AbstractParatextFormat {
 
 		@Override
 		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
-			bw.write("VERSE\t\t" + location + "\t" + verseNumber + "\n");
+			bw.write("VERSE\t" + location + "\t" + verseNumber + "\n");
 		}
 
 		@Override
@@ -236,7 +236,7 @@ public class ParatextDump extends AbstractParatextFormat {
 
 		@Override
 		public void visitVerseEnd(VerseIdentifier location) throws IOException {
-			bw.write("VERSE-END\t" + location + "\n");
+			bw.write("VERSE-END\t\t" + location + "\n");
 		}
 	}
 }
