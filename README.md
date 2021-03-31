@@ -70,7 +70,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[UnboundBible](https://unbound.biola.edu/)**: Import and export
 - **[MobiPocket](https://en.wikipedia.org/wiki/Mobipocket)**: export only
 - **[Volksbibel2000](http://www.volksbibel-2000.de/)**: export only
-- **[OnLineBible](https://onlinebible.com/)**: export only
+- **[OnLineBible](https://onlinebible.net/)**: export only
 - **[BrowserBible](https://github.com/digitalbiblesociety/browserbible-3/)**: export only
 - **[Quick Bible](http://www.bibleforandroid.com/)**: export only
 - **[SWORD](https://www.crosswire.org/sword) modules**: import only (see below for details)
