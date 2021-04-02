@@ -169,7 +169,7 @@ public class OnLineBible implements ExportFormat {
 							bw.write("$$$ " + bm.abbr + " " + (i + 1) + ":" + v.getNumber() + " ");
 							bw.newLine();
 							StringBuilder text = new StringBuilder(prefix);
-							v.accept(new OnLineBibleVisitor(text, includeStrongs));
+							v.accept(new OnLineBibleVisitor(text, includeStrongs, false));
 							bw.write(postprocessVerse(text.toString()));
 							bw.newLine();
 							prefix = "";
@@ -194,7 +194,7 @@ public class OnLineBible implements ExportFormat {
 										if (!firstVerse || !v.getNumber().equals("" + vv.getNumber())) {
 											text.append("\\!(" + (i + 1) + ":" + v.getNumber() + ")\\! ");
 										}
-										v.accept(new OnLineBibleVisitor(text, includeStrongs));
+										v.accept(new OnLineBibleVisitor(text, includeStrongs, false));
 										firstVerse = false;
 									}
 								}
@@ -218,10 +218,34 @@ public class OnLineBible implements ExportFormat {
 	}
 
 	private String postprocessVerse(String verse) {
-		verse = verse.replaceAll("  +", " ").replaceAll("\\} ?((?![{\\\\])\\p{Punct})", "} !!$1");
-		if (verse.endsWith("\\&")) {
+		verse = verse.replaceAll("  +", " ");
+		String suffix = "";
+		if (verse.endsWith("»\\!")) {
+			suffix = "»\\!";
+			verse = verse.substring(0, verse.length() - 3);
+		}
+		while (verse.endsWith("\\&")) {
 			verse = verse.substring(0, verse.length() - 2);
 		}
+		verse += suffix;
+		int pos = verse.indexOf("}\3 ");
+		while (pos != -1) {
+			int spos = pos + 3, epos = spos;
+			while (epos < verse.length() && "{\\".indexOf(verse.charAt(epos)) == -1 && !Character.isLetterOrDigit(verse.charAt(epos))) {
+				epos++;
+			}
+			if (spos != epos) {
+				int fspos = verse.lastIndexOf(" \3{", spos);
+				while (fspos >= 2 && verse.substring(fspos - 2, fspos) == "}\3") {
+					fspos = verse.lastIndexOf(" \3{", fspos - 2);
+				}
+				if (fspos == -1)
+					throw new IllegalStateException("Unable to find footnote start: " + verse);
+				verse = verse.substring(0, fspos) + verse.substring(spos, epos) + verse.substring(fspos, spos) + verse.substring(epos);
+			}
+			pos = verse.indexOf("}\3 ", epos);
+		}
+		verse = verse.replace("\3", "");
 		if (verse.endsWith("-") && !verse.endsWith("--")) {
 			verse = verse.substring(0, verse.length() - 1) + "!!-";
 		}
@@ -244,15 +268,17 @@ public class OnLineBible implements ExportFormat {
 
 		private final StringBuilder content;
 		private final boolean includeStrongs;
+		private final boolean inFootnote;
 		private final String suffix;
 
-		public OnLineBibleVisitor(StringBuilder content, boolean includeStrongs) {
-			this(content, includeStrongs, "");
+		public OnLineBibleVisitor(StringBuilder content, boolean includeStrongs, boolean inFootnote) {
+			this(content, includeStrongs, inFootnote, "");
 		}
 
-		private OnLineBibleVisitor(StringBuilder content, boolean includeStrongs, String suffix) {
+		private OnLineBibleVisitor(StringBuilder content, boolean includeStrongs, boolean inFootnote, String suffix) {
 			this.content = content;
 			this.includeStrongs = includeStrongs;
+			this.inFootnote = inFootnote;
 			this.suffix = suffix;
 		}
 
@@ -263,8 +289,8 @@ public class OnLineBible implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitHeadline(int depth) throws RuntimeException {
-			content.append(" {\\$");
-			return new OnLineBibleVisitor(content, includeStrongs, "\\$} ");
+			content.append(inFootnote ? " ((\\$" : " \3{\\$");
+			return new OnLineBibleVisitor(content, includeStrongs, true, inFootnote ? "\\$)) " : "\\$}\3 ");
 		}
 
 		@Override
@@ -285,8 +311,8 @@ public class OnLineBible implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
-			content.append(" {");
-			return new OnLineBibleVisitor(content, includeStrongs, "} ");
+			content.append(inFootnote ? " ((" : " \3{");
+			return new OnLineBibleVisitor(content, includeStrongs, true, inFootnote ? ")) " : "}\3 ");
 		}
 
 		@Override
@@ -299,7 +325,7 @@ public class OnLineBible implements ExportFormat {
 				return null;
 			}
 			System.out.println("WARNING: Cross reference references more than one book: " + bookAbbr + " " + firstChapter + ":" + firstVerse + "-" + lastChapter + ":" + lastVerse + " - replacing by plain text");
-			return new OnLineBibleVisitor(content, includeStrongs);
+			return new OnLineBibleVisitor(content, includeStrongs, inFootnote);
 		}
 
 		@Override
@@ -310,7 +336,7 @@ public class OnLineBible implements ExportFormat {
 				tag = "\\\\";
 				break;
 			case ITALIC:
-				tag = "\\@";
+				tag = inFootnote ? "" : "\\@";
 				break;
 			case UNDERLINE:
 				tag = "\\%";
@@ -319,16 +345,16 @@ public class OnLineBible implements ExportFormat {
 				break;
 			}
 			content.append(tag);
-			return new OnLineBibleVisitor(content, includeStrongs, tag);
+			return new OnLineBibleVisitor(content, includeStrongs, inFootnote, tag);
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
 			if (css.contains("-bmc-psalm-title: true;")) {
 				content.append("\\!«");
-				return new OnLineBibleVisitor(content, includeStrongs, "»\\!");
+				return new OnLineBibleVisitor(content, includeStrongs, inFootnote, "»\\!");
 			}
-			return new OnLineBibleVisitor(content, includeStrongs);
+			return new OnLineBibleVisitor(content, includeStrongs, inFootnote);
 		}
 
 		@Override
@@ -345,12 +371,12 @@ public class OnLineBible implements ExportFormat {
 					suffix.append(strong).append(" ");
 				}
 			}
-			return new OnLineBibleVisitor(content, includeStrongs, suffix.toString());
+			return new OnLineBibleVisitor(content, includeStrongs, inFootnote, suffix.toString());
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) throws RuntimeException {
-			return new OnLineBibleVisitor(content, includeStrongs);
+			return new OnLineBibleVisitor(content, includeStrongs, inFootnote);
 		}
 
 		@Override
@@ -364,7 +390,7 @@ public class OnLineBible implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws RuntimeException {
-			return prio.handleVisitor(category, new OnLineBibleVisitor(content, includeStrongs));
+			return prio.handleVisitor(category, new OnLineBibleVisitor(content, includeStrongs, inFootnote));
 		}
 
 		@Override
