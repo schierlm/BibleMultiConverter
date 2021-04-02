@@ -106,6 +106,8 @@ public class OnLineBible implements ExportFormat {
 			new BookMeta("Re", BookID.BOOK_Rev),
 	};
 
+	private static final String JOIN_XREF_REGEXP = System.getProperty("biblemulticonverter.onlinebible.joinxref", "[ .,;]+");
+
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
 		String outFile = exportArgs[0], namesFile = null;
@@ -245,6 +247,7 @@ public class OnLineBible implements ExportFormat {
 			}
 			pos = verse.indexOf("}\3 ", epos);
 		}
+		verse = verse.replaceAll("\\\\\3\\\\" + JOIN_XREF_REGEXP + "\\\\\\\\\3#", " ");
 		verse = verse.replace("\3", "");
 		if (verse.endsWith("-") && !verse.endsWith("--")) {
 			verse = verse.substring(0, verse.length() - 1) + "!!-";
@@ -318,10 +321,10 @@ public class OnLineBible implements ExportFormat {
 		@Override
 		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
 			if (BOOK_TO_ABBR.containsKey(book) && firstChapter == lastChapter) {
-				content.append("\\\\#" + BOOK_TO_ABBR.get(book) + " " + firstChapter + ":" + firstVerse);
+				content.append("\\\\\3#" + BOOK_TO_ABBR.get(book) + " " + firstChapter + ":" + firstVerse);
 				if (!firstVerse.equals(lastVerse))
 					content.append("-" + lastVerse);
-				content.append("\\\\");
+				content.append("\\\3\\");
 				return null;
 			}
 			System.out.println("WARNING: Cross reference references more than one book: " + bookAbbr + " " + firstChapter + ":" + firstVerse + "-" + lastChapter + ":" + lastVerse + " - replacing by plain text");
