@@ -10,6 +10,7 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,6 +57,8 @@ import biblemulticonverter.format.paratext.utilities.StandardExportWarningMessag
  * Base class for Paratext formats (USFM/USFX/USX).
  */
 public abstract class AbstractParatextFormat implements RoundtripFormat {
+
+	private static final boolean exportAllTags = Boolean.getBoolean("paratext.exportalltags");
 
 	private static Map<String, AutoClosingFormattingKind> ALL_FORMATTINGS_CSS = AutoClosingFormattingKind.allCSS();
 
@@ -152,8 +155,10 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					System.out.println("WARNING: Ignoring chapter number " + newChapter + ", current chapter is " + ctx.cnum);
 				}
 				ctx.currentVisitor = null;
+				ctx.currentVisitorExtraCSS = null;
 				ctx.currentVerse = null;
 				ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NONE;
+				ctx.currentParagraphExtraCSS = null;
 			}
 
 			@Override
@@ -163,6 +168,9 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 			@Override
 			public void visitParagraphStart(ParagraphKind kind) throws RuntimeException {
+				if (exportAllTags && kind.getCategory() == ParagraphKindCategory.SKIP && ctx.currentVisitor != null) {
+					ctx.currentVisitor.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag()).visitText("\uFEFF");
+				}
 				if (ctx.currentParagraph != ParatextImportContext.CurrentParagraph.NONE) {
 					if (ctx.currentParagraph == ParatextImportContext.CurrentParagraph.PROLOG ||
 							(ctx.currentParagraph == ParatextImportContext.CurrentParagraph.NORMAL && ctx.currentVisitor != null)) {
@@ -170,8 +178,10 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					}
 					if (ctx.currentParagraph != ParatextImportContext.CurrentParagraph.NORMAL) {
 						ctx.currentVisitor = null;
+						ctx.currentVisitorExtraCSS = null;
 					}
 					ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NONE;
+					ctx.currentParagraphExtraCSS = null;
 				}
 
 				if (kind.getCategory() == ParagraphKindCategory.SKIP) {
@@ -195,6 +205,13 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					if (kind.getExtraFormatting() != null) {
 						ctx.currentVisitor = ctx.currentVisitor.visitFormattingInstruction(kind.getExtraFormatting());
 					}
+					if (exportAllTags) {
+						ctx.currentParagraphExtraCSS = "-bmc-usfm-tag: " + kind.getTag();
+						ctx.currentVisitor = ctx.currentVisitor.visitCSSFormatting(ctx.currentParagraphExtraCSS);
+					} else {
+						ctx.currentParagraphExtraCSS = null;
+					}
+					ctx.currentVisitorExtraCSS = ctx.currentParagraphExtraCSS;
 				} else { // BLANK_LINE, TABLE_ROW, TEXT
 					if (kind.isProlog() || forceProlog) {
 						if (ctx.cnum == -1) {
@@ -211,8 +228,20 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 						ctx.currentVisitor = ctx.currentChapter.getProlog().getAppendVisitor();
 						ctx.currentParagraph = ParatextImportContext.CurrentParagraph.PROLOG;
 						ctx.flushHeadlines();
+						if (exportAllTags) {
+							ctx.currentParagraphExtraCSS = "-bmc-usfm-tag: " + kind.getTag();
+							ctx.currentVisitor = ctx.currentVisitor.visitCSSFormatting(ctx.currentParagraphExtraCSS);
+						} else {
+							ctx.currentParagraphExtraCSS = null;
+						}
+						ctx.currentVisitorExtraCSS = ctx.currentParagraphExtraCSS;
 					} else {
 						ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NORMAL;
+						if (kind != ParagraphKind.PARAGRAPH_P && exportAllTags) {
+							ctx.currentParagraphExtraCSS = "-bmc-usfm-tag: " + kind.getTag();
+						} else {
+							ctx.currentParagraphExtraCSS = null;
+						}
 					}
 				}
 			}
@@ -220,6 +249,9 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			@Override
 			public void visitTableCellStart(String tag) throws RuntimeException {
 				ctx.ensureParagraph();
+				if (exportAllTags && ctx.currentVisitor != null) {
+					ctx.currentVisitor.visitCSSFormatting("-bmc-usfm-tag: " + tag).visitText("\uFEFF");
+				}
 				if (!tag.matches("t[hc]r?1") && ctx.currentParagraph != ParatextImportContext.CurrentParagraph.HEADLINE && ctx.currentVisitor != null) {
 					ctx.currentVisitor.visitLineBreak(LineBreakKind.NEWLINE_WITH_INDENT);
 				}
@@ -420,7 +452,9 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		private Verse currentVerse = null;
 		private List<Headline> headlines = new ArrayList<>();
 		private Visitor<RuntimeException> currentVisitor;
+		private String currentVisitorExtraCSS;
 		private CurrentParagraph currentParagraph = CurrentParagraph.NONE;
+		private String currentParagraphExtraCSS;
 		private Map<ParatextID, String> bookAbbrs;
 
 		private static final boolean allowMixedHeadlineDepth = Boolean.getBoolean("paratext.allowmixedheadlinedepth");
@@ -440,6 +474,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			if (currentParagraph == CurrentParagraph.NONE) {
 				System.out.println("WARNING: No paragraph open; opening \\p");
 				currentParagraph = CurrentParagraph.NORMAL;
+				currentParagraphExtraCSS = null;
 			}
 		}
 
@@ -457,9 +492,16 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		public Visitor<RuntimeException> getCurrentVisitor() {
 			Visitor<RuntimeException> v = visitorStack.get(visitorStack.size() - 1);
+			if (v == null & ctx.currentVisitor != null && !Objects.equals(ctx.currentVisitorExtraCSS, ctx.currentParagraphExtraCSS)) {
+				ctx.currentVisitor = null;
+			}
 			if (v == null && ctx.currentVisitor == null && ctx.currentVerse != null) {
 				ctx.currentVisitor = ctx.currentVerse.getAppendVisitor();
 				ctx.flushHeadlines();
+				ctx.currentVisitorExtraCSS = ctx.currentParagraphExtraCSS;
+				if (ctx.currentParagraphExtraCSS != null) {
+					ctx.currentVisitor = ctx.currentVisitor.visitCSSFormatting(ctx.currentParagraphExtraCSS);
+				}
 			}
 			return v != null ? v : ctx.currentVisitor;
 		}
@@ -508,6 +550,13 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			ctx.currentChapter.getVerses().add(ctx.currentVerse);
 			ctx.currentVisitor = ctx.currentVerse.getAppendVisitor();
 			ctx.flushHeadlines();
+			ctx.currentVisitorExtraCSS = ctx.currentParagraphExtraCSS;
+			if (ctx.currentParagraphExtraCSS != null) {
+				ctx.currentVisitor = ctx.currentVisitor.visitCSSFormatting(ctx.currentParagraphExtraCSS);
+			}
+			if (exportAllTags && !verseNumber.equals(ctx.currentVerse.getNumber())) {
+				ctx.currentVisitor = ctx.currentVisitor.visitCSSFormatting("-bmc-usfm-verse: " + verseNumber);
+			}
 		}
 
 		@Override
@@ -518,6 +567,9 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			}
 			justOpenedFootnote = kind;
 			Visitor<RuntimeException> v = getCurrentVisitor().visitFootnote();
+			if (exportAllTags) {
+				v = v.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag());
+			}
 			if (kind == FootnoteXrefKind.XREF)
 				v.visitText(FormattedText.XREF_MARKER);
 			visitorStackAdd(v);
@@ -535,8 +587,14 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			if (kind.getLineBreakKind() != null) {
 				getCurrentVisitor().visitLineBreak(kind.getLineBreakKind());
 				newVisitor = getCurrentVisitor();
+				if (exportAllTags) {
+					newVisitor = newVisitor.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag());
+				}
 			} else if (kind.getFormat() != null) {
 				newVisitor = getCurrentVisitor().visitFormattingInstruction(kind.getFormat());
+				if (exportAllTags) {
+					newVisitor = newVisitor.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag());
+				}
 			} else if (kind == AutoClosingFormattingKind.WORDLIST && !attributes.isEmpty()) {
 				StringBuilder strongsPrefixes = new StringBuilder();
 				List<Integer> strongs = new ArrayList<>();
@@ -574,10 +632,16 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					newVisitor = getCurrentVisitor().visitCSSFormatting(kind.getCss());
 				} else {
 					newVisitor = getCurrentVisitor().visitGrammarInformation(strongsPrefixes.toString().toCharArray(), strongsArray, rmacs.isEmpty() ? null : rmacs.toArray(new String[rmacs.size()]), null);
+					if (exportAllTags) {
+						newVisitor = newVisitor.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag());
+					}
 				}
 			} else if (justOpenedFootnote != null && kind.equals(justOpenedFootnote.equals(FootnoteXrefKind.XREF) ? AutoClosingFormattingKind.XREF_TARGET_REFERENCES : AutoClosingFormattingKind.FOOTNOTE_TEXT)) {
 				// footnote consists of just text; skip the start tag
 				newVisitor = getCurrentVisitor();
+				if (exportAllTags) {
+					newVisitor = newVisitor.visitCSSFormatting(kind.getCss());
+				}
 			} else {
 				newVisitor = getCurrentVisitor().visitCSSFormatting(kind.getCss());
 			}
