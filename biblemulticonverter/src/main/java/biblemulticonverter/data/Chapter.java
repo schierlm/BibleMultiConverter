@@ -25,31 +25,32 @@ public class Chapter {
 		this.verses = new ArrayList<Verse>();
 	}
 
-	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String,Set<String>> dictionaryEntries) {
+	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String,Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories) {
 		// chapters may have no verses, if not yet translated but a later
 		// chapter is.
 		if (prolog != null)
-			prolog.validate(bible, book, bookAbbr + " " + cnumber + ":Prolog", danglingReferences, dictionaryEntries);
+			prolog.validate(bible, book, bookAbbr + " " + cnumber + ":Prolog", danglingReferences, dictionaryEntries, validationCategories);
 		Set<String> verseNumbers = new HashSet<String>();
 		for (Verse verse : verses) {
+			String location = bookAbbr + " " + cnumber + ":" + verse.getNumber();
 			if (!verseNumbers.add(verse.getNumber()))
-				throw new IllegalStateException("Duplicate verse number " + bookAbbr + " " + cnumber + ":" + verse.getNumber());
-			verse.validate(bible, book, bookAbbr + " " + cnumber + ":" + verse.getNumber(), danglingReferences, dictionaryEntries);
+				FormattedText.ValidationCategory.DUPLICATE_VERSE.throwOrRecord(location, validationCategories, location);
+			verse.validate(bible, book, location, danglingReferences, dictionaryEntries, validationCategories);
 		}
 		int lastVerse = 0;
 		for (VirtualVerse vv : createVirtualVerses()) {
 			if (vv.getNumber() <= lastVerse)
-				throw new IllegalStateException("Invalid order of virtual verses: " + vv.getNumber() + " after " + lastVerse);
+				FormattedText.ValidationCategory.INVALID_VIRTUAL_VERSE_ORDER.throwOrRecord(bookAbbr + " " + cnumber, validationCategories, vv.getNumber() + " after " + lastVerse);
 			lastVerse = vv.getNumber();
-			vv.validate(bible, book, bookAbbr, cnumber, danglingReferences, dictionaryEntries);
+			vv.validate(bible, book, bookAbbr, cnumber, danglingReferences, dictionaryEntries, validationCategories);
 		}
 		List<VerseRange> ranges = createVerseRanges(false);
 		for (VerseRange vr : ranges) {
 			for (VerseRange vr2 : ranges) {
 				if (vr != vr2 && vr.overlaps(vr2, false))
-					throw new IllegalStateException("Overlapping verse ranges: " + vr.getMinVerse() + "-" + vr.getMaxVerse() + " and " + vr2.getMinVerse() + "-" + vr2.getMaxVerse());
+					FormattedText.ValidationCategory.OVERLAPPING_VERSE_RANGES.throwOrRecord(bookAbbr + " " + cnumber, validationCategories, vr.getMinVerse() + "-" + vr.getMaxVerse() + " and " + vr2.getMinVerse() + "-" + vr2.getMaxVerse());
 			}
-			vr.validate(bible, book, bookAbbr, cnumber, danglingReferences, dictionaryEntries);
+			vr.validate(bible, book, bookAbbr, cnumber, danglingReferences, dictionaryEntries, validationCategories);
 		}
 	}
 

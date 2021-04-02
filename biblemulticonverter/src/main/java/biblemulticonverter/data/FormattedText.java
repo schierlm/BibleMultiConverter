@@ -2,6 +2,7 @@ package biblemulticonverter.data;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -77,11 +78,11 @@ public class FormattedText {
 		return result;
 	}
 
-	public void validate(Bible bible, BookID book, String location, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries) {
+	public void validate(Bible bible, BookID book, String location, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories) {
 		if (!finished)
-			throw new IllegalStateException("Formatted text " + location + " not marked as finished - this may dramatically increase memory usage!");
+			ValidationCategory.NOT_FINISHED.throwOrRecord(location, validationCategories, location);
 		try {
-			accept(new ValidatingVisitor(bible, book, danglingReferences, dictionaryEntries, this instanceof Verse ? ValidationContext.VERSE : ValidationContext.NORMAL_TEXT));
+			accept(new ValidatingVisitor(bible, book, danglingReferences, dictionaryEntries, location, validationCategories, this instanceof Verse ? ValidationContext.VERSE : ValidationContext.NORMAL_TEXT));
 		} catch (RuntimeException ex) {
 			throw new RuntimeException("Validation error at " + location, ex);
 		}
@@ -768,6 +769,8 @@ public class FormattedText {
 		private final BookID book;
 		private final List<String> danglingReferences;
 		private final Map<String, Set<String>> dictionaryEntries;
+		private final String location;
+		private final Map<String, Set<ValidationCategory>> validationCategories;
 		private final ValidationContext context;
 
 		private int lastHeadlineDepth = 0;
@@ -775,16 +778,18 @@ public class FormattedText {
 		private boolean trailingWhitespaceFound = false;
 		private boolean isEmpty = true;
 
-		private ValidatingVisitor(Bible bible, BookID book, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, ValidationContext context) {
+		private ValidatingVisitor(Bible bible, BookID book, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, String location, Map<String, Set<FormattedText.ValidationCategory>> validationCategories, ValidationContext context) {
 			this.bible = bible;
 			this.book = book;
 			this.danglingReferences = danglingReferences;
 			this.dictionaryEntries = dictionaryEntries;
+			this.location = location;
+			this.validationCategories = validationCategories;
 			this.context = context;
 		}
 
 		private ValidatingVisitor createValidatingVisitor(ValidationContext context) {
-			return new ValidatingVisitor(bible, book, danglingReferences, dictionaryEntries, context);
+			return new ValidatingVisitor(bible, book, danglingReferences, dictionaryEntries, location, validationCategories, context);
 		}
 
 		@Override
@@ -795,7 +800,7 @@ public class FormattedText {
 		@Override
 		public void visitVerseSeparator() throws RuntimeException {
 			if (context != ValidationContext.VERSE)
-				throw new IllegalStateException("Verse separators are only allowed in verses!");
+				violation(ValidationCategory.INVALID_SEPARATOR_LOCATION, "");
 			visitInlineElement();
 		}
 
@@ -805,9 +810,9 @@ public class FormattedText {
 			lastHeadlineDepth = 0;
 			if (text.startsWith(" ")) {
 				if (trailingWhitespaceFound && !IGNORE_WHITESPACE_ISSUES)
-					throw new IllegalStateException("Whitespace adjacent to whitespace found");
+					violation(ValidationCategory.WHITESPACE_ADJACENT, "");
 				if (!leadingWhitespaceAllowed && !IGNORE_WHITESPACE_ISSUES)
-					throw new IllegalStateException("No whitespace allowed at beginning or after line breaks or headlines");
+					violation(ValidationCategory.WHITESPACE_AT_BEGINNING, "");
 			}
 			trailingWhitespaceFound = text.endsWith(" ");
 		}
@@ -819,9 +824,9 @@ public class FormattedText {
 		@Override
 		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
 			if (trailingWhitespaceFound && !IGNORE_WHITESPACE_ISSUES)
-				throw new IllegalStateException("No whitespace allowed before line breaks");
+				violation(ValidationCategory.WHITESPACE_BEFORE_BREAK, "");
 			if (context.ordinal() >= ValidationContext.HEADLINE.ordinal() && context != ValidationContext.FOOTNOTE)
-				throw new IllegalStateException("Line breaks only allowed in block context or footnotes");
+				violation(ValidationCategory.INVALID_LINE_BREAK_LOCATION, "");
 			leadingWhitespaceAllowed = false;
 			isEmpty = false;
 			lastHeadlineDepth = 0;
@@ -830,11 +835,11 @@ public class FormattedText {
 		@Override
 		public Visitor<RuntimeException> visitHeadline(int depth) {
 			if (context.ordinal() >= ValidationContext.HEADLINE.ordinal())
-				throw new IllegalArgumentException("Invalid nested headline");
+				violation(ValidationCategory.NESTED_HEADLINE, "");
 			if (depth <= lastHeadlineDepth)
-				throw new IllegalStateException("Invalid headline depth order: " + depth + " after " + lastHeadlineDepth);
+				violation(ValidationCategory.INVALID_HEADLINE_DEPTH_ORDER, depth + " after " + lastHeadlineDepth);
 			if (trailingWhitespaceFound && !IGNORE_WHITESPACE_ISSUES)
-				throw new IllegalStateException("No whitespace allowed before headlines");
+				violation(ValidationCategory.WHITESPACE_BEFORE_HEADLINE, "");
 			leadingWhitespaceAllowed = false;
 			lastHeadlineDepth = depth == 9 ? 8 : depth;
 			isEmpty = false;
@@ -856,7 +861,7 @@ public class FormattedText {
 		@Override
 		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
 			if (context.ordinal() >= ValidationContext.FOOTNOTE.ordinal())
-				throw new IllegalArgumentException("Invalid nested footnote");
+				violation(ValidationCategory.NESTED_FOOTNOTE, "");
 			visitInlineElement();
 			return createValidatingVisitor(ValidationContext.FOOTNOTE);
 		}
@@ -890,7 +895,7 @@ public class FormattedText {
 		@Override
 		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
 			if (context.ordinal() >= ValidationContext.LINK.ordinal())
-				throw new IllegalArgumentException("Invalid nested link");
+				violation(ValidationCategory.NESTED_LINK, "");
 			visitInlineElement();
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
@@ -903,7 +908,7 @@ public class FormattedText {
 		@Override
 		public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) throws RuntimeException {
 			if (context.ordinal() >= ValidationContext.LINK.ordinal())
-				throw new IllegalArgumentException("Invalid nested link");
+				violation(ValidationCategory.NESTED_LINK, "");
 			visitInlineElement();
 			validateDictionaryEntry(dictionary, entry);
 			return createValidatingVisitor(ValidationContext.LINK);
@@ -924,9 +929,9 @@ public class FormattedText {
 		@Override
 		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID bookID, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
 			if (context.ordinal() >= ValidationContext.XREF.ordinal())
-				throw new IllegalArgumentException("Invalid nested cross reference");
+				violation(ValidationCategory.NESTED_XREF, "");
 			if (context != ValidationContext.NORMAL_TEXT && context.ordinal() < ValidationContext.FOOTNOTE.ordinal())
-				throw new IllegalArgumentException("cross references may only appear inside footnotes");
+				violation(ValidationCategory.INVALID_XREF_LOCATION, "");
 			visitInlineElement();
 			Book book = bible.getBook(bookAbbr, bookID);
 			int firstIndex = book == null || book.getChapters().size() < firstChapter ? -1 : book.getChapters().get(firstChapter - 1).getVerseIndex(firstVerse);
@@ -939,7 +944,7 @@ public class FormattedText {
 			}
 			if (firstIndex != -1 && lastIndex != -1 && firstChapter == lastChapter) {
 				if (firstIndex > lastIndex)
-					throw new IllegalStateException("First xref verse is after last xref verse");
+					violation(ValidationCategory.MALFORMED_XREF, "");
 			}
 			return createValidatingVisitor(ValidationContext.XREF);
 		}
@@ -947,9 +952,9 @@ public class FormattedText {
 		@Override
 		public boolean visitEnd() throws RuntimeException {
 			if (trailingWhitespaceFound && !IGNORE_WHITESPACE_ISSUES)
-				throw new IllegalStateException("No whitespace allowed at end of element");
+				violation(ValidationCategory.WHITESPACE_AT_END, "");
 			if (isEmpty && !IGNORE_EMPTY_ELEMENTS)
-				throw new IllegalStateException("Element is empty");
+				violation(ValidationCategory.EMPTY_ELEMENT, "");
 			return false;
 		}
 
@@ -958,6 +963,10 @@ public class FormattedText {
 			leadingWhitespaceAllowed = true;
 			trailingWhitespaceFound = false;
 			lastHeadlineDepth = 0;
+		}
+
+		private void violation(ValidationCategory category, String arg) {
+			category.throwOrRecord(location, validationCategories, arg);
 		}
 	}
 
@@ -1071,5 +1080,52 @@ public class FormattedText {
 		FOOTNOTE,
 		XREF,
 		LINK,
+	}
+
+	public static enum ValidationCategory {
+		BIBLE_WITHOUT_BOOKS("Bible does not have books"),
+		ONLY_METADATA_BOOK("Bible has only metadata book"),
+		MALFORMED_DICTIONARY_ENTRY("Malformed dictionary entry: "),
+		AMBIGUOUS_BOOK_ID("Ambiguous book id "),
+		DUPLICATE_BOOK_REFERENCE("Duplicate book reference in "),
+		PROLOG_VALIDATION_FAILED(""),
+		BOOK_WITHOUT_CHAPTERS("Book has no chapters: "),
+		LAST_CHAPTER_WITHOUT_CONTENT("Last chapter has neither prolog nor verses: "),
+		DUPLICATE_VERSE("Duplicate verse number "),
+		OVERLAPPING_VERSE_RANGES("Overlapping verse ranges: "),
+		NOT_FINISHED("Formatted text not marked as finished (this may dramatically increase memory usage): "),
+		EMPTY_ELEMENT("Element is empty"),
+		MALFORMED_XREF("First xref verse is after last xref verse"),
+
+		INVALID_VIRTUAL_VERSE_ORDER("Invalid order of virtual verses: "),
+		INVALID_HEADLINE_DEPTH_ORDER("Invalid headline depth order: "),
+		INVALID_SEPARATOR_LOCATION("Verse separators are only allowed in verses!"),
+		INVALID_XREF_LOCATION("cross references may only appear inside footnotes"),
+		INVALID_LINE_BREAK_LOCATION("Line breaks only allowed in block context or footnotes"),
+
+		WHITESPACE_ADJACENT("Whitespace adjacent to whitespace found"),
+		WHITESPACE_AT_BEGINNING("No whitespace allowed at beginning or after line breaks or headlines"),
+		WHITESPACE_BEFORE_BREAK("No whitespace allowed before line breaks"),
+		WHITESPACE_AT_END("No whitespace allowed at end of element"),
+		WHITESPACE_BEFORE_HEADLINE("No whitespace allowed before headlines"),
+
+		NESTED_HEADLINE("Invalid nested headline"),
+		NESTED_FOOTNOTE("Invalid nested footnote"),
+		NESTED_LINK("Invalid nested link"),
+		NESTED_XREF("Invalid nested cross reference");
+
+		private String description;
+
+		private ValidationCategory(String description) {
+			this.description = description;
+		}
+
+		public void throwOrRecord(String location, Map<String, Set<FormattedText.ValidationCategory>> validationCategories, String arg) {
+			if (Boolean.getBoolean("biblemulticonverter.validate.ignore."+name()))
+				return;
+			if (validationCategories == null)
+				throw new IllegalStateException(description + arg);
+			validationCategories.computeIfAbsent(location, (x) -> EnumSet.noneOf(ValidationCategory.class)).add(this);
+		}
 	}
 }

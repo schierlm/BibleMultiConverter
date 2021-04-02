@@ -10,15 +10,19 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
+import biblemulticonverter.data.FormattedText.ValidationCategory;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.Verse;
@@ -127,13 +131,32 @@ public class Validate implements ExportFormat {
 			exportArgs = new String[0];
 		}
 		List<String> danglingReferences = new ArrayList<>();
-		bible.validate(danglingReferences, dictionaryEntries);
-		if (danglingReferences.size() > 0) {
-			System.out.println("Dangling references: ");
-			for (String reference : danglingReferences) {
-				System.out.println("\t" + reference);
+		try {
+			bible.validate(danglingReferences, dictionaryEntries, null);
+			if (danglingReferences.size() > 0) {
+				System.out.println("Dangling references: ");
+				for (String reference : danglingReferences) {
+					System.out.println("\t" + reference);
+				}
+				System.out.println();
 			}
-			System.out.println();
+		} catch (RuntimeException ex) {
+			System.err.println("*** VALIDATION FAILED ***");
+			try {
+				Map<String,Set<FormattedText.ValidationCategory>> validationCategories = new LinkedHashMap<>();
+				bible.validate(danglingReferences, dictionaryEntries, validationCategories);
+				System.err.println("Failing verses:");
+				for(Map.Entry<String, Set<ValidationCategory>> e : validationCategories.entrySet()) {
+					System.err.println("\t"+e.getKey()+": "+e.getValue());
+				}
+				System.err.println();
+			} catch (RuntimeException ex2) {
+			}
+			System.err.println("First failing location: ");
+			if (exportArgs.length == 0)
+				throw ex;
+			ex.printStackTrace(System.err);
+			System.err.println();
 		}
 		if (exportArgs.length == 1 && exportArgs[0].equals("PrintSpecialVerseSummary")) {
 			System.out.println("Special verse numbers:");

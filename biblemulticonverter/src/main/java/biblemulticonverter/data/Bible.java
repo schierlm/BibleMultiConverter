@@ -37,32 +37,32 @@ public class Bible {
 	}
 
 	public void validate(List<String> danglingReferences) {
-		validate(danglingReferences, null);
+		validate(danglingReferences, null, null);
 	}
 
-	public void validate(List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries) {
+	public void validate(List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories) {
 		Set<BookID> bookIDs = EnumSet.noneOf(BookID.class);
 		Set<String> bookAbbrs = new HashSet<String>();
 		Set<String> bookShortNames = new HashSet<String>();
 		Set<String> bookLongNames = new HashSet<String>();
 		if (books.size() == 0)
-			throw new IllegalStateException("Bible does not have books");
+			FormattedText.ValidationCategory.BIBLE_WITHOUT_BOOKS.throwOrRecord("@", validationCategories, "");
 		for (Book book : books) {
-			book.validate(this, danglingReferences, dictionaryEntries);
+			book.validate(this, danglingReferences, dictionaryEntries, validationCategories);
 			if (book.getId() == BookID.METADATA) {
 				if (books.size() == 1)
-					throw new IllegalStateException("Bible has only metadata book");
-				getMetadataBook().validate();
+					FormattedText.ValidationCategory.ONLY_METADATA_BOOK.throwOrRecord("@", validationCategories, "");
+				getMetadataBook().validate(validationCategories);
 			}
 			if (book.getId() == BookID.DICTIONARY_ENTRY) {
 				if (book.getChapters().size() != 1 || book.getChapters().get(0).getProlog() == null || !book.getChapters().get(0).getVerses().isEmpty()) {
-					throw new IllegalStateException("Malformed dictionary entry: " + book.getAbbr());
+					FormattedText.ValidationCategory.MALFORMED_DICTIONARY_ENTRY.throwOrRecord(book.getAbbr(), validationCategories, book.getAbbr());
 				}
 			} else if (!bookIDs.add(book.getId())) {
-				throw new IllegalStateException("Ambiguous book id " + book.getId());
+				FormattedText.ValidationCategory.AMBIGUOUS_BOOK_ID.throwOrRecord(book.getAbbr(), validationCategories, "" + book.getId());
 			}
 			if (!bookAbbrs.add(book.getAbbr()) || !bookShortNames.add(book.getShortName()) || !bookLongNames.add(book.getLongName()))
-				throw new IllegalStateException("Duplicate book reference in " + book.getId());
+				FormattedText.ValidationCategory.DUPLICATE_BOOK_REFERENCE.throwOrRecord(book.getAbbr(), validationCategories, "" + book.getId());
 		}
 	}
 

@@ -24,20 +24,25 @@ public class VirtualVerse {
 		this.number = Utils.validateNumber("number", number, 0, Integer.MAX_VALUE);
 	}
 
-	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries) {
+	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories) {
 		int lastHeadlineDepth = 0;
-		String location = bookAbbr + " " + cnumber + ":v" + getNumber();
+		String locationBase = bookAbbr + " " + cnumber + ":";
+		String location = locationBase + "v" + getNumber();
+		for (Verse verse : verses) {
+			if (validationCategories != null && validationCategories.containsKey(locationBase + verse.getNumber()))
+				return;
+		}
 		for (Headline headline : headlines) {
 			if (headline.getDepth() <= lastHeadlineDepth)
-				throw new IllegalStateException("Invalid headline depth order at " + location + ": " + headline.getDepth() + " after " + lastHeadlineDepth);
+				FormattedText.ValidationCategory.INVALID_HEADLINE_DEPTH_ORDER.throwOrRecord(location + ":Headline", validationCategories, headline.getDepth() + " after " + lastHeadlineDepth);
 			lastHeadlineDepth = headline.getDepth() == 9 ? 8 : headline.getDepth();
-			headline.validate(bible, book, location + ":Headline", danglingReferences, dictionaryEntries);
+			headline.validate(bible, book, location + ":Headline", danglingReferences, dictionaryEntries, validationCategories);
 		}
 		Set<String> verseNumbers = new HashSet<String>();
 		for (Verse verse : verses) {
 			if (!verseNumbers.add(verse.getNumber()))
-				throw new IllegalStateException("Duplicate verse number");
-			verse.validate(bible, book, location + ":" + verse.getNumber(), danglingReferences, dictionaryEntries);
+				FormattedText.ValidationCategory.DUPLICATE_VERSE.throwOrRecord(location, validationCategories, bookAbbr + " " + cnumber + ":"+verse.getNumber());
+			verse.validate(bible, book, location + ":" + verse.getNumber(), danglingReferences, dictionaryEntries, validationCategories);
 		}
 	}
 

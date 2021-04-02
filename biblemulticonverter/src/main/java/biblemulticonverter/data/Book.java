@@ -23,16 +23,16 @@ public class Book {
 		this.chapters = new ArrayList<Chapter>();
 	}
 
-	public void validate(Bible bible, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries) {
+	public void validate(Bible bible, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories) {
 		if (chapters.size() == 0)
-			throw new IllegalStateException("Book has no chapters: " + getAbbr());
+			FormattedText.ValidationCategory.BOOK_WITHOUT_CHAPTERS.throwOrRecord(getAbbr(), validationCategories, getAbbr());
 		Chapter lastChapter = chapters.get(chapters.size() - 1);
 		if (lastChapter.getVerses().size() == 0 && lastChapter.getProlog() == null)
-			throw new IllegalStateException("Last chapter has neither prolog nor verses: " + getAbbr());
+			FormattedText.ValidationCategory.LAST_CHAPTER_WITHOUT_CONTENT.throwOrRecord(getAbbr(), validationCategories, getAbbr());
 		int cnumber = 0;
 		for (Chapter chapter : chapters) {
 			cnumber++;
-			chapter.validate(bible, getId(), getAbbr(), cnumber, danglingReferences, dictionaryEntries);
+			chapter.validate(bible, getId(), getAbbr(), cnumber, danglingReferences, dictionaryEntries, validationCategories);
 		}
 	}
 

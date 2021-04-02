@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
@@ -81,18 +82,22 @@ public class MetadataBook {
 		book.getChapters().get(0).getProlog().finished();
 	}
 
-	public void validate() {
-		String mapContent = metadata.toString();
-		metadata.clear();
-		parseValues(book.getChapters().get(0).getProlog());
-		String prologContent = metadata.toString();
-		rebuildProlog();
-		metadata.clear();
-		parseValues(book.getChapters().get(0).getProlog());
-		String rebuiltContent = metadata.toString();
-		if (!mapContent.equals(prologContent) || !mapContent.equals(rebuiltContent))
-			throw new IllegalStateException("MetadataBook cannot be rebuilt");
-		finished();
+	public void validate(Map<String, Set<FormattedText.ValidationCategory>> validationCategories) {
+		try {
+			String mapContent = metadata.toString();
+			metadata.clear();
+			parseValues(book.getChapters().get(0).getProlog());
+			String prologContent = metadata.toString();
+			rebuildProlog();
+			metadata.clear();
+			parseValues(book.getChapters().get(0).getProlog());
+			String rebuiltContent = metadata.toString();
+			if (!mapContent.equals(prologContent) || !mapContent.equals(rebuiltContent))
+				throw new IllegalStateException("MetadataBook cannot be rebuilt");
+			finished();
+		} catch (IllegalStateException ex) {
+			FormattedText.ValidationCategory.PROLOG_VALIDATION_FAILED.throwOrRecord(book.getAbbr(), validationCategories, ex.getMessage());
+		}
 	}
 
 	private void validateKey(String key) {
