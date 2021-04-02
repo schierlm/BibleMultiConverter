@@ -237,7 +237,9 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 						ctx.currentVisitorExtraCSS = ctx.currentParagraphExtraCSS;
 					} else {
 						ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NORMAL;
-						if (kind != ParagraphKind.PARAGRAPH_P && exportAllTags) {
+						if (kind == ParagraphKind.DESCRIPTIVE_TITLE) {
+							ctx.currentParagraphExtraCSS = "font-style: italic; -bmc-psalm-title: true;" + (exportAllTags ? " -bmc-usfm-tag: " + kind.getTag() : "");
+						} else if (kind != ParagraphKind.PARAGRAPH_P && exportAllTags) {
 							ctx.currentParagraphExtraCSS = "-bmc-usfm-tag: " + kind.getTag();
 						} else {
 							ctx.currentParagraphExtraCSS = null;

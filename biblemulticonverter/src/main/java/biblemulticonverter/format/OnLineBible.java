@@ -324,6 +324,10 @@ public class OnLineBible implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
+			if (css.contains("-bmc-psalm-title: true;")) {
+				content.append("\\!«");
+				return new OnLineBibleVisitor(content, includeStrongs, "»\\!");
+			}
 			return new OnLineBibleVisitor(content, includeStrongs);
 		}
 
