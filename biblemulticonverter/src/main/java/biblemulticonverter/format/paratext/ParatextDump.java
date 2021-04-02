@@ -67,6 +67,7 @@ public class ParatextDump extends AbstractParatextFormat {
 						break;
 					case "CHAPTER":
 						currentBook.getContent().add(new ChapterStart(new ChapterIdentifier(currentBook.getId(), Integer.parseInt(parts[1]))));
+						break;
 					case "CHAPTER-END":
 						currentBook.getContent().add(new ParatextBook.ChapterEnd(ChapterIdentifier.fromLocationString(parts[1])));
 						break;

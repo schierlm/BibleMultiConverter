@@ -345,7 +345,9 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 						currentTable = new Table();
 						usx.getParaOrTableOrChapter().add(currentTable);
 					}
-					currentTable.getRow().add(new Row());
+					Row row = new Row();
+					row.setStyle("tr");
+					currentTable.getRow().add(row);
 					currentContent = currentTable.getRow().get(currentTable.getRow().size() - 1).getVerseOrCell();
 				} else {
 					Para para = new Para();
@@ -365,7 +367,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				Row currentRow = currentTable.getRow().get(currentTable.getRow().size() - 1);
 				Cell cell = new Cell();
 				cell.setAlign(tag.contains("r") ? CellAlign.END : CellAlign.START);
-				cell.setStyle(CellStyle.valueOf(tag));
+				cell.setStyle(CellStyle.fromValue(tag));
 				currentRow.getVerseOrCell().add(cell);
 				currentContent = cell.getContent();
 			}

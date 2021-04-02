@@ -376,10 +376,11 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 						currentTable = new Table();
 						usx.getParaOrTableOrChapter().add(currentTable);
 					}
-					currentTable.getRow().add(new Row());
+					Row row = new Row();
+					row.setStyle("tr");
+					currentTable.getRow().add(row);
 					currentContent = currentTable.getRow().get(currentTable.getRow().size() - 1).getVerseOrCell();
-				}
-				if (USX_2_PARAGRAPH_KINDS.contains(kind)) {
+				} else if (USX_2_PARAGRAPH_KINDS.contains(kind)) {
 					ParaStyle style = PARA_KIND_MAP.get(kind);
 					if (style == null) {
 						throw new RuntimeException("Error could not get ParaStyle for ParagraphKind: " + kind);
@@ -425,7 +426,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				Row currentRow = currentTable.getRow().get(currentTable.getRow().size() - 1);
 				Cell cell = new Cell();
 				cell.setAlign(tag.contains("r") ? CellAlign.END : CellAlign.START);
-				cell.setStyle(CellStyle.valueOf(tag));
+				cell.setStyle(CellStyle.fromValue(tag));
 				currentRow.getVerseOrCell().add(cell);
 				currentContent = cell.getContent();
 			}
