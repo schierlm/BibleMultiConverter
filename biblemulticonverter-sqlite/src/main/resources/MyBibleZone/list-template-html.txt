@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>MyBible.Zone Module Registry</title>
+</head>
+<style type="text/css">
+body { font-family: Verdana, Arial, Helvetica, sans-serif; }
+table {border-collapse: collapse; }
+td, th {border: 1px solid #777; }
+th {border-bottom: 2px solid #777; }
+.info { border: 1px solid black; background-color: #999; padding: 0.5em; margin: 0.5em; }
+.info h1, .info h2, .info h3, .info h4, .info h5, .info h6 { font-size: inherit; }
+.locked { text-decoration: line-through red; }
+</style>
+<script>
+
+var registry = @@REGISTRY@@;
+
+function mirrorlink(data) {
+	if (data.substring(0, 2) == "ht") {
+		return '<a href="' + data + '">??</a>';
+	}
+	var pos = data.indexOf("}");
+	if (pos == -1 || data.substring(0,1) != "{")
+		throw data;
+	var mirror = data.substring(1, pos);
+	var name = data.substring(pos+1);
+	for(var i in registry.hosts) {
+		var host = registry.hosts[i];
+		if (host.alias == mirror) {
+			return '<a href="' + host.path.replace("%s", name) + '">' + mirror+'</a>';
+		}
+	}
+	throw "Mirror "+mirror+" not found";
+}
+
+function rebuildList() {
+	var list='<table><tr><th>Abbr</th><th>Language</th><th>Description</th><th>Updated</th><th>Size</th><th>Download</th></tr>';
+	var typesel = document.getElementById("typesel").value;
+	var langsel = document.getElementById("langsel").value;
+	var mirrorsel = document.getElementById("mirrorsel").value;
+	for(var i in registry.downloads) {
+		var dl = registry.downloads[i];
+		if (dl.type != typesel) continue;
+		if (langsel != "*" && dl.lng != langsel) continue;
+		list +="<tr"+ (dl.hid ? ' class="locked"': '') + "><td>" + dl.abr + "</td><td>" + dl.lng + (dl.reg ? " ("+dl.reg+")":"") + "</td>" +
+			"<td><b>" + dl.des + "</b>" + (dl.inf ? '<div class="info">' + dl.inf + '</div>' : '') + "</td><td>" + dl.upd + "</td><td>" + dl.siz + "</td><td>";
+		if (mirrorsel == "") {
+			for(var j in dl.url) {
+				var u = dl.url[j];
+				list += mirrorlink(u)+" ";
+			}
+		} else {
+			list += mirrorlink("{" + mirrorsel + "}" + encodeURIComponent(dl.fil));
+		}
+
+		list +="</td></tr>";
+	}
+	document.getElementById("list").innerHTML = list;
+}
+
+window.onload = function() {
+	var list = "<ul>";
+	for(var i in registry.registries) {
+		var reg = registry.registries[i];
+		list +="<li><tt>"+reg.url+"</tt></li>";
+	}
+	list += "</ul>";
+	document.getElementById("urllist").innerHTML = list;
+	list = "";
+	for(var i in registry.hosts) {
+		var host = registry.hosts[i];
+		list +='<option value="' + host.alias+'">' +host.alias+" ("+host.path+')</option>';
+	}
+	document.getElementById("mirrorsel").innerHTML += list;
+	var types = {"": true}, langs = {"": true, en: true}, llist = [];
+	list = [];
+	for(var i in registry.downloads) {
+		var dl = registry.downloads[i];
+		dl.abr=dl.abr.replace(" (renamed)", "");
+		if (dl.abr == dl.fil || dl.fil.substring(0, dl.abr.length+1) != dl.abr+".") {
+			dl.type = "";
+		} else {
+			dl.type = dl.fil.substring(dl.abr.length + 1);
+		}
+		if (!dl.lng) dl.lng = "";
+		if (!types[dl.type]) {
+			types[dl.type] = true;
+			list.push("<option>" + dl.type + "</option>");
+		}
+		if (!langs[dl.lng]) {
+			langs[dl.lng] = true;
+			llist.push("<option>" + dl.lng + "</option>");
+		}
+	}
+	list.sort();
+	llist.sort();
+	document.getElementById("typesel").innerHTML += list.join("");
+	document.getElementById("langsel").innerHTML += llist.join("");
+	rebuildList();
+}
+
+</script>
+<body>
+<h1>MyBible.Zone Module Registry</h1>
+<p>
+Type: <select id="typesel" onchange="rebuildList();"><option value="">(Bible)</option></select>
+| Language: <select id="langsel" onchange="rebuildList();"><option value="*">(All)</option><option value="">(Any)</option><option selected>en</option></select>
+| Force mirror: <select id="mirrorsel" onchange="rebuildList();"><option value="">None</option></select>
+</p>
+<h2>Module list</h2>
+<div id="list">loading...</div>
+<h2>Update available from</h2>
+<div id="urllist">loading...</div>
+</body>
+</html>

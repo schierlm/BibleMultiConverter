@@ -13,6 +13,7 @@ import biblemulticonverter.sqlite.format.BibleAnalyzerDatabase;
 import biblemulticonverter.sqlite.format.MyBibleZone;
 import biblemulticonverter.sqlite.format.MyBibleZoneCrossreferences;
 import biblemulticonverter.sqlite.format.MyBibleZoneDictionary;
+import biblemulticonverter.sqlite.tools.MyBibleZoneListDownloader;
 import biblemulticonverter.sqlite.tools.SQLiteDump;
 import biblemulticonverter.tools.Tool;
 
@@ -43,6 +44,7 @@ public class MyBibleModuleRegistry extends ModuleRegistry {
 	public Collection<Module<Tool>> getTools() {
 		List<Module<Tool>> result = new ArrayList<Module<Tool>>();
 		result.add(new Module<Tool>("SQLiteDump", "Dump SQLite file as a diffable text file.", SQLiteDump.HELP_TEXT, SQLiteDump.class));
+		result.add(new Module<Tool>("MyBibleZoneListDownloader", "Download MyBible.Zone module list from module registry.", MyBibleZoneListDownloader.HELP_TEXT, MyBibleZoneListDownloader.class));
 		return result;
 	}
 }

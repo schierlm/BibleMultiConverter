@@ -129,6 +129,11 @@ tagged OT/NT/Deuterocanonical content from such a file. It can also be used to c
 to **ParatextDump** format (which is a diffable plain text dump of the internal Paratext
 structure and useful for comparing different Paratext formats).
 
+The **MyBibleZoneListDownloader** tool (part of SQLite edition) can be used to download
+the list of available MyBible.Zone modules from the module registry (that is also queried
+by the Android app) and create a HTML file with download links and (JavaScript) filters.
+This is needed as the website apparently does not include all modules available in the app.
+
 Planned formats
 ---------------
 
