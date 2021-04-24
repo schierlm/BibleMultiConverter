@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
@@ -32,6 +33,7 @@ import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VerseRange;
 import biblemulticonverter.data.VersificationSet;
 import biblemulticonverter.data.VirtualVerse;
+import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
 import biblemulticonverter.tools.AbstractVersificationDetector.VersificationScheme;
 
 public class StrippedDiffable implements ExportFormat {
@@ -52,6 +54,8 @@ public class StrippedDiffable implements ExportFormat {
 			"- SelectVariation <Name>",
 			"- ChangeVerseStructure {Raw|Virtual|Virtual_ignoring_Headlines|Range|Range_Ascending} [<VersificationFile> <VersificationName>]",
 			"- RenameBook <OldAbbr> <NewAbbr>",
+			"- RenameAllBooks [OSIS|Zefania|3LC|Paratext]",
+			"- SortBooks",
 			"- OptimizeFormatting [<OldFormatting>=<NewFormatting>[&<NewFormatting>[...]] [...]"
 	};
 
@@ -99,6 +103,34 @@ public class StrippedDiffable implements ExportFormat {
 				}
 			}
 			out.println("Book " + exportArgs[2] + " renamed to " + exportArgs[3]);
+		} else if (exportArgs.length == 3 && exportArgs[1].equals("RenameAllBooks")) {
+			Function<BookID, String> abbrMapper;
+			if (exportArgs[2].equals("OSIS")) {
+				abbrMapper = BookID::getOsisID;
+			} else if (exportArgs[2].equals("Zefania")) {
+				abbrMapper = bi -> bi.getZefID() <0 ? null : "Z" + bi.getZefID();
+			} else if (exportArgs[2].equals("3LC")) {
+				abbrMapper = BookID::getThreeLetterCode;
+			} else if (exportArgs[2].equals("Paratext")) {
+				Function<BookID, ParatextID> find = (bi -> ParatextID.fromBookID(bi));
+				abbrMapper = find.andThen(pi -> pi == null ? null : pi.getIdentifier());
+			} else {
+				throw new IllegalArgumentException("Unsupported book name scheme: " + exportArgs[2]);
+			}
+			for (int i = 0; i < bible.getBooks().size(); i++) {
+				Book oldBook = bible.getBooks().get(i);
+				String newAbbr = abbrMapper.apply(oldBook.getId());
+				if (newAbbr != null && !newAbbr.startsWith("x-")) {
+					renameBookInXref(bible, oldBook.getAbbr(), newAbbr, true);
+					Book newBook = new Book(newAbbr, oldBook.getId(), oldBook.getShortName(), oldBook.getLongName());
+					newBook.getChapters().addAll(oldBook.getChapters());
+					bible.getBooks().set(i, newBook);
+					out.println("Book " + oldBook.getAbbr() + " renamed to " + newAbbr);
+				}
+			}
+		} else if (exportArgs.length == 2 && exportArgs[1].equals("SortBooks")) {
+			bible.getBooks().sort(Comparator.comparingInt((Book b) -> b.getId().ordinal()).thenComparing(Book::getAbbr));
+			out.println("Books sorted.");
 		} else if (exportArgs.length >= 2 && exportArgs[1].equals("OptimizeFormatting")) {
 			Map<String, String[]> mappings = new HashMap<>();
 			for (int i = 2; i < exportArgs.length; i++) {
