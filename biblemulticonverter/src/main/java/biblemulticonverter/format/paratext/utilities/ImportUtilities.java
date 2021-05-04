@@ -52,7 +52,7 @@ public class ImportUtilities {
 						}
 						break;
 					}
-				} else if (bookPart instanceof ParatextBook.TableCellStart) {
+				} else if (bookPart instanceof ParatextBook.TableCellStart || bookPart instanceof ParatextBook.ChapterStart) {
 					if (lastSuitableContentContainer != null) {
 						lastSuitableContentContainer.getContent().add(new ParatextCharacterContent.VerseEnd(openVerse.getLocation()));
 						didAddVerseEndMilestone = true;
