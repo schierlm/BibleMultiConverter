@@ -36,7 +36,7 @@ public class MyBibleZoneListDownloader implements Tool {
 				url = "http://" + url + "/registry.zip";
 		}
 		try (BufferedReader br = new BufferedReader(new InputStreamReader(MyBibleZoneListDownloader.class.getResourceAsStream("/MyBibleZone/list-template-html.txt"), StandardCharsets.UTF_8));
-				BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(args[0])))) {
+				BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(args[0]), StandardCharsets.UTF_8))) {
 			String line;
 			while ((line = br.readLine()) != null) {
 				if (line.contains("@@REGISTRY@@")) {
