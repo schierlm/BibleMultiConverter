@@ -247,8 +247,8 @@ Supported Versification formats:
 
 - **BMCV** (own database format): Import and export (versifications and mappings)
 - **KJV** (hard-coded KJV versification): "Import" only (no mapping)
-- **[CCEL](http://www.ccel.org/refsys/)**: Import and export (versifications and mappings)
-- **[OpenScriptures](https://github.com/openscriptures/BibleOrgSys/tree/master/DataFiles/VersificationSystems)**: Import only (versifications only, no mappings)
+- **[CCEL](https://web.archive.org/web/20190204014352/https://ccel.org/refsys/refsys.html)**: Import and export (versifications and mappings)
+- **[OpenScriptures](https://github.com/openscriptures/BibleOrgSys/tree/master/BibleOrgSys/DataFiles/VersificationSystems)**: Import only (versifications only, no mappings)
 - **SWORDVersification**: Import versifications and mappings from SWORD
 - **AccordanceReferenceList**: Import a reference list from Accordance
 - **SoftProjectorVersification**: Import versification mapping from SoftProjector bible
