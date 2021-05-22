@@ -13,11 +13,12 @@ import biblemulticonverter.sqlite.format.BibleAnalyzerDatabase;
 import biblemulticonverter.sqlite.format.MyBibleZone;
 import biblemulticonverter.sqlite.format.MyBibleZoneCrossreferences;
 import biblemulticonverter.sqlite.format.MyBibleZoneDictionary;
+import biblemulticonverter.sqlite.format.MySword;
 import biblemulticonverter.sqlite.tools.MyBibleZoneListDownloader;
 import biblemulticonverter.sqlite.tools.SQLiteDump;
 import biblemulticonverter.tools.Tool;
 
-public class MyBibleModuleRegistry extends ModuleRegistry {
+public class SQLiteModuleRegistry extends ModuleRegistry {
 
 	@Override
 	public Collection<Module<ImportFormat>> getImportFormats() {
@@ -37,6 +38,7 @@ public class MyBibleModuleRegistry extends ModuleRegistry {
 	public Collection<Module<RoundtripFormat>> getRoundtripFormats() {
 		List<Module<RoundtripFormat>> result = new ArrayList<Module<RoundtripFormat>>();
 		result.add(new Module<RoundtripFormat>("MyBibleZone", "MyBible.zone (Bible Reader for Android).", MyBibleZone.HELP_TEXT, MyBibleZone.class));
+		result.add(new Module<RoundtripFormat>("MySword", "MySword (Bible Reader for Android).", MySword.HELP_TEXT, MySword.class));
 		return result;
 	}
 
