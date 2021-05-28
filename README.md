@@ -86,7 +86,7 @@ In addition, the following other formats are supported, with varying accuracy:
   - **[USX 2/USX 3](https://markups.paratext.org/usx/)**: import and export
 - **[USFX](https://ebible.org/usfx/)**: import only
 - **[SwordSearcher](https://www.swordsearcher.com/) ([Forge](https://www.swordsearcher.com/forge/))**: export only
-- **[MySword](https://www.mysword.info/): import and export
+- **[MySword](https://www.mysword.info/)**: import and export
 
 In combination with third party tools, other export formats are available:
 
