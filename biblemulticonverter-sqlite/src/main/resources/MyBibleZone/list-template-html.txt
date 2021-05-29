@@ -40,10 +40,23 @@ function rebuildList() {
 	var typesel = document.getElementById("typesel").value;
 	var langsel = document.getElementById("langsel").value;
 	var mirrorsel = document.getElementById("mirrorsel").value;
+	var updfrom = document.getElementById("updfrom").value;
+	var updto = document.getElementById("updto").value;
+	if (updto < updfrom) {
+		var opts = document.getElementById("updto").options;
+		for(var i in opts) {
+			if (opts[i].value == updfrom) {
+				opts[i].selected = true;
+				updto = updfrom;
+				break;
+			}
+		}
+	}
 	for(var i in registry.downloads) {
 		var dl = registry.downloads[i];
 		if (dl.type != typesel) continue;
 		if (langsel != "*" && dl.lng != langsel) continue;
+		if (dl.upd < updfrom || dl.upd > updto) continue;
 		list +="<tr"+ (dl.hid ? ' class="locked"': '') + "><td>" + dl.abr + "</td><td>" + dl.lng + (dl.reg ? " ("+dl.reg+")":"") + "</td>" +
 			"<td><b>" + dl.des + "</b>" + (dl.inf ? '<div class="info">' + dl.inf + '</div>' : '') + "</td><td>" + dl.upd + "</td><td>" + dl.siz + "</td><td>";
 		if (mirrorsel == "") {
@@ -74,7 +87,7 @@ window.onload = function() {
 		list +='<option value="' + host.alias+'">' +host.alias+" ("+host.path+')</option>';
 	}
 	document.getElementById("mirrorsel").innerHTML += list;
-	var types = {"": true}, langs = {"": true, en: true}, llist = [];
+	var types = {"": true}, langs = {"": true, en: true}, llist = [], udates = {}, ulist = [];
 	list = [];
 	for(var i in registry.downloads) {
 		var dl = registry.downloads[i];
@@ -93,11 +106,19 @@ window.onload = function() {
 			langs[dl.lng] = true;
 			llist.push("<option>" + dl.lng + "</option>");
 		}
+		if (!udates[dl.upd]) {
+			udates[dl.upd] = true;
+			ulist.push("<option>" + dl.upd + "</option>");
+		}
 	}
 	list.sort();
 	llist.sort();
+	ulist.sort();
 	document.getElementById("typesel").innerHTML += list.join("");
 	document.getElementById("langsel").innerHTML += llist.join("");
+	document.getElementById("updfrom").innerHTML = ulist.join("").replace(/<option>/, "<option selected>");
+	ulist.push(ulist.pop().replace(/<option>/,"<option selected>"));
+	document.getElementById("updto").innerHTML = ulist.join("");
 	rebuildList();
 }
 
@@ -109,6 +130,7 @@ Type: <select id="typesel" onchange="rebuildList();"><option value="">(Bible)</o
 | Language: <select id="langsel" onchange="rebuildList();"><option value="*">(All)</option><option value="">(Any)</option><option selected>en</option></select>
 | Force mirror: <select id="mirrorsel" onchange="rebuildList();"><option value="">None</option></select>
 </p>
+<p>Updated: <select id="updfrom" onchange="rebuildList();"></select> - <select id="updto" onchange="rebuildList();"></select></p>
 <h2>Module list</h2>
 <div id="list">loading...</div>
 <h2>Update available from</h2>
