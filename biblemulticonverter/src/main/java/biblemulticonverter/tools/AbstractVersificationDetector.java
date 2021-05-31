@@ -5,11 +5,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
@@ -17,6 +23,7 @@ import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VerseRange;
 import biblemulticonverter.data.VirtualVerse;
@@ -32,6 +39,7 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 		Set<String> totalVerses = new HashSet<String>();
 		boolean includeXref = exportArgs.length > 0 && exportArgs[0].equals("-xref");
 		Set<BookID> usedBooks = EnumSet.noneOf(BookID.class);
+		Map<BookID,String> bookAbbrMap = new EnumMap<>(BookID.class);
 		XrefCountVisitor xcv = includeXref ? new XrefCountVisitor(schemes, totalVerses, usedBooks) : null;
 		int usedArgCount = (includeXref ? 1 : 0);
 		boolean limitBooks = exportArgs.length > usedArgCount && exportArgs[usedArgCount].equals("-limitBooks");
@@ -39,6 +47,7 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 		// fill missing verses
 		for (Book book : bible.getBooks()) {
 			usedBooks.add(book.getId());
+			bookAbbrMap.put(book.getId(), book.getAbbr());
 			for (int cc = 0; cc < book.getChapters().size(); cc++) {
 				Chapter chapter = book.getChapters().get(cc);
 				if (includeXref && chapter.getProlog() != null) {
@@ -76,13 +85,14 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 
 		// print them
 		System.out.print("Best match:  ");
-		int totalVerseCount = totalVerses.size();
-		printScheme(schemes[0], totalVerseCount);
+		String verboseSchemasProperty = System.getProperty("versificationdetector.verboseschemes", "");
+		Set<String> verboseSchemes = verboseSchemasProperty == null ? null : new HashSet<>(Arrays.asList(verboseSchemasProperty.split(", *")));
+		printScheme(schemes[0], totalVerses, verboseSchemes, bookAbbrMap);
 
 		System.out.println();
 		System.out.println("Other options:");
 		for (int i = 1; i < Math.min(11, schemes.length); i++) {
-			printScheme(schemes[i], totalVerseCount);
+			printScheme(schemes[i], totalVerses, verboseSchemes, bookAbbrMap);
 			if (schemes[i].missingChapters.size() > schemes[0].missingChapters.size() + 2 ||
 					schemes[i].missingVerses.size() > schemes[0].missingVerses.size() + 5)
 				break;
@@ -96,7 +106,7 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 				boolean found = false;
 				for (VersificationScheme scheme : schemes) {
 					if (scheme.getName().equals(exportArgs[i])) {
-						printScheme(scheme, totalVerseCount);
+						printScheme(scheme, totalVerses, verboseSchemes, bookAbbrMap);
 						found = true;
 						break;
 					}
@@ -134,13 +144,51 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 		return false;
 	}
 
-	private void printScheme(VersificationScheme scheme, int totalVerseCount) {
+	private void printScheme(VersificationScheme scheme, Set<String> totalVerses, Set<String> verboseSchemes, Map<BookID, String> bookAbbrMap) {
 		if (scheme.getMissingChapters().size() > 0)
 			System.out.println(scheme.getName() + " (Missing chapters+verses: " + scheme.getMissingChapters().size() + "+" + scheme.getMissingVerses().size() + " " + scheme.getMissingChapters() + " " + scheme.getMissingVerses());
 		else if (scheme.getMissingVerses().size() > 0)
 			System.out.println(scheme.getName() + " (Missing verses: " + scheme.getMissingVerses().size() + " " + scheme.getMissingVerses() + ")");
 		else
-			System.out.println(scheme.getName() + " (All verses covered, and " + (scheme.getVerseCount() - totalVerseCount) + " more)");
+			System.out.println(scheme.getName() + " (All verses covered, and " + (scheme.getVerseCount() - totalVerses.size()) + " more)");
+		if (verboseSchemes != null && (verboseSchemes.contains(scheme.getName()) || verboseSchemes.contains("all"))) {
+			Set<String> coveredVerses = new HashSet<>();
+			for (Entry<BookID, BitSet[]> entry : scheme.coveredBooks.entrySet()) {
+				String bookAbbr = bookAbbrMap.getOrDefault(entry.getKey(), entry.getKey().getOsisID());
+				for (int cnum = 1; cnum <= entry.getValue().length; cnum++) {
+					BitSet verses = entry.getValue()[cnum - 1];
+					for (int vnum = verses.nextSetBit(0); vnum != -1; vnum = verses.nextSetBit(vnum + 1)) {
+						coveredVerses.add(bookAbbr + " " + cnum + ":" + vnum);
+					}
+				}
+			}
+			List<String> bookAbbrOrder = new ArrayList<>(bookAbbrMap.values());
+			printVerbose("\t-", totalVerses, coveredVerses, bookAbbrOrder);
+			printVerbose("\t+", coveredVerses, totalVerses, bookAbbrOrder);
+		}
+	}
+
+	private void printVerbose(String prefix, Set<String> verseList, Set<String> removeList, List<String> bookAbbrOrder) {
+		List<String> list = new ArrayList<>(verseList);
+		list.removeAll(removeList);
+		Map<String, int[]> sortKey = new HashMap<>();
+		Pattern ptn = Pattern.compile("(" + Utils.BOOK_ABBR_REGEX + ") ([0-9]+):([0-9]+)");
+		for (String verse : list) {
+			Matcher m = ptn.matcher(verse);
+			if (!m.matches())
+				throw new RuntimeException("Invalid verse reference: " + verse);
+			String abbr = m.group(1);
+			int aidx = bookAbbrOrder.indexOf(abbr);
+			if (aidx == 0) {
+				aidx = bookAbbrOrder.size();
+				bookAbbrOrder.add(abbr);
+			}
+			sortKey.put(verse, new int[] { aidx, Integer.parseInt(m.group(2)), Integer.parseInt(m.group(3)) });
+		}
+		list.sort(Comparator.comparing(v -> sortKey.get(v), Comparator.<int[], Integer> comparing(a -> a[0]).thenComparing(a -> a[1]).thenComparing(a -> a[2])));
+		for (String verse : list) {
+			System.out.println(prefix + verse);
+		}
 	}
 
 	public static final class VersificationScheme implements Comparable<VersificationScheme> {

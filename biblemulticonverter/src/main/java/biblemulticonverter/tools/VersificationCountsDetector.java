@@ -96,11 +96,13 @@ public class VersificationCountsDetector implements ExportFormat {
 
 		// print them
 		System.out.print("Best match:  ");
-		printScheme(counts[0], totalVerseCount);
+		String verboseSchemasProperty = System.getProperty("versificationdetector.verboseschemes", "");
+		Set<String> verboseSchemes = verboseSchemasProperty == null ? null : new HashSet<>(Arrays.asList(verboseSchemasProperty.split(", *")));
+		printScheme(counts[0], totalVerseCount, verboseSchemes);
 		System.out.println();
 		System.out.println("Other options:");
 		for (int i = 1; i < Math.min(11, counts.length); i++) {
-			printScheme(counts[i], totalVerseCount);
+			printScheme(counts[i], totalVerseCount, verboseSchemes);
 		}
 
 		// print selected schemes
@@ -111,7 +113,7 @@ public class VersificationCountsDetector implements ExportFormat {
 				boolean found = false;
 				for (VersificationCounts c : counts) {
 					if (c.getName().equals(exportArgs[i])) {
-						printScheme(c, totalVerseCount);
+						printScheme(c, totalVerseCount, verboseSchemes);
 						found = true;
 						break;
 					}
@@ -131,7 +133,7 @@ public class VersificationCountsDetector implements ExportFormat {
 			bookCounts[0]++;
 	}
 
-	private void printScheme(VersificationCounts counts, int totalVerseCount) {
+	private void printScheme(VersificationCounts counts, int totalVerseCount, Set<String> verboseSchemes) {
 		List<String> missingInfo = new ArrayList<String>();
 		if (counts.missingBooks > 0 || counts.missingChapters > 0 || counts.missingVerses > 0) {
 			for (BookID bid : counts.bibleCounts.keySet()) {
@@ -155,6 +157,17 @@ public class VersificationCountsDetector implements ExportFormat {
 			System.out.println(counts.getName() + " (Missing verses: " + counts.missingVerses + " " + missingInfo + ")");
 		} else {
 			System.out.println(counts.getName() + " (All verses covered, and " + (counts.verseCount - totalVerseCount) + " more)");
+		}
+		if (verboseSchemes != null && (verboseSchemes.contains(counts.getName()) || verboseSchemes.contains("all"))) {
+			EnumSet<BookID> books = EnumSet.noneOf(BookID.class);
+			books.addAll(counts.bibleCounts.keySet());
+			books.addAll(counts.coveredCounts.keySet());
+			int[] noVerses = new int[2];
+			for (BookID bid : books) {
+				int[] bInfo = counts.bibleCounts.getOrDefault(bid, noVerses);
+				int[] cInfo = counts.coveredCounts.getOrDefault(bid, noVerses);
+				System.out.println("\t" + bid.getOsisID() + ": " + cInfo[0] + "c[" + String.format("%+d", cInfo[0] - bInfo[0]) + "], " + cInfo[1] + "v[" + String.format("%+d", cInfo[1] - bInfo[1]) + "]");
+			}
 		}
 	}
 
