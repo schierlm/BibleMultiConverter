@@ -81,7 +81,9 @@ public class SWORDVersification implements VersificationFormat {
 				int chapter = Integer.parseInt(verseParts[1]);
 				int verseNum = Integer.parseInt(verseParts[2]);
 				if (verseNum == 0) verseNum = 1;
-				refs.add(new Reference(book, chapter, "" + verseNum));
+				Reference dref = new Reference(book, chapter, "" + verseNum);
+				if (!refs.contains(dref))
+					refs.add(dref);
 			}
 			if (!refs.isEmpty())
 				map.put(ref, refs);
