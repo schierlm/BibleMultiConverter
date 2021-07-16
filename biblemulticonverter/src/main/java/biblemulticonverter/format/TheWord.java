@@ -310,7 +310,7 @@ public class TheWord implements RoundtripFormat {
 					if (ch != null) {
 						BitSet allowedNumbers = new BitSet(maxVerse + 1);
 						allowedNumbers.set(1, maxVerse + 1);
-						for (VirtualVerse vv : ch.createVirtualVerses(allowedNumbers)) {
+						for (VirtualVerse vv : ch.createVirtualVerses(false, allowedNumbers, false)) {
 							while (vv.getNumber() > nextVerse) {
 								bw.write("- - -\r\n");
 								nextVerse++;
@@ -412,8 +412,9 @@ public class TheWord implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitHeadline(int depth) throws IOException {
-			System.out.println("WARNING: Skipping headline where no headlines allowed");
-			return null;
+			bw.write("<TS" + (depth < 3 ? depth : 3) + ">");
+			suffixStack.add("<Ts>");
+			return this;
 		}
 
 		@Override
