@@ -350,7 +350,7 @@ public class MySword implements RoundtripFormat {
 					metadata.put(key.substring(8).toLowerCase(), mdb.getValue(key));
 			}
 		}
-		detailsTable.insert(bible.getName(), metadata.getOrDefault("description", ""), metadata.getOrDefault("abbreviation", ""), metadata.getOrDefault("comments", ""), metadata.getOrDefault("version", ""), metadata.getOrDefault("versiondate", ""), metadata.getOrDefault("publishdate", ""), metadata.get("publisher"), metadata.get("author"), metadata.get("creator"), metadata.get("source"), metadata.get("editorialcomments"), metadata.getOrDefault("language", "eng"), "0", "1", "1", hasStrongs ? "1" : "0", "");
+		detailsTable.insert(bible.getName(), metadata.getOrDefault("description", ""), metadata.getOrDefault("abbreviation", System.getProperty("mysword.abbreviation", bible.getName().substring(0,1))), metadata.getOrDefault("comments", ""), metadata.getOrDefault("version", ""), metadata.getOrDefault("versiondate", ""), metadata.getOrDefault("publishdate", ""), metadata.get("publisher"), metadata.get("author"), metadata.get("creator"), metadata.get("source"), metadata.get("editorialcomments"), metadata.getOrDefault("language", "eng"), "0", "1", "1", hasStrongs ? "1" : "0", "");
 		final Set<String> unsupportedFeatures = new HashSet<>();
 
 		for (Book bk : bible.getBooks()) {
