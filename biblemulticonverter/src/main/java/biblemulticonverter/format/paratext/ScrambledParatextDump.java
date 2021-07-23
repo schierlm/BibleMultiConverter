@@ -19,7 +19,7 @@ public class ScrambledParatextDump extends AbstractParatextFormat {
 	public static final String[] HELP_TEXT = {
 			"Like ParatextDump, but with scrambled text; for tests with non-free bibles.",
 			"",
-			"Usage (export): ParatextDump <OutputFile> [+<Password>|-<Password>|=<Const>|#<Hash>]",
+			"Usage (export): ScrambledParatextDump <OutputFile> [+<Password>|-<Password>|=<Const>|#<Hash>]",
 			"",
 			"See the help text for the ScrambledDiffable format for details.",
 	};
