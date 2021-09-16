@@ -165,6 +165,16 @@ public class USFX extends AbstractParatextFormat {
 		} else if (localName.equals("h")) {
 			Usfx.Book.H h = (Usfx.Book.H) element.getValue();
 			result.getAttributes().put("h" + (h.getLevel() == null ? "" : h.getLevel()), TextUtilities.whitespaceNormalization(h.getValue()).trim());
+		} else if (localName.equals("b") && element.getValue() instanceof Usfx.Book.B) {
+			Usfx.Book.B b = (Usfx.Book.B) element.getValue();
+			String tag = (b.getSfm() == null ? localName : b.getSfm());
+			ParagraphKind kind = USFM.PARAGRAPH_TAGS.get(tag);
+			if (kind == null) {
+				System.out.println("WARNING: Unsupported paragraph kind: " + kind);
+				kind = ParagraphKind.PARAGRAPH_P;
+			}
+			result.getContent().add(new ParagraphStart(kind));
+			containerStack.clear();
 		} else if (Arrays.asList("p", "q", "d", "s", "mt", "b").contains(localName)) {
 			PType pt = (PType) element.getValue();
 			String tag = (pt.getSfm() == null ? localName : pt.getSfm()) + (pt.getLevel() == null ? "" : "" + pt.getLevel());
@@ -270,6 +280,11 @@ public class USFX extends AbstractParatextFormat {
 			if (caller == null || caller.isEmpty())
 				caller = "+";
 			FootnoteXref nextContainer = new FootnoteXref(USFM.FOOTNOTE_XREF_TAGS.get(sfm), caller);
+			if (containerStack.isEmpty()) {
+				ParatextCharacterContent container = new ParatextCharacterContent();
+				containerStack.add(container);
+				result.getContent().add(container);
+			}
 			containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
 			containerStack.add(nextContainer);
 			parseElements(result, containerStack, nc.getContent(), context);
@@ -281,6 +296,11 @@ public class USFX extends AbstractParatextFormat {
 			String sfm = nc.getSfm();
 			if (sfm == null || sfm.isEmpty())
 				sfm = localName;
+			if (containerStack.isEmpty()) {
+				ParatextCharacterContent container = new ParatextCharacterContent();
+				containerStack.add(container);
+				result.getContent().add(container);
+			}
 			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(sfm), false);
 			containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
 			containerStack.add(nextContainer);
@@ -323,6 +343,11 @@ public class USFX extends AbstractParatextFormat {
 				}
 			}
 			if(ref != null) {
+				if (containerStack.isEmpty()) {
+					ParatextCharacterContent container = new ParatextCharacterContent();
+					containerStack.add(container);
+					result.getContent().add(container);
+				}
 				containerStack.get(containerStack.size() - 1).getContent().add(ref);
 			}
 		} else if (localName.equals("w")) {
@@ -372,12 +397,22 @@ public class USFX extends AbstractParatextFormat {
 			if (sfm == null || sfm.isEmpty())
 				sfm = localName;
 			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(sfm), false);
+			if (containerStack.isEmpty()) {
+				ParatextCharacterContent container = new ParatextCharacterContent();
+				containerStack.add(container);
+				result.getContent().add(container);
+			}
 			containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
 			containerStack.add(nextContainer);
 			parseElements(result, containerStack, v.getContent(), context);
 			containerStack.remove(nextContainer);
 		} else if (Arrays.asList("pn", "ord", "no", "ndx", "wh", "wg", "ior").contains(localName)) {
 			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(localName), false);
+			if (containerStack.isEmpty()) {
+				ParatextCharacterContent container = new ParatextCharacterContent();
+				containerStack.add(container);
+				result.getContent().add(container);
+			}
 			containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
 			
 			Text text = Text.from((String) element.getValue());
