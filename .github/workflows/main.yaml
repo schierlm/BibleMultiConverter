@@ -37,3 +37,14 @@ jobs:
         java-version: 11
     - name: Build with Maven
       run: mvn -B package
+
+  build17:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up JDK 17
+      uses: actions/setup-java@v1
+      with:
+        java-version: 17
+    - name: Build with Maven
+      run: mvn -B package
