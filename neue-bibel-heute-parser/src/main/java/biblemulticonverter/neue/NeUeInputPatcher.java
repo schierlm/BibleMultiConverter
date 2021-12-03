@@ -20,20 +20,22 @@ public class NeUeInputPatcher implements Tool {
 			String filename = br.readLine();
 			while (filename != null && !filename.isEmpty()) {
 				StringBuilder sb = new StringBuilder();
-				try (BufferedReader fileR = new BufferedReader(new InputStreamReader(new FileInputStream(new File(directory, filename)), StandardCharsets.ISO_8859_1))) {
+				try (BufferedReader fileR = new BufferedReader(new InputStreamReader(new FileInputStream(new File(directory, filename)), StandardCharsets.UTF_8))) {
 					int len;
 					while ((len = fileR.read(buffer)) != -1) {
 						sb.append(buffer, 0, len);
 					}
 				}
 				String content = sb.toString().replace("\r\n", "\n").replace('\r', '\n');
+				if (!content.startsWith("\uFEFF"))
+					throw new IOException(filename);
 				String search = br.readLine();
 				while (!search.isEmpty()) {
 					String replace = br.readLine();
 					content = content.replaceAll(search.replace('¶', '\n'), replace.replace('¶', '\n'));
 					search = br.readLine();
 				}
-				try (Writer w = new OutputStreamWriter(new FileOutputStream(new File(directory, filename)), StandardCharsets.ISO_8859_1)) {
+				try (Writer w = new OutputStreamWriter(new FileOutputStream(new File(directory, filename)), StandardCharsets.UTF_8)) {
 					w.write(content.replace("\n", "\r\n"));
 				}
 				filename = br.readLine();

@@ -11,14 +11,22 @@ Mutter kochen\.'
 Mutter kochen*.'
 
 3mo.html
-Silberst&uuml;cke\*\.
-Silberst&uuml;cke.
+dreißig Schekel\*\.
+dreißig Schekel.
 Weihrauch legen,
 Weihrauch legen*,
 
 4mo.html
 <h4 id="20">Nach 40 Jahren an der Grenze des Landes</h4>¶<h4>Das Wasser von Meriba</h4>
 <h4 id="20">Nach 40 Jahren an der Grenze des Landes: Das Wasser von Meriba</h4>
+gutes Kilo Feinmehl bringen, das mit einem Liter
+gutes Kilo* Feinmehl bringen, das mit einem Liter*
+betrug 601&nbsp;730\.
+betrug 601&nbsp;730*.
+"fn">28,5,7:
+"fn">28,5:
+Liter Wein, zum Schafbock 0,7 Liter
+Liter* Wein, zum Schafbock 0,7 Liter*
 
 5mo.html
 aus Eisenstein steht
@@ -37,28 +45,32 @@ sagte Abischai\.¶
 sagte Abischai.</p>¶
 
 2sam.html
-Efod,
-Efod*,
 Priesterschurz bekleidet
 Priesterschurz* bekleidet
 
 2koe.html
-Gold\* an
-Gold an
+ein Talent Silber und
+ein Talent* Silber und
+zwei Talente\* Silber
+zwei Talente Silber
 
 1chr.html
 Jafet.¶</p>
 Jafet.</p>
 
+2chr.html
+für 100 Talente Silber
+für 100 Talente* Silber
+
+esra.html
+bis zu 100
+bis zu* 100
+
 neh.html
 <p><a href="#top"><span class="kap">8</span></a>&nbsp; ([^¶]*)
 <p>$1 </p>¶<p><a href="#top"><span class="kap">8</span></a>&nbsp;
-Silberst&uuml;cke pro
-Silberst&uuml;cke* pro
-
-hiob.html
-&xnbsp;
-&nbsp;
+Schekel Silber pro
+Schekel* Silber pro
 
 ps.html
 <tr>¶<td>
@@ -73,18 +85,16 @@ $2$1
 $2$1
 Wort<a href="#psalm">\*</a></h4>
 Wort</h4>
-\Q"kap">119</span></a>&nbsp;<span class="u2"> I &Aacute;lef*</span></p>\E¶<p class="poet">¶   <span class="vers">1</span>&nbsp;Wie
-"kap">119</span></a>&nbsp;¶   <span class="vers">1</span>*<span class="u2"> I &Aacute;lef*</span></p>¶<p class="poet">¶   Wie
+\Q"kap">119</span></a>&nbsp;<span class="u2"> I Álef*</span></p>\E¶<p class="poet">¶   <span class="vers">1</span>&nbsp;Wie
+"kap">119</span></a>&nbsp;¶   <span class="vers">1</span>*<span class="u2"> I Álef*</span></p>¶<p class="poet">¶   Wie
 <div class="fn"><a name="psalm">Psalm</a> <a href="#119">119</a>
 <div class="fn">119,1: <em>Psalm 119</em>
 <div class="fn">132,6 <em>von ihr</em>. Gemeint ist die Bundeslade.</div>¶<div
 <div
-&xnbsp;
-&nbsp;
 
 spr.html
 ¶¶<p class="poet" id="16">
-¶<h4 id="16">(Sprichw&ouml;rter Salomos)</h4>¶<p class="poet" id="16">
+¶<h4 id="16">(Sprichwörter Salomos)</h4>¶<p class="poet" id="16">
 Frau\*</h4>¶<div class="fn">(31,10: .*?)</div>¶<p class="poet">((.*+¶)*?.*)</p>
 Frau</h4>¶<p class="poet">$2</p>¶<div class="fn">$1</div>
 
@@ -97,6 +107,10 @@ jes.html
 "fn">11,10:
 <p class="poet" id="64"><a href="#top"><span class="kap">64</span></a> ([^¶]*)
 <p class="poet">$1</p>¶<p class="poet" id="64"><a href="#top"><span class="kap">64</span></a>&nbsp;
+
+jer.html
+Israel“,
+Israel",
 
 kla.html
 <div class="fn">Kapitel 4 besteht
@@ -111,14 +125,24 @@ mo.html#1
 <span class="vers">1</span>* Es geschah im
 <div class="fn">Kapitel 40-48: (.*?) <a href="Hesekiels Tempel\.gif" target="_blank">(.*?)</a>\.
 <div class="fn">40,1: Kapitel 40-48: $1 $2 im Anhang.
+mich kennenlernen! –
+mich kennenlernen!' –
 
 dan.html
-(Chald&auml;er war, get&ouml;tet\.)¶
+(Chaldäer war, getötet\.)¶
 $1</p>¶
 <span class="kap" id="11">
 <span class="kap">
 (<div class="fn">12,7: .*?</div>¶)(<div class="fn">12,5: .*?</div>¶)
 $2$1
+
+hos.html
+Großkönig von
+Großkönig* von
+
+sach.html
+eine Tonne"
+eine Tonne*"
 
 mal.html
 <p></p>So wird
@@ -133,24 +157,30 @@ mt.html
 "fn">20,6:
 "2mo.html#2">2. Mose 21,
 "2mo.html#21">2. Mose 21,
+sagte: „Geh
+sagte: "Geh
 
 mk.html
 >,20\)\.¶</div>
 >,20).</div>
+Stand ",
+Stand",
 
 lk.html
 href="3mo.html#10"
 href="3mo.html#25"
-"fn">22,43:
-"fn">22,44:
-<p></p><span class="vers">29</span>
-<p><span class="vers">29</span>
 Richtet nicht
 Richtet* nicht
 
 apg.html
 Stadtregenten beschuldigten
 Stadtregenten* beschuldigten
+
+roe.html
+geschrieben: „Was
+geschrieben: "Was
+<div class="fn"></div>¶<div
+<div
 
 tit.html
 <div class="e">¶
@@ -163,62 +193,40 @@ phm.html
 hebr.html
 19,16-19; 20,18-21</a>
 19,16-19</a>; 20,18-21
+zu: „Der
+zu: "Der
+
+1jo.html
+der Messias,
+der Messias*,
 
 3jo.html
 <p><p><a href="#top">
 <p><a href="#top">
 
 off.html
-</div><div class="fn">
-</div>¶<div class="fn">
-&xnbsp;
-&nbsp;
+<span class="vers">\(12,18\)</span>
+<span class="vers">12,18</span>
 
 bibel.html
 <br />
 <br />
-<br&xnbsp;/>
-<br />
-
-1mo.html
-	##### QUOTES #####
-	### 24:44 Third Level Quote
-sagt: "(Trink nur! Ich will auch deine Kamele tr&auml;nken!)", dass
-sagt: »$1«, dass
 
 2mo.html
 	### 3:16 3:17 4:22 4:23 7:16 7:17 7:18 7:26 8:16 8:19 9:1 9:5 9:13 9:19 21:5 Third Level Quotes
 	### 12:18 Quotes with link
 hat gesagt: "Ich habe
 hat gesagt: »Ich habe
-&uuml;berflie&szlig;t\."'
-&uuml;berflie&szlig;t.«'
-Jahwe: "Israel
-Jahwe: »Israel
-Sohn um."'"
-Sohn um.«'"
+überfließt\."'
+überfließt.«'
 auf: "Lass mein
 auf: »Lass mein
-W&uuml;ste dient!" Aber
-W&uuml;ste dient!« Aber
+Wüste dient!" Aber
+Wüste dient!« Aber
 Jahwe: "Jetzt wirst
 Jahwe: »Jetzt wirst
 Nilwasser zu trinken."'"
 Nilwasser zu trinken.«'"
-'So spricht Jahwe: "Lass
-'So spricht Jahwe: »Lass
-kommen."'"</p>
-kommen.«'"</p>
-Morgen wird es geschehen."'"
-Morgen wird es geschehen.«'"
-Gott der Hebr&auml;er: "Lass
-Gott der Hebr&auml;er: »Lass
-und zwar morgen!"'"</p>
-und zwar morgen!«'"</p>
-Hagel erschlagen."'"
-Hagel erschlagen.«'"
-"<a href="index.htm#schalt">Schaltmonat</a>"
-&bdquo;<a href="index.htm#schalt">Schaltmonat</a>&ldquo;
 aber sagt: "Ich
 aber sagt: »Ich
 werden!",
@@ -237,16 +245,16 @@ jer.html
 »$1«
 "(Wir sind doch gerettet!)",
 »$1«,
-"Hei&szlig;a!"
-»Hei&szlig;a!«
+"Heißa!"
+»Heißa!«
 "Weh, Herr!"
 »Weh, Herr!«
 
 sach.html
 	### 11:13 second level quote
 	###
-diesen "herrlichen Preis"
-diesen 'herrlichen Preis'
+diesen "großartigen" Preis
+diesen 'großartigen' Preis
 
 mt.html
 	### 22:44 third level quote
@@ -273,6 +281,10 @@ Herrn: »Setz dich
 gemacht habe.«'*
 
 hebr.html
+	### 3:8 quote closed twice
+	###
+wart!"
+wart!
 	### 8:9 move comma
 	###
 geachtet," spricht

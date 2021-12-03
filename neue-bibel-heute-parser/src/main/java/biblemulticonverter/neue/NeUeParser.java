@@ -148,6 +148,8 @@ public class NeUeParser implements ImportFormat {
 					line = br.readLine().trim();
 					if (line.startsWith("&raquo;&raquo;&nbsp;&nbsp;"))
 						line = line.substring("&raquo;&raquo;&nbsp;&nbsp;".length());
+					if (line.startsWith("»»&nbsp;&nbsp;"))
+						line = line.substring("»»&nbsp;&nbsp;".length());
 				}
 				Matcher m = tocPattern.matcher(line);
 				if (m.matches()) {
@@ -231,7 +233,7 @@ public class NeUeParser implements ImportFormat {
 			}
 			try (BufferedReader br = createReader(inputDirectory, bm.filename + ".html")) {
 				String line = br.readLine().trim();
-				line = skipLines(br, "<html>", "<head>", "<title>", "<meta ", "<link ", "</head>", "<body>", "<div style=\"background-color: #DCC2A0;\">", "<table border=", "<tbody ", "<tr><td>", "<p class=\"u3\">", "<a href=\"", "\\\\\\", "<br>", "&raquo;&raquo;");
+				line = skipLines(br, "<html>", "<head>", "<title>", "<meta ", "<link ", "</head>", "<body>", "<div style=\"background-color: #DCC2A0;\">", "<table border=", "<tbody ", "<tr><td>", "<p class=\"u3\">", "<a href=\"", "\\\\\\", "<br>", "&raquo;&raquo;", "»»&nbsp;&nbsp;");
 				if (!line.equals("<p><a name=\"bb\">&nbsp;</a></p>") && !line.equals("<p><a id=\"bb\">&nbsp;</a></p>"))
 					throw new IOException(line);
 				line = skipLines(br);
@@ -700,6 +702,9 @@ public class NeUeParser implements ImportFormat {
 			} else if (html.startsWith("<br />", tagPos)) {
 				v.visitLineBreak(LineBreakKind.NEWLINE);
 				pos = tagPos + 6;
+			} else if (html.startsWith("<br/>", tagPos)) {
+				v.visitLineBreak(LineBreakKind.NEWLINE);
+				pos = tagPos + 5;
 			} else if (html.startsWith("<br>", tagPos)) {
 				v.visitLineBreak(LineBreakKind.NEWLINE);
 				pos = tagPos + 4;
@@ -813,7 +818,7 @@ public class NeUeParser implements ImportFormat {
 			if (quoteDepth < 2
 					&& text.charAt(pos) == (quoteDepth == 0 ? '"' : '\'')
 					&& (pos == 0 || " (".indexOf(text.charAt(pos - 1)) != -1)
-					&& (pos == text.length() - 1 || Character.isLetterOrDigit(text.charAt(pos + 1)) || ".'(".indexOf(text.charAt(pos + 1)) != -1)) {
+					&& (pos == text.length() - 1 || Character.isLetterOrDigit(text.charAt(pos + 1)) || ".'(‹".indexOf(text.charAt(pos + 1)) != -1)) {
 				done += text.substring(0, pos) + (quoteDepth == 0 ? "„" : "‚");
 				text = text.substring(pos + 1);
 				quoteDepth++;
@@ -845,7 +850,12 @@ public class NeUeParser implements ImportFormat {
 
 	private BufferedReader createReader(File directory, String filename) throws IOException {
 		System.out.println("=== " + filename + " ===");
-		return new BufferedReader(new InputStreamReader(new FileInputStream(new File(directory, filename)), "windows-1252"));
+		BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(new File(directory, filename)), "UTF-8"));
+		char bom = (char)br.read();
+		if (bom != '\uFEFF') {
+			throw new IOException("Not UTF-8: " + filename);
+		}
+		return br;
 	}
 
 	private static class BookMetadata {
