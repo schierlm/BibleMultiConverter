@@ -495,10 +495,10 @@ public class NeUeParser implements ImportFormat {
 		// Hesekiels Tempel
 		vv.visitHeadline(1).visitText("Hesekiels Tempel");
 		Visitor<RuntimeException> vvv = vv.visitFormattingInstruction(FormattingInstructionKind.LINK);
-		vvv.visitRawHTML(RawHTMLMode.OFFLINE, "<a href=\"http://www.alt.kh-vanheiden.de/NeUe/Bibeltexte/Hesekiels%20Tempel.gif\" target=\"_blank\">");
+		vvv.visitRawHTML(RawHTMLMode.OFFLINE, "<a href=\"https://neue.derbibelvertrauen.de/Hesekiels%20Tempel.gif\" target=\"_blank\">");
 		vvv.visitFormattingInstruction(FormattingInstructionKind.BOLD).visitText("Rekonstruktionszeichnung");
 		vvv.visitRawHTML(RawHTMLMode.OFFLINE, "</a>");
-		vv.visitRawHTML(RawHTMLMode.ONLINE, "<br /><img src=\"http://www.alt.kh-vanheiden.de/NeUe/Bibeltexte/Hesekiels%20Tempel.gif\" width=\"640\" height=\"635\">");
+		vv.visitRawHTML(RawHTMLMode.ONLINE, "<br /><img src=\"https://neue.derbibelvertrauen.de/Hesekiels%20Tempel.gif\" width=\"640\" height=\"635\">");
 		if (quoteDepth != 0)
 			throw new IOException(""+quoteDepth);
 
