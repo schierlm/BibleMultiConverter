@@ -162,6 +162,10 @@ public class ParatextBook {
 	}
 
 	private String extractTrailingWhitespace(AutoClosingFormatting container) {
+		if(container.getContent().isEmpty()) {
+			System.out.println("WARNING: Trying to extract whitespace from empty container tag");
+			return "";
+		}
 		ParatextCharacterContentPart last = container.getContent().get(container.getContent().size() - 1);
 		if (last instanceof AutoClosingFormatting) {
 			return extractTrailingWhitespace((AutoClosingFormatting) last);
