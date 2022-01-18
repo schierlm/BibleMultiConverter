@@ -768,7 +768,24 @@ public class ZefaniaXML implements RoundtripFormat {
 				br.setArt(EnumBreak.X_P);
 			else
 				br.setArt(EnumBreak.X_NL);
-			result.add(br);
+			if (containingVerse.getContent() == result) {
+				result.add(br);
+			} else {
+				List<Object> currResult = containingVerse.getContent();
+				List<Object> appendResult = currResult;
+				while (currResult != result) {
+					STYLE style = (STYLE) ((JAXBElement<?>) currResult.get(currResult.size() - 1)).getValue();
+					STYLE newStyle = of.createSTYLE();
+					newStyle.setId(style.getId());
+					newStyle.setCss(style.getCss());
+					if (appendResult == currResult)
+						currResult.add(br);
+					appendResult.add(new JAXBElement<STYLE>(new QName("STYLE"), STYLE.class, newStyle));
+					currResult = style.getContent();
+					appendResult = newStyle.getContent();
+				}
+				result = appendResult;
+			}
 		}
 
 		@Override
