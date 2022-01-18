@@ -619,7 +619,8 @@ public class ZefaniaXML implements RoundtripFormat {
 		final Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
 		Marshaller m = ctx.createMarshaller();
-		m.setSchema(getSchema());
+		if (!Boolean.getBoolean("biblemulticonverter.skipxmlvalidation"))
+			m.setSchema(getSchema());
 		m.marshal(xmlbible, doc);
 		doc.getDocumentElement().setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
 		doc.getDocumentElement().setAttribute("xsi:noNamespaceSchemaLocation", "zef2005.xsd");

@@ -168,7 +168,8 @@ public class RoundtripXML implements RoundtripFormat {
 		JAXBElement<BibleType> result = createBible(bible);
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
 		Marshaller m = ctx.createMarshaller();
-		m.setSchema(getSchema());
+		if (!Boolean.getBoolean("biblemulticonverter.skipxmlvalidation"))
+			m.setSchema(getSchema());
 		m.marshal(result, file);
 	}
 

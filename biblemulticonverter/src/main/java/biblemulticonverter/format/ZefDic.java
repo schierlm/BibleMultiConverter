@@ -261,7 +261,8 @@ public class ZefDic implements RoundtripFormat {
 		final Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
 		Marshaller m = ctx.createMarshaller();
-		m.setSchema(getSchema());
+		if (!Boolean.getBoolean("biblemulticonverter.skipxmlvalidation"))
+			m.setSchema(getSchema());
 		m.marshal(xmlbible, doc);
 		Transformer transformer = TransformerFactory.newInstance().newTransformer();
 		transformer.setOutputProperty(OutputKeys.INDENT, "yes");

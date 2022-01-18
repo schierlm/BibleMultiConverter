@@ -440,7 +440,8 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		});
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
 		Marshaller m = ctx.createMarshaller();
-		m.setSchema(getSchema());
+		if (!Boolean.getBoolean("biblemulticonverter.skipxmlvalidation"))
+			m.setSchema(getSchema());
 		m.marshal(usx, new UnifiedScriptureXMLWriter(new FileWriter(outFile), "UTF-8"));
 	}
 

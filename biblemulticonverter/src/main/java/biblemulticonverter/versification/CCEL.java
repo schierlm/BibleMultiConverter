@@ -424,7 +424,8 @@ public class CCEL implements VersificationFormat {
 
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class);
 		Marshaller m = ctx.createMarshaller();
-		m.setSchema(getSchema());
+		if (!Boolean.getBoolean("biblemulticonverter.skipxmlvalidation"))
+			m.setSchema(getSchema());
 		Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
 		m.marshal(refsys, doc);
 		Transformer transformer = TransformerFactory.newInstance().newTransformer();
