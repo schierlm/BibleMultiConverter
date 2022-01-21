@@ -276,9 +276,17 @@ public class Accordance implements RoundtripFormat {
 				while (bk.getChapters().size() < cn)
 					bk.getChapters().add(new Chapter());
 				bk.getChapters().get(cn - 1).getVerses().add(v);
-				int parsed = parseText(rest, 0, v.getAppendVisitor());
-				if (parsed != rest.length())
-					throw new IOException("Unparsed tags: " + rest.substring(parsed));
+				try {
+					int parsed = parseText(rest, 0, v.getAppendVisitor());
+					if (parsed != rest.length())
+						throw new IOException("Unparsed tags: " + rest.substring(parsed));
+				} catch (IOException ex) {
+					System.err.println();
+					System.err.println("Parse error in "+bookID.getOsisID()+" "+chapterNumber+":"+verseNumber);
+					System.err.println("Line: "+line);
+					System.err.println();
+					throw ex;
+				}
 			}
 		}
 		for (Book bk : bible.getBooks()) {
