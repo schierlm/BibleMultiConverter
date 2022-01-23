@@ -33,6 +33,8 @@ public class TextUtilities {
 	 *                                   present at the end of a line, which would otherwise be removed/ignored.
 	 */
 	public static String usfmWhitespaceNormalization(String text, boolean preserveSpacesAtEndOfLines) {
+		if (text.startsWith("\uFEFF"))
+			text = text.substring(1);
 		if (!preserveSpacesAtEndOfLines) {
 			return WHITESPACE_NORMALIZATION_PATTERN.matcher(text).replaceAll(" ").trim();
 		}
