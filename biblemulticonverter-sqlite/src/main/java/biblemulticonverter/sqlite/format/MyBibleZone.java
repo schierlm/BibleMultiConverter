@@ -68,11 +68,13 @@ public class MyBibleZone implements RoundtripFormat {
 			new MyBibleZoneBook(180, "#ffcc99", BookID.BOOK_Jdt),
 			new MyBibleZoneBook(130, "#ffcc99", BookID.BOOK_1Chr),
 			new MyBibleZoneBook(140, "#ffcc99", BookID.BOOK_2Chr),
+			new MyBibleZoneBook(145, "#66ff99", BookID.BOOK_PrMan),
 			new MyBibleZoneBook(150, "#ffcc99", BookID.BOOK_Ezra),
 			new MyBibleZoneBook(160, "#ffcc99", BookID.BOOK_Neh),
 			new MyBibleZoneBook(165, "#ffcc99", BookID.BOOK_2Esd),
 			new MyBibleZoneBook(170, "#ffcc99", BookID.BOOK_Tob),
 			new MyBibleZoneBook(190, "#ffcc99", BookID.BOOK_Esth),
+			new MyBibleZoneBook(192, "#c0c0c0", BookID.BOOK_AddEsth),
 			new MyBibleZoneBook(220, "#66ff99", BookID.BOOK_Job),
 			new MyBibleZoneBook(230, "#66ff99", BookID.BOOK_Ps),
 			new MyBibleZoneBook(240, "#66ff99", BookID.BOOK_Prov),
@@ -82,11 +84,15 @@ public class MyBibleZone implements RoundtripFormat {
 			new MyBibleZoneBook(280, "#66ff99", BookID.BOOK_Sir),
 			new MyBibleZoneBook(290, "#ff9fb4", BookID.BOOK_Isa),
 			new MyBibleZoneBook(300, "#ff9fb4", BookID.BOOK_Jer),
+			new MyBibleZoneBook(305, "#c0c0c0", BookID.BOOK_PrAzar),
 			new MyBibleZoneBook(310, "#ff9fb4", BookID.BOOK_Lam),
 			new MyBibleZoneBook(315, "#ff9fb4", BookID.BOOK_EpJer),
 			new MyBibleZoneBook(320, "#ff9fb4", BookID.BOOK_Bar),
+			new MyBibleZoneBook(323, "#c0c0c0", BookID.BOOK_AddDan),
+			new MyBibleZoneBook(325, "#c0c0c0", BookID.BOOK_Sus),
 			new MyBibleZoneBook(330, "#ff9fb4", BookID.BOOK_Ezek),
 			new MyBibleZoneBook(340, "#ff9fb4", BookID.BOOK_Dan),
+			new MyBibleZoneBook(345, "#c0c0c0", BookID.BOOK_Bel),
 			new MyBibleZoneBook(350, "#ffff99", BookID.BOOK_Hos),
 			new MyBibleZoneBook(360, "#ffff99", BookID.BOOK_Joel),
 			new MyBibleZoneBook(370, "#ffff99", BookID.BOOK_Amos),
@@ -102,6 +108,7 @@ public class MyBibleZone implements RoundtripFormat {
 			new MyBibleZoneBook(462, "#d3d3d3", BookID.BOOK_1Macc),
 			new MyBibleZoneBook(464, "#d3d3d3", BookID.BOOK_2Macc),
 			new MyBibleZoneBook(466, "#d3d3d3", BookID.BOOK_3Macc),
+			new MyBibleZoneBook(467, "#d3d3d3", BookID.BOOK_4Macc),
 			new MyBibleZoneBook(468, "#d3d3d3", BookID.BOOK_1Esd),
 			new MyBibleZoneBook(470, "#ff6600", BookID.BOOK_Matt),
 			new MyBibleZoneBook(480, "#ff6600", BookID.BOOK_Mark),
@@ -131,10 +138,6 @@ public class MyBibleZone implements RoundtripFormat {
 			new MyBibleZoneBook(650, "#ffff00", BookID.BOOK_Heb),
 			new MyBibleZoneBook(730, "#ff7c80", BookID.BOOK_Rev),
 			new MyBibleZoneBook(780, "#00ff00", BookID.BOOK_EpLao),
-			new MyBibleZoneBook(790, "#66ff99", BookID.BOOK_PrMan),
-			// from MENG.SQLite3
-			new MyBibleZoneBook(900, "#66ff99", BookID.BOOK_AddDan),
-			new MyBibleZoneBook(910, "#66ff99", BookID.BOOK_AddEsth),
 	};
 
 	public static final Map<BookID, Integer> BOOK_NUMBERS = new EnumMap<>(BookID.class);
@@ -196,7 +199,7 @@ public class MyBibleZone implements RoundtripFormat {
 			System.out.println("WARNING: No bible name in info table");
 			bibleName = inputFile.getName();
 		}
-		Bible result = new Bible(bibleName.trim());
+		Bible result = new Bible(bibleName.replaceAll("\\p{Cntrl}+", " ").replaceAll("\\s+", " ").trim());
 		if (!mb.getKeys().isEmpty()) {
 			mb.finished();
 			result.getBooks().add(mb.getBook());
