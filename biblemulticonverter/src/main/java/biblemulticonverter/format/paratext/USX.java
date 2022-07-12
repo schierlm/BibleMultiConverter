@@ -11,9 +11,11 @@ import javax.xml.validation.SchemaFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -442,7 +444,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		Marshaller m = ctx.createMarshaller();
 		if (!Boolean.getBoolean("biblemulticonverter.skipxmlvalidation"))
 			m.setSchema(getSchema());
-		m.marshal(usx, new UnifiedScriptureXMLWriter(new FileWriter(outFile), "UTF-8"));
+		m.marshal(usx, new UnifiedScriptureXMLWriter(new OutputStreamWriter(new FileOutputStream(outFile), StandardCharsets.UTF_8), "UTF-8"));
 	}
 
 	protected Schema getSchema() throws SAXException {

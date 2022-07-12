@@ -10,6 +10,7 @@ import java.util.Stack;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 
+import com.sun.xml.txw2.output.CharacterEscapeHandler;
 import com.sun.xml.txw2.output.XMLWriter;
 
 /**
@@ -27,7 +28,7 @@ public class UnifiedScriptureXMLWriter extends XMLWriter {
 	private final Writer writer;
 
 	public UnifiedScriptureXMLWriter(Writer writer, String encoding) {
-		super(writer, encoding);
+		super(writer, encoding, new UnifiedScriptureCharacterEscapeHandler());
 		this.noMixedContentElements.add("usx");
 		this.writer = writer;
 	}
@@ -72,6 +73,34 @@ public class UnifiedScriptureXMLWriter extends XMLWriter {
 			writer.write(buffer);
 		} catch (IOException e) {
 			throw new SAXException(e);
+		}
+	}
+
+	/** Escape only the bare minimum and emit UTF-8 codepoints for the rest */
+	private static class UnifiedScriptureCharacterEscapeHandler implements CharacterEscapeHandler {
+		public void escape(char[] ch, int start, int length, boolean isAttVal, Writer out) throws IOException {
+			for (int i = start; i < start+length; i++) {
+				switch (ch[i]) {
+				case '&':
+					out.write("&amp;");
+					break;
+				case '<':
+					out.write("&lt;");
+					break;
+				case '>':
+					out.write("&gt;");
+					break;
+				case '\"':
+					if (isAttVal) {
+						out.write("&quot;");
+					} else {
+						out.write('"');
+					}
+					break;
+				default:
+					out.write(ch[i]);
+				}
+			}
 		}
 	}
 }
