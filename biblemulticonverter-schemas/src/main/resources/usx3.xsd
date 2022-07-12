@@ -118,7 +118,7 @@ Trang version used: trang-20181222
             </xs:choice>
             <xs:attribute name="style" use="required" type="CharStyle"/>
             <xs:attribute name="closed" type="xs:boolean"/>
-            <xs:attribute name="lemma" type="NonEmptyOrBlankString"/>
+            <xs:attribute name="lemma" type="NonEmptyString"/>
             <xs:attribute name="strong" type="NonEmptyOrBlankString"/>
             <xs:attribute name="srcloc" type="NonEmptyOrBlankString"/>
             <xs:attribute name="link-href">
@@ -796,6 +796,12 @@ Trang version used: trang-20181222
     <xs:simpleType name="NonEmptyOrBlankString">
         <xs:restriction base="xs:string">
             <xs:pattern value="\S+"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="NonEmptyString">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
         </xs:restriction>
     </xs:simpleType>
 </xs:schema>
