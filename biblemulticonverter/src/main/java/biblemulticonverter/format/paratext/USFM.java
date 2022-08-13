@@ -269,8 +269,6 @@ public class USFM extends AbstractParatextFormat {
 						throw new IOException("Two charsets specified: " + charset + " and " + correctCharset);
 					}
 					return doImportBook(inputFile, correctCharset);
-				} else {
-					result.getAttributes().put(tag, textPart);
 				}
 				textPart = "";
 			} else if (BOOK_HEADER_ATTRIBUTE_TAGS.contains(tag)) {
@@ -305,10 +303,7 @@ public class USFM extends AbstractParatextFormat {
 			bw.write("\\id " + book.getId().getIdentifier() + " " + escape(book.getBibleName(), false));
 			bw.write("\n\\ide UTF-8");
 			for (Map.Entry<String, String> attr : book.getAttributes().entrySet()) {
-				// Never write a charset other than the charset we are using to write this file
-				if (!attr.getKey().equals("ide")) {
-					bw.write("\n\\" + attr.getKey() + " " + escape(attr.getValue(), false));
-				}
+				bw.write("\n\\" + attr.getKey() + " " + escape(attr.getValue(), false));
 			}
 			book.accept(new ParatextBookContentVisitor<IOException>() {
 
