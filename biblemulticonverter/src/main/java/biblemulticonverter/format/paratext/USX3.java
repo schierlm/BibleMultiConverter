@@ -261,9 +261,19 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 					parseCharContent(chr.getContent(), container);
 				} else {
 					ParatextCharacterContent.AutoClosingFormatting f = new ParatextCharacterContent.AutoClosingFormatting(CHAR_STYLE_MAP.get(chr.getStyle()), false);
-					String lemma = chr.getLemma();
-					if (f.getKind() == ParatextCharacterContent.AutoClosingFormattingKind.WORDLIST && lemma != null && !lemma.isEmpty()) {
-						f.getAttributes().put("lemma", lemma);
+					if (f.getKind() == ParatextCharacterContent.AutoClosingFormattingKind.WORDLIST) {
+						String lemma = chr.getLemma();
+						String strong = chr.getStrong();
+						String srcloc = chr.getSrcloc();
+						if (lemma != null && !lemma.isEmpty()) {
+							f.getAttributes().put("lemma", lemma);
+						}
+						if (strong != null && !strong.isEmpty()) {
+							f.getAttributes().put("strong", strong);
+						}
+						if (srcloc != null && !srcloc.isEmpty()) {
+							f.getAttributes().put("srcloc", srcloc);
+						}
 					}
 					container.getContent().add(f);
 					parseCharContent(chr.getContent(), f);

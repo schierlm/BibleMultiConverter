@@ -175,34 +175,6 @@ public class USFM extends AbstractParatextFormat {
 				AutoClosingFormatting nextContainer = new AutoClosingFormatting(AUTO_CLOSING_TAGS.get(tag), tag.startsWith("+"));
 				containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
 				containerStack.add(nextContainer);
-				if (nextContainer.getKind().getDefaultAttributes() != null && data.startsWith("\\" + tag + "*", startPos) && textPart.contains("|")) {
-					String[] defaultAttributes = nextContainer.getKind().getDefaultAttributes();
-					String[] parts = textPart.split("\\|");
-					for (int i = 1; i < parts.length; i++) {
-						if (parts[i].contains("=")) {
-							String attList = parts[i];
-							while (attList.contains("=")) {
-								pos = attList.indexOf('=');
-								String key = attList.substring(0, pos).trim();
-								attList = attList.substring(pos + 1).trim();
-								if (attList.startsWith("\"")) {
-									pos = attList.indexOf('"', 1);
-									nextContainer.getAttributes().put(key, attList.substring(1, pos));
-									attList = attList.substring(pos + 1).trim();
-								} else {
-									nextContainer.getAttributes().put(key, attList);
-									attList = "";
-								}
-							}
-						} else if (i - 1 < defaultAttributes.length) {
-							nextContainer.getAttributes().put(defaultAttributes[i - 1], parts[i]);
-						}
-					}
-					textPart = parts[0];
-					if (textPart.endsWith(" ")) {
-						textPart = textPart.substring(0, textPart.length() - 1);
-					}
-				}
 			} else if (tag.equals("v")) {
 				ImportUtilities.closeOpenVerse(result, openVerse);
 
@@ -279,6 +251,38 @@ public class USFM extends AbstractParatextFormat {
 			}
 			if (closeCharacterAttributes) {
 				containerStack.clear();
+			}
+
+			if (!containerStack.isEmpty() && textPart.contains("|") && containerStack.get(containerStack.size() - 1) instanceof AutoClosingFormatting) {
+				AutoClosingFormatting nextContainer = (AutoClosingFormatting) containerStack.get(containerStack.size() - 1);
+				if (nextContainer.getKind().getDefaultAttributes() != null && data.startsWith("\\" + nextContainer.getUsedTag() + "*", startPos)) {
+					String[] defaultAttributes = nextContainer.getKind().getDefaultAttributes();
+					String[] parts = textPart.split("\\|");
+					for (int i = 1; i < parts.length; i++) {
+						if (parts[i].contains("=")) {
+							String attList = parts[i];
+							while (attList.contains("=")) {
+								pos = attList.indexOf('=');
+								String key = attList.substring(0, pos).trim();
+								attList = attList.substring(pos + 1).trim();
+								if (attList.startsWith("\"")) {
+									pos = attList.indexOf('"', 1);
+									nextContainer.getAttributes().put(key, attList.substring(1, pos));
+									attList = attList.substring(pos + 1).trim();
+								} else {
+									nextContainer.getAttributes().put(key, attList);
+									attList = "";
+								}
+							}
+						} else if (i - 1 < defaultAttributes.length) {
+							nextContainer.getAttributes().put(defaultAttributes[i - 1], parts[i]);
+						}
+					}
+					textPart = parts[0];
+					if (textPart.endsWith(" ")) {
+						textPart = textPart.substring(0, textPart.length() - 1);
+					}
+				}
 			}
 
 			textPart = textPart.replace(" // ", " ").replace("~", "\u00A0");
