@@ -9,6 +9,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.tmatesoft.sqljet.core.SqlJetException;
 import org.tmatesoft.sqljet.core.SqlJetTransactionMode;
@@ -183,7 +185,7 @@ public class MySword implements RoundtripFormat {
 				while (text.startsWith("<WG") || text.startsWith("<WH") || text.startsWith("<WT")) {
 					pos = text.indexOf(">");
 					if (text.startsWith("<WT")) {
-						mtags.add(text.substring(3, pos));
+						mtags.add(text.substring(3, pos).replaceFirst(" l=\"[^\"]*\"$", ""));
 					} else {
 						stags.add(text.substring(2, pos));
 					}
@@ -295,8 +297,40 @@ public class MySword implements RoundtripFormat {
 				}
 				text = text.substring(posEnd + 1);
 			} else if (text.startsWith("<Q>")) {
-				// skip interlinear information
-				System.out.println("WARNING: Skipping <Q> interlinear information");
+				String q = text.substring(3, text.indexOf("<q>"));
+				Map<Character, String> parts = new HashMap<>();
+				while (!q.isEmpty()) {
+					if (q.length() < 4 || q.charAt(0) != '<' || q.charAt(2) != '>' || q.charAt(1) < 'A' || q.charAt(1) > 'Z') {
+						System.out.println("WARNING: Skipping malformed <Q> interlinear information");
+						parts = null;
+						break;
+					}
+					int ePos = q.indexOf(q.substring(0, 3).toLowerCase(), 3);
+					if (ePos == -1) {
+						System.out.println("WARNING: Skipping malformed <Q> interlinear information");
+						parts = null;
+						break;
+					}
+					parts.put(q.charAt(1), q.substring(3, ePos).replaceAll("<D>|<w[ght]>", ""));
+					q = q.substring(ePos + 3);
+				}
+				if (parts != null) {
+					StringBuffer expanded = new StringBuffer();
+					Matcher m = Pattern.compile("@([A-Z])").matcher(System.getProperty("mysword.interlinearpattern", ""));
+					while (m.find()) {
+						m.appendReplacement(expanded, parts.getOrDefault(m.group(1).charAt(0), ""));
+					}
+					m.appendTail(expanded);
+					if (expanded.length() == 0) {
+						System.out.println("WARNING: Skipping <Q> interlinear information (parts " + parts.keySet() + " not mapped)");
+					} else {
+						String rest = convertFromVerse(expanded.toString(), vv, inFootnote);
+						if (!rest.isEmpty()) {
+							System.out.println("WARNING: Unclosed <Q> tag content at: " + rest);
+						}
+					}
+
+				}
 				text = text.substring(text.indexOf("<q>") + 3);
 			} else if (text.startsWith("<CI>") || text.startsWith("<PF") || text.startsWith("<PI")) {
 				// skip tag
