@@ -280,12 +280,15 @@ public class BibleWorks implements RoundtripFormat {
 				continue;
 			}
 			int epos = text.indexOf("]", pos);
+			while(epos != -1 && text.startsWith("]]", epos)) {
+				epos = text.indexOf("]", epos + 2);
+			}
 			if (epos == -1) {
 				System.out.println("WARNING: Unclosed italic bracket: " + text.substring(pos));
 				break;
 			}
 			parseTags(text.substring(spos, pos), vv, footnoteMap);
-			parseTags(text.substring(pos + 1, epos), vv.visitFormattingInstruction(FormattingInstructionKind.ITALIC), footnoteMap);
+			parseTags(text.substring(pos + 1, epos).replace("[[", "["), vv.visitFormattingInstruction(FormattingInstructionKind.ITALIC), footnoteMap);
 			spos = epos + 1;
 		}
 		parseTags(text.substring(spos), vv, footnoteMap);
@@ -477,6 +480,21 @@ public class BibleWorks implements RoundtripFormat {
 		private int nextFootnote = 1;
 		private char nextXref = 'a';
 
+		private static String fixBrackets(String text) {
+			// In case an escaped bracket (marked with \1) is following an italics bracket
+			// of same type, add a zero-width NBSP in between to avoid detecting them in wrong order.
+			int pos = text.indexOf('\1');
+			while(pos != -1) {
+				String replacement = "";
+				if (pos > 0 && text.charAt(pos-1) == text.charAt(pos+1)) {
+					replacement = "\uFEFF";
+				}
+				text = text.substring(0, pos) + replacement + text.substring(pos+1);
+				pos = text.indexOf('\1');
+			}
+			return text;
+		}
+
 		private StringBuilder getCurrentPart() {
 			if (contentParts.isEmpty())
 				contentParts.add(new StringBuilder());
@@ -495,10 +513,10 @@ public class BibleWorks implements RoundtripFormat {
 			if (!suffixStack.isEmpty())
 				throw new IllegalStateException("Invalid tag nesting");
 			for (StringBuilder cp : contentParts) {
-				w.write(cp.toString());
+				w.write(fixBrackets(cp.toString()));
 			}
 			if (endnotes.length() > 0)
-				w.write("{ " + endnotes + "}");
+				w.write("{ " + fixBrackets(endnotes.toString()) + "}");
 		}
 
 		@Override
@@ -517,6 +535,8 @@ public class BibleWorks implements RoundtripFormat {
 
 		@Override
 		public void visitText(String text) throws RuntimeException {
+			if (text.startsWith("[") || text.startsWith("]"))
+				text = "\1" + text;
 			getCurrentPart().append(text.replace("[", "[[").replace("]", "]]"));
 		}
 
@@ -663,6 +683,8 @@ public class BibleWorks implements RoundtripFormat {
 			} else if (isXref == null) {
 				isXref = false;
 			}
+			if (text.startsWith("[") || text.startsWith("]"))
+				text = "\1" + text;
 			currentNotes.append(text.replace("[", "[[").replace("]", "]]"));
 		}
 
