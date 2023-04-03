@@ -6,8 +6,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
 import biblemulticonverter.data.Bible;
@@ -204,7 +206,7 @@ public class SwordSearcher implements ExportFormat {
 		}
 	}
 
-	private static class SwordSearcherVisitor implements Visitor<IOException> {
+	private static class SwordSearcherVisitor extends AbstractNoCSSVisitor<IOException> {
 
 		private final BufferedWriter bw;
 		private final IncludedFeatures features;
@@ -271,7 +273,19 @@ public class SwordSearcher implements ExportFormat {
 
 		@Override
 		public Visitor<IOException> visitCSSFormatting(String css) throws IOException {
-			return new SwordSearcherVisitor(bw, features, allowFormatting, "");
+			List<FormattingInstructionKind> formattings = new ArrayList<>();
+			determineFormattingInstructions(css, formattings);
+			StringBuilder suffix = new StringBuilder();
+			for (FormattingInstructionKind kind : formattings) {
+				SwordSearcherVisitor v = (SwordSearcherVisitor) visitFormattingInstruction(kind);
+				suffix.append(v.suffix);
+			}
+			return new SwordSearcherVisitor(bw, features, allowFormatting, suffix.toString());
+		}
+
+		@Override
+		protected Visitor<IOException> visitChangedCSSFormatting(String remainingCSS, Visitor<IOException> resultingVisitor, int replacements) {
+			throw new IllegalStateException();
 		}
 
 		@Override

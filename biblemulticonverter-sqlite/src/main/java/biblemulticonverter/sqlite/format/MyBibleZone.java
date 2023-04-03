@@ -38,6 +38,7 @@ import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.format.AbstractHTMLVisitor;
+import biblemulticonverter.format.AbstractNoCSSVisitor;
 import biblemulticonverter.format.RoundtripFormat;
 
 public class MyBibleZone implements RoundtripFormat {
@@ -971,7 +972,7 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 	}
 
-	private static class MyBibleVerseVisitor implements Visitor<IOException> {
+	private static class MyBibleVerseVisitor extends AbstractNoCSSVisitor<IOException> {
 
 		private final StringBuilder builder;
 		private final List<String> suffixStack = new ArrayList<>();
@@ -1074,10 +1075,19 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCSSFormatting(String css) throws RuntimeException {
-			unsupportedFeatures.add("css formatting in verse");
-			suffixStack.add("");
-			return this;
+		protected Visitor<IOException> visitChangedCSSFormatting(String remainingCSS, Visitor<IOException> resultingVisitor, int replacements) {
+			if (!remainingCSS.isEmpty())
+				unsupportedFeatures.add("css formatting in verse");
+			if (replacements != 1) {
+				StringBuilder sb = new StringBuilder();
+				for (int i = 0; i < replacements; i++) {
+					String lastSuffix = suffixStack.remove(suffixStack.size() - 1);
+					if (!lastSuffix.equals("--divine-name--"))
+						sb.append(lastSuffix);
+				}
+				suffixStack.add(sb.toString());
+			}
+			return resultingVisitor;
 		}
 
 		@Override

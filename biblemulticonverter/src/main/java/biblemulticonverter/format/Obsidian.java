@@ -95,7 +95,7 @@ public class Obsidian implements ExportFormat {
 		return raw;
 	}
 
-	private static class ObsidianVisitor implements Visitor<IOException> {
+	private static class ObsidianVisitor extends AbstractNoCSSVisitor<IOException> {
 
 		private final Writer writer;
 		private final Writer footnoteWriter;
@@ -220,7 +220,7 @@ public class Obsidian implements ExportFormat {
 				marker = "*";
 				break;
 			default:
-				return visitCSSFormatting(kind.getCss());
+				return !inlineHTML ? visitChangedCSSFormatting(kind.getCss(), this, 0) : visitCSSFormatting(kind.getCss());
 			}
 			writer.append(marker);
 			pushSuffix(marker);
@@ -230,13 +230,19 @@ public class Obsidian implements ExportFormat {
 		@Override
 		public Visitor<IOException> visitCSSFormatting(String css) throws IOException {
 			if (!inlineHTML) {
-				System.out.println("WARNING: Skipping formatting (Inline HTML is disabled)");
-				pushSuffix("");
-				return this;
+				return super.visitCSSFormatting(css);
 			}
 			writer.write("<span style=\"" + css + "\">");
 			pushSuffix("</span>");
 			return this;
+		}
+
+		@Override
+		protected Visitor<IOException> visitChangedCSSFormatting(String remainingCSS, Visitor<IOException> resultingVisitor, int replacements) {
+			if (!remainingCSS.isEmpty())
+				System.out.println("WARNING: Skipping formatting (Inline HTML is disabled)");
+			fixupSuffixStack(replacements, suffixStack);
+			return resultingVisitor;
 		}
 
 		@Override

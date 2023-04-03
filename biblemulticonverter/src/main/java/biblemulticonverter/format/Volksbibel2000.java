@@ -5,7 +5,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -234,7 +236,7 @@ public class Volksbibel2000 implements ExportFormat {
 		}
 	}
 
-	private static class Vb2000Visitor implements Visitor<RuntimeException> {
+	private static class Vb2000Visitor extends AbstractNoCSSVisitor<RuntimeException> {
 
 		private Verse verse;
 		private String suffix;
@@ -373,7 +375,19 @@ public class Volksbibel2000 implements ExportFormat {
 		@Override
 		public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
 			ensureInVerse();
-			return new Vb2000Visitor(content, null, "", escapeChar);
+			List<FormattingInstructionKind> formattings = new ArrayList<>();
+			determineFormattingInstructions(css, formattings);
+			StringBuilder suffix = new StringBuilder();
+			for (FormattingInstructionKind kind : formattings) {
+				Vb2000Visitor v = (Vb2000Visitor) visitFormattingInstruction(kind);
+				suffix.append(v.suffix);
+			}
+			return new Vb2000Visitor(content, null, suffix.toString(), escapeChar);
+		}
+
+		@Override
+		protected Visitor<RuntimeException> visitChangedCSSFormatting(String remainingCSS, Visitor<RuntimeException> resultingVisitor, int replacements) {
+			throw new IllegalStateException();
 		}
 
 		@Override

@@ -472,7 +472,7 @@ public class BibleWorks implements RoundtripFormat {
 		return null;
 	}
 
-	private static class BibleWorksVerseVisitor implements Visitor<RuntimeException> {
+	private static class BibleWorksVerseVisitor extends AbstractNoCSSVisitor<RuntimeException> {
 
 		private final List<StringBuilder> contentParts = new ArrayList<>();
 		private final List<String> suffixStack = new ArrayList<>();
@@ -571,10 +571,11 @@ public class BibleWorks implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
-			skipFeature("CSS formatting");
-			suffixStack.add("");
-			return this;
+		protected Visitor<RuntimeException> visitChangedCSSFormatting(String remainingCSS, Visitor<RuntimeException> resultingVisitor, int replacements) {
+			if (!remainingCSS.isEmpty())
+				skipFeature("CSS formatting");
+			fixupSuffixStack(replacements, suffixStack);
+			return resultingVisitor;
 		}
 
 		@Override

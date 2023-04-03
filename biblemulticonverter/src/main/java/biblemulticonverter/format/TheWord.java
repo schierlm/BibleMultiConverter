@@ -357,7 +357,7 @@ public class TheWord implements RoundtripFormat {
 		return false;
 	}
 
-	private static class TheWordVisitor implements Visitor<IOException> {
+	private static class TheWordVisitor extends AbstractNoCSSVisitor<IOException> {
 
 		private BufferedWriter bw;
 		protected final List<String> suffixStack = new ArrayList<String>();
@@ -523,9 +523,9 @@ public class TheWord implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCSSFormatting(String css) throws IOException {
-			suffixStack.add("");
-			return this;
+		protected Visitor<IOException> visitChangedCSSFormatting(String remainingCSS, Visitor<IOException> resultingVisitor, int replacements) {
+			fixupSuffixStack(replacements, suffixStack);
+			return resultingVisitor;
 		}
 
 		@Override

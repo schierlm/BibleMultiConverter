@@ -582,7 +582,7 @@ public class HaggaiXML implements RoundtripFormat {
 		return false;
 	}
 
-	private static class CreateContentVisitor implements Visitor<IOException> {
+	private static class CreateContentVisitor extends AbstractNoCSSVisitor<IOException> {
 
 		private List<Serializable> result;
 		private final ObjectFactory of;
@@ -748,9 +748,9 @@ public class HaggaiXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCSSFormatting(String css) throws IOException {
+		protected Visitor<IOException> visitChangedCSSFormatting(String remainingCSS, Visitor<IOException> resultingVisitor, int replacements) {
 			// skip for now
-			return this;
+			return resultingVisitor;
 		}
 
 		@Override

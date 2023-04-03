@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -279,7 +280,7 @@ public class OnLineBible implements ExportFormat {
 		}
 	}
 
-	private static class OnLineBibleVisitor implements Visitor<RuntimeException> {
+	private static class OnLineBibleVisitor extends AbstractNoCSSVisitor<RuntimeException> {
 
 		private final StringBuilder content;
 		private final boolean includeStrongs;
@@ -386,7 +387,19 @@ public class OnLineBible implements ExportFormat {
 				content.append("\\!«");
 				return new OnLineBibleVisitor(content, includeStrongs, inFootnote, lastVerses, "»\\!");
 			}
-			return new OnLineBibleVisitor(content, includeStrongs, inFootnote, lastVerses);
+			List<FormattingInstructionKind> formattings = new ArrayList<>();
+			determineFormattingInstructions(css, formattings);
+			StringBuilder suffix = new StringBuilder();
+			for (FormattingInstructionKind kind : formattings) {
+				OnLineBibleVisitor nextV = (OnLineBibleVisitor) visitFormattingInstruction(kind);
+				suffix.append(nextV.suffix);
+			}
+			return new OnLineBibleVisitor(content, includeStrongs, inFootnote, lastVerses, suffix.toString());
+		}
+
+		@Override
+		protected Visitor<RuntimeException> visitChangedCSSFormatting(String remainingCSS, Visitor<RuntimeException> resultingVisitor, int replacements) {
+			throw new IllegalStateException();
 		}
 
 		@Override

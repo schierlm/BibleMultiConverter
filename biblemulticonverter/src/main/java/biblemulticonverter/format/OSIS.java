@@ -1024,7 +1024,7 @@ public class OSIS implements RoundtripFormat {
 		return false;
 	}
 
-	private static class OSISVisitor implements Visitor<RuntimeException> {
+	private static class OSISVisitor extends AbstractNoCSSVisitor<RuntimeException> {
 		private final Element target;
 		private boolean nt;
 
@@ -1121,9 +1121,9 @@ public class OSIS implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
+		protected Visitor<RuntimeException> visitChangedCSSFormatting(String remainingCSS, Visitor<RuntimeException> resultingVisitor, int replacements) {
 			// not supported
-			return this;
+			return resultingVisitor;
 		}
 
 		@Override

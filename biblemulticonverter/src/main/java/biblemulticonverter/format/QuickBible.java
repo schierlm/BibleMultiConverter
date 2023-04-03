@@ -143,7 +143,7 @@ public class QuickBible implements ExportFormat {
 		}
 	}
 
-	private static class QuickBibleVisitor implements Visitor<RuntimeException> {
+	private static class QuickBibleVisitor extends AbstractNoCSSVisitor<RuntimeException> {
 
 		private final StringBuilder mainBuilder;
 		private final boolean allowItalic;
@@ -273,9 +273,9 @@ public class QuickBible implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCSSFormatting(String css) {
-			pushSuffix("");
-			return this;
+		protected Visitor<RuntimeException> visitChangedCSSFormatting(String remainingCSS, Visitor<RuntimeException> resultingVisitor, int replacements) {
+			fixupSuffixStack(replacements, suffixStack);
+			return resultingVisitor;
 		}
 
 		@Override
