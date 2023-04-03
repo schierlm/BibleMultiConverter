@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
@@ -56,7 +57,7 @@ public class StrippedDiffable implements ExportFormat {
 			"- RenameBook <OldAbbr> <NewAbbr>",
 			"- RenameAllBooks [OSIS|Zefania|3LC|Paratext]",
 			"- SortBooks",
-			"- OptimizeFormatting [<OldFormatting>=<NewFormatting>[&<NewFormatting>[...]] [...]"
+			"- OptimizeFormatting [SplitCSS|FromCSS|ToCSS|RemoveCSS|JoinCSS|<OldFormatting>-><NewFormatting>[&<NewFormatting>[...]] [...]"
 	};
 
 	@Override
@@ -132,18 +133,24 @@ public class StrippedDiffable implements ExportFormat {
 			bible.getBooks().sort(Comparator.comparingInt((Book b) -> b.getId().ordinal()).thenComparing(Book::getAbbr));
 			out.println("Books sorted.");
 		} else if (exportArgs.length >= 2 && exportArgs[1].equals("OptimizeFormatting")) {
+			EnumSet<OptimizeFormattingOption> options = EnumSet.noneOf(OptimizeFormattingOption.class);
 			Map<String, String[]> mappings = new HashMap<>();
 			for (int i = 2; i < exportArgs.length; i++) {
 				int pos = exportArgs[i].indexOf("->");
 				if (pos == -1) {
-					out.println("WARNING: Skipped malformed formatting mapping " + exportArgs[i]);
-					continue;
+					try {
+						options.add(OptimizeFormattingOption.valueOf(exportArgs[i]));
+						continue;
+					} catch (IllegalArgumentException ex) {
+						out.println("WARNING: Skipped malformed formatting mapping " + exportArgs[i]);
+						continue;
+					}
 				}
 				String key = exportArgs[i].substring(0, pos).trim();
 				String[] values = exportArgs[i].substring(pos + 2).split("&");
 				mappings.put(key, values);
 			}
-			optimizeFormatting(bible, out, mappings);
+			optimizeFormatting(bible, out, options, mappings);
 		} else {
 			EnumSet<Feature> chosenFeeatures = EnumSet.noneOf(Feature.class);
 			for (int i = 1; i < exportArgs.length; i++) {
@@ -165,7 +172,7 @@ public class StrippedDiffable implements ExportFormat {
 		bible.getBooks().removeAll(booksToRemove);
 	}
 
-	private void optimizeFormatting(Bible bible, PrintStream out, Map<String, String[]> mappings) {
+	private void optimizeFormatting(Bible bible, PrintStream out, EnumSet<OptimizeFormattingOption> options, Map<String, String[]> mappings) {
 		CountFormattingVisitor oldCount = new CountFormattingVisitor();
 		CountFormattingVisitor newCount = new CountFormattingVisitor();
 		for (Book book : bible.getBooks()) {
@@ -173,7 +180,7 @@ public class StrippedDiffable implements ExportFormat {
 				if (chap.getProlog() != null) {
 					chap.getProlog().accept(oldCount);
 					FormattedText newProlog = new FormattedText();
-					chap.getProlog().accept(new OptimizeFormattingVisitor(newProlog.getAppendVisitor(), mappings));
+					chap.getProlog().accept(new OptimizeFormattingVisitor(newProlog.getAppendVisitor(), options, mappings));
 					newProlog.finished();
 					newProlog.accept(newCount);
 					chap.setProlog(newProlog);
@@ -182,7 +189,7 @@ public class StrippedDiffable implements ExportFormat {
 					Verse v = chap.getVerses().get(j);
 					v.accept(oldCount);
 					Verse nv = new Verse(v.getNumber());
-					v.accept(new OptimizeFormattingVisitor(nv.getAppendVisitor(), mappings));
+					v.accept(new OptimizeFormattingVisitor(nv.getAppendVisitor(), options, mappings));
 					nv.finished();
 					nv.accept(newCount);
 					chap.getVerses().set(j, nv);
@@ -573,11 +580,15 @@ public class StrippedDiffable implements ExportFormat {
 
 	public static enum Feature {
 		StripPrologs, StripFootnotes, StripHeadlines, StripVerseSeparators, InlineVerseSeparators,
-		StripCrossReferences, StripFormatting, StripGrammar, StripDictionaryReferences,
+		StripCrossReferences, StripFormatting, StripCSSFormatting, StripGrammar, StripDictionaryReferences,
 		StripRawHTML, StripExtraAttributes, StripOrKeepExtraAttributes, StripLineBreaks, StripVariations,
 		StripStrongs, StripStrongsWithPrefixes, StripRMAC, StripSourceIndexes,
 		StripOldTestament, StripNewTestament, StripDeuterocanonicalBooks,
 		StripMetadataBook, StripIntroductionBooks, StripDictionaryEntries, StripAppendixBook
+	}
+
+	public static enum OptimizeFormattingOption {
+		SplitCSS, FromCSS, ToCSS, RemoveCSS, JoinCSS
 	}
 
 	private static class SelectVariationVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
@@ -690,7 +701,7 @@ public class StrippedDiffable implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
-			if (isEnabled(Feature.StripFormatting, chosenFeatures, foundFeatures)) {
+			if (isEnabled(Feature.StripFormatting, chosenFeatures, foundFeatures) | isEnabled(Feature.StripCSSFormatting, chosenFeatures, foundFeatures)) {
 				return this;
 			} else {
 				return new StripVisitor(next.visitCSSFormatting(css), chosenFeatures, foundFeatures);
@@ -703,7 +714,8 @@ public class StrippedDiffable implements ExportFormat {
 			boolean strip = isEnabled(Feature.StripVerseSeparators, chosenFeatures, foundFeatures);
 			boolean inline = isEnabled(Feature.InlineVerseSeparators, chosenFeatures, foundFeatures);
 			if (inline) {
-				boolean formatted = !isEnabled(Feature.StripFormatting, chosenFeatures, foundFeatures);
+				boolean formatted = !isEnabled(Feature.StripFormatting, chosenFeatures, foundFeatures)
+						& !isEnabled(Feature.StripCSSFormatting, chosenFeatures, foundFeatures);
 				Visitor<RuntimeException> v = formatted ? next.visitCSSFormatting("color:gray;") : next;
 				v.visitText("/");
 			} else if (!strip) {
@@ -825,14 +837,16 @@ public class StrippedDiffable implements ExportFormat {
 
 	private static class OptimizeFormattingVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
 
+		private final Set<OptimizeFormattingOption> options;
 		private final Map<String, String[]> mappings;
-		private Visitor<RuntimeException> next;
+		private final Visitor<RuntimeException> next;
 		private final FormattingSetList formattingSets;
 		private final Set<String> currentFormattings;
 
-		public OptimizeFormattingVisitor(Visitor<RuntimeException> next, Map<String, String[]> mappings) {
+		public OptimizeFormattingVisitor(Visitor<RuntimeException> next, Set<OptimizeFormattingOption> options, Map<String, String[]> mappings) {
 			super(null);
 			this.next = next;
+			this.options = options;
 			this.mappings = mappings;
 			this.formattingSets = new FormattingSetList();
 			this.currentFormattings = new HashSet<>();
@@ -841,6 +855,7 @@ public class StrippedDiffable implements ExportFormat {
 		private OptimizeFormattingVisitor(OptimizeFormattingVisitor parent, String newFormatting) {
 			super(null);
 			this.next = null;
+			this.options = parent.options;
 			this.mappings = parent.mappings;
 			this.formattingSets = parent.formattingSets;
 			this.currentFormattings = new HashSet<>(parent.currentFormattings);
@@ -850,6 +865,34 @@ public class StrippedDiffable implements ExportFormat {
 						currentFormattings.add(value.trim());
 					}
 				}
+			} else if (options.contains(OptimizeFormattingOption.ToCSS) && newFormatting.startsWith("F=")) {
+				if (!options.contains(OptimizeFormattingOption.RemoveCSS)) {
+					currentFormattings.add("C="+FormattingInstructionKind.valueOf(newFormatting.substring(2)).getCss());
+				}
+			} else if (!options.isEmpty() && newFormatting.startsWith("C=")) {
+				Stream<String> newFormattings;
+				if (options.contains(OptimizeFormattingOption.SplitCSS)) {
+					newFormattings = Arrays.asList(newFormatting.substring(2).split(";")).stream().map(f -> "C=" + f.trim()).filter(f -> !f.equals("C="));
+				} else {
+					newFormattings = Arrays.asList(newFormatting).stream();
+				}
+				if (options.contains(OptimizeFormattingOption.FromCSS)) {
+					newFormattings = newFormattings.map(f -> {
+						String cf = f.substring(2).toLowerCase().trim();
+						if (!cf.endsWith(";"))
+							cf += ";";
+						for (FormattingInstructionKind fi : FormattingInstructionKind.values()) {
+							if (fi.getCss().equals(cf)) {
+								return "F=" + fi.name();
+							}
+						}
+						return f;
+					});
+				}
+				if (options.contains(OptimizeFormattingOption.RemoveCSS)) {
+					newFormattings = newFormattings.filter(f -> !f.startsWith("C="));
+				}
+				newFormattings.forEach(f -> currentFormattings.add(f));
 			} else {
 				currentFormattings.add(newFormatting);
 			}
@@ -862,7 +905,7 @@ public class StrippedDiffable implements ExportFormat {
 
 		@Override
 		protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
-			return new OptimizeFormattingVisitor(childVisitor, mappings);
+			return new OptimizeFormattingVisitor(childVisitor, options, mappings);
 		}
 
 		@Override
@@ -878,7 +921,7 @@ public class StrippedDiffable implements ExportFormat {
 		@Override
 		public boolean visitEnd() throws RuntimeException {
 			if (next != null) {
-				formattingSets.accept(next);
+				formattingSets.accept(next, options);
 				next.visitEnd();
 			}
 			return false;
@@ -898,7 +941,7 @@ public class StrippedDiffable implements ExportFormat {
 			return current.content.getAppendVisitor();
 		}
 
-		public <T extends Throwable> void accept(Visitor<T> next) throws T {
+		public <T extends Throwable> void accept(Visitor<T> next, Set<OptimizeFormattingOption> options) throws T {
 			List<String> activeFormattings = new ArrayList<>();
 			List<Visitor<T>> visitorStack = new ArrayList<>();
 			visitorStack.add(next);
@@ -934,17 +977,29 @@ public class StrippedDiffable implements ExportFormat {
 				}
 				Collections.sort(formattingsToOpen, new Comparator<String>() {
 					public int compare(String s1, String s2) {
-						return Integer.compare(formattingLengths.get(s2), formattingLengths.get(s1));
+						int result = Integer.compare(formattingLengths.get(s2), formattingLengths.get(s1));
+						if (result == 0) result = s1.compareTo(s2);
+						return result;
 					}
 				});
 
 				// open
 				Visitor<T> v = visitorStack.get(visitorStack.size() - 1);
-				for (String formatting : formattingsToOpen) {
+				String cssPrefix = "";
+				for (int j = 0; j < formattingsToOpen.size(); j++) {
+					String formatting = formattingsToOpen.get(j);
 					if (formatting.startsWith("F=")) {
 						v = v.visitFormattingInstruction(FormattingInstructionKind.valueOf(formatting.substring(2)));
 					} else if (formatting.startsWith("C=")) {
-						v = v.visitCSSFormatting(formatting.substring(2));
+						// join subsequent CSS formattings that have the same formatting length;
+						// keep the original formattings in activeformattings to properly close them later
+						String nextFormatting = j + 1 < formattingsToOpen.size() && options.contains(OptimizeFormattingOption.JoinCSS) ? formattingsToOpen.get(j+1) : null;
+						if (nextFormatting != null && nextFormatting.startsWith("C=") && formattingLengths.get(formatting) == formattingLengths.get(nextFormatting)) {
+							cssPrefix += formatting.substring(2).trim() + (formatting.trim().endsWith(";") ? " " : "; ");
+						} else {
+							v = v.visitCSSFormatting(cssPrefix + formatting.substring(2));
+							cssPrefix = "";
+						}
 					} else {
 						throw new IllegalArgumentException("Unknown formatting: " + formatting);
 					}
