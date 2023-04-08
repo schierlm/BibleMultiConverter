@@ -110,7 +110,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			}
 			bookAbbrs.put(book.getId(), abbr);
 		}
-		Bible bible = new Bible((bibleName == null || bibleName.isEmpty()) ? "Imported Bible" : bibleName);
+		Bible bible = new Bible((bibleName == null || bibleName.isEmpty()) ? "Imported Bible" : bibleName.trim());
 		for (ParatextBook book : books) {
 			bible.getBooks().add(importParatextBook(book, bookAbbrs));
 		}
@@ -603,7 +603,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				String strongAttribute = attributes.get("strong");
 				if (strongAttribute != null) {
 					for (String strong : strongAttribute.split("[, ]")) {
-						if (strong.matches("[A-Z][0-9]+")) {
+						if (strong.matches("[A-Z][0-9]{1,5}")) {
 							strongsPrefixes.append(strong.charAt(0));
 							int num = Integer.parseInt(strong.substring(1));
 							if (num > 0) {

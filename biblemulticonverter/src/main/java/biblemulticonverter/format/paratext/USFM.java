@@ -12,6 +12,7 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +104,18 @@ public class USFM extends AbstractParatextFormat {
 		ParatextBook result = new ParatextBook(id, idParts.length == 1 ? "" : idParts[1]);
 		List<ParatextCharacterContentContainer> containerStack = new ArrayList<>();
 		boolean ignoreAutoClosingTags = Boolean.getBoolean("biblemulticonverter.usfm.ignoreautoclosingtags");
+		String verseSuffixLetters = System.getProperty("biblemulticonverter.usfm.versesuffixletters", "");
+		int escapePos = verseSuffixLetters.indexOf("\\u");
+		while (escapePos != -1) {
+			verseSuffixLetters = verseSuffixLetters.substring(0, escapePos) + (char) Integer.parseInt(verseSuffixLetters.substring(escapePos + 2, escapePos + 6), 16) + verseSuffixLetters.substring(escapePos + 6);
+			escapePos = verseSuffixLetters.indexOf("\\u");
+		}
+		Map<Character, Character> verseSuffixMap = new HashMap<>();
+		for (int i = 0; i < verseSuffixLetters.length(); i++) {
+			if (i >= 26)
+				throw new IllegalStateException("More than 26 verse suffix letters defined");
+			verseSuffixMap.put(verseSuffixLetters.charAt(i), (char)('a'+i));
+		}
 
 		VerseStart openVerse = null;
 		ChapterStart openChapter = null;
@@ -179,6 +192,15 @@ public class USFM extends AbstractParatextFormat {
 				ImportUtilities.closeOpenVerse(result, openVerse);
 
 				String[] parts = textPart.split(" ", 2);
+
+				// remove RIGHT-TO-LEFT mark which is often present in combined verse numbers of Arabic Bibles
+				parts[0] = parts[0].replace("\u200F", "");
+
+				// replace verse suffix
+				if (!parts[0].isEmpty() && verseSuffixMap.containsKey(parts[0].charAt(parts[0].length()-1))) {
+					parts[0] = parts[0].substring(0, parts[0].length()-1) + verseSuffixMap.get(parts[0].charAt(parts[0].length()-1));
+				}
+
 				ChapterStart chapter = result.findLastBookContent(ChapterStart.class);
 				if (chapter == null) {
 					throw new IllegalStateException("Verse \\v found before chapter start milestone");

@@ -35,6 +35,9 @@ public class TextUtilities {
 	public static String usfmWhitespaceNormalization(String text, boolean preserveSpacesAtEndOfLines) {
 		if (text.startsWith("\uFEFF"))
 			text = text.substring(1);
+		if (!Boolean.parseBoolean(System.getProperty("biblemulticonverter.paratext.usfm.preserveSpacesAtEndOfFootnotes", Boolean.toString(preserveSpacesAtEndOfLines)))) {
+			text = text.replaceAll(WHITESPACE_NORMALIZATION_PATTERN.pattern()+ "(\\\\(?:f|fw|x|fp)\\*)", "$1");
+		}
 		if (!preserveSpacesAtEndOfLines) {
 			return WHITESPACE_NORMALIZATION_PATTERN.matcher(text).replaceAll(" ").trim();
 		}
