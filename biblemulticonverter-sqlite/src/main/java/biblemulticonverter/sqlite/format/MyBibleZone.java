@@ -498,9 +498,9 @@ public class MyBibleZone implements RoundtripFormat {
 					}
 				}
 				if (snum.length == 0 && rmac == null)
-					vv.visitText(strongsWord);
+					vv.visitText(cleanText(strongsWord));
 				else
-					vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, rmac == null ? null : new String[] { rmac }, null).visitText(strongsWord);
+					vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, rmac == null ? null : new String[] { rmac }, null).visitText(cleanText(strongsWord));
 			} else if (text.startsWith("<n>")) {
 				text = convertFromVerse(text.substring(3), vv.visitCSSFormatting("font-style: italic; myBibleType=note"), footnoteDB, vnums, nt);
 				if (!text.startsWith("</n>"))
