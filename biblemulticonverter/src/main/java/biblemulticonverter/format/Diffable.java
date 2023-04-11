@@ -81,11 +81,14 @@ public class Diffable implements RoundtripFormat {
 		Bible result = new Bible(line.substring(MAGIC.length()));
 		Map<String, Book> bookMap = new HashMap<String, Book>();
 		while ((line = br.readLine()) != null) {
+			String origLine = line;
 			line = line.trim();
 			if (line.length() == 0 || line.startsWith("#"))
 				continue;
-
 			String[] parts = line.split(" ", 3);
+			if (parts.length == 2 && origLine.endsWith(" ")) {
+				parts = (origLine.trim() + " ").split(" ", 3);
+			}
 			if (parts.length != 3)
 				throw new IOException("Not enough fields: " + line);
 			try {
