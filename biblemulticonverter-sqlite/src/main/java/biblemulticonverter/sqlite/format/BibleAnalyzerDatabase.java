@@ -18,6 +18,7 @@ import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.format.BibleAnalyzerFormattedText;
+import biblemulticonverter.sqlite.SQLiteModuleRegistry;
 
 public class BibleAnalyzerDatabase extends BibleAnalyzerFormattedText {
 
@@ -73,7 +74,7 @@ public class BibleAnalyzerDatabase extends BibleAnalyzerFormattedText {
 			}
 		}
 		outfile.delete();
-		SqlJetDb db = SqlJetDb.open(outfile, true);
+		SqlJetDb db = SQLiteModuleRegistry.openDB(outfile, true);
 		db.getOptions().setAutovacuum(true);
 		db.beginTransaction(SqlJetTransactionMode.WRITE);
 		db.getOptions().setUserVersion(0);

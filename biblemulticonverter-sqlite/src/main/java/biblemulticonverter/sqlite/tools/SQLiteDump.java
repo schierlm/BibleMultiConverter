@@ -16,6 +16,7 @@ import org.tmatesoft.sqljet.core.table.ISqlJetOptions;
 import org.tmatesoft.sqljet.core.table.ISqlJetTable;
 import org.tmatesoft.sqljet.core.table.SqlJetDb;
 
+import biblemulticonverter.sqlite.SQLiteModuleRegistry;
 import biblemulticonverter.tools.Tool;
 
 public class SQLiteDump implements Tool {
@@ -30,7 +31,7 @@ public class SQLiteDump implements Tool {
 
 	@Override
 	public void run(String... args) throws Exception {
-		SqlJetDb db = SqlJetDb.open(new File(args[0]), false);
+		SqlJetDb db = SQLiteModuleRegistry.openDB(new File(args[0]), false);
 		db.beginTransaction(SqlJetTransactionMode.READ_ONLY);
 		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(args[1]), StandardCharsets.UTF_8))) {
 			ISqlJetOptions options = db.getOptions();

@@ -34,6 +34,7 @@ import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.format.RoundtripFormat;
+import biblemulticonverter.sqlite.SQLiteModuleRegistry;
 
 public class MySword implements RoundtripFormat {
 
@@ -47,10 +48,10 @@ public class MySword implements RoundtripFormat {
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
-		SqlJetDb db = SqlJetDb.open(inputFile, false);
+		SqlJetDb db = SQLiteModuleRegistry.openDB(inputFile, false);
 		if (!db.getTable("Bible").getIndexesNames().contains("bible_key")) {
 			db.close();
-			db = SqlJetDb.open(inputFile, true);
+			db = SQLiteModuleRegistry.openDB(inputFile, true);
 			checkIndex(db, "Bible", "bible_key", "CREATE UNIQUE INDEX bible_key ON Bible (Book ASC, Chapter ASC, Verse ASC)");
 		}
 		db.beginTransaction(SqlJetTransactionMode.READ_ONLY);
@@ -367,7 +368,7 @@ public class MySword implements RoundtripFormat {
 			}
 		}
 		new File(outfile).delete();
-		SqlJetDb db = SqlJetDb.open(new File(outfile), true);
+		SqlJetDb db = SQLiteModuleRegistry.openDB(new File(outfile), true);
 		db.getOptions().setAutovacuum(true);
 		db.beginTransaction(SqlJetTransactionMode.WRITE);
 		db.getOptions().setUserVersion(0);

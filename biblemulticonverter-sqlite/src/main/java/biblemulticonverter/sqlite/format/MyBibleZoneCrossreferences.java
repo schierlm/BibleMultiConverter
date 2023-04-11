@@ -26,6 +26,7 @@ import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.format.ExportFormat;
+import biblemulticonverter.sqlite.SQLiteModuleRegistry;
 
 public class MyBibleZoneCrossreferences implements ExportFormat {
 
@@ -47,7 +48,7 @@ public class MyBibleZoneCrossreferences implements ExportFormat {
 		if (!outfile.endsWith(".crossreferences.SQLite3"))
 			outfile += ".crossreferences.SQLite3";
 		new File(outfile).delete();
-		SqlJetDb db = SqlJetDb.open(new File(outfile), true);
+		SqlJetDb db = SQLiteModuleRegistry.openDB(new File(outfile), true);
 		db.getOptions().setAutovacuum(true);
 		db.beginTransaction(SqlJetTransactionMode.WRITE);
 		db.getOptions().setUserVersion(0);

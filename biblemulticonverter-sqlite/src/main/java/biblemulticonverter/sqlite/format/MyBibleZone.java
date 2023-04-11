@@ -40,6 +40,7 @@ import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.format.AbstractHTMLVisitor;
 import biblemulticonverter.format.AbstractNoCSSVisitor;
 import biblemulticonverter.format.RoundtripFormat;
+import biblemulticonverter.sqlite.SQLiteModuleRegistry;
 
 public class MyBibleZone implements RoundtripFormat {
 
@@ -154,21 +155,21 @@ public class MyBibleZone implements RoundtripFormat {
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
-		SqlJetDb db = SqlJetDb.open(inputFile, false);
+		SqlJetDb db = SQLiteModuleRegistry.openDB(inputFile, false);
 		SqlJetDb footnoteDB = null;
 		File footnoteFile = new File(inputFile.getParentFile(), inputFile.getName().replace(".SQLite3", ".commentaries.SQLite3"));
 		if (inputFile.getName().endsWith(".SQLite3") && footnoteFile.exists()) {
-			footnoteDB = SqlJetDb.open(footnoteFile, false);
+			footnoteDB = SQLiteModuleRegistry.openDB(footnoteFile, false);
 			if (!footnoteDB.getTable("commentaries").getIndexesNames().contains("commentaries_index")) {
 				footnoteDB.close();
-				footnoteDB = SqlJetDb.open(footnoteFile, true);
+				footnoteDB = SQLiteModuleRegistry.openDB(footnoteFile, true);
 				checkIndex(footnoteDB, "commentaries", "commentaries_index", "CREATE INDEX commentaries_index on commentaries(book_number, chapter_number_from, verse_number_from)");
 			}
 			footnoteDB.beginTransaction(SqlJetTransactionMode.READ_ONLY);
 		}
 		if (!db.getTable("verses").getIndexesNames().contains("versesIndex") || (db.getSchema().getTable("stories") != null && !db.getTable("stories").getIndexesNames().contains("stories_index"))) {
 			db.close();
-			db = SqlJetDb.open(inputFile, true);
+			db = SQLiteModuleRegistry.openDB(inputFile, true);
 			checkIndex(db, "verses", "verses_index", "CREATE UNIQUE INDEX verses_index on verses (book_number, chapter, verse)");
 			if (db.getSchema().getTable("stories") != null)
 				if (db.getSchema().getTable("stories").getColumn("order_if_several") == null)
@@ -622,7 +623,7 @@ public class MyBibleZone implements RoundtripFormat {
 			}
 		}
 		new File(outfile).delete();
-		SqlJetDb db = SqlJetDb.open(new File(outfile), true);
+		SqlJetDb db = SQLiteModuleRegistry.openDB(new File(outfile), true);
 		db.getOptions().setAutovacuum(true);
 		db.beginTransaction(SqlJetTransactionMode.WRITE);
 		db.getOptions().setUserVersion(0);
@@ -688,7 +689,7 @@ public class MyBibleZone implements RoundtripFormat {
 		if (hasFootnotes) {
 			String commentaryfile = outfile.replace(".SQLite3", ".commentaries.SQLite3");
 			new File(commentaryfile).delete();
-			cdb = SqlJetDb.open(new File(commentaryfile), true);
+			cdb = SQLiteModuleRegistry.openDB(new File(commentaryfile), true);
 			cdb.getOptions().setAutovacuum(true);
 			cdb.beginTransaction(SqlJetTransactionMode.WRITE);
 			cdb.getOptions().setUserVersion(0);

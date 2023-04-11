@@ -17,6 +17,7 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.format.ExportFormat;
+import biblemulticonverter.sqlite.SQLiteModuleRegistry;
 import biblemulticonverter.sqlite.format.MyBibleZone.MyBibleHTMLVisitor;
 
 public class MyBibleZoneDictionary implements ExportFormat {
@@ -38,7 +39,7 @@ public class MyBibleZoneDictionary implements ExportFormat {
 		if (!outfile.endsWith(".dictionary.SQLite3"))
 			outfile += ".dictionary.SQLite3";
 		new File(outfile).delete();
-		SqlJetDb db = SqlJetDb.open(new File(outfile), true);
+		SqlJetDb db = SQLiteModuleRegistry.openDB(new File(outfile), true);
 		db.getOptions().setAutovacuum(true);
 		db.beginTransaction(SqlJetTransactionMode.WRITE);
 		db.getOptions().setUserVersion(0);

@@ -1,9 +1,17 @@
 package biblemulticonverter.sqlite;
 
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+
+import org.tmatesoft.sqljet.core.SqlJetException;
+import org.tmatesoft.sqljet.core.table.SqlJetDb;
 
 import biblemulticonverter.ModuleRegistry;
 import biblemulticonverter.format.ExportFormat;
@@ -19,6 +27,24 @@ import biblemulticonverter.sqlite.tools.SQLiteDump;
 import biblemulticonverter.tools.Tool;
 
 public class SQLiteModuleRegistry extends ModuleRegistry {
+
+	/**
+	 * Open SQLite database; check version first and print warning.
+	 */
+	public static SqlJetDb openDB(File file, boolean write) throws SqlJetException {
+		try (DataInputStream in = new DataInputStream(new FileInputStream(file))) {
+			byte[] header = new byte[20];
+			in.readFully(header);
+			if (new String(header, 0, 16, StandardCharsets.ISO_8859_1).equals("SQLite format 3\0") && (header[18] > 1 || header[19] > 1)) {
+				System.err.println("WARNING: SQLite version of " + file.getName() + " is too new.");
+				System.err.println("To convert SQLite file to version 1, open it in a SQLite editor and run SQL 'PRAGMA journal_mode=DELETE;'.");
+				System.err.println();
+			}
+		} catch (IOException ex) {
+			// ignore
+		}
+		return SqlJetDb.open(file, write);
+	}
 
 	@Override
 	public Collection<Module<ImportFormat>> getImportFormats() {
