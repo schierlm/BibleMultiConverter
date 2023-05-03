@@ -3,6 +3,7 @@ package biblemulticonverter.sqlite.format;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -67,6 +68,8 @@ public class MySword implements RoundtripFormat {
 
 				if (fn.equals("Title")) {
 					bibleName = fv;
+				} else if (fn.equalsIgnoreCase("encryption") && !Arrays.asList("", "0").contains(fv)) {
+					throw new IOException("Encrypted MySword modules are not supported!");
 				} else if (!fv.isEmpty()) {
 					fv = fv.replaceAll("[\r\n]+", "\n").replaceAll(" *\n *", "\n").replaceAll("\n$", "");
 					try {

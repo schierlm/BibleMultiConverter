@@ -1,8 +1,10 @@
 package biblemulticonverter.sqlite.tools;
 
 import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -87,7 +89,18 @@ public class SQLiteDump implements Tool {
 				int count = cursor.getFieldsCount();
 				while (!cursor.eof()) {
 					for (int i = 0; i < count; i++) {
-						bw.write("  " + cursor.getFieldType(i).name().substring(0, 1) + "\t" + escape("" + cursor.getValue(i)));
+						Object value = cursor.getValue(i);
+						if (value instanceof InputStream) {
+							@SuppressWarnings("resource")
+							InputStream in = (InputStream) value;
+							ByteArrayOutputStream out = new ByteArrayOutputStream();
+							byte[] buf = new byte[4096];
+							int len;
+							while ((len = in.read(buf)) != -1)
+								out.write(buf, 0, len);
+							value = new String(out.toByteArray(), StandardCharsets.ISO_8859_1);
+						}
+						bw.write("  " + cursor.getFieldType(i).name().substring(0, 1) + "\t" + escape("" + value));
 						bw.newLine();
 					}
 					bw.write("  -----");
