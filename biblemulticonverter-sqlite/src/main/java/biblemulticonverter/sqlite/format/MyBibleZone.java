@@ -14,6 +14,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.regex.Matcher;
+
+import javax.swing.text.html.HTMLFrameHyperlinkEvent;
 
 import org.tmatesoft.sqljet.core.SqlJetException;
 import org.tmatesoft.sqljet.core.SqlJetTransactionMode;
@@ -38,6 +41,7 @@ import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.format.AbstractHTMLVisitor;
+import biblemulticonverter.format.AbstractHTMLVisitor.HyperlinkParser;
 import biblemulticonverter.format.AbstractNoCSSVisitor;
 import biblemulticonverter.format.RoundtripFormat;
 import biblemulticonverter.sqlite.SQLiteModuleRegistry;
@@ -143,10 +147,12 @@ public class MyBibleZone implements RoundtripFormat {
 	};
 
 	public static final Map<BookID, Integer> BOOK_NUMBERS = new EnumMap<>(BookID.class);
+	public static final Map<Integer, BookID> BOOK_IDS = new HashMap<>();
 
 	static {
 		for (MyBibleZoneBook bk : BOOK_INFO) {
 			BOOK_NUMBERS.put(bk.bookID, bk.bookNumber);
+			BOOK_IDS.put(bk.bookNumber, bk.bookID);
 		}
 	}
 
@@ -237,6 +243,7 @@ public class MyBibleZone implements RoundtripFormat {
 			cursor.next();
 		}
 		cursor.close();
+		MyBibleHyperlinkParser hp = new MyBibleHyperlinkParser(bookIDMap);
 
 		if (db.getSchema().getTable("introductions") != null) {
 			cursor = db.getTable("introductions").open();
@@ -258,7 +265,7 @@ public class MyBibleZone implements RoundtripFormat {
 					System.out.println("WARNING: Skipping introduction for nonexisting book " + num);
 				} else {
 					FormattedText ft = new FormattedText();
-					convertFromHTML(intro, ft.getAppendVisitor());
+					convertFromHTML(intro, hp, ft.getAppendVisitor());
 					ft.finished();
 					if (bk.getChapters().isEmpty())
 						bk.getChapters().add(new Chapter());
@@ -288,7 +295,7 @@ public class MyBibleZone implements RoundtripFormat {
 					Chapter ch = bk.getChapters().get(c - 1);
 					Verse vv = new Verse(v == 0 ? "1/t" : "" + v);
 					try {
-						String rest = convertFromVerse(text, vv.getAppendVisitor(), footnoteDB, new int[] { b, c, v }, bk.getId().isNT());
+						String rest = convertFromVerse(text, vv.getAppendVisitor(), hp, footnoteDB, new int[] { b, c, v }, bk.getId().isNT());
 						if (!rest.isEmpty()) {
 							System.out.println("WARNING: Treating tags as plaintext: " + rest);
 							vv.getAppendVisitor().visitText(rest.replace('\t', ' ').replaceAll("  +", " "));
@@ -386,10 +393,13 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 	}
 
-	private void convertFromHTML(String html, Visitor<RuntimeException> vv) {
+	private void convertFromHTML(String html, HyperlinkParser<RuntimeException> hp, Visitor<RuntimeException> vv) {
+		html = html.replace("\r\n", "\n").replace('\r', '\n');
+		// Ensure that HTML tags and comments do not include newlines
+		StringBuilder sanitizedHTML = new StringBuilder();
 		int pos = html.indexOf('<');
 		while (pos != -1) {
-			decodeEntities(vv, html.substring(0, pos));
+			sanitizedHTML.append(html.substring(0, pos));
 			html = html.substring(pos);
 			pos = html.indexOf('>');
 			if (html.startsWith("<!--") && html.contains("-->"))
@@ -397,41 +407,23 @@ public class MyBibleZone implements RoundtripFormat {
 			if (pos == -1)
 				throw new RuntimeException(html);
 			String tag = html.substring(0, pos + 1);
+			sanitizedHTML.append(tag.replace('\n', ' '));
 			html = html.substring(pos + 1);
-			vv.visitRawHTML(RawHTMLMode.BOTH, tag.replace('\n', ' ').replaceAll("  +", " "));
 			pos = html.indexOf('<');
 		}
-		decodeEntities(vv, html);
-	}
-
-	private void decodeEntities(Visitor<RuntimeException> vv, String text) {
-		if (text.contains("\1") || text.contains("\2"))
-			throw new RuntimeException(text);
-		text = text.replace("&amp;", "\1").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"");
-		text = text.replace("&#146;", "’").replace("&#147;", "“").replace("&#148;", "”");
-		text = text.replace("&", "\2").replace("\1", "&").replace("\r\n", "\n").replace('\r', '\n').replaceAll("  +", " ");
-		while (text.contains("\n") || text.contains("\2")) {
-			int pos = text.indexOf('\n');
-			int pos2 = text.indexOf('\2');
-			if (pos2 != -1 && (pos == -1 || pos2 < pos)) {
-				pos = text.indexOf(";", pos2);
-				if (pos == -1) {
-					System.out.println("WARNING: Unclosed HTML entity in " + text.substring(pos2));
-					pos = pos2;
-				}
-				vv.visitText(text.substring(0, pos2).trim());
-				vv.visitRawHTML(RawHTMLMode.BOTH, text.substring(pos2, pos + 1).replace('\2', '&'));
-				text = text.substring(pos + 1).trim();
-			} else {
-				vv.visitText(text.substring(0, pos).trim());
-				vv.visitLineBreak(LineBreakKind.NEWLINE);
-				text = text.substring(pos + 1).trim();
-			}
+		html = sanitizedHTML.append(html).toString();
+		// now parse lines individually
+		pos = html.indexOf('\n');
+		while (pos != -1) {
+			AbstractHTMLVisitor.parseHTML(vv, hp, html.substring(0, pos).trim(), "");
+			vv.visitLineBreak(LineBreakKind.NEWLINE);
+			html = html.substring(pos + 1).trim();
+			pos = html.indexOf('\n');
 		}
-		vv.visitText(text);
+		AbstractHTMLVisitor.parseHTML(vv, hp, html, "");
 	}
 
-	private String convertFromVerse(String text, Visitor<RuntimeException> vv, SqlJetDb footnoteDB, int[] vnums, boolean nt) {
+	private String convertFromVerse(String text, Visitor<RuntimeException> vv, HyperlinkParser<RuntimeException> hp, SqlJetDb footnoteDB, int[] vnums, boolean nt) {
 		int pos = text.indexOf("<");
 		while (pos != -1) {
 			String strongsWord = "";
@@ -502,7 +494,7 @@ public class MyBibleZone implements RoundtripFormat {
 				else
 					vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, rmac == null ? null : new String[] { rmac }, null).visitText(cleanText(strongsWord));
 			} else if (text.startsWith("<n>")) {
-				text = convertFromVerse(text.substring(3), vv.visitCSSFormatting("font-style: italic; myBibleType=note"), footnoteDB, vnums, nt);
+				text = convertFromVerse(text.substring(3), vv.visitCSSFormatting("font-style: italic; myBibleType=note"), hp, footnoteDB, vnums, nt);
 				if (!text.startsWith("</n>"))
 					System.out.println("WARNING: Unclosed <n> tag at: " + text);
 				else {
@@ -524,7 +516,7 @@ public class MyBibleZone implements RoundtripFormat {
 				text = text.substring(5);
 			} else if ((text.startsWith("<m>") && rawMorphology) || (text.startsWith("<f>") && rawFootnotes)) {
 				String tag = text.substring(1, 2);
-				text = convertFromVerse(text.substring(3), vv.visitExtraAttribute(ExtraAttributePriority.SKIP, "mybiblezone", "rawtag", tag), footnoteDB, vnums, nt);
+				text = convertFromVerse(text.substring(3), vv.visitExtraAttribute(ExtraAttributePriority.SKIP, "mybiblezone", "rawtag", tag), hp, footnoteDB, vnums, nt);
 				if (!text.startsWith("</" + tag + ">"))
 					System.out.println("WARNING: Unclosed <" + tag + "> tag at: " + text);
 				else {
@@ -535,28 +527,28 @@ public class MyBibleZone implements RoundtripFormat {
 				vv.visitText("<");
 				text = text.substring(1);
 			} else if (text.startsWith("<i>")) {
-				text = convertFromVerse(text.substring(3), vv.visitFormattingInstruction(FormattingInstructionKind.ITALIC), footnoteDB, vnums, nt);
+				text = convertFromVerse(text.substring(3), vv.visitFormattingInstruction(FormattingInstructionKind.ITALIC), hp, footnoteDB, vnums, nt);
 				if (!text.startsWith("</i>"))
 					System.out.println("WARNING: Unclosed <i> tag at: " + text);
 				else {
 					text = text.substring(4);
 				}
 			} else if (text.startsWith("<J>")) {
-				text = convertFromVerse(text.substring(3), vv.visitFormattingInstruction(FormattingInstructionKind.WORDS_OF_JESUS), footnoteDB, vnums, nt);
+				text = convertFromVerse(text.substring(3), vv.visitFormattingInstruction(FormattingInstructionKind.WORDS_OF_JESUS), hp, footnoteDB, vnums, nt);
 				if (!text.startsWith("</J>"))
 					System.out.println("WARNING: Unclosed <J> tag at: " + text);
 				else {
 					text = text.substring(4);
 				}
 			} else if (text.startsWith("<e>")) {
-				text = convertFromVerse(text.substring(3), vv.visitFormattingInstruction(FormattingInstructionKind.BOLD), footnoteDB, vnums, nt);
+				text = convertFromVerse(text.substring(3), vv.visitFormattingInstruction(FormattingInstructionKind.BOLD), hp, footnoteDB, vnums, nt);
 				if (!text.startsWith("</e>"))
 					System.out.println("WARNING: Unclosed <e> tag at: " + text);
 				else {
 					text = text.substring(4);
 				}
 			} else if (text.startsWith("<h>")) {
-				text = convertFromVerse(text.substring(3), vv.visitHeadline(1), footnoteDB, vnums, nt);
+				text = convertFromVerse(text.substring(3), vv.visitHeadline(1), hp, footnoteDB, vnums, nt);
 				if (!text.startsWith("</h>"))
 					System.out.println("WARNING: Unclosed <e> tag at: " + text);
 				else {
@@ -582,7 +574,7 @@ public class MyBibleZone implements RoundtripFormat {
 					if (html == null)
 						System.out.println("WARNING: Footnote text " + fn + " not found in " + vnums[0] + " " + vnums[1] + ":" + vnums[2]);
 					else
-						convertFromHTML(html, vv.visitFootnote());
+						convertFromHTML(html, hp, vv.visitFootnote());
 				} catch (SqlJetException ex) {
 					throw new RuntimeException(text, ex);
 				}
@@ -942,7 +934,8 @@ public class MyBibleZone implements RoundtripFormat {
 				System.out.println("WARNING: cross reference to unknown book " + book);
 				pushSuffix("");
 			} else {
-				writer.write("<a href=\"B:" + BOOK_NUMBERS.get(book) + " " + firstChapter + ":" + firstVerse + "\">");
+				String endVerse = firstChapter != lastChapter ? "-" + lastChapter + ":" + lastVerse : !firstVerse.equals(lastVerse) ? "-" + lastVerse : "";
+				writer.write("<a href=\"B:" + BOOK_NUMBERS.get(book) + " " + firstChapter + ":" + firstVerse + endVerse + "\">");
 				pushSuffix("</a>");
 			}
 			return this;
@@ -1179,6 +1172,52 @@ public class MyBibleZone implements RoundtripFormat {
 			if (!lastSuffix.equals("--divine-name--"))
 				builder.append(lastSuffix);
 			return false;
+		}
+	}
+
+	private static class MyBibleHyperlinkParser implements HyperlinkParser<RuntimeException> {
+
+		private final Map<Integer, Book> bookIDMap;
+
+		public MyBibleHyperlinkParser(Map<Integer, Book> bookIDMap) {
+			this.bookIDMap = bookIDMap;
+		}
+
+		@Override
+		public Visitor<RuntimeException> parseHyperlink(Visitor<RuntimeException> base, String link) {
+			if (link.startsWith("B:")) {
+				Matcher m = Utils.compilePattern("B:([0-9]+) ([0-9]+):([1-9][0-9,/.-]*[a-zG]?)(-([0-9]+:)?[1-9][0-9,/.-]*[a-zG]?)?").matcher(link);
+				if (m.matches()) {
+					int bn = Integer.parseInt(m.group(1));
+					final BookID bk = BOOK_IDS.get(bn);
+					final int cs = Integer.parseInt(m.group(2)), ce;
+					final String vs = m.group(3), ve;
+					if (m.group(5) != null) {
+						ce = Integer.parseInt(m.group(5).replace(":", ""));
+						ve = m.group(4).replaceFirst("-[0-9]+:", "");
+					} else {
+						ce = cs;
+						ve = m.group(4) == null ? vs : m.group(4).substring(1);
+					}
+					if (bk != null && cs >= 1 && ce >= cs) {
+						String babbr;
+						if (bookIDMap.containsKey(bn)) {
+							babbr = bookIDMap.get(bn).getAbbr();
+						} else {
+							babbr = bk.getOsisID().replaceAll("[^A-Z0-9a-zäöü]++", "");
+						}
+						return base.visitCrossReference(babbr, bk, cs, vs, ce, ve);
+					}
+				}
+			} else if (link.startsWith("S:")) {
+				if (link.startsWith("S:[")) {
+					int pos = link.indexOf("]");
+					return base.visitDictionaryEntry(link.substring(3, pos), link.substring(pos + 1));
+				} else {
+					return base.visitDictionaryEntry("strong", link.substring(2));
+				}
+			}
+			return null;
 		}
 	}
 }

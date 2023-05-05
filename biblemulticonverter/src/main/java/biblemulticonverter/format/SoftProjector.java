@@ -159,13 +159,6 @@ public class SoftProjector implements RoundtripFormat {
 					System.out.println("WARNING: Canonical reference exists more than once: " + parts[0]);
 				Reference canonRef = parseRef(parts[0], unsupportedBooks);
 				Reference origRef = parseRef(String.format("B%03dC%03dV%03d", Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), Integer.parseInt(parts[3])), unsupportedBooks);
-				String text = parts[4].replace("&quot;", "\"").replace("&apos;", "'").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "\1");
-				if (doRoundtrip)
-					text = text.replace("  ", " \uFEFF ").replace("  ", " \uFEFF ").replaceFirst(" $", " \uFEFF").replaceFirst("^ ", "\uFEFF ");
-				else
-					text = text.replaceAll("  +", " ").trim();
-				if (text.contains("&"))
-					throw new IOException("Unsupported entity in text: " + text);
 				final Reference primaryRef = (verseFormat == VerseFormat.CANONICAL) ? canonRef : origRef;
 				Book bk = bookMap.get(primaryRef.getBook());
 				if (bk == null)
@@ -192,7 +185,12 @@ public class SoftProjector implements RoundtripFormat {
 				} else if (needSpace) {
 					v.getAppendVisitor().visitText(" ");
 				}
-				v.getAppendVisitor().visitText(text.replace("\1", "&"));
+				String text = parts[4];
+				if (doRoundtrip)
+					text = text.replace("  ", " \uFEFF ").replace("  ", " \uFEFF ").replaceFirst(" $", " \uFEFF").replaceFirst("^ ", "\uFEFF ");
+				else
+					text = text.replaceAll("  +", " ").trim();
+				AbstractHTMLVisitor.parseHTML(v.getAppendVisitor(), null, text, "");
 			}
 			for (Book bk : result.getBooks()) {
 				if (bk.getId() == BookID.METADATA)

@@ -34,6 +34,7 @@ import biblemulticonverter.data.StandardVersification;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
+import biblemulticonverter.format.AbstractHTMLVisitor;
 import biblemulticonverter.format.RoundtripFormat;
 import biblemulticonverter.sqlite.SQLiteModuleRegistry;
 
@@ -50,7 +51,7 @@ public class MySword implements RoundtripFormat {
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
 		SqlJetDb db = SQLiteModuleRegistry.openDB(inputFile, false);
-		if (!db.getTable("Bible").getIndexesNames().contains("bible_key")) {
+		if (!db.getTable("Bible").getIndexesNames().contains("bible_key") && !db.getTable("bible").getIndexesNames().contains("bible_key")) {
 			db.close();
 			db = SQLiteModuleRegistry.openDB(inputFile, true);
 			checkIndex(db, "Bible", "bible_key", "CREATE UNIQUE INDEX bible_key ON Bible (Book ASC, Chapter ASC, Verse ASC)");
@@ -87,7 +88,7 @@ public class MySword implements RoundtripFormat {
 			System.out.println("WARNING: No bible name in Details table");
 			bibleName = inputFile.getName();
 		}
-		Bible result = new Bible(bibleName.trim());
+		Bible result = new Bible(bibleName.replaceAll("\\p{Cntrl}+", " ").replaceAll("\\s+", " ").trim());
 		if (!mb.getKeys().isEmpty()) {
 			mb.finished();
 			result.getBooks().add(mb.getBook());
@@ -102,7 +103,7 @@ public class MySword implements RoundtripFormat {
 			String scripture = cursor.getString("Scripture");
 			if (scripture == null)
 				scripture = "";
-			scripture = scripture.replace('\t', ' ').replaceAll("  +", "").trim();
+			scripture = scripture.replaceAll("\\p{Cntrl}+", " ").replaceAll("  +", "").trim();
 			if (!scripture.isEmpty()) {
 				Book bk = bookIDMap.get(b);
 				if (bk == null && b >= 1 && b <= 66) {
@@ -149,24 +150,11 @@ public class MySword implements RoundtripFormat {
 	}
 
 	private void decodeEntities(Visitor<RuntimeException> vv, String text) {
-		if (text.contains("\1") || text.contains("\2"))
-			throw new RuntimeException(text);
-		text = text.replace("&amp;", "\1").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"");
-		text = text.replace("&", "\2").replace("\1", "&").replaceAll("  +", " ");
-		while (text.contains("\2")) {
-			int pos = text.indexOf('\2');
-			if (pos != -1) {
-				int posEnd = text.indexOf(";", pos);
-				if (posEnd == -1) {
-					System.out.println("WARNING: Unclosed HTML entity in " + text.substring(pos));
-					posEnd = pos;
-				}
-				vv.visitText(text.substring(0, pos).trim());
-				vv.visitRawHTML(RawHTMLMode.BOTH, text.substring(pos, posEnd + 1).replace('\2', '&'));
-				text = text.substring(posEnd + 1).trim();
-			}
+		if (text.contains(">") && !text.contains("<")) {
+			System.out.println("WARNING: Unclosed >, treating as plain text");
+			text = text.replace(">", "&gt;");
 		}
-		vv.visitText(text);
+		AbstractHTMLVisitor.parseHTML(vv, null, text.replaceAll("\\p{Cntrl}+", " ").replaceAll("  +", " "), "");
 	}
 
 	private String convertFromVerse(String text, Visitor<RuntimeException> vv, boolean inFootnote) {
@@ -341,11 +329,17 @@ public class MySword implements RoundtripFormat {
 				text = text.substring(text.indexOf(">") + 1);
 			} else {
 				int posEnd = text.indexOf('>');
-				String tag = text.substring(0, posEnd + 1);
-				if (seenHTML.add(tag))
-					System.out.println("WARNING: Unknown tag, treated as HTML: " + tag);
-				vv.visitRawHTML(RawHTMLMode.BOTH, tag.replace('\n', ' ').replaceAll("  +", " "));
-				text = text.substring(posEnd + 1);
+				if (posEnd == -1) {
+					if (seenHTML.add("<"))
+						System.out.println("WARNING: Unclosed <, treating as plain text");
+					vv.visitText("<");
+					text = text.substring(1);
+				} else {
+					String tag = text.substring(0, posEnd + 1);
+					if (seenHTML.add(tag))
+						System.out.println("WARNING: Unknown tag, treated as HTML: " + tag);
+					text = AbstractHTMLVisitor.parseHTML(vv, null, tag.replace('\n', ' ').replaceAll("  +", " "), text.substring(posEnd + 1));
+				}
 			}
 			pos = text.indexOf("<");
 		}
