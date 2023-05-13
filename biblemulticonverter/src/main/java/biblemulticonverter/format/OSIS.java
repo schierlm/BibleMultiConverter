@@ -696,7 +696,7 @@ public class OSIS implements RoundtripFormat {
 						}
 						Element e = (Element) n;
 						String[] ref = e.getAttribute("osisRef").split("\\.");
-						if (ref.length != 3) {
+						if (ref.length != 3 || !ref[1].matches("[0-9]+")) {
 							printWarning("WARNING: Invalid reference target: " + e.getAttribute("osisRef"));
 							fn.visitText(e.getTextContent());
 							continue;
