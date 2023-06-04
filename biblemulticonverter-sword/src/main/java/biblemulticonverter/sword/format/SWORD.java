@@ -1,6 +1,7 @@
 package biblemulticonverter.sword.format;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -46,6 +47,9 @@ public class SWORD implements ImportFormat {
 		SwordBookPath.setDownloadDir(inputFile.getParentFile());
 		Book book = Books.installed().getBook(inputFile.getName());
 		System.out.println("======");
+		if (book == null) {
+			throw new IOException("SWORD module " + inputFile.getName()+" not found at "+inputFile.getParent());
+		}
 		return doImport(book);
 	}
 
