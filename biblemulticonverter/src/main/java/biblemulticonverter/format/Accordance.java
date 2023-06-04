@@ -275,6 +275,8 @@ public class Accordance implements RoundtripFormat {
 				}
 				while (bk.getChapters().size() < cn)
 					bk.getChapters().add(new Chapter());
+				if (bk.getChapters().get(cn-1).getVerseIndex(v.getNumber()) != -1)
+					System.out.println("WARNING: Duplicate verse "+bookID.getOsisID()+" "+chapterNumber+":"+verseNumber);
 				bk.getChapters().get(cn - 1).getVerses().add(v);
 				try {
 					int parsed = parseText(rest, 0, v.getAppendVisitor());
