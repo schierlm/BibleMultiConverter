@@ -281,6 +281,7 @@ public class NeUeParser implements ImportFormat {
 					List<Visitor<RuntimeException>> newFootnotes = new ArrayList<>();
 					while (line.matches("<[a-z0-9]+ (class=\"[^\"]+\" )?id=\"[a-z0-9]+\"[> ].*"))
 						line = line.replaceFirst(" id=\"[a-z0-9]+\"", "");
+					line = line.replaceAll("<span class=\"vers\" id=\"[0-9]+_[0-9]+\">", "<span class=\"vers\">");
 					if (line.startsWith("<p class=\"poet\">") || line.startsWith("<p class=\"einl\">")) {
 						line = "<p>" + line.substring(16);
 					}
@@ -640,21 +641,29 @@ public class NeUeParser implements ImportFormat {
 				String text = replaceEntities(html.substring(pos1 + 2, pos2).trim());
 				String verse, toVerse;
 				String linkTarget = html.substring(tagPos + 9, pos1);
-				if (linkTarget.startsWith("NeUe.htm") || linkTarget.startsWith("index.htm") || linkTarget.endsWith("derbibelvertrauen.de")) {
+				if (linkTarget.startsWith("NeUe.htm") || linkTarget.startsWith("index.htm") || linkTarget.endsWith("derbibelvertrauen.de") || linkTarget.endsWith("grosse-zahlen-der-bibel.de")) {
 					filename = null;
 					verse = chapter = toVerse = toChapter = null;
 				} else if (linkTarget.endsWith(".html")) {
 					verse = chapter = toVerse = toChapter = "1";
 					filename = linkTarget;
 				} else {
-					Matcher target = Utils.compilePattern("([0-9a-z]+\\.html)?#([0-9]+)").matcher(linkTarget);
-					Matcher desc = Utils.compilePattern("[^<>]*?([0-9]+(?:[-+][0-9]+)?)(, ?[0-9]+(?:-[0-9]+)?)?(?:\\.[0-9.-]*)?(?: [–-] [0-9]+,[0-9]+)?").matcher(text);
+					Matcher target = Utils.compilePattern("([0-9a-z]+\\.html)?#([0-9]+)((?:_[0-9]+)?)").matcher(linkTarget);
+					Matcher desc = Utils.compilePattern("[^<>]*?([0-9]+(?:[-+][0-9]+)?)(, ?[0-9]+(?:-[0-9]+)?)?(?:\\.[0-9.-]*)?(?: ?[–-] ?[0-9]+,[0-9]+)?").matcher(text);
 					if (!target.matches() || !desc.matches())
 						throw new IOException(html.substring(tagPos));
 					filename = target.group(1);
 					chapter = target.group(2);
 					toChapter = chapter;
 					String chapter2 = desc.group(1);
+					verse = desc.group(2);
+					if (linkTarget.startsWith("jud.html#") || linkTarget.startsWith("3jo.html#")) {
+						Matcher desc2 = Utils.compilePattern("[^<>]*?([0-9]+(?:-[0-9]+)?)(?:\\.[0-9.-]*)?(?: ?[–-] ?[0-9]+,[0-9]+)?").matcher(text);
+						if (!desc2.matches())
+							throw new IOException(text);
+						chapter2 = "1";
+						verse = "," + desc2.group(1);
+					}
 					if (chapter2.contains("-")) {
 						String[] chapters = chapter2.split("-");
 						chapter2 = chapters[0];
@@ -662,7 +671,6 @@ public class NeUeParser implements ImportFormat {
 					} else if (chapter2.contains("+")) {
 						chapter2 = chapter2.substring(0, chapter2.indexOf("+"));
 					}
-					verse = desc.group(2);
 					if (!chapter.equals(chapter2)) {
 						throw new IOException(target.group() + " / " + desc.group() + " / " + chapter + " != " + chapter2);
 					}
@@ -675,6 +683,10 @@ public class NeUeParser implements ImportFormat {
 						toVerse = verses[1];
 					} else {
 						toVerse = verse = verse.substring(1).trim();
+					}
+					String verse2 = target.group(3);
+					if (!verse2.equals("_"+verse) && !verse2.isEmpty()) {
+						throw new IOException(target.group() + " / " + desc.group() + " / " + verse + " != " + verse2);
 					}
 				}
 				if (verse == null) {
