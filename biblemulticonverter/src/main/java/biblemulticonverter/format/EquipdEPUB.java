@@ -63,7 +63,12 @@ public class EquipdEPUB implements ExportFormat {
 				System.out.println("WARNING: Unsupported argument: " + exportArgs[1]);
 		}
 		try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(exportArgs[0] + ".epub"))) {
-			zos.putNextEntry(new ZipEntry("mimetype"));
+			ZipEntry mimetypeZE = new ZipEntry("mimetype");
+			mimetypeZE.setSize(20);
+			mimetypeZE.setCompressedSize(20);
+			mimetypeZE.setCrc(749429103);
+			mimetypeZE.setMethod(ZipOutputStream.STORED);
+			zos.putNextEntry(mimetypeZE);
 			zos.write("application/epub+zip".getBytes(StandardCharsets.US_ASCII));
 			zos.putNextEntry(new ZipEntry("META-INF/container.xml"));
 			zos.write(("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<container" +
