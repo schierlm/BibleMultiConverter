@@ -98,6 +98,7 @@ public class MyBibleZone implements RoundtripFormat {
 			new MyBibleZoneBook(325, "#c0c0c0", BookID.BOOK_Sus),
 			new MyBibleZoneBook(330, "#ff9fb4", BookID.BOOK_Ezek),
 			new MyBibleZoneBook(340, "#ff9fb4", BookID.BOOK_Dan),
+			new MyBibleZoneBook(341, "#c0c0c0", BookID.BOOK_DanGr),
 			new MyBibleZoneBook(345, "#c0c0c0", BookID.BOOK_Bel),
 			new MyBibleZoneBook(350, "#ffff99", BookID.BOOK_Hos),
 			new MyBibleZoneBook(360, "#ffff99", BookID.BOOK_Joel),
@@ -161,6 +162,11 @@ public class MyBibleZone implements RoundtripFormat {
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
+		Map<Integer,BookID> overrideBookNumbers = new HashMap<>();
+		for (String override : System.getProperty("biblemulticonverter.booknumbermap", "").split(",")) {
+			String[] fields = override.split("[:=]", 2);
+			overrideBookNumbers.put(Integer.parseInt(fields[0]), BookID.fromOsisId(fields[1]));
+		}
 		SqlJetDb db = SQLiteModuleRegistry.openDB(inputFile, false);
 		SqlJetDb footnoteDB = null;
 		File footnoteFile = new File(inputFile.getParentFile(), inputFile.getName().replace(".SQLite3", ".commentaries.SQLite3"));
@@ -221,12 +227,14 @@ public class MyBibleZone implements RoundtripFormat {
 			if (!shortName.isEmpty())
 				shortName = shortName.substring(0, 1).toUpperCase() + shortName.substring(1);
 			String longName = cursor.getString("long_name").trim();
-			BookID bid = null;
-			for (MyBibleZoneBook bi : BOOK_INFO) {
-				if (bi.bookNumber == num) {
-					bid = bi.bookID;
-					if (!col.equals(bi.bookColor))
-						System.out.println("WARNING: Book " + bid.getOsisID() + " uses color " + col + " and not " + bi.bookColor);
+			BookID bid = overrideBookNumbers.get(num);
+			if (bid == null) {
+				for (MyBibleZoneBook bi : BOOK_INFO) {
+					if (bi.bookNumber == num) {
+						bid = bi.bookID;
+						if (!col.equals(bi.bookColor))
+							System.out.println("WARNING: Book " + bid.getOsisID() + " uses color " + col + " and not " + bi.bookColor);
+					}
 				}
 			}
 			if (bid == null) {
