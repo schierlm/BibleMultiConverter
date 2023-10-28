@@ -601,6 +601,7 @@ public class LogosHTML implements ExportFormat {
 		public void visitText(String text) throws IOException {
 			grammarFlag = false;
 			text = text.replace("&", "&amp").replace("<", "&lt;").replace(">", "&gt;");
+			text = text.replace("{{", "{{~ {{ }}").replace("[[", "{{~ [[ }}");
 			writer.write(tagForeign(text));
 		}
 
