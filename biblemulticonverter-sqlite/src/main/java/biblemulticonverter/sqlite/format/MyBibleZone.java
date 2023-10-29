@@ -164,6 +164,7 @@ public class MyBibleZone implements RoundtripFormat {
 	public Bible doImport(File inputFile) throws Exception {
 		Map<Integer,BookID> overrideBookNumbers = new HashMap<>();
 		for (String override : System.getProperty("biblemulticonverter.booknumbermap", "").split(",")) {
+			if (override.isEmpty()) continue;
 			String[] fields = override.split("[:=]", 2);
 			overrideBookNumbers.put(Integer.parseInt(fields[0]), BookID.fromOsisId(fields[1]));
 		}
