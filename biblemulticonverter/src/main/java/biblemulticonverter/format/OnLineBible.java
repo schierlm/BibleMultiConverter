@@ -285,17 +285,19 @@ public class OnLineBible implements ExportFormat {
 		private final StringBuilder content;
 		private final boolean includeStrongs;
 		private final boolean inFootnote;
+		private final boolean[] inFootnoteFirstLineRef;
 		private final Map<BookID, String[]> lastVerses;
 		private final String suffix;
 
 		public OnLineBibleVisitor(StringBuilder content, boolean includeStrongs, boolean inFootnote, Map<BookID, String[]> lastVerses) {
-			this(content, includeStrongs, inFootnote, lastVerses, "");
+			this(content, includeStrongs, inFootnote, new boolean[] { inFootnote }, lastVerses, "");
 		}
 
-		private OnLineBibleVisitor(StringBuilder content, boolean includeStrongs, boolean inFootnote, Map<BookID, String[]> lastVerses, String suffix) {
+		private OnLineBibleVisitor(StringBuilder content, boolean includeStrongs, boolean inFootnote, boolean[] inFootnoteFirstLineRef, Map<BookID, String[]> lastVerses, String suffix) {
 			this.content = content;
 			this.includeStrongs = includeStrongs;
 			this.inFootnote = inFootnote;
+			this.inFootnoteFirstLineRef = inFootnoteFirstLineRef;
 			this.lastVerses = lastVerses;
 			this.suffix = suffix;
 		}
@@ -308,12 +310,13 @@ public class OnLineBible implements ExportFormat {
 		@Override
 		public Visitor<RuntimeException> visitHeadline(int depth) throws RuntimeException {
 			content.append(inFootnote ? " ((\\$" : " \3{\\$");
-			return new OnLineBibleVisitor(content, includeStrongs, true, lastVerses, inFootnote ? "\\$)) " : "\\$}\3 ");
+			return new OnLineBibleVisitor(content, includeStrongs, true, inFootnote ? inFootnoteFirstLineRef : new boolean[] { true }, lastVerses, inFootnote ? "\\$)) " : "\\$}\3 ");
 		}
 
 		@Override
 		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
 			content.append("\n\\&");
+			inFootnoteFirstLineRef[0] = false;
 		}
 
 		@Override
@@ -330,14 +333,14 @@ public class OnLineBible implements ExportFormat {
 		@Override
 		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
 			content.append(inFootnote ? " ((" : " \3{");
-			return new OnLineBibleVisitor(content, includeStrongs, true, lastVerses, inFootnote ? ")) " : "}\3 ");
+			return new OnLineBibleVisitor(content, includeStrongs, true, inFootnote ? inFootnoteFirstLineRef : new boolean[] { true }, lastVerses, inFootnote ? ")) " : "}\3 ");
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
 			if (!BOOK_TO_ABBR.containsKey(book)) {
 				System.out.println("WARNING: Cross reference to book outside versification: " + bookAbbr + " " + firstChapter + ":" + firstVerse + "-" + lastChapter + ":" + lastVerse + " - replacing by plain text");
-				return new OnLineBibleVisitor(content, includeStrongs, inFootnote, lastVerses);
+				return new OnLineBibleVisitor(content, includeStrongs, inFootnote, inFootnoteFirstLineRef, lastVerses, "");
 			}
 			if (lastChapter == 999) {
 				String[] chapList = lastVerses.get(book);
@@ -369,7 +372,7 @@ public class OnLineBible implements ExportFormat {
 				tag = "\\\\";
 				break;
 			case ITALIC:
-				tag = inFootnote ? "" : "\\@";
+				tag = inFootnoteFirstLineRef[0] ? "" : "\\@";
 				break;
 			case UNDERLINE:
 				tag = "\\%";
@@ -378,14 +381,14 @@ public class OnLineBible implements ExportFormat {
 				break;
 			}
 			content.append(tag);
-			return new OnLineBibleVisitor(content, includeStrongs, inFootnote, lastVerses, tag);
+			return new OnLineBibleVisitor(content, includeStrongs, inFootnote, inFootnoteFirstLineRef, lastVerses, tag);
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitCSSFormatting(String css) throws RuntimeException {
 			if (css.contains("-bmc-psalm-title: true;")) {
 				content.append("\\!«");
-				return new OnLineBibleVisitor(content, includeStrongs, inFootnote, lastVerses, "»\\!");
+				return new OnLineBibleVisitor(content, includeStrongs, inFootnote, inFootnoteFirstLineRef, lastVerses, "»\\!");
 			}
 			List<FormattingInstructionKind> formattings = new ArrayList<>();
 			determineFormattingInstructions(css, formattings);
@@ -394,7 +397,7 @@ public class OnLineBible implements ExportFormat {
 				OnLineBibleVisitor nextV = (OnLineBibleVisitor) visitFormattingInstruction(kind);
 				suffix.append(nextV.suffix);
 			}
-			return new OnLineBibleVisitor(content, includeStrongs, inFootnote, lastVerses, suffix.toString());
+			return new OnLineBibleVisitor(content, includeStrongs, inFootnote, inFootnoteFirstLineRef, lastVerses, suffix.toString());
 		}
 
 		@Override
@@ -416,12 +419,12 @@ public class OnLineBible implements ExportFormat {
 					suffix.append(strong).append(" ");
 				}
 			}
-			return new OnLineBibleVisitor(content, includeStrongs, inFootnote, lastVerses, suffix.toString());
+			return new OnLineBibleVisitor(content, includeStrongs, inFootnote, inFootnoteFirstLineRef, lastVerses, suffix.toString());
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) throws RuntimeException {
-			return new OnLineBibleVisitor(content, includeStrongs, inFootnote, lastVerses);
+			return new OnLineBibleVisitor(content, includeStrongs, inFootnote, inFootnoteFirstLineRef, lastVerses, "");
 		}
 
 		@Override
@@ -435,7 +438,7 @@ public class OnLineBible implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws RuntimeException {
-			return prio.handleVisitor(category, new OnLineBibleVisitor(content, includeStrongs, inFootnote, lastVerses));
+			return prio.handleVisitor(category, new OnLineBibleVisitor(content, includeStrongs, inFootnote, inFootnoteFirstLineRef, lastVerses, ""));
 		}
 
 		@Override
