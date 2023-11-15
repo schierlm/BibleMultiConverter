@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -197,6 +198,7 @@ public class LogosHTML implements ExportFormat {
 		String versemap = exportArgs.length == 1 ? "Bible" : exportArgs[1];
 		Properties bookDatatypeMap = null;
 		VersificationScheme scheme;
+		LinkedHashMap<String,VersificationScheme> schemes = new LinkedHashMap<>();
 		if (versemap.startsWith("author:")) {
 			bookDatatypeMap = new Properties();
 			try (InputStream in = new FileInputStream(versemap.substring(7))) {
@@ -204,6 +206,7 @@ public class LogosHTML implements ExportFormat {
 			}
 			versemap = null;
 			scheme = new LogosVersificationDetector().loadScheme("Bible");
+			schemes.put("Bible", scheme);
 		} else {
 			if (!versemap.matches("Bible[A-Z0-9]*")) {
 				System.out.println("Invalid versification: " + versemap);
@@ -214,6 +217,20 @@ public class LogosHTML implements ExportFormat {
 				System.out.println("Invalid versification: " + versemap);
 				return;
 			}
+			schemes.put(versemap, scheme);
+		}
+		for (String xrefVersemap : System.getProperty("biblemulticonverter.logos.xrefversemaps", "").split(",")) {
+			if (xrefVersemap.isEmpty() || schemes.containsKey(xrefVersemap)) continue;
+			if (!xrefVersemap.matches("Bible[A-Z0-9]*")) {
+				System.out.println("Invalid xref versification: " + versemap);
+				return;
+			}
+			VersificationScheme xrefScheme = new LogosVersificationDetector().loadScheme(xrefVersemap);
+			if (xrefScheme == null) {
+				System.out.println("Invalid xref versification: " + xrefVersemap);
+				return;
+			}
+			schemes.put(xrefVersemap, xrefScheme);
 		}
 		footnoteCounter = 0;
 		grammarCounter = 0;
@@ -303,7 +320,7 @@ public class LogosHTML implements ExportFormat {
 						}
 						bw.write(book.getLongName() + "</h" + bookHeadlineLevel + ">\n");
 						footnoteNumber = 0;
-						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, versemap, scheme, null, null, null, 2, null));
+						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, versemap, schemes, null, null, null, 2, null));
 						bw.write("\n<br/>\n");
 						continue;
 					}
@@ -327,10 +344,10 @@ public class LogosHTML implements ExportFormat {
 							vv.finished();
 							prologue.getVerses().add(vv);
 						}
-						exportChapter(milestone, "Prologue", prologue, versemap, scheme, verseSeparator, bookHeadlineLevel, noChapterHeadings, bw, footnotes, book, chapterVerses, prologueVerses);
+						exportChapter(milestone, "Prologue", prologue, versemap, schemes, verseSeparator, bookHeadlineLevel, noChapterHeadings, bw, footnotes, book, chapterVerses, prologueVerses);
 					}
 					BitSet thisChapterVerses = chapterVerses != null && cnumber <= chapterVerses.length ? chapterVerses[cnumber - 1] : null;
-					exportChapter(milestone, "" + cnumber, chapter, versemap, scheme, verseSeparator, bookHeadlineLevel, noChapterHeadings, bw, footnotes, book, chapterVerses, thisChapterVerses);
+					exportChapter(milestone, "" + cnumber, chapter, versemap, schemes, verseSeparator, bookHeadlineLevel, noChapterHeadings, bw, footnotes, book, chapterVerses, thisChapterVerses);
 				}
 			}
 			bw.write(footnotes.toString());
@@ -338,7 +355,7 @@ public class LogosHTML implements ExportFormat {
 		}
 	}
 
-	protected void exportChapter(String milestone, String cname, Chapter chapter, String versemap, VersificationScheme scheme, String verseSeparator, int bookHeadlineLevel, boolean noChapterHeadings, BufferedWriter bw, StringWriter footnotes, Book book, BitSet[] chapterVerses, BitSet thisChapterVerses) throws IOException {
+	protected void exportChapter(String milestone, String cname, Chapter chapter, String versemap, LinkedHashMap<String,VersificationScheme> schemes, String verseSeparator, int bookHeadlineLevel, boolean noChapterHeadings, BufferedWriter bw, StringWriter footnotes, Book book, BitSet[] chapterVerses, BitSet thisChapterVerses) throws IOException {
 		String chapterRef = "@" + formatMilestone(milestone, cname, "");
 		boolean writeChapterNumber = false;
 		int usedHeadlines = bookHeadlineLevel;
@@ -353,7 +370,7 @@ public class LogosHTML implements ExportFormat {
 		footnoteNumber = 0;
 		String[] verseNumbersToSkip = System.getProperty("biblemulticonverter.logos.skipversenumbers", "").split(",");
 		if (chapter.getProlog() != null) {
-			chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, null, null, null, usedHeadlines, null));
+			chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, schemes, null, null, null, usedHeadlines, null));
 			bw.write("\n<br/>\n");
 		}
 		Chapter verseChapter = chapter;
@@ -420,7 +437,7 @@ public class LogosHTML implements ExportFormat {
 						break;
 					}
 				}
-				v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, scheme, versePrefix + verseNumber, versePrefixBeforeHeadline, versePrefixAfterHeadline + verseNumber, usedHeadlines, formatMilestone(milestone, "%c", "")));
+				v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), versemap, schemes, versePrefix + verseNumber, versePrefixBeforeHeadline, versePrefixAfterHeadline + verseNumber, usedHeadlines, formatMilestone(milestone, "%c", "")));
 				versePrefix = "";
 				versePrefixBeforeHeadline = "";
 				versePrefixAfterHeadline = "";
@@ -563,7 +580,7 @@ public class LogosHTML implements ExportFormat {
 		private StringWriter footnoteWriter;
 		private boolean nt;
 		private String versemap;
-		VersificationScheme scheme;
+		private final LinkedHashMap<String,VersificationScheme> schemes;
 		private boolean grammarFlag;
 		private final String fieldPrefix;
 		private final String fieldPrefixBeforeHeadline;
@@ -572,12 +589,12 @@ public class LogosHTML implements ExportFormat {
 		private final int usedHeadlines;
 		private final String currentBookMilestone;
 
-		protected LogosVisitor(Writer writer, String suffix, StringWriter footnoteWriter, boolean nt, String versemap, VersificationScheme scheme, String fieldPrefix, String fieldPrefixBeforeHeadline, String fieldPrefixAfterHeadline, int usedHeadlines, String currentBookMilestone) {
+		protected LogosVisitor(Writer writer, String suffix, StringWriter footnoteWriter, boolean nt, String versemap, LinkedHashMap<String,VersificationScheme> schemes, String fieldPrefix, String fieldPrefixBeforeHeadline, String fieldPrefixAfterHeadline, int usedHeadlines, String currentBookMilestone) {
 			super(writer, suffix);
 			this.footnoteWriter = footnoteWriter;
 			this.nt = nt;
 			this.versemap = versemap;
-			this.scheme = scheme;
+			this.schemes = schemes;
 			this.fieldPrefix = fieldPrefix;
 			this.fieldPrefixBeforeHeadline = fieldPrefixBeforeHeadline;
 			this.fieldPrefixAfterHeadline = fieldPrefixAfterHeadline;
@@ -644,14 +661,25 @@ public class LogosHTML implements ExportFormat {
 
 			footnoteWriter.write("<DIV ID=\"sdfootnote" + footnoteCounter + "\">");
 			writer.write("<A CLASS=\"sdfootnoteanc\" HREF=\"#sdfootnote" + footnoteCounter + "sym\" sdfixed><sup>" + footnoteNumber + "</sup></A>");
-			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, versemap, scheme, null, null, null, usedHeadlines, null);
+			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, versemap, schemes, null, null, null, usedHeadlines, null);
 		}
 
 		@Override
 		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
-			if (!isVerseCovered(book, firstChapter, firstVerse) || !isVerseCovered(book, lastChapter, lastVerse)) {
-				writer.write("<sup>");
-				pushSuffix("</sup>");
+			String verseMap = (versemap == null ? "Bible" : versemap);
+			if (!isVerseCovered(schemes.get(verseMap), book, firstChapter, firstVerse) || !isVerseCovered(schemes.get(verseMap), book, lastChapter, lastVerse)) {
+				verseMap = null;
+				for(Map.Entry<String, VersificationScheme> candidate : schemes.entrySet()) {
+					if (isVerseCovered(candidate.getValue(), book, firstChapter, firstVerse) && isVerseCovered(candidate.getValue(), book, lastChapter, lastVerse)) {
+						verseMap = candidate.getKey();
+						break;
+					}
+				}
+			}
+			if (verseMap == null) {
+				String tag = System.getProperty("biblemulticonverter.logos.danglingxreftag", "");
+				writer.write(tag);
+				pushSuffix(tag.replace("<", "</"));
 				return this;
 			}
 			writer.write("[[ ");
@@ -661,11 +689,11 @@ public class LogosHTML implements ExportFormat {
 			} else if (!firstVerse.equals(lastVerse)) {
 				ref += "-" + lastVerse;
 			}
-			pushSuffix(" &gt;&gt; " + (versemap == null ? "Bible" : versemap) + ":" + LOGOS_BOOKS.get(book) + " " + ref + "]]");
+			pushSuffix(" &gt;&gt; " + verseMap + ":" + LOGOS_BOOKS.get(book) + " " + ref + "]]");
 			return this;
 		}
 
-		private boolean isVerseCovered(BookID book, int chapter, String verse) {
+		private boolean isVerseCovered(VersificationScheme scheme, BookID book, int chapter, String verse) {
 			BitSet[] chapterVerses = scheme.getCoveredBooks().get(book);
 			if (chapterVerses == null || chapter > chapterVerses.length)
 				return false;
