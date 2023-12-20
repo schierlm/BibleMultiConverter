@@ -250,7 +250,7 @@ public class LogosHTML implements ExportFormat {
 						System.out.println("WARNING: ExtraLinkFile " + extraLinkFile + " incomplete line: " + line);
 						continue;
 					}
-					if (!fields[0].matches("[A-Z][0-9]+")) {
+					if (!fields[0].matches("[A-Z][1-9][0-9]*")) {
 						System.out.println("WARNING: ExtraLinkFile " + extraLinkFile + " skipping invalid Strong number: " + line);
 						continue;
 					}
@@ -949,7 +949,7 @@ public class LogosHTML implements ExportFormat {
 						if (verseNumber != null)
 							throw new IllegalArgumentException("More than one verse reference");
 						verseNumber = new Versification.Reference(BookID.fromOsisId(parts[0]), Integer.parseInt(parts[1]), parts[2]);
-					} else if (cond.matches("[A-Z][0-9]+")) {
+					} else if (cond.matches("[A-Z][1-9][0-9]*")) {
 						strongNumbers.add(cond);
 					} else if (cond.matches(Utils.RMAC_REGEX)) {
 						rmacNumbers.add(cond);
