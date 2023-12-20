@@ -110,6 +110,39 @@ public class LogosNestedHyperlinkPostprocessor implements Tool {
 					String mostCommonStyle = styleNames.stream().collect(Collectors.groupingBy(s -> s, Collectors.counting()))
 							.entrySet().stream().max(Comparator.comparing(Entry::getValue)).map(Entry::getKey).orElse(null);
 					NodeList strikes = (NodeList) xp.evaluate("//w:strike", doc, XPathConstants.NODESET);
+					// when Bible text uses complex script, strikes may span multiple ranges - combine them first
+					int fixupCount = 0;
+					for (int i = strikes.getLength() - 1; i >= 1; i--) {
+						Node strike = strikes.item(i);
+						Node prevStrike = strikes.item(i - 1);
+						if (!prevStrike.getParentNode().getParentNode().getNextSibling().isSameNode(strike.getParentNode().getParentNode()))
+							continue;
+						if (strike.getPreviousSibling() != null)
+							continue;
+						if (strike.getNextSibling() != null && !strike.getNextSibling().getNodeName().equals("w:color"))
+							continue;
+						if (strike.getNextSibling() != null && strike.getNextSibling().getNextSibling() != null)
+							continue;
+						if (prevStrike.getPreviousSibling() != null)
+							continue;
+						if (prevStrike.getNextSibling() != null && !strike.getNextSibling().getNodeName().equals("w:color"))
+							continue;
+						if (prevStrike.getNextSibling() != null && strike.getNextSibling().getNextSibling() != null)
+							continue;
+						Node prevText = prevStrike.getParentNode().getNextSibling().getFirstChild();
+						if (!(prevText instanceof Text) || prevText.getParentNode().getAttributes().getLength() != 0)
+							continue;
+						Node text = strike.getParentNode().getNextSibling().getFirstChild();
+						if (!(text instanceof Text) || text.getParentNode().getAttributes().getLength() != 0)
+							continue;
+						prevText.setNodeValue(prevText.getNodeValue() + text.getNodeValue());
+						strike.getParentNode().getParentNode().getParentNode().removeChild(strike.getParentNode().getParentNode());
+						fixupCount++;
+					}
+					if (fixupCount > 0) {
+						System.out.println("WARNING: Merged " + fixupCount + " adjacent hyperlink regions; this should only happen if the document uses complex scripts");
+					}
+					strikes = (NodeList) xp.evaluate("//w:strike", doc, XPathConstants.NODESET);
 					for (int i = 0; i < strikes.getLength(); i++) {
 						Node strike = strikes.item(i);
 						if (strike.getPreviousSibling() != null)
