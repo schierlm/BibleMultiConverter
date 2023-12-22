@@ -902,7 +902,7 @@ public class LogosHTML implements ExportFormat {
 		public int visitElementTypes(String elementTypes) throws IOException {
 			if (elementTypes == null)
 				return 1;
-			if (elementTypes.equals("t")) {
+			if (elementTypes.equals("t") || elementTypes.isEmpty()) {
 				// only text, let's use our alternative Strings
 				writer.write(altPrefix);
 				suffix = altSuffix;
