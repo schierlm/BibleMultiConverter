@@ -343,6 +343,8 @@ public class NeUeParser implements ImportFormat {
 						if (vs.endsWith("&nbsp;")) {
 							vs = cutAffix(vs, "", "&nbsp;");
 						}
+						if (vs.startsWith("(") && vs.endsWith(")"))
+							vs = cutAffix(vs, "(", ")");
 						if (vs.matches("[0-9]+(,[0-9]+)?")) {
 							currentVerse = new Verse(vs);
 						} else {
@@ -366,7 +368,10 @@ public class NeUeParser implements ImportFormat {
 							currentVerse.getAppendVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
 						currentChapter.getVerses().add(currentVerse);
 					} else if (inParagraph && line.startsWith("<a href=\"#top\"><span class=\"kap\">")) {
-						int chap = Integer.parseInt(cutAffix(line, "<a href=\"#top\"><span class=\"kap\">", "</span></a>"));
+						String num = cutAffix(line, "<a href=\"#top\"><span class=\"kap\">", "</span></a>");
+						if (num.startsWith("/") && num.endsWith("\\"))
+							num = cutAffix(num, "/", "\\");
+						int chap = Integer.parseInt(num);
 						currentChapter = new Chapter();
 						currentVerse = null;
 						bk.getChapters().add(currentChapter);
@@ -648,8 +653,11 @@ public class NeUeParser implements ImportFormat {
 					verse = chapter = toVerse = toChapter = "1";
 					filename = linkTarget;
 				} else {
+					String matchText = text;
+					if (linkTarget.equals("apg.html#14_14") && text.equals(".14"))
+						matchText = "Apg 14,14";
 					Matcher target = Utils.compilePattern("([0-9a-z]+\\.html)?#([0-9]+)((?:_[0-9]+)?)").matcher(linkTarget);
-					Matcher desc = Utils.compilePattern("[^<>]*?([0-9]+(?:[-+][0-9]+)?)(, ?[0-9]+(?:-[0-9]+)?)?(?:\\.[0-9.-]*)?(?: ?[–-] ?[0-9]+,[0-9]+)?").matcher(text);
+					Matcher desc = Utils.compilePattern("[^<>]*?([0-9]+(?:[-+][0-9]+)?)(, ?[0-9]+(?:-[0-9]+)?)?(?:\\.[0-9.-]*)?(?: ?[–-] ?[0-9]+,[0-9]+)?").matcher(matchText);
 					if (!target.matches() || !desc.matches())
 						throw new IOException(html.substring(tagPos));
 					filename = target.group(1);
@@ -836,7 +844,7 @@ public class NeUeParser implements ImportFormat {
 				quoteDepth++;
 			} else if (quoteDepth > 0
 					&& text.charAt(pos) == (quoteDepth == 1 ? '"' : '\'')
-					&& (pos == 0 || Character.isLetterOrDigit(text.charAt(pos - 1)) || ".!?*:«)".indexOf(text.charAt(pos - 1)) != -1)
+					&& (pos == 0 || Character.isLetterOrDigit(text.charAt(pos - 1)) || ".!?*:«–)".indexOf(text.charAt(pos - 1)) != -1)
 					&& (pos == text.length() - 1 || " .,;:*?!)♪".indexOf(text.charAt(pos + 1)) != -1 || (quoteDepth >= 2 && text.charAt(pos + 1) == '"'))) {
 				quoteDepth--;
 				done += text.substring(0, pos) + (quoteDepth == 0 ? "“" : "‘");

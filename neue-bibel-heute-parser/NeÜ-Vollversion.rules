@@ -69,8 +69,8 @@ $2$1
 $2$1
 Wort<a href="#psalm">\*</a></h4>
 Wort</h4>
-\Q"kap">119</span></a> <span class="u2"> I Álef*</span></p>\E¶<p class="poet">¶<span class="vers" id="119_1">1</span> Wie
-"kap">119</span></a> ¶   <span class="vers">1</span>*<span class="u2"> I Álef*</span></p>¶<p class="poet">¶   Wie
+\Q"kap">/119\</span></a> <span class="u2"> I Álef*</span></p>\E¶<p class="poet">¶<span class="vers" id="119_1">1</span> Wie
+"kap">/119\\</span></a> ¶   <span class="vers">1</span>*<span class="u2"> I Álef*</span></p>¶<p class="poet">¶   Wie
 <div class="fn">Psalm 119:
 <div class="fn">119,1: <em>Psalm 119</em>:
 
@@ -87,8 +87,8 @@ Silber.</a></div>
 Silber.</div>
 <a href="jes#8_14">
 <a href="#8_14">
-<p class="poet" id="64"><a href="#top"><span class="kap">64</span></a> ([^¶]*)
-<p class="poet">$1</p>¶<p class="poet" id="64"><a href="#top"><span class="kap">64</span></a>&nbsp;
+<p class="poet" id="64"><a href="#top"><span class="kap">/64\\</span></a> ([^¶]*)
+<p class="poet">$1</p>¶<p class="poet" id="64"><a href="#top"><span class="kap">/64\\</span></a>&nbsp;
 
 jer.html
 zu ihnen: ‚So
@@ -209,6 +209,10 @@ off.html
 bibel.html
 <br />
 <br />
+<br/>
+<br />
+<br\\>
+<br />
 
 2mo.html
 	### 3:16 3:17 4:22 4:23 7:16 7:17 7:18 7:26 8:16 8:19 9:1 9:5 9:13 9:19 21:5 Third Level Quotes
@@ -263,8 +267,8 @@ mt.html
 	###
 Herrn: "Setz
 Herrn: »Setz
-\Qgemacht habe."'*
-gemacht habe.«'*
+\Qfür dich mache."'*
+für dich mache.«'*
 sagen .von
 sagen 'von
 
@@ -279,8 +283,8 @@ apg.html
 	###
 Herrn: "Setz dich
 Herrn: »Setz dich
-\Qgemacht habe."'*\E
-gemacht habe.«'*
+\Qfür dich mache."'*\E
+für dich mache.«'*
 
 hebr.html
 	### 8:9 move comma
