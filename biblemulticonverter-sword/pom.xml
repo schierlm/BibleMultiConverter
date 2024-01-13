@@ -23,7 +23,7 @@
 		<dependency>
 			<groupId>com.github.AndBible</groupId>
 			<artifactId>jsword</artifactId>
-			<version>2.3.30</version>
+			<version>2.4.09</version>
 			<exclusions>
 				<exclusion>
 					<!-- causes warnings on console and does not work on desktop anyway -->
