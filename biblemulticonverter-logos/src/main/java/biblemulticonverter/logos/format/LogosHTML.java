@@ -18,7 +18,6 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +30,7 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
+import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
@@ -341,7 +341,7 @@ public class LogosHTML implements ExportFormat {
 				}
 				bw.write(template);
 			} else if (!noTitle) {
-				bw.write("<h1>" + title.replace("&", "&amp").replace("<", "&lt;").replace(">", "&gt;") + "</h1>\n");
+				bw.write("<h1>" + searchField("x-heading", true, 1, null) + title.replace("&", "&amp").replace("<", "&lt;").replace(">", "&gt;") + searchField("x-heading", false, 1, null) + "</h1>\n");
 			}
 
 			StringWriter footnotes = new StringWriter();
@@ -360,7 +360,7 @@ public class LogosHTML implements ExportFormat {
 					Chapter chapter = book.getChapters().get(0);
 					if (chapter.getVerses().size() == 0 && chapter.getProlog() != null) {
 						// prolog only book
-						bw.write("<h" + bookHeadlineLevel + ">");
+						bw.write("<h" + bookHeadlineLevel + ">" + searchField("x-heading", true, 2, new Reference(book.getId(), 999, "1/-/p")));
 						if (book.getId() == BookID.DICTIONARY_ENTRY) {
 							if (bible.getName().toUpperCase().contains("STRONG") && book.getShortName().matches("[GH][1-9][0-9]*")) {
 								bw.write("[[@" + (book.getShortName().startsWith("G") ? "Greek" : "Hebrew") + "Strongs:" + book.getShortName() + "]]");
@@ -374,9 +374,9 @@ public class LogosHTML implements ExportFormat {
 								}
 							}
 						}
-						bw.write(book.getLongName() + "</h" + bookHeadlineLevel + ">\n");
+						bw.write(book.getLongName() + searchField("x-heading", false, 2, new Reference(book.getId(), 999, "1/-/p")) + "</h" + bookHeadlineLevel + ">\n");
 						footnoteNumber = 0;
-						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, null, versemap, schemes, null, null, null, 2, null));
+						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, new Reference(book.getId(), 999, "1/-/p"), versemap, schemes, null, null, null, 2, null));
 						bw.write("\n<br/>\n");
 						continue;
 					}
@@ -385,7 +385,7 @@ public class LogosHTML implements ExportFormat {
 					System.out.println("WARNING: Skipping book " + book.getId());
 					continue;
 				}
-				bw.write("<h" + bookHeadlineLevel + ">[[@" + formatMilestone(milestone, "", "") + "]]" + book.getLongName() + " (" + book.getAbbr() + ")</h" + bookHeadlineLevel + ">\n");
+				bw.write("<h" + bookHeadlineLevel + ">[[@" + formatMilestone(milestone, "", "") + "]]" + searchField("x-heading", true, 2, new Reference(book.getId(), 1, "1")) + book.getLongName() + " (" + book.getAbbr() + ")" + searchField("x-heading", true, 2, new Reference(book.getId(), 1, "1")) + "</h" + bookHeadlineLevel + ">\n");
 				int cnumber = 0;
 				for (Chapter chapter : book.getChapters()) {
 					cnumber++;
@@ -420,13 +420,13 @@ public class LogosHTML implements ExportFormat {
 				writeChapterNumber = true;
 			} else {
 				usedHeadlines++;
-				bw.write("<h" + usedHeadlines + ">[[" + chapterRef + "]]{{~ " + book.getAbbr() + " " + cname + " }}</h" + usedHeadlines + ">\n");
+				bw.write("<h" + usedHeadlines + ">[[" + chapterRef + "]]" + searchField("x-heading", true, 3, new Reference(book.getId(), cnumber, "1")) + "{{~ " + book.getAbbr() + " " + cname + " }}" + searchField("x-heading", false, 3, new Reference(book.getId(), cnumber, "1")) + "</h" + usedHeadlines + ">\n");
 			}
 		}
 		footnoteNumber = 0;
 		String[] verseNumbersToSkip = System.getProperty("biblemulticonverter.logos.skipversenumbers", "").split(",");
 		if (chapter.getProlog() != null) {
-			chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), null, versemap, schemes, null, null, null, usedHeadlines, null));
+			chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), new Reference(book.getId(), 999, "1/-/p"), versemap, schemes, null, null, null, usedHeadlines, null));
 			bw.write("\n<br/>\n");
 		}
 		Chapter verseChapter = chapter;
@@ -442,9 +442,11 @@ public class LogosHTML implements ExportFormat {
 		for (VerseRange vr : verseChapter.createVerseRanges(false)) {
 			String versePrefix = "", versePrefixBeforeHeadline = "", versePrefixAfterHeadline = "";
 			if (writeChapterNumber) {
-				versePrefix = "<b style=\"font-size: 20pt\">[[" + chapterRef + "]]" + cname + "</b>" + verseSeparator;
+				Reference sref = new Reference(book.getId(), cnumber, "1");
+				String cnameWithFields = searchField("chapternum", true, 0, sref) + cname + searchField("chapternum", false, 0, sref);
+				versePrefix = "<b style=\"font-size: 20pt\">[[" + chapterRef + "]]" + cnameWithFields + "</b>" + verseSeparator;
 				versePrefixBeforeHeadline = "[[" + chapterRef + "]]";
-				versePrefixAfterHeadline = "<b style=\"font-size: 20pt\">" + cname + "</b>" + verseSeparator;
+				versePrefixAfterHeadline = "<b style=\"font-size: 20pt\">" + cnameWithFields + "</b>" + verseSeparator;
 				writeChapterNumber = false;
 			}
 			BitSet allowedVerses = thisChapterVerses;
@@ -478,23 +480,27 @@ public class LogosHTML implements ExportFormat {
 
 			for (Verse v : vr.getVerses()) {
 				bw.write(verseSeparator);
-				String verseNumber = "<b>" + v.getNumber() + "</b> ";
+				String verseNumber = v.getNumber();
 				if (v.getNumber().equals("1/t")) {
-					verseNumber = "<b>" + NAMED_VERSES[0] + "</b> ";
+					verseNumber = NAMED_VERSES[0];
 				} else if (v.getNumber().matches("1[0-4][0-9][0-9]")) {
 					int numVerse = Integer.parseInt(v.getNumber());
 					if (numVerse >= 1000 && numVerse < 1000 + NAMED_VERSES.length) {
-						verseNumber = "<b>" + NAMED_VERSES[numVerse - 1000] + "</b> ";
+						verseNumber = NAMED_VERSES[numVerse - 1000];
 					}
 				}
 				for (String skipped : verseNumbersToSkip) {
-					if (verseNumber.equalsIgnoreCase("<b>" + skipped + "</b> ")) {
+					if (verseNumber.equalsIgnoreCase(skipped)) {
 						verseNumber = "";
 						break;
 					}
 				}
 				int cn = vr.getChapter() == 0 ? cnumber : vr.getChapter();
-				v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), cn == 0 ? null : new Reference(book.getId(), cn, v.getNumber()), versemap, schemes, versePrefix + verseNumber, versePrefixBeforeHeadline, versePrefixAfterHeadline + verseNumber, usedHeadlines, formatMilestone(milestone, "%c", "")));
+				Reference vref = new Reference(book.getId(), cn, v.getNumber());
+				if (!verseNumber.isEmpty()) {
+					verseNumber = "<b>" + searchField("versenum", true, 0, vref) + verseNumber + searchField("versenum", false, 0, vref) + "</b> ";
+				}
+				v.accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), cn == 0 ? null : vref, versemap, schemes, versePrefix + verseNumber, versePrefixBeforeHeadline, versePrefixAfterHeadline + verseNumber, usedHeadlines, formatMilestone(milestone, "%c", "")));
 				versePrefix = "";
 				versePrefixBeforeHeadline = "";
 				versePrefixAfterHeadline = "";
@@ -632,6 +638,30 @@ public class LogosHTML implements ExportFormat {
 		throw new RuntimeException(rmac);
 	}
 
+	private static String lookupSearchFieldName(String fieldName, Reference context, String value) {
+		String allowedFields = System.getProperty("biblemulticonverter.logos.allowedsearchfields", "");
+		if (!allowedFields.isEmpty() && !Arrays.asList(allowedFields.split(",")).contains(fieldName))
+			return "-";
+		value = System.getProperty("biblemulticonverter.logos.searchfield." + fieldName, value);
+		if (context != null) {
+			boolean isProlog = context.getChapter() == 999 && context.getVerse().equals("1/-/p");
+			String property = "biblemulticonverter.logos.searchfield." + fieldName + "@" + context.getBook().getOsisID();
+			value = System.getProperty(property, value);
+			value = System.getProperty(property + (isProlog ? "@P" : "@V"), value);
+		}
+		return value;
+	}
+
+	private static String searchField(String fieldName, boolean start, int level, Reference context) {
+		fieldName = lookupSearchFieldName(fieldName, context, fieldName);
+		if (level != 0)
+			fieldName = lookupSearchFieldName(fieldName + level, context, fieldName);
+		if (fieldName.matches("[a-z][a-z-]*") && !fieldName.startsWith("x-"))
+			return (start ? "{{field-on:" : "{{field-off:") + fieldName + "}}";
+		else
+			return "";
+	}
+
 	private class LogosVisitor extends AbstractHTMLVisitor {
 
 		private StringWriter footnoteWriter;
@@ -668,8 +698,11 @@ public class LogosHTML implements ExportFormat {
 				fieldPrefixBeforeHeadlineWritten = true;
 				if (versemap != null) {
 					fieldOn = true;
-					writer.write("{{field-on:bible}}");
+					writer.write(searchField("bible", true, 0, verseReference));
 				}
+			} else if (suffixStack.size() == 1 && versemap != null) {
+				fieldOn = true;
+				writer.write(searchField("comment", true, 0, verseReference));
 			}
 		}
 
@@ -687,8 +720,8 @@ public class LogosHTML implements ExportFormat {
 				suffixStack.set(suffixStack.size() - 1, "");
 				grammarFlag = true;
 			}
-			if (fieldPrefix != null && suffixStack.size() == 1 && versemap != null) {
-				writer.write("{{field-off:bible}}");
+			if (suffixStack.size() == 1 && versemap != null) {
+				writer.write(searchField(fieldPrefix != null ? "bible" : "comment", false, 0, verseReference));
 				fieldOn = false;
 			}
 			return super.visitEnd();
@@ -697,12 +730,12 @@ public class LogosHTML implements ExportFormat {
 		@Override
 		public Visitor<IOException> visitHeadline(int depth) throws IOException {
 			int level = depth + usedHeadlines < 6 ? depth + usedHeadlines : 6;
-			String suffix = "</h" + level + ">\n";
+			String suffix = searchField("heading", false, depth, verseReference) + "</h" + level + ">\n";
 			if (fieldOn) {
-				writer.write("{{field-off:bible}}");
-				suffix += "{{field-on:bible}}";
+				writer.write(searchField(fieldPrefix != null ? "bible" : "comment", false, 0, verseReference));
+				suffix += searchField(fieldPrefix != null ? "bible" : "comment", true, 0, verseReference);
 			}
-			writer.write("<h" + level + ">");
+			writer.write("<h" + level + ">" + searchField("heading", true, depth, verseReference));
 			if (suffixStack.size() == 1 && fieldPrefix != null && !fieldPrefixBeforeHeadlineWritten) {
 				writer.write(fieldPrefixBeforeHeadline);
 				fieldPrefixBeforeHeadlineWritten = true;
@@ -724,6 +757,16 @@ public class LogosHTML implements ExportFormat {
 		}
 
 		@Override
+		public Visitor<IOException> visitFormattingInstruction(FormattingInstructionKind kind) throws IOException {
+			if (kind == FormattingInstructionKind.WORDS_OF_JESUS) {
+				writer.write(createFormattingInstructionStartTag(kind) + searchField("words-of-christ", true, 0, verseReference));
+				pushSuffix(searchField("words-of-christ", false, 0, verseReference) + "</span>");
+				return this;
+			}
+			return super.visitFormattingInstruction(kind);
+		}
+
+		@Override
 		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
 			String verseMap = (versemap == null ? "Bible" : versemap);
 			if (!isVerseCovered(schemes.get(verseMap), book, firstChapter, firstVerse) || !isVerseCovered(schemes.get(verseMap), book, lastChapter, lastVerse)) {
@@ -737,18 +780,18 @@ public class LogosHTML implements ExportFormat {
 			}
 			if (verseMap == null) {
 				String tag = System.getProperty("biblemulticonverter.logos.danglingxreftag", "");
-				writer.write(tag);
-				pushSuffix(tag.replace("<", "</"));
+				writer.write(searchField("crossref", true, 0, verseReference) + tag);
+				pushSuffix(tag.replace("<", "</") + searchField("crossref", false, 0, verseReference));
 				return this;
 			}
-			writer.write("[[ ");
+			writer.write(searchField("crossref", true, 0, verseReference) + "[[ ");
 			String ref = firstChapter + ":" + firstVerse;
 			if (firstChapter != lastChapter) {
 				ref += "-" + lastChapter + ":" + lastVerse;
 			} else if (!firstVerse.equals(lastVerse)) {
 				ref += "-" + lastVerse;
 			}
-			pushSuffix(" &gt;&gt; " + verseMap + ":" + LOGOS_BOOKS.get(book) + " " + ref + "]]");
+			pushSuffix(" &gt;&gt; " + verseMap + ":" + LOGOS_BOOKS.get(book) + " " + ref + "]]" + searchField("crossref", false, 0, verseReference));
 			return this;
 		}
 
@@ -874,6 +917,15 @@ public class LogosHTML implements ExportFormat {
 			if (prio == ExtraAttributePriority.KEEP_CONTENT && category.equals("logos") && key.equals("chapter-range")) {
 				writer.write("[[ ");
 				pushSuffix(" &gt;&gt; " + currentBookMilestone.replace("%c", value) + "]]");
+				return this;
+			} else if (prio == ExtraAttributePriority.KEEP_CONTENT && category.equals("logos") && key.equals("search-field")) {
+				writer.write(searchField(value, true, 99, verseReference));
+				pushSuffix(searchField(value, false, 99, verseReference));
+				return this;
+			} else if (prio == ExtraAttributePriority.KEEP_CONTENT && category.equals("logos") && key.equals("include") && value.equals("no")) {
+				return null;
+			} else if (prio == ExtraAttributePriority.SKIP && category.equals("logos") && key.equals("include") && value.equals("yes")) {
+				pushSuffix("");
 				return this;
 			} else {
 				return super.visitExtraAttribute(prio, category, key, value);
