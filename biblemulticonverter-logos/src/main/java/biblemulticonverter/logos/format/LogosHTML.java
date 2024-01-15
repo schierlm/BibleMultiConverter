@@ -199,6 +199,8 @@ public class LogosHTML implements ExportFormat {
 	private String lineSeparator;
 	private Map<String, List<ExtraLinkRule>> extraLinkRules;
 
+	private boolean wordNestedHyperlinks = Boolean.getBoolean("biblemulticonverter.logos.nestedhyperlinks.word");
+
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
 		String versemap = exportArgs.length == 1 ? "Bible" : exportArgs[1];
@@ -889,7 +891,7 @@ public class LogosHTML implements ExportFormat {
 				if (suffixStack.size() == 2 && suffixStack.get(1).equals("</span>")) {
 					stackProblem = false;
 				}
-				if (grammarCounter < 10 || stackProblem) {
+				if (grammarCounter < 10 || stackProblem || wordNestedHyperlinks) {
 					writer.write(prefix);
 					pushSuffix(suffix.toString());
 				} else {
