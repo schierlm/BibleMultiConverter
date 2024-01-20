@@ -702,7 +702,7 @@ public class LogosHTML implements ExportFormat {
 					fieldOn = true;
 					writer.write(searchField("bible", true, 0, verseReference));
 				}
-			} else if (suffixStack.size() == 1 && versemap != null) {
+			} else if (suffixStack.size() == 1 && versemap != null && footnoteWriter != null) {
 				fieldOn = true;
 				writer.write(searchField("comment", true, 0, verseReference));
 			}
@@ -722,7 +722,7 @@ public class LogosHTML implements ExportFormat {
 				suffixStack.set(suffixStack.size() - 1, "");
 				grammarFlag = true;
 			}
-			if (suffixStack.size() == 1 && versemap != null) {
+			if (suffixStack.size() == 1 && versemap != null && footnoteWriter != null) {
 				writer.write(searchField(fieldPrefix != null ? "bible" : "comment", false, 0, verseReference));
 				fieldOn = false;
 			}
