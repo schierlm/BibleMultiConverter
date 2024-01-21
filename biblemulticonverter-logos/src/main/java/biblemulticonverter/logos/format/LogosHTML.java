@@ -387,7 +387,7 @@ public class LogosHTML implements ExportFormat {
 					System.out.println("WARNING: Skipping book " + book.getId());
 					continue;
 				}
-				bw.write("<h" + bookHeadlineLevel + ">[[@" + formatMilestone(milestone, "", "") + "]]" + searchField("x-heading", true, 2, new Reference(book.getId(), 1, "1")) + book.getLongName() + " (" + book.getAbbr() + ")" + searchField("x-heading", true, 2, new Reference(book.getId(), 1, "1")) + "</h" + bookHeadlineLevel + ">\n");
+				bw.write("<h" + bookHeadlineLevel + ">[[@" + formatMilestone(milestone, "", "") + "]]" + searchField("x-heading", true, 2, new Reference(book.getId(), 1, "1")) + book.getLongName() + " (" + book.getAbbr() + ")" + searchField("x-heading", false, 2, new Reference(book.getId(), 1, "1")) + "</h" + bookHeadlineLevel + ">\n");
 				int cnumber = 0;
 				for (Chapter chapter : book.getChapters()) {
 					cnumber++;
