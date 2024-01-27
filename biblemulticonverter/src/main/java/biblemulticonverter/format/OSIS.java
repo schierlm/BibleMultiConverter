@@ -794,14 +794,16 @@ public class OSIS implements RoundtripFormat {
 					continue;
 				}
 				String rawStrong = lemma.substring(8);
-				if (!rawStrong.matches("0*[1-9][0-9]*(-0*[1-9][0-9]*)*")) {
-					printWarning("WARNING: Invalid strong dictionary entry: " + rawStrong);
-					continue;
-				}
 				String[] strs = rawStrong.split("-");
+				char[] prefixHolder = new char[1];
 				for (String str : strs) {
-					strongPrefixes.append(lemma.charAt(7));
-					strongList.add(Integer.parseInt(str));
+					int number = Utils.parseStrongs(lemma.charAt(7) + str, '\0', prefixHolder);
+					if (number == -1) {
+						printWarning("WARNING: Invalid strong dictionary entry: " + rawStrong);
+						continue;
+					}
+					strongPrefixes.append(prefixHolder[0]);
+					strongList.add(number);
 				}
 			}
 			if (!strongList.isEmpty()) {
@@ -1174,7 +1176,7 @@ public class OSIS implements RoundtripFormat {
 				for (int i = 0; i < strongs.length; i++) {
 					if (lemma.length() > 0)
 						lemma.append(' ');
-					lemma.append("strong:" + (strongsPrefixes != null ? "" + strongsPrefixes[i] : nt ? "G" : "H") + strongs[i]);
+					lemma.append("strong:" + Utils.formatStrongs(nt, i, strongsPrefixes, strongs));
 				}
 				w.setAttribute("lemma", lemma.toString());
 			}

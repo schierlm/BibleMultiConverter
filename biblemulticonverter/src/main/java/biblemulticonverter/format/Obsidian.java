@@ -24,6 +24,7 @@ import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 
@@ -188,7 +189,7 @@ public class Obsidian implements ExportFormat {
 				StringBuilder suffixBuilder = new StringBuilder();
 				if (strongs != null) {
 					for (int i = 0; i < strongs.length; i++) {
-						suffixBuilder.append(" <sup><font color=green>" + (strongsPrefixes != null ? "" + strongsPrefixes[i] : "") + strongs[i] + "</font></sup>");
+						suffixBuilder.append(" <sup><font color=green>" + (strongsPrefixes != null ? Utils.formatStrongs(false, i, strongsPrefixes, strongs) : "" + strongs[i]) + "</font></sup>");
 					}
 				}
 				if (rmac != null) {

@@ -390,7 +390,7 @@ public class HaggaiXML implements RoundtripFormat {
 					if (gram.getStr() != null) {
 						List<String> strongList = new ArrayList<String>(Arrays.asList(gram.getStr().trim().replaceAll(" ++", " ").split(" ")));
 						for (int i = 0; i < strongList.size(); i++) {
-							if (!strongList.get(i).matches("[GH]?[0-9]+")) {
+							if (Utils.parseStrongs(strongList.get(i), '?', null) == -1) {
 								System.out.println("WARNING: Skipping invalid Strong number " + strongList.get(i));
 								strongList.remove(i);
 								i--;
@@ -398,13 +398,13 @@ public class HaggaiXML implements RoundtripFormat {
 						}
 						strongs = new int[strongList.size()];
 						strongsPrefixes = strongList.size() == 0 ? null : new char[strongList.size()];
+						char[] prefixHolder = new char[1];
 						for (int i = 0; i < strongs.length; i++) {
-							if (strongList.get(i).matches("[GH][0-9]+")) {
-								strongsPrefixes[i] = strongList.get(i).charAt(0);
-								strongs[i] = Integer.parseInt(strongList.get(i).substring(1));
-							} else {
+							strongs[i] = Utils.parseStrongs(strongList.get(i), '?', prefixHolder);
+							if (prefixHolder[0] == '?') {
 								strongsPrefixes = null;
-								strongs[i] = Integer.parseInt(strongList.get(i));
+							} else {
+								strongsPrefixes[i] = prefixHolder[0];
 							}
 						}
 					}
@@ -719,7 +719,7 @@ public class HaggaiXML implements RoundtripFormat {
 			if (strongs != null) {
 				StringBuilder entryBuilder = new StringBuilder();
 				for (int i = 0; i < strongs.length; i++) {
-					entryBuilder.append((i > 0 ? " " : "") + (strongsPrefixes == null ? "" : "" + strongsPrefixes[i]) + strongs[i]);
+					entryBuilder.append((i > 0 ? " " : "") + (strongsPrefixes == null ? "" + strongs[i] : Utils.formatStrongs(false, i, strongsPrefixes, strongs)));
 				}
 				String entry = entryBuilder.toString();
 				gram.setStr(entry);

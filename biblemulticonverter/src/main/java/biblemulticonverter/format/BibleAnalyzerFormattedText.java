@@ -20,6 +20,7 @@ import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 
@@ -310,7 +311,7 @@ public class BibleAnalyzerFormattedText implements ExportFormat {
 			StringBuilder suffix = new StringBuilder();
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
-					suffix.append("[" + (hasStrongs ? (strongsPrefixes != null ? "" + strongsPrefixes[i] : nt ? "G" : "H") : "") + strongs[i] + "]");
+					suffix.append("[" + (hasStrongs ? Utils.formatStrongs(nt, i, strongsPrefixes, strongs) : "" + strongs[i]) + "]");
 				}
 			}
 			if (rmac != null && hasRMAC) {

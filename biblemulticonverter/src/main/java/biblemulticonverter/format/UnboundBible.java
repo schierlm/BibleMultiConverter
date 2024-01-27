@@ -289,10 +289,15 @@ public class UnboundBible implements RoundtripFormat {
 					String[] rmacs = new String[10];
 					int strongCount = 0, rmacCount = 0;
 					String word = words[0];
+					char[] prefixHolder = new char[1];
 					for (int i = 1; i < words.length; i++) {
-						if (words[i].matches("[GH][0-9]+")) {
-							strongsPrefixes[strongCount] = words[i].charAt(0);
-							strongs[strongCount++] = Integer.parseInt(words[i].substring(1));
+						int number = -1;
+						if (words[i].matches("[GH]0*[1-9][0-9]*[a-zA-Z]?")) {
+							number = Utils.parseStrongs(words[i], '\0', prefixHolder);
+						}
+						if (number != -1) {
+							strongsPrefixes[strongCount] = prefixHolder[0];
+							strongs[strongCount++] = number;
 						} else if (words[i].matches(Utils.RMAC_REGEX)) {
 							rmacs[rmacCount++] = words[i];
 						} else {
@@ -646,7 +651,7 @@ public class UnboundBible implements RoundtripFormat {
 				StringBuilder suffix = new StringBuilder();
 				if (strongs != null) {
 					for (int i = 0; i < strongs.length; i++) {
-						suffix.append(" " + (strongsPrefixes != null ? "" + strongsPrefixes[i] : nt ? "G" : "H") + strongs[i]);
+						suffix.append(" " + Utils.formatStrongs(nt, i, strongsPrefixes, strongs));
 					}
 				}
 				if (rmac != null) {

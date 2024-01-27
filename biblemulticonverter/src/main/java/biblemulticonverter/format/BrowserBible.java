@@ -20,6 +20,7 @@ import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 
@@ -299,7 +300,7 @@ public class BrowserBible implements ExportFormat {
 				for (int i = 0; i < strongs.length; i++) {
 					if (i > 0)
 						writer.write(" ");
-					writer.write((strongsPrefixes != null ? "" + strongsPrefixes[i] : nt ? "G" : "H") + strongs[i]);
+					writer.write(Utils.formatStrongs(nt, i, strongsPrefixes, strongs));
 				}
 				writer.write("\"");
 			}

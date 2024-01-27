@@ -185,17 +185,14 @@ public class MySword implements RoundtripFormat {
 				}
 				char[] spfx = new char[stags.size()];
 				int[] snum = new int[stags.size()];
+				char[] prefixHolder = new char[1];
 				for (int i = 0; i < stags.size(); i++) {
-					spfx[i] = stags.get(i).charAt(0);
-					try {
-						snum[i] = Integer.parseInt(stags.get(i).substring(1));
-						if (snum[i] == 0) {
-							System.out.println("WARNING: Strong number may not be zero");
-							snum[i] = 99999;
-						}
-					} catch (NumberFormatException ex) {
+					snum[i] = Utils.parseStrongs(stags.get(i), '\0', prefixHolder);
+					spfx[i] = prefixHolder[0];
+					if (snum[i] == -1) {
 						System.out.println("WARNING: Invalid Strong number: " + stags.get(i));
 						snum[i] = 99999;
+						spfx[i] = stags.get(i).charAt(0);
 					}
 				}
 				String[] rmacs = mtags.isEmpty() ? null : new String[mtags.size()];
@@ -544,7 +541,7 @@ public class MySword implements RoundtripFormat {
 				cnt = Math.max(cnt, rmac.length);
 			for (int i = 0; i < cnt; i++) {
 				if (strongs != null && i < strongs.length) {
-					suffix += "<W" + (strongsPrefixes == null ? (nt ? 'G' : 'H') : "" + strongsPrefixes[i]) + strongs[i] + ">";
+					suffix += "<W" + Utils.formatStrongs(nt, i, strongsPrefixes, strongs) + ">";
 				}
 				if (rmac != null && i < rmac.length) {
 					suffix += "<WT" + rmac[i] + ">";

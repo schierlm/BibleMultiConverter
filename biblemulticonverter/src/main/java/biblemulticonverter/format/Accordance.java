@@ -32,6 +32,7 @@ import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.StandardVersification;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.Versification.Reference;
@@ -1207,7 +1208,7 @@ public class Accordance implements RoundtripFormat {
 				if (rule.length > 0) {
 					StringBuilder sb = new StringBuilder();
 					for (int i = 0; i < strongs.length; i++) {
-						sb.append(" ").append(strongsPrefixes != null ? strongsPrefixes[i] : nt ? 'G' : 'H').append(strongs[i]);
+						sb.append(" ").append(Utils.formatStrongs(nt, i, strongsPrefixes, strongs));
 					}
 					appendRule(suffixes, rule, sb.toString().trim());
 				}

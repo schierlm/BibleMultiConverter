@@ -20,6 +20,7 @@ import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 
@@ -350,7 +351,7 @@ public class ESwordHTML implements ExportFormat {
 			StringBuilder newSuffix = new StringBuilder();
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
-					newSuffix.append("<sup class=\"str\">" + (strongsPrefixes != null ? "" + strongsPrefixes[i] : nt ? "G" : "H") + strongs[i] + "</sup> ");
+					newSuffix.append("<sup class=\"str\">" + Utils.formatStrongs(nt, i, strongsPrefixes, strongs) + "</sup> ");
 				}
 			}
 			return new ESwordVisitor(newSuffix.toString(), this);

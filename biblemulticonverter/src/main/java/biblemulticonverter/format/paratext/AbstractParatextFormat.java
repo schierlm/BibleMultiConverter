@@ -602,15 +602,12 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				List<Integer> strongs = new ArrayList<>();
 				String strongAttribute = attributes.get("strong");
 				if (strongAttribute != null) {
+					char[] prefixHolder = new char[1];
 					for (String strong : strongAttribute.split("[, ]")) {
-						if (strong.matches("[A-Z][0-9]{1,5}")) {
-							strongsPrefixes.append(strong.charAt(0));
-							int num = Integer.parseInt(strong.substring(1));
-							if (num > 0) {
-								strongs.add(num);
-							} else {
-								System.out.println("WARNING: Skipping unsupported strong number: " + strong);
-							}
+						int num = Utils.parseStrongs(strong, '\0', prefixHolder);
+						if (num > 0) {
+							strongsPrefixes.append(prefixHolder[0]);
+							strongs.add(num);
 						} else {
 							System.out.println("WARNING: Skipping unsupported strong number: " + strong);
 						}
@@ -989,7 +986,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				for (int i = 0; i < strongs.length; i++) {
 					if (sb.length() != 0)
 						sb.append(",");
-					sb.append((strongsPrefixes != null ? "" + strongsPrefixes[i] : nt ? "G" : "H") + strongs[i]);
+					sb.append(Utils.formatStrongs(nt, i, strongsPrefixes, strongs));
 				}
 				formatting.getAttributes().put("strong", sb.toString());
 			}

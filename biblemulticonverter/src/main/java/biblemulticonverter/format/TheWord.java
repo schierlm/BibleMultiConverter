@@ -31,6 +31,7 @@ import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.StandardVersification;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.VirtualVerse;
 
 /**
@@ -228,9 +229,15 @@ public class TheWord implements RoundtripFormat {
 					char[] strongNumberPrefixes = new char[strongs.length];
 					int[] strongNumbers = new int[strongs.length];
 					try {
+						char[] prefixHolder = new char[1];
 						for (int i = 0; i < strongs.length; i++) {
-							strongNumberPrefixes[i] = strongs[i].charAt(0);
-							strongNumbers[i] = Integer.parseInt(strongs[i].substring(1));
+							strongNumbers[i] = Utils.parseStrongs(strongs[i], '\0', prefixHolder);
+							strongNumberPrefixes[i] = prefixHolder[0];
+							if (strongNumbers[i] == -1) {
+								System.out.println("WARNING: Invalid Strong number: " + strongs[i]);
+								strongNumbers[i] = 99999;
+								strongNumberPrefixes[i] = strongs[i].charAt(0);
+							}
 						}
 						pos = parseLine(visitor.visitGrammarInformation(strongNumberPrefixes, strongNumbers, null, null), line, closePos + 1, "<s%>");
 						continue;

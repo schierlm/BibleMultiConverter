@@ -458,21 +458,13 @@ public class MyBibleZone implements RoundtripFormat {
 				String[] txt = cleanText(text.substring(3, pos)).split(",");
 				char[] spfx = new char[txt.length];
 				int[] snum = new int[txt.length];
+				char[] prefixHolder = new char[1];
 				for (int i = 0; i < txt.length; i++) {
-					try {
-						if (txt[i].matches("[A-Z][0-9]+")) {
-							spfx[i] = txt[i].charAt(0);
-							snum[i] = Integer.parseInt(txt[i].substring(1));
-						} else {
-							spfx[i] = nt ? 'G' : 'H';
-							snum[i] = Integer.parseInt(txt[i]);
-						}
-						if (snum[i] == 0) {
-							System.out.println("WARNING: Strong number may not be zero");
-							snum[i] = 99999;
-						}
-					} catch (NumberFormatException ex) {
+					snum[i] = Utils.parseStrongs(txt[i], nt ? 'G' : 'H', prefixHolder);
+					spfx[i] = prefixHolder[0];
+					if (snum[i] == -1) {
 						System.out.println("WARNING: Invalid Strong number: " + txt[i]);
+						spfx[i] = nt ? 'G' : 'H';
 						snum[i] = 99999;
 					}
 				}
@@ -1128,7 +1120,8 @@ public class MyBibleZone implements RoundtripFormat {
 				cnt = Math.max(cnt, rmac.length);
 			for (int i = 0; i < cnt; i++) {
 				if (strongs != null && i < strongs.length) {
-					suffix += "<S>" + (strongsPrefixes == null || strongsPrefixes[i] == (nt ? 'G' : 'H') ? "" : "" + strongsPrefixes[i]) + strongs[i] + "</S>";
+					String formatted = Utils.formatStrongs(nt, i, strongsPrefixes, strongs);
+					suffix += "<S>" + (formatted.startsWith(nt ? "G" : "H") ? formatted.substring(1) : formatted) + "</S>";
 				}
 				if (rmac != null && i < rmac.length) {
 					suffix += "<m>" + rmac[i] + "</m>";

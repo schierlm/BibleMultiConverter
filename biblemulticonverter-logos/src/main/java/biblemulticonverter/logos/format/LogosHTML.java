@@ -838,7 +838,7 @@ public class LogosHTML implements ExportFormat {
 			String[] expandedStrongs = strongs == null ? null : new String[strongs.length];
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
-					expandedStrongs[i] = (strongsPrefixes == null ? (nt ? 'G' : 'H') : strongsPrefixes[i]) + "" + strongs[i];
+					expandedStrongs[i] = Utils.formatStrongs(nt, i, strongsPrefixes, strongs);
 				}
 			}
 			int max = Math.max(strongs == null ? 0 : strongs.length, rmac == null ? 0 : rmac.length);
