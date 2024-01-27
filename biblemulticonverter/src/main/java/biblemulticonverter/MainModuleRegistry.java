@@ -13,6 +13,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 	public Collection<Module<ImportFormat>> getImportFormats() {
 		List<Module<ImportFormat>> result = new ArrayList<ModuleRegistry.Module<ImportFormat>>();
 		result.add(new Module<ImportFormat>("StrongDictionary", "Importer for creating a Strong's dictionary from public domain resources.", StrongDictionary.HELP_TEXT, StrongDictionary.class));
+		result.add(new Module<ImportFormat>("MorphGNT", "Importer for MorphGNT", MorphGNT.HELP_TEXT, MorphGNT.class));
 		return result;
 	}
 
