@@ -537,7 +537,7 @@ public class LogosHTML implements ExportFormat {
 		return result.toString();
 	}
 
-	private static String convertMorphology(String rmac) {
+	protected static String convertMorphology(String rmac) {
 		Matcher m = Utils.compilePattern("([NARCDTKIXQFSP])(-([123]?)([NVGDA][SP][MFN]?))?(-(S|C|ABB|I|N|K|ATT))?").matcher(rmac);
 		if (m.matches()) {
 			char type = m.group(1).charAt(0);
@@ -557,11 +557,17 @@ public class LogosHTML implements ExportFormat {
 			}
 			switch (type) {
 			case 'N': // @N[ADGNV][DPS][FMN][COPS]
-				return "N" + flags.substring(0, 3) + cops;
+				if (flags.equals("") && cops != null)
+					flags = "XXX";
+				else if (flags.length() == 2 && cops != null)
+					flags += "X";
+				return "N" + flags + cops;
 			case 'A': // @J[ADGNV][DPS][FMN][COPS]
 				if (flags.equals("") && cops != null)
 					flags = "XXX";
-				return "J" + flags.substring(0, 3) + cops;
+				else if (flags.length() == 2 && cops != null)
+					flags += "X";
+				return "J" + flags + cops;
 			case 'T': // @D[ADGNV][DPS][FMN]
 				return "D" + flags;
 			case 'Q': // correlative or interrogative -> RK or RI
@@ -597,6 +603,8 @@ public class LogosHTML implements ExportFormat {
 			}
 			return "V" + tense + voice + "" + flags.charAt(1) + opt;
 		} else {
+			if (rmac.endsWith("-ATT") || rmac.endsWith("-ABB"))
+				rmac = rmac.substring(0, rmac.length()-4);
 			switch (rmac) {
 			case "ADV": // @B[CEIKNPSX]
 				return "B";
@@ -635,6 +643,9 @@ public class LogosHTML implements ExportFormat {
 			case "N-OI":
 				return "XO";
 			}
+			if (rmac.matches(".*-[SINCK]"))
+				// deprecate these forms?
+				return convertMorphology(rmac.substring(0, rmac.length()-2));
 		}
 
 		throw new RuntimeException(rmac);

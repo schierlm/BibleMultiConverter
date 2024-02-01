@@ -75,8 +75,8 @@ function renderRMAC(rmac) {
 		ATT : "Attic Greek form"
 	};
 	if (rmac.substring(0, 2) == "V-") {
-		var parts = rmac.match("V-([PIFARLX]|2[FARL])([AMPEDON][ISOMNP])(-([123][SP]|[NGDAV][SPD][MFN]))?(-ATT)?");
-		if (parts.length == 6) {
+		var parts = rmac.match("V-([PIFARLX]|2[FARL])([AMPEDONQX][ISOMNP])(-([123][SP]|[NGDAV][SPD][MFN]))?(-ATT)?");
+		if (parts != null && parts.length == 6) {
 			var extra = "";
 			if (parts[4]) {
 				if (parts[4].length == 2) {
@@ -103,7 +103,7 @@ function renderRMAC(rmac) {
 				}
 			}
 			if (parts[5]) {
-				extra += ", " + suffixes[parts[5]];
+				extra += ", " + suffixes[parts[5].substring(1)];
 			}
 			return "Verb (Tense=" + ({
 				P : "Present",
@@ -112,6 +112,7 @@ function renderRMAC(rmac) {
 				A : "Aorist",
 				R : "Perfect",
 				L : "Pluperfect",
+				X : "No tense stated",
 				"2F" : "Second Future",
 				"2A" : "Second Aorist",
 				"2R" : "Second peRfect",
@@ -123,7 +124,9 @@ function renderRMAC(rmac) {
 				E : "Either middle or passive",
 				D : "Middle deponent",
 				O : "Passive deponent",
-				N : "Middle or passive deponent"
+				N : "Middle or passive deponent",
+				Q : "Impersonal active",
+				X : "No voice stated",
 			})[parts[2].substring(0, 1)] + ", Mood=" + ({
 				I : "Indicative",
 				S : "Subjunctive",
