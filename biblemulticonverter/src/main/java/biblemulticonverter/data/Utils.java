@@ -17,9 +17,9 @@ public class Utils {
 	public static final String VERSE_REGEX = "[1-9][0-9,/.-]*[a-zG]?";
 
 	private static final String RMAC_UNDECLINED = "ADV|CONJ|COND|PRT|PREP|INJ|ARAM|HEB|N-PRI|A-NUI|N-LI|N-OI";
-	private static final String RMAC_DECLINED = "[NARCDTKIXQFSP](-[123]?[NVGDA][SP][MFN]?)?";
-	private static final String RMAC_VERBS = "V-([PIFARLX]|2[FARL])[AMPEDONQX][ISOMNP](-([123][SP]|[NGDAV][SPD][MFN]))?";
-	public static final String RMAC_REGEX = "(" + RMAC_UNDECLINED + "|" + RMAC_DECLINED + ")(-(S|C|ABB|I|N|K|ATT))?|" + RMAC_VERBS + "(-ATT)?";
+	private static final String RMAC_DECLINED = "[NARCDTKIXQFSP](-[123]?[NVGDA][SP][MFN]?)?|[NA]-[NVGDA][SP][MFN]-([PLT]|[PL]G|LI)|A-[NVGDA][SP][MFN]-NUI|S-[123][SP][NVGDA][SP][MFN]";
+	private static final String RMAC_VERBS = "V-([PIFARLX]|2[PFARL])[AMPEDONQX][ISOMNP](-([123][SP]|[NGDAV][SPD][MFN]))?";
+	public static final String RMAC_REGEX = "(" + RMAC_UNDECLINED + "|" + RMAC_DECLINED + ")(-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?|" + RMAC_VERBS + "(-ATT|-ARAM|-HEB)?";
 
 	public static int validateNumber(String name, int value, int min, int max) {
 		if (value < min || value > max)

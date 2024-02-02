@@ -23,7 +23,7 @@ public class RMACRoundtripHTMLTestGenerator {
 			bw.write("window.onload = function() {\n");
 			bw.write("\tlet errors = \"\", log = \"\", seen = {};\n\tfor (let rmac of choices) { \n\t\tlet x;\n");
 			bw.write("\t\ttry {\n\t\t\tx = renderRMAC(rmac);\n\t\t} catch (e) {\n\t\t\terrors +=\"<br>\"+rmac+\" results in error: \"+e;\n");
-			bw.write("\t\t\terrcount++;\n\t\t\tcontinue;\n\t\t}\n\t\tif (seen[x]) {\n\t\t\terrors += \"<br>Both \"+seen[x]+\" and \"+rmac+\" render to the same value: \"+x;\n");
+			bw.write("\t\t\tcontinue;\n\t\t}\n\t\tif (seen[x]) {\n\t\t\terrors += \"<br>Both \"+seen[x]+\" and \"+rmac+\" render to the same value: \"+x;\n");
 			bw.write("\t\t} else if (x == rmac || x.indexOf(\"undefined\") != -1) {\n\t\t\terrors += \"<br>\"+rmac + \" renders as \" + x;\n\t\t} else {\n");
 			bw.write("\t\t\tlog +=\"<br>\"+rmac+\" renders as \" + x;\n\t\t}\n\t\tseen[x] = rmac;\n\t}\n");
 			bw.write("\tdocument.getElementById(\"errors\").innerHTML = errors; document.getElementById(\"log\").innerHTML = log;\n};\n");

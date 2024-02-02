@@ -538,7 +538,8 @@ public class LogosHTML implements ExportFormat {
 	}
 
 	protected static String convertMorphology(String rmac) {
-		Matcher m = Utils.compilePattern("([NARCDTKIXQFSP])(-([123]?)([NVGDA][SP][MFN]?))?(-(S|C|ABB|I|N|K|ATT))?").matcher(rmac);
+		rmac = rmac.replaceFirst("^(S-[123])[SP]([NVGDA][SP][MFN](-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?)$", "$1$2");
+		Matcher m = Utils.compilePattern("([NARCDTKIXQFSP])(-([123]?)([NVGDA][SP][MFN]?))?(?:-(?:[PLT]|[PL]G|LI|NUI))?(-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?").matcher(rmac);
 		if (m.matches()) {
 			char type = m.group(1).charAt(0);
 			String person = m.group(3);
@@ -584,7 +585,7 @@ public class LogosHTML implements ExportFormat {
 				return "R" + type + person + flags;
 			}
 		} else if (rmac.startsWith("V-")) { // @V[AFILPRT][AMPU][IMNOPS][123][DPS][ADGNV][FMN]
-			Matcher mm = Utils.compilePattern("V-2?([PIFARLX])([AMPEDONQX][ISOMNP])(-([123][SP])|-([NGDAV][SPD][MFN]))?(-ATT)?").matcher(rmac);
+			Matcher mm = Utils.compilePattern("V-2?([PIFARLX])([AMPEDONQX][ISOMNP])(-([123][SP])|-([NGDAV][SPD][MFN]))?(-ATT|-ARAM|-HEB)?").matcher(rmac);
 			if (!mm.matches())
 				throw new RuntimeException(rmac);
 			String tense = mm.group(1);
@@ -603,8 +604,10 @@ public class LogosHTML implements ExportFormat {
 			}
 			return "V" + tense + voice + "" + flags.charAt(1) + opt;
 		} else {
-			if (rmac.endsWith("-ATT") || rmac.endsWith("-ABB"))
+			if (rmac.endsWith("-ATT") || rmac.endsWith("-ABB") || rmac.endsWith("-HEB"))
 				rmac = rmac.substring(0, rmac.length()-4);
+			else if (rmac.endsWith("-ARAM"))
+				rmac = rmac.substring(0, rmac.length()-5);
 			switch (rmac) {
 			case "ADV": // @B[CEIKNPSX]
 				return "B";

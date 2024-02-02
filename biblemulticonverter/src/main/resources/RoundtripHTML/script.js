@@ -72,10 +72,12 @@ function renderRMAC(rmac) {
 		I : "Interrogative",
 		N : "Negative",
 		K : "Kai",
+		ARAM : "Aramaic",
+		HEB : "Hebrew",
 		ATT : "Attic Greek form"
 	};
 	if (rmac.substring(0, 2) == "V-") {
-		var parts = rmac.match("V-([PIFARLX]|2[FARL])([AMPEDONQX][ISOMNP])(-([123][SP]|[NGDAV][SPD][MFN]))?(-ATT)?");
+		var parts = rmac.match("V-([PIFARLX]|2[PFARL])([AMPEDONQX][ISOMNP])(-([123][SP]|[NGDAV][SPD][MFN]))?(-ATT|-ARAM|-HEB)?");
 		if (parts != null && parts.length == 6) {
 			var extra = "";
 			if (parts[4]) {
@@ -113,6 +115,7 @@ function renderRMAC(rmac) {
 				R : "Perfect",
 				L : "Pluperfect",
 				X : "No tense stated",
+				"2P" : "Second Present",
 				"2F" : "Second Future",
 				"2A" : "Second Aorist",
 				"2R" : "Second peRfect",
@@ -136,37 +139,55 @@ function renderRMAC(rmac) {
 				P : "Participle"
 			})[parts[2].substring(1, 2)] + extra + ")";
 		}
-	} else if (rmac.search("^[NARCDTKIXQFSP](-[123]?[NVGDA][SP][MFN]?)?(-(S|C|ABB|I|N|K|ATT))?$") != -1) {
-		var parts = rmac.match("^([NARCDTKIXQFSP])(-([123]?)([NVGDA][SP][MFN]?))?(-(S|C|ABB|I|N|K|ATT))?$");
-		if (parts.length == 7) {
+	} else if (rmac.search("^[NARCDTKIXQFSP](-[123]?[SP]?[NVGDA][SP][MFN]?)?(-([PLT]|[PL]G|LI|NUI))?(-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?$") != -1) {
+		var parts = rmac.match("^([NARCDTKIXQFSP])(-([123]?)([SP]?)([NVGDA][SP][MFN]?))?(-([PLT]|[PL]G|LI|NUI))?(-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?$");
+		if (parts.length == 10) {
 			var extra = "";
-			if (parts[4] || parts[6]) {
+			if (parts[5] || parts[7] || parts[9]) {
 				extra += " (";
 				if (parts[3]) {
 					extra += "Person=" + parts[3] + ", ";
 				}
 				if (parts[4]) {
+					extra += "Number=" + ({
+						S : "Singular",
+						D : "Dual",
+						P : "Plural"
+					})[parts[4]] + ", ";
+				}
+				if (parts[5]) {
 					extra += "Case=" + ({
 						N : "Nominative",
 						G : "Genitive",
 						D : "Dative",
 						A : "Accusative",
 						V : "Vocative"
-					})[parts[4].substring(0, 1)] + ", Number=" + ({
+					})[parts[5].substring(0, 1)] + ", Number=" + ({
 						S : "Singular",
 						D : "Dual",
 						P : "Plural"
-					})[parts[4].substring(1, 2)];
-					if (parts[4].length == 3) {
+					})[parts[5].substring(1, 2)];
+					if (parts[5].length == 3) {
 						extra += ", Gender=" + ({
 							M : "Masculine",
 							F : "Feminine",
 							N : "Neuter"
-						})[parts[4].substring(2, 3)];
+						})[parts[5].substring(2, 3)];
 					}
 				}
-				if (parts[6]) {
-					extra += (parts[4] ? ", " : "") + suffixes[parts[6]];
+				if (parts[7]) {
+					extra += (parts[5] ? ", " : "") + ({
+							P : "Person",
+							L : "Location",
+							T : "Title",
+							PG : "Person Gentilic",
+							LG : "Location Gentilic",
+							LI : "Letter Indeclinable",
+							NUI : "Numerical Indiclinable",
+						})[parts[7]];
+				}
+				if (parts[9]) {
+					extra += (parts[5] || parts[7] ? ", " : "") + suffixes[parts[9]];
 				}
 				extra += ")";
 			}
@@ -186,8 +207,8 @@ function renderRMAC(rmac) {
 				P : "Personal pronoun"
 			})[parts[1]] + extra;
 		}
-	} else if (rmac.search("^(ADV|CONJ|COND|PRT|PREP|INJ|ARAM|HEB|N-PRI|A-NUI|N-LI|N-OI)(-(S|C|ABB|I|N|K|ATT))?$") != -1) {
-		var parts = rmac.match("^(ADV|CONJ|COND|PRT|PREP|INJ|ARAM|HEB|N-PRI|A-NUI|N-LI|N-OI)(-(S|C|ABB|I|N|K|ATT))?$");
+	} else if (rmac.search("^(ADV|CONJ|COND|PRT|PREP|INJ|ARAM|HEB|N-PRI|A-NUI|N-LI|N-OI)(-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?$") != -1) {
+		var parts = rmac.match("^(ADV|CONJ|COND|PRT|PREP|INJ|ARAM|HEB|N-PRI|A-NUI|N-LI|N-OI)(-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?$");
 		if (parts.length == 4) {
 			return ({
 				ADV : "Adverb or adverb and particle combined",

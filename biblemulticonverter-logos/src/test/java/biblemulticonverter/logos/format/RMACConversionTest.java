@@ -20,16 +20,21 @@ public class RMACConversionTest {
 			"ADV", "CONJ", "COND", "PRT", "PREP", "INJ",
 			"ARAM", "HEB", "N-PRI", "A-NUI", "N-LI", "N-OI",
 			"V-[PIFARLX][AMPEDONQX][ISOMNP]",
-			"V-2[FARL][AMPEDONQX][ISOMNP]",
+			"V-2[PFARL][AMPEDONQX][ISOMNP]",
 			"V-[PIFARLX][AMPEDONQX][ISOMNP]-[NGDAV][SPD][MFN]",
-			"V-2[FARL][AMPEDONQX][ISOMNP]-[NGDAV][SPD][MFN]",
+			"V-2[PFARL][AMPEDONQX][ISOMNP]-[NGDAV][SPD][MFN]",
 			"V-[PIFARLX][AMPEDONQX][ISOMNP]-[123][SP]",
-			"V-2[FARL][AMPEDONQX][ISOMNP]-[123][SP]",
+			"V-2[PFARL][AMPEDONQX][ISOMNP]-[123][SP]",
+			"A-[NVGDA][SP][MFN]-NUI",
+			"S-[123][SP][NVGDA][SP][MFN]",
 			"[NARCDTKIXQFSP]",
 			"[NARCDTKIXQFSP]-[123][NVGDA][SP][MFN]",
 			"[NARCDTKIXQFSP]-[NVGDA][SP][MFN]",
 			"[NARCDTKIXQFSP]-[123][NVGDA][SP]",
 			"[NARCDTKIXQFSP]-[NVGDA][SP]",
+			"[NA]-[NVGDA][SP][MFN]-[PLT]",
+			"[NA]-[NVGDA][SP][MFN]-[PL]G",
+			"[NA]-[NVGDA][SP][MFN]-LI",
 	};
 
 	protected static List<String> computePatterns() {
@@ -37,6 +42,8 @@ public class RMACConversionTest {
 		for (String prefix : PATTERN_PREFIXES) {
 			result.add(prefix);
 			result.add(prefix + "-ATT");
+			result.add(prefix + "-ARAM");
+			result.add(prefix + "-HEB");
 			if (!prefix.startsWith("V")) {
 				result.add(prefix + "-ABB");
 				result.add(prefix + "-S");
