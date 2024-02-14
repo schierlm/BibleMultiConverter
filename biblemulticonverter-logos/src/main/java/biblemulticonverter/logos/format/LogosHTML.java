@@ -539,35 +539,53 @@ public class LogosHTML implements ExportFormat {
 
 	protected static String convertMorphology(String rmac) {
 		rmac = rmac.replaceFirst("^(S-[123])[SP]([NVGDA][SP][MFN](-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?)$", "$1$2");
-		Matcher m = Utils.compilePattern("([NARCDTKIXQFSP])(-([123]?)([NVGDA][SP][MFN]?))?(?:-(?:[PLT]|[PL]G|LI|NUI))?(-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?").matcher(rmac);
+		Matcher m = Utils.compilePattern("([NARCDTKIXQFSP])(-([123]?)([NVGDA][SP][MFN]?))?(?:-([PLT]|[PL]G|LI|NUI))?(-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?").matcher(rmac);
 		if (m.matches()) {
+			if (rmac.startsWith("N-LI"))
+				return "XL";
+			if (rmac.startsWith("A-NUI"))
+				return "XN";
 			char type = m.group(1).charAt(0);
 			String person = m.group(3);
 			if (person == null)
-				person = "X";
+				person = "";
 			String flags = m.group(4);
 			if (flags == null) {
 				flags = "";
+			} else if (person.isEmpty()) {
+				person = "?";
 			}
 			String suffix = m.group(6);
 			String cops;
-			if (suffix != null && (suffix.equals("C") || suffix.equals("S"))) {
+			if (suffix == null || suffix.length() > 1) {
+				cops = "";
+			} else if (suffix.equals("C") || suffix.equals("S")) {
 				cops = suffix;
 			} else {
 				cops = "O";
 			}
+			String extra = m.group(5);
+			if (extra != null && !extra.equals("T")) {
+				if (extra.equals("LI")) {
+					cops += ":XL";
+				} else if (extra.equals("NUI")) {
+					cops +=":XN";
+				} else {
+					cops +=":XP";
+				}
+			}
 			switch (type) {
 			case 'N': // @N[ADGNV][DPS][FMN][COPS]
-				if (flags.equals("") && cops != null)
-					flags = "XXX";
-				else if (flags.length() == 2 && cops != null)
-					flags += "X";
+				if (flags.equals("") && !cops.isEmpty())
+					flags = "???";
+				else if (flags.length() == 2 && !cops.isEmpty())
+					flags += "?";
 				return "N" + flags + cops;
 			case 'A': // @J[ADGNV][DPS][FMN][COPS]
-				if (flags.equals("") && cops != null)
-					flags = "XXX";
-				else if (flags.length() == 2 && cops != null)
-					flags += "X";
+				if (flags.equals("") && !cops.isEmpty())
+					flags = "???";
+				else if (flags.length() == 2 && !cops.isEmpty())
+					flags += "?";
 				return "J" + flags + cops;
 			case 'T': // @D[ADGNV][DPS][FMN]
 				return "D" + flags;
@@ -589,6 +607,7 @@ public class LogosHTML implements ExportFormat {
 			if (!mm.matches())
 				throw new RuntimeException(rmac);
 			String tense = mm.group(1);
+			if (tense.equals("X")) tense = "?";
 			String flags = mm.group(2);
 			String optflags1 = mm.group(4);
 			String optflags2 = mm.group(5);
@@ -596,11 +615,11 @@ public class LogosHTML implements ExportFormat {
 			if (optflags1 != null) {
 				opt = optflags1;
 			} else if (optflags2 != null) {
-				opt = "XX" + optflags2.charAt(1) + "" + optflags2.charAt(0) + "" + optflags2.charAt(2);
+				opt = "?" + optflags2.charAt(1) + "" + optflags2.charAt(0) + "" + optflags2.charAt(2);
 			}
 			char voice = flags.charAt(0);
 			if ("EDONQX".contains("" + voice)) {
-				voice = "UMPUAU".charAt("EDONQX".indexOf(voice));
+				voice = "UMPUA?".charAt("EDONQX".indexOf(voice));
 			}
 			return "V" + tense + voice + "" + flags.charAt(1) + opt;
 		} else {
@@ -639,15 +658,10 @@ public class LogosHTML implements ExportFormat {
 				return "XF";
 			case "N-PRI":
 				return "XP";
-			case "A-NUI":
-				return "XN";
-			case "N-LI":
-				return "XL";
 			case "N-OI":
 				return "XO";
 			}
 			if (rmac.matches(".*-[SINCK]"))
-				// deprecate these forms?
 				return convertMorphology(rmac.substring(0, rmac.length()-2));
 		}
 
@@ -883,8 +897,11 @@ public class LogosHTML implements ExportFormat {
 						links.add(type + strongs[i]);
 					}
 				}
-				if (rmac != null && i < rmac.length)
-					links.add("LogosMorphGr:" + convertMorphology(rmac[i]));
+				if (rmac != null && i < rmac.length) {
+					for(String morph : convertMorphology(rmac[i]).split(":")) {
+						links.add("LogosMorphGr:" + morph);
+					}
+				}
 			}
 			if (links.size() == 0) {
 				pushSuffix("");

@@ -37,6 +37,20 @@ public class RMACConversionTest {
 			"[NA]-[NVGDA][SP][MFN]-LI",
 	};
 
+	private static final String[] LOGOS_PATTERNS = {
+			"J[ADGNV?][DPS?][FMN?][COPS?]", // Adjective
+			"B[CEIKNPSX?]", // Adverb
+			"D[ADGNV?][DPS?][FMN?]", // Article
+			"I", // Interjection
+			"C[[ACADALAMANAPARATAZLALCLDLILKLMLNLTLXSCSE??]]", // Conjunction
+			"T[CEIKNPSX?]", // Particle
+			"P", // Preposition
+			"R[CDFIKNPRSX][123?][ADGNV?][DPS?][FMN?][AP?]", // Pronoun
+			"N[ADGNV?][DPS?][FMN?][COPS?]", // Noun
+			"X[FLNOP]", // Indeclinable
+			"V[AFILPRT?][AMPU?][IMNOPS][123?][DPS?][ADGNV?][FMN?]", // Verb
+	};
+
 	protected static List<String> computePatterns() {
 		List<String> result = new ArrayList<>();
 		for (String prefix : PATTERN_PREFIXES) {
@@ -61,6 +75,13 @@ public class RMACConversionTest {
 		List<String> result = new ArrayList<>();
 		if (pos == -1) {
 			result.add(pattern);
+		} else if (pattern.startsWith("[[", pos)) {
+			int endPos = pattern.indexOf("]]", pos);
+			for (String suffix : expandPattern(pattern.substring(endPos + 2))) {
+				for (int i = pos + 2; i < endPos; i += 2) {
+					result.add(pattern.substring(0, pos) + pattern.substring(i, i + 2) + suffix);
+				}
+			}
 		} else {
 			int endPos = pattern.indexOf(']', pos);
 			for(String suffix : expandPattern(pattern.substring(endPos + 1))) {
@@ -92,10 +113,39 @@ public class RMACConversionTest {
 	 */
 	@Test
 	public void testLogosConversion() {
-		for (String pattern : computePatterns()) {
-			for (String expansion : expandPattern(pattern)) {
-				LogosHTML.convertMorphology(expansion);
+		Set<String> logosExpansions = new HashSet<>(), unusedExpansions = new HashSet<>();
+		for (String logosPattern : LOGOS_PATTERNS) {
+			for (String expanded : expandPattern(logosPattern)) {
+				if (!logosPattern.contains("?")) {
+					unusedExpansions.add(expanded);
+				} else {
+					expanded = expanded.replaceAll("\\?+$", "");
+				}
+				logosExpansions.add(expanded);
 			}
 		}
+		for (String pattern : computePatterns()) {
+			for (String expansion : expandPattern(pattern)) {
+				String logosExpansionList = LogosHTML.convertMorphology(expansion);
+				for(String logosExpansion : logosExpansionList.split(":")) {
+					Assert.assertTrue("Generated invalid Logos expansion: " + logosExpansion + " (" + (logosExpansion == logosExpansionList ? "" : "Part of " + logosExpansionList + ", ") + "from: " + expansion + ")", logosExpansions.contains(logosExpansion));
+					unusedExpansions.remove(logosExpansion);
+				}
+			}
+		}
+		Assert.assertTrue("Never generated logos expansions: "+unusedExpansions, unusedExpansions.isEmpty());
 	}
+
+
+	private void testLogosWord(String rmac, String logos) {
+		Assert.assertTrue("Invalid RMAC: "+rmac, rmac.matches(Utils.RMAC_REGEX));
+		Assert.assertEquals(logos, LogosHTML.convertMorphology(rmac));
+	}
+
+	@Test
+	public void testLogosRegressions() {
+		testLogosWord("N-GSM-P", "NGSM:XP");
+		testLogosWord("V-XXM-2P", "V??M2P");
+	}
+
 }
