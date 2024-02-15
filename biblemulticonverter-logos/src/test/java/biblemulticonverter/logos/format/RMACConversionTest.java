@@ -38,17 +38,17 @@ public class RMACConversionTest {
 	};
 
 	private static final String[] LOGOS_PATTERNS = {
-			"J[ADGNV?][DPS?][FMN?][COPS?]", // Adjective
-			"B[CEIKNPSX?]", // Adverb
-			"D[ADGNV?][DPS?][FMN?]", // Article
+			"J[ADGNV?][PS?][FMN?][COS?]", // Adjective "J[ADGNV?][DPS?][FMN?][COPS?]"
+			"B[CIKNS?]", // Adverb "B[CEIKNPSX?]"
+			"D[ADGNV?][PS?][FMN?]", // Article "D[ADGNV?][DPS?][FMN?]"
 			"I", // Interjection
-			"C[[ACADALAMANAPARATAZLALCLDLILKLMLNLTLXSCSE??]]", // Conjunction
-			"T[CEIKNPSX?]", // Particle
+			"C", // Conjunction C[[ACADALAMANAPARATAZLALCLDLILKLMLNLTLXSCSE??]]
+			"T[CIN?]", // Particle "T[CEIKNPSX?]"
 			"P", // Preposition
-			"R[CDFIKNPRSX][123?][ADGNV?][DPS?][FMN?][AP?]", // Pronoun
-			"N[ADGNV?][DPS?][FMN?][COPS?]", // Noun
+			"R[CDFIKPRSX?][123?][ADGNV?][PS?][FMN?]", // Pronoun "R[CDFIKNPRSX?][123?][ADGNV?][DPS?][FMN?][AP?]"
+			"N[ADGNV?][PS?][FMN?][COS?]", // Noun "N[ADGNV?][DPS?][FMN?][COPS?]"
 			"X[FLNOP]", // Indeclinable
-			"V[AFILPRT?][AMPU?][IMNOPS][123?][DPS?][ADGNV?][FMN?]", // Verb
+			"V[AFILPR?][AMPU?][IMNOPS][123][PS]", "V[AFILPRT?][AMPU?][IMNOPS]?[DPS?][ADGNV?][FMN?]", // Verb "V[AFILPRT?][AMPU?][IMNOPS][123?][DPS?][ADGNV?][FMN?]"
 	};
 
 	protected static List<String> computePatterns() {
@@ -116,7 +116,7 @@ public class RMACConversionTest {
 		Set<String> logosExpansions = new HashSet<>(), unusedExpansions = new HashSet<>();
 		for (String logosPattern : LOGOS_PATTERNS) {
 			for (String expanded : expandPattern(logosPattern)) {
-				if (!logosPattern.contains("?")) {
+				if (!expanded.contains("?")) {
 					unusedExpansions.add(expanded);
 				} else {
 					expanded = expanded.replaceAll("\\?+$", "");
@@ -146,6 +146,8 @@ public class RMACConversionTest {
 	public void testLogosRegressions() {
 		testLogosWord("N-GSM-P", "NGSM:XP");
 		testLogosWord("V-XXM-2P", "V??M2P");
+		testLogosWord("Q", "R");
+		testLogosWord("N-NPN-C", "NNPNC");
 	}
 
 }

@@ -539,7 +539,7 @@ public class LogosHTML implements ExportFormat {
 
 	protected static String convertMorphology(String rmac) {
 		rmac = rmac.replaceFirst("^(S-[123])[SP]([NVGDA][SP][MFN](-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?)$", "$1$2");
-		Matcher m = Utils.compilePattern("([NARCDTKIXQFSP])(-([123]?)([NVGDA][SP][MFN]?))?(?:-([PLT]|[PL]G|LI|NUI))?(-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?").matcher(rmac);
+		Matcher m = Utils.compilePattern("([NARCDTKIXQFSP])(-([123]?)([NVGDA][SP][MFN]?))?(?:-([PLT]|[PL]G|LI|NUI))?(?:-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?").matcher(rmac);
 		if (m.matches()) {
 			if (rmac.startsWith("N-LI"))
 				return "XL";
@@ -590,7 +590,7 @@ public class LogosHTML implements ExportFormat {
 			case 'T': // @D[ADGNV][DPS][FMN]
 				return "D" + flags;
 			case 'Q': // correlative or interrogative -> RK or RI
-				return "RX" + person + flags;
+				return person.isEmpty() ? "R" : "R?" + person + flags;
 			case 'R': // @R[CDFIKNPRSX][123][ADGNV][DPS][FMN][AP]
 			case 'X':
 			case 'F':
