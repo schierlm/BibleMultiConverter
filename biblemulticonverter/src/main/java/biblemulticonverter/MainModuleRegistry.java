@@ -71,6 +71,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<RoundtripFormat>("BibleWorksRTF", "RTF import and export format for BibleWorks", BibleWorksRTF.HELP_TEXT, BibleWorksRTF.class));
 		result.add(new Module<RoundtripFormat>("RoundtripTaggedText", "A text-format that consistently uses numbered tags to make automated editing easy.", RoundtripTaggedText.HELP_TEXT, RoundtripTaggedText.class));
 		result.add(new Module<RoundtripFormat>("SoftProjector", "Bible format used by SoftProjector", SoftProjector.HELP_TEXT, SoftProjector.class));
+		result.add(new Module<RoundtripFormat>("BebliaXML", "Beblia XML format.", BebliaXML.HELP_TEXT, BebliaXML.class));
 		return result;
 	}
 

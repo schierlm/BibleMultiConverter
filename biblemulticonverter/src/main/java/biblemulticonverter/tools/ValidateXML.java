@@ -48,6 +48,8 @@ public class ValidateXML implements Tool {
 			schemaResourceName = "/usfx.xsd";
 		} else if (args[0].equals("USX")) {
 			schemaResourceName = "/usx.xsd";
+		} else if (args[0].equals("Beblia")) {
+			schemaResourceName = "/beblia.xsd";
 		} else {
 			schemaResourceName = null;
 		}

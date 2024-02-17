@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema version="1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+
+	<xs:simpleType name="positiveIntType">
+		<xs:restriction base="xs:int">
+			<xs:minInclusive value="1"></xs:minInclusive>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="TestamentType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="Old" />
+			<xs:enumeration value="New" />
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:complexType name="BookType">
+		<xs:sequence>
+			<xs:element name="chapter" minOccurs="1" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="verse" minOccurs="0" maxOccurs="unbounded" >
+							<xs:complexType>
+								<xs:simpleContent>
+									<xs:extension base="xs:string">
+										<xs:attribute name="number" type="positiveIntType" use="required" />
+									</xs:extension>
+								</xs:simpleContent>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+					<xs:attribute name="number" type="positiveIntType" use="required" />
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="number" type="positiveIntType" use="required" />
+	</xs:complexType>
+
+	<xs:complexType name="BibleType">
+		<xs:sequence>
+			<xs:element name="testament" minOccurs="0" maxOccurs="2">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="book" minOccurs="1" maxOccurs="unbounded" type="BookType" />
+					</xs:sequence>
+					<xs:attribute name="name" type="TestamentType" use="optional" />
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="book" minOccurs="0" maxOccurs="unbounded" type="BookType" />
+		</xs:sequence>
+		<xs:attribute name="translation" type="xs:string" use="optional" />
+		<xs:attribute name="name" type="xs:string" use="optional" />
+		<xs:attribute name="id" type="xs:string" use="optional" />
+		<xs:attribute name="bible" type="xs:string" use="optional" />
+		<xs:attribute name="language" type="xs:string" use="optional" />
+		<xs:attribute name="status" type="xs:string" use="optional" />
+		<xs:attribute name="info" type="xs:string" use="optional" />
+		<xs:attribute name="version" type="xs:string" use="optional" />
+		<xs:attribute name="link" type="xs:string" use="optional" />
+		<xs:attribute name="site" type="xs:string" use="optional" />
+		<xs:attribute name="Copyright" type="xs:string" use="optional" />
+	</xs:complexType>
+
+	<xs:element name="bible" type="BibleType" />
+</xs:schema>

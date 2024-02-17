@@ -89,6 +89,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[SwordSearcher](https://www.swordsearcher.com/) ([Forge](https://www.swordsearcher.com/forge/))**: export only
 - **[MySword](https://www.mysword.info/)**: import and export
 - **[Obsidian](https://obsidian.md/)**: export only
+- **[Beblia XML](https://beblia.com/)**: import and export
 
 In combination with third party tools, other export formats are available:
 
