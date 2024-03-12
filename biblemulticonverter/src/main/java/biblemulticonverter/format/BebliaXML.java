@@ -86,9 +86,9 @@ public class BebliaXML implements RoundtripFormat {
 			String value = infoField.getter.apply(doc);
 			if (value != null && !value.trim().isEmpty()) {
 				if (infoField.useForTitle && name == null) {
-					name = value.trim();
+					name = value.replaceAll("[\r\n\t ]+", " ").trim();
 				}
-				metadata.setValue("beblia@" + infoField.name, value);
+				metadata.setValue("beblia@" + infoField.name, value.replaceAll("[\r\n\t ]+", " ").trim());
 			}
 		}
 		metadata.finished();
@@ -135,7 +135,7 @@ public class BebliaXML implements RoundtripFormat {
 				}
 				for (BookType.Chapter.Verse vv : cc.getVerse()) {
 					Verse v = new Verse(prefix + vv.getNumber());
-					v.getAppendVisitor().visitText(vv.getValue().trim());
+					v.getAppendVisitor().visitText(vv.getValue().replaceAll("[\r\n\t ]+", " ").trim());
 					v.finished();
 					chapter.getVerses().add(v);
 				}
@@ -222,7 +222,7 @@ public class BebliaXML implements RoundtripFormat {
 						v.accept(new BebliaXMLVisitor(sb));
 						firstVerse = false;
 					}
-					vers.setValue(sb.toString().trim());
+					vers.setValue(sb.toString().replaceAll("[\r\n\t ]+", " ").trim());
 					cc.getVerse().add(vers);
 				}
 			}
