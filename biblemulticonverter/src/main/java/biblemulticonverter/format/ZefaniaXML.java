@@ -571,8 +571,8 @@ public class ZefaniaXML implements RoundtripFormat {
 							if (rmacValue.endsWith("-"))
 								rmacValue = rmacValue.substring(0, rmacValue.length() - 1);
 							rmacList.set(i, rmacValue);
-							if (!rmacValue.matches(Utils.RMAC_REGEX)) {
-								System.out.println("WARNING: Skipping invalid RMAC: " + rmacValue);
+							if (!rmacValue.matches(Utils.MORPH_REGEX)) {
+								System.out.println("WARNING: Skipping invalid RMAC/WIVU: " + rmacValue);
 								rmacList.remove(i);
 								i--;
 							}

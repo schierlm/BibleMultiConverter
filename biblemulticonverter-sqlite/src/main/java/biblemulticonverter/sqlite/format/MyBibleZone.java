@@ -485,8 +485,8 @@ public class MyBibleZone implements RoundtripFormat {
 					pos = text.indexOf("</m>");
 					rmac = cleanText(text.substring(3, pos));
 					text = text.substring(pos + 4);
-					if (!Utils.compilePattern(Utils.RMAC_REGEX).matcher(rmac).matches()) {
-						System.out.println("WARNING: Skipping malformed RMAC morphology code: " + rmac);
+					if (!Utils.compilePattern(Utils.MORPH_REGEX).matcher(rmac).matches()) {
+						System.out.println("WARNING: Skipping malformed RMAC/WIVU morphology code: " + rmac);
 						rmac = null;
 					}
 				}

@@ -21,6 +21,11 @@ public class Utils {
 	private static final String RMAC_VERBS = "V-([PIFARLX]|2[PFARL])[AMPEDONQX][ISOMNP](-([123][SP]|[NGDAV][SPD][MFN]))?";
 	public static final String RMAC_REGEX = "(" + RMAC_UNDECLINED + "|" + RMAC_DECLINED + ")(-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?|" + RMAC_VERBS + "(-ATT|-ARAM|-HEB)?";
 
+	public static final String WIVU_PART_REGEX = "C|D|Np[mflt]?|(A[acgo]|N[cgtx])(|[bcfmx][dpsx][acd])|(P[dfipr]|S[dhnp])(|[123x][bcfm][dps])|R[d]?|T[acdeijmnor]?|V[DGHKLMNOPQabcefhijklmopqrstuvwyz][pqiwhjvrsauc](|[bfm]|[123][bcfm][dps]|[bcfm][dps][acd]|[ac])";
+	public static final String WIVU_REGEX = "[HA](" + WIVU_PART_REGEX + ")(//?(" + WIVU_PART_REGEX + "))*";
+
+	public static final String MORPH_REGEX = RMAC_REGEX + "|" + WIVU_REGEX;
+
 	public static int validateNumber(String name, int value, int min, int max) {
 		if (value < min || value > max)
 			throw new IllegalArgumentException(name + " is invalid: " + value);

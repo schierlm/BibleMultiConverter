@@ -103,6 +103,7 @@ public class RMACConversionTest {
 			Assert.assertTrue("Mismatch: " + pattern, pattern.matches("([A-Z1-3-]++|\\[[A-Z1-3]++\\])*+"));
 			for (String expansion : expandPattern(pattern)) {
 				Assert.assertTrue("Not accepted: " + expansion, expansion.matches(Utils.RMAC_REGEX));
+				Assert.assertFalse("RMAC may not be WIVU: " + expansion, expansion.matches(Utils.WIVU_REGEX));
 			}
 		}
 	}

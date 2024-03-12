@@ -80,12 +80,12 @@
 	<simpleType name="RMACType">
 		<annotation>
 			<documentation>
-				Format of a valid Robinson's Morphological Analysis Code. Some formats will use a different representation,
+				Format of a valid Robinson's Morphological Analysis Code or WIVU Hebrew Morphology Code. Some formats will use a different representation,
 				so to make conversion work without errors, the allowed pattern is restricted here.
 			</documentation>
 		</annotation>
 		<restriction base="string">
-			<pattern value="(ADV|CONJ|COND|PRT|PREP|INJ|ARAM|HEB|N-PRI|A-NUI|N-LI|N-OI|[NARCDTKIXQFSP](-[123]?[NVGDA][SP][MFN]?)?)(-(S|C|ABB|I|N|K|ATT))?|V-([PIFARLX]|2[FARL])[AMPEDON][ISOMNP](-([123][SP]|[NGDAV][SPD][MFN]))?(-ATT)?"></pattern>
+			<pattern value="(ADV|CONJ|COND|PRT|PREP|INJ|ARAM|HEB|N-PRI|A-NUI|N-LI|N-OI|[NARCDTKIXQFSP](-[123]?[NVGDA][SP][MFN]?)?|[NA]-[NVGDA][SP][MFN]-([PLT]|[PL]G|LI)|A-[NVGDA][SP][MFN]-NUI|S-[123][SP][NVGDA][SP][MFN])(-(S|C|ABB|I|N|K|ATT|ARAM|HEB))?|V-([PIFARLX]|2[PFARL])[AMPEDONQX][ISOMNP](-([123][SP]|[NGDAV][SPD][MFN]))?(-ATT|-ARAM|-HEB)?|[HA](C|D|Np[mflt]?|(A[acgo]|N[cgtx])(|[bcfmx][dpsx][acd])|(P[dfipr]|S[dhnp])(|[123x][bcfm][dps])|R[d]?|T[acdeijmnor]?|V[DGHKLMNOPQabcefhijklmopqrstuvwyz][pqiwhjvrsauc](|[bfm]|[123][bcfm][dps]|[bcfm][dps][acd]|[ac]))(//?(C|D|Np[mflt]?|(A[acgo]|N[cgtx])(|[bcfmx][dpsx][acd])|(P[dfipr]|S[dhnp])(|[123x][bcfm][dps])|R[d]?|T[acdeijmnor]?|V[DGHKLMNOPQabcefhijklmopqrstuvwyz][pqiwhjvrsauc](|[bfm]|[123][bcfm][dps]|[bcfm][dps][acd]|[ac])))*"></pattern>
 		</restriction>
 	</simpleType>
 

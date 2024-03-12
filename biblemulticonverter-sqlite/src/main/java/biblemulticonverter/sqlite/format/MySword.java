@@ -198,8 +198,8 @@ public class MySword implements RoundtripFormat {
 				String[] rmacs = mtags.isEmpty() ? null : new String[mtags.size()];
 				for (int i = 0; i < mtags.size(); i++) {
 					rmacs[i] = mtags.get(i);
-					if (!Utils.compilePattern(Utils.RMAC_REGEX).matcher(rmacs[i]).matches()) {
-						System.out.println("WARNING: Skipping malformed RMAC morphology code: " + rmacs[i]);
+					if (!Utils.compilePattern(Utils.MORPH_REGEX).matcher(rmacs[i]).matches()) {
+						System.out.println("WARNING: Skipping malformed RMAC/WIVU morphology code: " + rmacs[i]);
 						rmacs = null;
 						break;
 					}

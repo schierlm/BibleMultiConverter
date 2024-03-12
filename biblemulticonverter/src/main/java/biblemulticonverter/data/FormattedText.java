@@ -338,7 +338,7 @@ public class FormattedText {
 				if (rmac.length == 0)
 					throw new IllegalArgumentException("RMAC may not be empty");
 				for (String entry : rmac) {
-					Utils.validateString("rmac", entry, Utils.RMAC_REGEX);
+					Utils.validateString("morph", entry, Utils.MORPH_REGEX);
 				}
 			}
 			if (sourceIndices != null) {

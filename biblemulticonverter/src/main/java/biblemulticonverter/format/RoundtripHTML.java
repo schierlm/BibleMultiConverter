@@ -517,6 +517,8 @@ public class RoundtripHTML implements RoundtripFormat {
 								}
 							} else if (part.startsWith("gr-")) {
 								rmacL.add(part.substring(3).toUpperCase());
+							} else if (part.startsWith("gw-!")) {
+								rmacL.add(part.substring(4));
 							} else if (part.startsWith("gi")) {
 								sourceIndexL.add(Integer.parseInt(part.substring(2)));
 							} else {
@@ -689,7 +691,12 @@ public class RoundtripHTML implements RoundtripFormat {
 			}
 			if (rmac != null) {
 				for (String r : rmac) {
-					writer.write(" gr-" + r.toLowerCase());
+					if (r.matches(Utils.RMAC_REGEX))
+						writer.write(" gr-" + r.toLowerCase());
+					else if (r.matches(Utils.WIVU_REGEX))
+						writer.write(" gw-!" + r);
+					else
+						throw new IllegalStateException("Invalid morphology code: " + r);
 				}
 			}
 			if (sourceIndices != null) {

@@ -819,6 +819,13 @@ public class OSIS implements RoundtripFormat {
 					} else {
 						printWarning("WARNING: Invalid RMAC: " + rmacCandidate);
 					}
+				} else if (morph.startsWith("wivu:")) {
+					String rmacCandidate = morph.substring(9);
+					if (Utils.compilePattern(Utils.WIVU_REGEX).matcher(rmacCandidate).matches()) {
+						rmac.add(rmacCandidate);
+					} else {
+						printWarning("WARNING: Invalid WIVU: " + rmacCandidate);
+					}
 				} else {
 					grammarTags.add(new String[] {"morph", morph});
 				}
@@ -1186,7 +1193,12 @@ public class OSIS implements RoundtripFormat {
 				for (String r : rmac) {
 					if (morph.length() > 0)
 						morph.append(' ');
-					morph.append("robinson:" + r);
+					if (r.matches(Utils.RMAC_REGEX))
+						morph.append("robinson:" + r);
+					else if (r.matches(Utils.WIVU_REGEX))
+						morph.append("wivu:" + r);
+					else
+						throw new IllegalStateException("Invalid morph: " + r);
 				}
 				w.setAttribute("morph", morph.toString());
 			}

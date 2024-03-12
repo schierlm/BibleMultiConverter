@@ -14,4 +14,4 @@ body { font-family: Arial, sans-serif; font-size: 110%; }
 .biblehtmlcontent .indent { width: 4em; }
 .biblehtmlcontent .gram { font-size: 75%; }
 .biblehtmlcontent .gram .gs { color: #008000; }
-.biblehtmlcontent .gram .gr { color: #800080; }
+.biblehtmlcontent .gram .gr, .biblehtmlcontent .gram .gw { color: #800080; }

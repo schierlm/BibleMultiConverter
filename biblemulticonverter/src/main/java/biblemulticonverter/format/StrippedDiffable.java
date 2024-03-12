@@ -23,6 +23,7 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
@@ -582,7 +583,7 @@ public class StrippedDiffable implements ExportFormat {
 		StripPrologs, StripFootnotes, StripHeadlines, StripVerseSeparators, InlineVerseSeparators,
 		StripCrossReferences, StripFormatting, StripCSSFormatting, StripGrammar, StripDictionaryReferences,
 		StripRawHTML, StripExtraAttributes, StripOrKeepExtraAttributes, StripLineBreaks, StripVariations,
-		StripStrongs, StripStrongsWithPrefixes, StripRMAC, StripSourceIndexes,
+		StripStrongs, StripStrongsWithPrefixes, StripRMAC, StripMorph, StripWIVU, StripSourceIndexes,
 		StripOldTestament, StripNewTestament, StripDeuterocanonicalBooks,
 		StripMetadataBook, StripIntroductionBooks, StripDictionaryEntries, StripAppendixBook
 	}
@@ -743,8 +744,26 @@ public class StrippedDiffable implements ExportFormat {
 					strongs = null;
 					strongsPrefixes = null;
 				}
-				if (rmac != null && isEnabled(Feature.StripRMAC, chosenFeatures, foundFeatures))
+				if (rmac != null && isEnabled(Feature.StripMorph, chosenFeatures, foundFeatures))
 					rmac = null;
+				else if (rmac != null) {
+					boolean changed = false;
+					for (int i = 0; i < rmac.length; i++) {
+						if (rmac[i].matches(Utils.RMAC_REGEX) && isEnabled(Feature.StripRMAC, chosenFeatures, foundFeatures)) {
+							rmac[i] = null;
+							changed = true;
+						} else if (rmac[i].matches(Utils.WIVU_REGEX) && isEnabled(Feature.StripWIVU, chosenFeatures, foundFeatures)) {
+							rmac[i] = null;
+							changed = true;
+						}
+					}
+					if (changed) {
+						rmac = Arrays.asList(rmac).stream().filter(r -> r != null).toArray(String[]::new);
+						if (rmac.length == 0) {
+							rmac = null;
+						}
+					}
+				}
 				if (sourceIndices != null && isEnabled(Feature.StripSourceIndexes, chosenFeatures, foundFeatures))
 					sourceIndices = null;
 				if (strongs == null && rmac == null && sourceIndices == null) {

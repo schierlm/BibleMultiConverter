@@ -898,8 +898,15 @@ public class LogosHTML implements ExportFormat {
 					}
 				}
 				if (rmac != null && i < rmac.length) {
-					for(String morph : convertMorphology(rmac[i]).split(":")) {
-						links.add("LogosMorphGr:" + morph);
+					if (rmac[i].matches(Utils.RMAC_REGEX)) {
+						for(String morph : convertMorphology(rmac[i]).split(":")) {
+							links.add("LogosMorphGr:" + morph);
+						}
+					} else if (rmac[i].matches(Utils.WIVU_REGEX)) {
+						String prefix = rmac[i].startsWith("A") ? "WIVUMorphAram:" : "WIVUMorphHeb:";
+						for(String morph : rmac[i].substring(1).split("/+")) {
+							links.add(prefix+morph);
+						}
 					}
 				}
 			}
@@ -1036,7 +1043,7 @@ public class LogosHTML implements ExportFormat {
 						verseNumber = new Versification.Reference(BookID.fromOsisId(parts[0]), Integer.parseInt(parts[1]), parts[2]);
 					} else if (cond.matches("[A-Z][1-9][0-9]*")) {
 						strongNumbers.add(cond);
-					} else if (cond.matches(Utils.RMAC_REGEX)) {
+					} else if (cond.matches(Utils.MORPH_REGEX)) {
 						rmacNumbers.add(cond);
 					} else {
 						throw new IllegalArgumentException("Unsupported condition format");

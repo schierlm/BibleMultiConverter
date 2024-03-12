@@ -615,14 +615,16 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				}
 				List<String> rmacs = new ArrayList<>();
 				String morphAttribute = attributes.get("x-morph");
-				if (morphAttribute != null && morphAttribute.startsWith("robinson:")) {
+				if (morphAttribute != null && (morphAttribute.startsWith("robinson:") || morphAttribute.startsWith("wivu:"))) {
 					for (String rmac : morphAttribute.split("[, ]")) {
 						if (rmac.startsWith("robinson:"))
 							rmac = rmac.substring("robinson:".length());
-						if (Utils.compilePattern(Utils.RMAC_REGEX).matcher(rmac).matches()) {
+						if (rmac.startsWith("wivu:"))
+							rmac = rmac.substring("wivu:".length());
+						if (Utils.compilePattern(Utils.MORPH_REGEX).matcher(rmac).matches()) {
 							rmacs.add(rmac);
 						} else {
-							System.out.println("Skipping unsupported RMAC: " + rmac);
+							System.out.println("Skipping unsupported RMAC/WIVU: " + rmac);
 						}
 					}
 				}
@@ -991,7 +993,14 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				formatting.getAttributes().put("strong", sb.toString());
 			}
 			if (rmac != null) {
-				formatting.getAttributes().put("x-morph", "robinson:" + String.join(",", Arrays.asList(rmac)));
+				String prefix;
+				if (rmac[0].matches(Utils.RMAC_REGEX))
+					prefix = "robinson:";
+				else if (rmac[0].matches(Utils.WIVU_REGEX))
+					prefix = "wivu:";
+				else
+					throw new IllegalStateException("Invalid morph format: "+rmac[0]);
+				formatting.getAttributes().put("x-morph", prefix + String.join(",", Arrays.asList(rmac)));
 			}
 			getCharContent().getContent().add(formatting);
 			return new ParatextExportVisitor("in formatting", nt, null, formatting, null, null);

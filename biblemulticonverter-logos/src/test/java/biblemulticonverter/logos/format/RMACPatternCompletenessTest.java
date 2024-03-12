@@ -26,7 +26,7 @@ public class RMACPatternCompletenessTest {
 		Assert.assertEquals(expandedPatterns, expectedPatterns);
 	}
 
-	private Set<String> expandToPatterns(String regex) {
+	protected static Set<String> expandToPatterns(String regex) {
 		ParsePosition p = new ParsePosition(0);
 		Set<String> result = expandList(regex, p);
 		if (p.getIndex() != regex.length())
@@ -34,7 +34,7 @@ public class RMACPatternCompletenessTest {
 		return result;
 	}
 
-	private Set<String> expandList(String regex, ParsePosition p) {
+	private static Set<String> expandList(String regex, ParsePosition p) {
 		Set<String> result = new HashSet<>();
 		while (p.getIndex() != regex.length() && regex.charAt(p.getIndex()) != ')') {
 			result.addAll(expandAlternative(regex, p));
@@ -42,8 +42,9 @@ public class RMACPatternCompletenessTest {
 		return result;
 	}
 
-	private Set<String> expandAlternative(String regex, ParsePosition pos) {
+	private static Set<String> expandAlternative(String regex, ParsePosition pos) {
 		List<Set<String>> parts = new ArrayList<>();
+		String lookAt = regex.substring(pos.getIndex());
 		int p = pos.getIndex();
 		while (p < regex.length()) {
 			if (regex.startsWith("[", p)) {
@@ -75,7 +76,7 @@ public class RMACPatternCompletenessTest {
 				break;
 			} else {
 				int ps = p;
-				while (regex.charAt(p) == '-' || (regex.charAt(p) >= 'A' && regex.charAt(p) <= 'Z') || (regex.charAt(p) >= '0' && regex.charAt(p) <= '9')) {
+				while (regex.charAt(p) == '-' || regex.charAt(p) == '/' || (regex.charAt(p) >= 'A' && regex.charAt(p) <= 'Z') || (regex.charAt(p) >= 'a' && regex.charAt(p) <= 'z') || (regex.charAt(p) >= '0' && regex.charAt(p) <= '9')) {
 					p++;
 				}
 				if (p == ps) {
@@ -98,6 +99,6 @@ public class RMACPatternCompletenessTest {
 			}
 			parts.set(0, j);
 		}
-		return parts.get(0);
+		return parts.isEmpty() ? new HashSet<>(Arrays.asList("")) : parts.get(0);
 	}
 }

@@ -30,6 +30,7 @@ import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 
@@ -593,7 +594,7 @@ public class BibleWorks implements RoundtripFormat {
 			String suffix = "";
 			if (rmac != null && !suffixStack.get(suffixStack.size() - 1).startsWith("@")) {
 				for (String r : rmac) {
-					String morph = rmac2Morph(r);
+					String morph = r.matches(Utils.RMAC_REGEX) ? rmac2Morph(r) : ""; // WIVU unimplemented!
 					if (morph != null)
 						suffix += "@" + morph;
 				}

@@ -229,6 +229,194 @@ function renderRMAC(rmac) {
 	return rmac;
 }
 
+function renderWIVUPart(wivu, language) {
+	if (wivu.startsWith("Np")) {
+		var extra = "";
+		if (wivu.length == 3) {
+			extra = ", Gender=" + ({
+				m: "masculine",
+				f: "feminine",
+				l: "location",
+				t: "title"
+			})[wivu.charAt(2)];
+		}
+		return "Noun (Type=proper name" + extra + ")";
+	}
+	var type = ({
+		A: ["Adjective", "TGNS", "^[acgo](|[bcfmx][dpsx][acd])$"],
+		C: ["Conjunction", "", ""],
+		D: ["Adverb", "", ""],
+		N: ["Noun", "TGNS", "^[cgtx](|[bcfmx][dpsx][acd])$"],
+		P: ["Pronoun", "TPGN", "^[dfipr](|[123x][bcfm][dps])$"],
+		R: ["Preposition", "T", "d?"],
+		S: ["Suffix", "TPGN", "^[dhnp](|[123x][bcfm][dps])$"],
+		T: ["Particle", "T", "^[acdeijmnor]?$"],
+		V: ["Verb", "ETPGNS", "^[DGHKLMNOPQabcefhijklmopqrstuvwyz][pqiwhjvrsauc]([123x][bcfmx][dpsx][acdx]?)?$"]
+	})[wivu.charAt(0)];
+	var rest = wivu.substring(1);
+	if (wivu.startsWith("V") && rest.search("^[DGHKLMNOPQabcefhijklmopqrstuvwyz][pqiwhjvrsauc][bfm]$") != -1) {
+		rest = rest.substring(0, 2) + "x" + rest.substring(2) + "xx";
+	} else if (wivu.startsWith("V") && rest.search("^[DGHKLMNOPQabcefhijklmopqrstuvwyz][pqiwhjvrsauc][bcfm][dps][acd]$") != -1) {
+		rest = rest.substring(0, 2) + "x" + rest.substring(2);
+	} else if (wivu.startsWith("V") && rest.search("^[DGHKLMNOPQabcefhijklmopqrstuvwyz][pqiwhjvrsauc][ac]$") != -1) {
+		rest = rest.substring(0, 2) + "xxx" + rest.substring(2);
+	}
+	var subtypes = {
+		Aa: "adjective",
+		Ac: "cardinal number",
+		Ag: "gentilic",
+		Ao: "ordinal number",
+		Nc: "common",
+		Ng: "gentilic",
+		Np: "proper name",
+		Nt: "title",
+		Pd: "demonstrative",
+		Pf: "indefinite",
+		Pi: "interrogative",
+		Pp: "personal",
+		Pr: "relative",
+		Rd: "definite article",
+		Sd: "directional he",
+		Sh: "paragogic he",
+		Sn: "paragogic nun",
+		Sp: "pronominal",
+		Ta: "affirmation",
+		Tc: "conditional+logical",
+		Td: "definite article",
+		Te: "exhortation",
+		Ti: "interrogative",
+		Tj: "interjection",
+		Tm: "demonstrative",
+		Tn: "negative",
+		To: "direct object marker",
+		Tr: "relative",
+		Vp: "perfect (qatal)",
+		Vq: "sequential perfect (weqatal)",
+		Vi: "imperfect (yiqtol)",
+		Vw: "sequential imperfect (wayyiqtol)",
+		Vh: "cohortative",
+		Vj: "jussive",
+		Vv: "imperative",
+		Vr: "participle active",
+		Vs: "participle passive",
+		Va: "infinitive absolute",
+		Vu: "conjunctive weyyiqtol",
+		Vc: "infinitive construct"
+	};
+	if (type && rest.search(type[2]) != -1) {
+		var extras = " (";
+		for(var i=0; i < rest.length; i++) {
+			if (rest.charAt(i) != 'x') {
+				switch(type[1].charAt(i)) {
+					case 'T':
+						extras += "Type=" + subtypes[wivu.charAt(0)+rest.charAt(i)] + ", ";
+						break;
+					case 'P':
+						extras += "Person=" + rest.charAt(i) + ", ";
+						break;
+					case 'G':
+						extras += "Gender=" + ({
+							b: "both (noun)",
+							c: "common (verb)",
+							f: "feminine",
+							m: "masculine"
+						})[rest.charAt(i)] + ", ";
+						break;
+					case 'N':
+						extras += "Number=" + ({
+							d: "dual",
+							p: "plural",
+							s: "singular"
+						})[rest.charAt(i)] + ", ";
+						break;
+					case 'S':
+						extras += "State=" + ({
+							a: "absolute",
+							c: "construct",
+							d: "determined"
+						})[rest.charAt(i)] + ", ";
+						break;
+					case 'E':
+						extras += "Stem=" + ({
+							Hq: "qal",
+							HN: "niphal",
+							Hp: "piel",
+							HP: "pual",
+							Hh: "hiphil",
+							HH: "hophal",
+							Ht: "hithpael",
+							Ho: "polel",
+							HO: "polal",
+							Hr: "hithpolel",
+							Hm: "poel",
+							HM: "poal",
+							Hk: "palel",
+							HK: "pulal",
+							HQ: "qal passive",
+							Hl: "pilpel",
+							HL: "polpal",
+							Hf: "hithpalpel",
+							HD: "nithpael",
+							Hj: "pealal",
+							Hi: "pilel",
+							Hu: "hothpaal",
+							Hc: "tiphil",
+							Hv: "hishtaphel",
+							Hw: "nithpalel",
+							Hy: "nithpoel",
+							Hz: "hithpoel",
+							Aq: "peal",
+							AQ: "peil",
+							Au: "hithpeel",
+							Ap: "pael",
+							AP: "ithpaal",
+							AM: "hithpaal",
+							Aa: "aphel",
+							Ah: "haphel",
+							As: "saphel",
+							Ae: "shaphel",
+							AH: "hophal",
+							Ai: "ithpeel",
+							At: "hishtaphel",
+							Av: "ishtaphel",
+							Aw: "hithaphel",
+							Ao: "polel",
+							Az: "ithpoel",
+							Ar: "hithpolel",
+							Af: "hithpalpel",
+							Ab: "hephal",
+							Ac: "tiphel",
+							Am: "poel",
+							Al: "palpel",
+							AL: "ithpalpel",
+							AO: "ithpolel",
+							AG: "ittaphal"
+						})[language+rest.charAt(i)]+", ";
+						break;
+					default: return wivu;
+				}
+			}
+		}
+		extras = extras.substring(0, extras.length - 2) + ")";
+		if (extras == ")")
+			extras = "";
+		wivu = type[0] + extras;
+	}
+	return wivu;
+}
+
+function renderWIVU(wivu) {
+	var languages = {
+		H: "Hebrew",
+		A: "Aramaic"
+	};
+	let result = languages[wivu.substring(0, 1)]+": ";
+	for(var part of wivu.substring(1).split("/")) {
+		result += renderWIVUPart(part, wivu.substring(0, 1)) + "; ";
+	}
+	return result.substring(0, result.length - 2);
+}
+
 function hoverGrammar(selector, val) {
 	cssRule(selector).style.backgroundColor = val;
 }
@@ -238,7 +426,7 @@ function toggleGrammar() {
 	var gs = document.getElementsByClassName("g");
 	for (var i = 0; i < gs.length; i++) {
 		var g = gs[i];
-		if (g.lastChild.className == "gram") {
+		if (g.lastChild != null && g.lastChild.className == "gram") {
 			g.removeChild(g.lastChild);
 		}
 		if (enabled) {
@@ -258,6 +446,12 @@ function toggleGrammar() {
 					html += "<abbr onmouseover=\"hoverGrammar('." + cn[j] + "', '#FF80FF');\" "
 							+ "onmouseout=\"hoverGrammar('." + cn[j] + "', '');\" title=\"" + renderRMAC(rmac)
 							+ "\" class=\"gr\">" + rmac + "</abbr>";
+				} else if (cn[j].substring(0, 4) == 'gw-!') {
+					var wivu = cn[j].substring(4);
+					var selector = cn[j].replace("!", "\\\\!").replace("/", "\\\\/");
+					html += "<abbr onmouseover=\"hoverGrammar('." + selector + "', '#FF80FF');\" "
+							+ "onmouseout=\"hoverGrammar('." + selector + "', '');\" title=\"" + renderWIVU(wivu)
+							+ "\" class=\"gw\">" + wivu + "</abbr>";
 				}
 			}
 			var sup = document.createElement("sup");
