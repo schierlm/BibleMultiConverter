@@ -14,6 +14,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		List<Module<ImportFormat>> result = new ArrayList<ModuleRegistry.Module<ImportFormat>>();
 		result.add(new Module<ImportFormat>("StrongDictionary", "Importer for creating a Strong's dictionary from public domain resources.", StrongDictionary.HELP_TEXT, StrongDictionary.class));
 		result.add(new Module<ImportFormat>("MorphGNT", "Importer for MorphGNT", MorphGNT.HELP_TEXT, MorphGNT.class));
+		result.add(new Module<ImportFormat>("OSHB", "Importer for OpenScriptures Hebrew Bible MorphBB", OSHB.HELP_TEXT, OSHB.class));
 		return result;
 	}
 

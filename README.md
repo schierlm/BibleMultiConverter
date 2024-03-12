@@ -74,7 +74,9 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[BrowserBible](https://github.com/digitalbiblesociety/browserbible-3/)**: export only
 - **[Quick Bible](http://www.bibleforandroid.com/)**: export only
 - **[SWORD](https://www.crosswire.org/sword) modules**: import only (see below for details)
-- **[MorphGNT](https://github.com/morphgnt/sblgnt)**: import only
+- **Original Languages with tagging**: import only
+  - [MorphGNT](https://github.com/morphgnt/sblgnt)
+  - [OpenScriptures Hebrew Bible (OSHB) MorphBB](https://github.com/openscriptures/morphhb)
 - **[MyBible.Zone](https://mybible.zone/index-eng.php)** ([more bibles](http://www.ph4.org/b4_index.php)): import and export (in a special SQLite edition)
 - **[Bible Analyzer](http://www.bibleanalyzer.com/)**: export only (text export for
   bibles and dictionaries, SQLite export for bibles)
