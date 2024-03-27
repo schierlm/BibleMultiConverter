@@ -120,6 +120,12 @@ options for that. **HeatMapHTML** can generate heat maps (or verse statistics) w
 how often a certain feature (e. g. a footnote, a divine name, or the word "Jesus") appears
 in the Bible and where exactly.
 
+**AugmentGrammar** can analyze the use of grammar information (Strongs, morphology,
+source indices) in one or more bible modules and use this information to augment
+other modules (e.g. modules that contain Strongs but no morphology). It can also be
+used to dump grammar information as a CSV file to analyze it elsewhere, or generate
+source indices in Original Language modules by counting grammar info tags.
+
 The **ValidateXML** tool can be used to validate an input XML file against a XSD schema.
 The schema can be given as a file, as an URL or one of the embedded schema names `OSIS`,
 `ZefaniaXML`, `HaggaiXML`, `RoundtripXML`, `USFX`, `USX` or `ZefDic`. This is useful as in case of an

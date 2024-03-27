@@ -44,6 +44,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<ExportFormat>("HeatMapHTML", "Create HTML page that shows which verses contain certain features.", HeatMapHTML.HELP_TEXT, HeatMapHTML.class));
 		result.add(new Module<ExportFormat>("SwordSearcher", "Export format for SwordSearcher", SwordSearcher.HELP_TEXT, SwordSearcher.class));
 		result.add(new Module<ExportFormat>("Obsidian", "Export to Markdown for Obsidian (one chapter per file)", Obsidian.HELP_TEXT, Obsidian.class));
+		result.add(new Module<ExportFormat>("AugmentGrammar", "Analyze used Grammar information in one bible and augment another one from that data.", AugmentGrammar.HELP_TEXT, AugmentGrammar.class));
 		return result;
 	}
 
