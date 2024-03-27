@@ -240,11 +240,19 @@ public class Compact implements RoundtripFormat {
 					for (int i = 0; i < args.length; i++) {
 						String[] parts = args[i].split(":");
 						String s = parts[0];
-						if (s.matches("[A-Z][0-9]+")) {
-							strongsPrefixes[i] = s.charAt(0);
-							s = s.substring(1);
+						if (Diffable.parseStrongsSuffix && !s.isEmpty()) {
+							char[] prefixHolder = new char[1];
+							strongs[i] = Utils.parseStrongs(s, '?', prefixHolder);
+							if (prefixHolder[0] != '?') {
+								strongsPrefixes[i] = prefixHolder[0];
+							}
+						} else {
+							if (s.matches("[A-Z][0-9]+")) {
+								strongsPrefixes[i] = s.charAt(0);
+								s = s.substring(1);
+							}
+							strongs[i] = s.isEmpty() ? -1 : Integer.parseInt(s);
 						}
-						strongs[i] = s.isEmpty() ? -1 : Integer.parseInt(s);
 						if (parts.length > 1 && !parts[1].isEmpty())
 							rmacs[i] = parts[1];
 						else
@@ -381,10 +389,14 @@ public class Compact implements RoundtripFormat {
 				w.write(i > 0 ? " " : "");
 				boolean r = rmac != null && i < rmac.length;
 				boolean si = sourceIndices != null && i < sourceIndices.length;
-				if (strongsPrefixes != null && i < strongsPrefixes.length)
-					w.write("" + strongsPrefixes[i]);
-				if (strongs != null && i < strongs.length)
-					w.write("" + strongs[i]);
+				if (Diffable.writeStrongsSuffix && strongsPrefixes != null && strongs != null) {
+					w.write(Utils.formatStrongs(false, i, strongsPrefixes, strongs));
+				} else {
+					if (strongsPrefixes != null && i < strongsPrefixes.length)
+						w.write("" + strongsPrefixes[i]);
+					if (strongs != null && i < strongs.length)
+						w.write("" + strongs[i]);
+				}
 				if (r || si) {
 					w.write(":");
 					if (r)

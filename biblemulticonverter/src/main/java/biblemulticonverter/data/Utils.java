@@ -65,7 +65,7 @@ public class Utils {
 			if (suffix >= 'a' && suffix <= 'z') {
 				longNumber += suffix - 'a' + 1;
 			} else if (suffix >= 'A' && suffix <= 'Z') {
-				longNumber += suffix - 'a' + 31;
+				longNumber += suffix - 'A' + 31;
 			} else {
 				throw new IllegalStateException();
 			}

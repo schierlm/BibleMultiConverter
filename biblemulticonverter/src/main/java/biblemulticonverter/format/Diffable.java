@@ -25,6 +25,7 @@ import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 
 public class Diffable implements RoundtripFormat {
@@ -41,6 +42,9 @@ public class Diffable implements RoundtripFormat {
 	};
 
 	private static final String MAGIC = "BibleMultiConverter-1.0 Title: ";
+
+	public static boolean parseStrongsSuffix = Boolean.getBoolean("biblemulticonverter.roundtrip.parsestrongssuffix");
+	public static boolean writeStrongsSuffix = Boolean.getBoolean("biblemulticonverter.roundtrip.writestrongssuffix");
 
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
@@ -264,7 +268,25 @@ public class Diffable implements RoundtripFormat {
 			case "grammar":
 				validateTagArgs(tag, tagArgs, "strong", "rmac", "idx");
 				visitorStack.add(visitor);
-				visitor = visitor.visitGrammarInformation(tagArgs.containsKey("strongpfx") ? tagArgs.get("strongpfx").toCharArray() : null, intArray(tagArgs.get("strong")), tagArgs.get("rmac").length() == 0 ? null : tagArgs.get("rmac").split(","), intArray(tagArgs.get("idx")));
+				char[] pfx;
+				int[] strongs;
+				if (parseStrongsSuffix && !tagArgs.get("strong").isEmpty() && !tagArgs.containsKey("strongpfx")) {
+					String[] formattedStrongs = tagArgs.get("strong").split(",");
+					pfx = new char[formattedStrongs.length];
+					strongs = new int[formattedStrongs.length];
+					char[] prefixHolder = new char[1];
+					for (int i = 0; i < formattedStrongs.length; i++) {
+						strongs[i] = Utils.parseStrongs(formattedStrongs[i], '?', prefixHolder);
+						pfx[i] = prefixHolder[0];
+					}
+					if (pfx[0] == '?') {
+						pfx = null;
+					}
+				} else {
+					pfx = tagArgs.containsKey("strongpfx") ? tagArgs.get("strongpfx").toCharArray() : null;
+					strongs = intArray(tagArgs.get("strong"));
+				}
+				visitor = visitor.visitGrammarInformation(pfx, strongs, tagArgs.get("rmac").length() == 0 ? null : tagArgs.get("rmac").split(","), intArray(tagArgs.get("idx")));
 				break;
 			case "dict":
 				validateTagArgs(tag, tagArgs, "dictionary", "entry");
@@ -408,16 +430,24 @@ public class Diffable implements RoundtripFormat {
 		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			checkLine();
 			w.write("<grammar strong=\"");
-			if (strongs != null) {
+			if (writeStrongsSuffix && strongsPrefixes != null && strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
 					if (i > 0)
 						w.write(',');
-					w.write("" + strongs[i]);
+					w.write(Utils.formatStrongs(false, i, strongsPrefixes, strongs));
 				}
-			}
-			if (strongsPrefixes != null) {
-				w.write("\" strongpfx=\"");
-				w.write(strongsPrefixes);
+			} else {
+				if (strongs != null) {
+					for (int i = 0; i < strongs.length; i++) {
+						if (i > 0)
+							w.write(',');
+						w.write("" + strongs[i]);
+					}
+				}
+				if (strongsPrefixes != null) {
+					w.write("\" strongpfx=\"");
+					w.write(strongsPrefixes);
+				}
 			}
 			w.write("\" rmac=\"");
 			if (rmac != null) {

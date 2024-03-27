@@ -22,6 +22,7 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
@@ -57,7 +58,8 @@ public class RoundtripXML implements RoundtripFormat {
 		ValidateXML.validateFileBeforeParsing(getSchema(), inputFile);
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
 		Unmarshaller u = ctx.createUnmarshaller();
-		u.setSchema(getSchema());
+		if (!Boolean.getBoolean("biblemulticonverter.skipxmlvalidation"))
+			u.setSchema(getSchema());
 		return parseBible(u.unmarshal(new StreamSource(inputFile), BibleType.class));
 	}
 
@@ -114,7 +116,15 @@ public class RoundtripXML implements RoundtripFormat {
 						strongs = new int[gi.getStrongs().size()];
 						for (int i = 0; i < strongs.length; i++) {
 							String s = gi.getStrongs().get(i);
-							if (s.matches("[A-Z][0-9]+")) {
+							if (Diffable.parseStrongsSuffix) {
+								char[] prefixHolder = new char[1];
+								strongs[i] = Utils.parseStrongs(s, '?', prefixHolder);
+								if (prefixHolder[0] != '?') {
+									strongsPrefixes[i] = prefixHolder[0];
+								} else {
+									strongsPrefixes = null;
+								}
+							} else if (s.matches("[A-Z][0-9]+")) {
 								strongsPrefixes[i] = s.charAt(0);
 								strongs[i] = Integer.parseInt(s.substring(1));
 							} else {
@@ -310,7 +320,11 @@ public class RoundtripXML implements RoundtripFormat {
 			FormattedTextType.GrammarInformation gi = of.createFormattedTextTypeGrammarInformation();
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
-					gi.getStrongs().add((strongsPrefixes == null ? "" : "" + strongsPrefixes[i]) + strongs[i]);
+					if (Diffable.writeStrongsSuffix && strongsPrefixes != null && strongs != null) {
+						gi.getStrongs().add(Utils.formatStrongs(false, i, strongsPrefixes, strongs));
+					} else {
+						gi.getStrongs().add((strongsPrefixes == null ? "" : "" + strongsPrefixes[i]) + strongs[i]);
+					}
 				}
 			}
 			if (rmac != null)

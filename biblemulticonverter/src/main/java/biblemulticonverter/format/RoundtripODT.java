@@ -40,6 +40,7 @@ import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.format.Diffable.DiffableVisitor;
 
@@ -400,7 +401,13 @@ public class RoundtripODT implements RoundtripFormat {
 				for (String part : endContent.substring(1).split("'")) {
 					String[] subparts = part.split(":");
 					if (subparts.length > 0 && !subparts[0].isEmpty()) {
-						if (subparts[0].matches("[A-Z][0-9]+")) {
+						if (Diffable.parseStrongsSuffix) {
+							char[] prefixHolder = new char[1];
+							strongs.add(Utils.parseStrongs(subparts[0], '?', prefixHolder));
+							if (prefixHolder[0] != '?') {
+								strongPfx.append(prefixHolder[0]);
+							}
+						} else if (subparts[0].matches("[A-Z][0-9]+")) {
 							strongPfx.append(subparts[0].charAt(0));
 							strongs.add(Integer.parseInt(subparts[0].substring(1)));
 						} else {
@@ -712,11 +719,15 @@ public class RoundtripODT implements RoundtripFormat {
 			StringBuilder suffixBuilder = new StringBuilder("]");
 			int max = Math.max(Math.max(strongs == null ? 0 : strongs.length, rmac == null ? 0 : rmac.length), sourceIndices == null ? 0 : sourceIndices.length);
 			for (int i = 0; i < max; i++) {
-				if (strongsPrefixes != null && i < strongsPrefixes.length) {
-					suffixBuilder.append(strongsPrefixes[i]);
-				}
-				if (strongs != null && i < strongs.length) {
-					suffixBuilder.append(strongs[i]);
+				if (Diffable.writeStrongsSuffix && strongsPrefixes != null && strongs != null && i < strongsPrefixes.length && i < strongs.length) {
+					suffixBuilder.append(Utils.formatStrongs(false, i, strongsPrefixes, strongs));
+				} else {
+					if (strongsPrefixes != null && i < strongsPrefixes.length) {
+						suffixBuilder.append(strongsPrefixes[i]);
+					}
+					if (strongs != null && i < strongs.length) {
+						suffixBuilder.append(strongs[i]);
+					}
 				}
 				if ((rmac != null && i < rmac.length) || (sourceIndices != null && i < sourceIndices.length)) {
 					suffixBuilder.append(":");

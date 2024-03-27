@@ -509,7 +509,12 @@ public class RoundtripHTML implements RoundtripFormat {
 						List<Integer> sourceIndexL = new ArrayList<Integer>();
 						for (String part : line.substring(pos + 15, endPos - 1).split(" ")) {
 							if (part.startsWith("gs")) {
-								if (part.matches("gs[A-Z][0-9]+")) {
+								if (Diffable.parseStrongsSuffix) {
+									char[] prefixHolder = new char[1];
+									strongL.add(Utils.parseStrongs(part.substring(2), '?', prefixHolder));
+									if (prefixHolder[0] != '?')
+										strongPfxL.append(prefixHolder[0]);
+								} else if (part.matches("gs[A-Z][0-9]+")) {
 									strongPfxL.append(part.charAt(2));
 									strongL.add(Integer.parseInt(part.substring(3)));
 								} else {
@@ -684,7 +689,11 @@ public class RoundtripHTML implements RoundtripFormat {
 		@Override
 		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
 			writer.write("<span class=\"g");
-			if (strongs != null) {
+			if (Diffable.writeStrongsSuffix && strongsPrefixes != null && strongs != null) {
+				for (int i = 0; i < strongs.length; i++) {
+					writer.write(" gs" + Utils.formatStrongs(false, i, strongsPrefixes, strongs));
+				}
+			} else if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
 					writer.write(" gs" + (strongsPrefixes != null ? "" + strongsPrefixes[i] : "") + strongs[i]);
 				}

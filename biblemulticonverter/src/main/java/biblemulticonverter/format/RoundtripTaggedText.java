@@ -22,6 +22,7 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
@@ -241,7 +242,15 @@ public class RoundtripTaggedText implements RoundtripFormat {
 					char[] strongPfx = ss.isEmpty() ? null : new char[ss.size()];
 					int[] strong = ss.isEmpty() ? null : new int[ss.size()];
 					for (int i = 0; i < ss.size(); i++) {
-						if (ss.get(i).matches("[A-Z][0-9]+")) {
+						if (Diffable.parseStrongsSuffix) {
+							char[] prefixHolder = new char[1];
+							strong[i] = Utils.parseStrongs(ss.get(i), '?', prefixHolder);
+							if (prefixHolder[0] != '?') {
+								strongPfx[i] = prefixHolder[0];
+							} else {
+								strongPfx = null;
+							}
+						} else if (ss.get(i).matches("[A-Z][0-9]+")) {
 							strongPfx[i] = ss.get(i).charAt(0);
 							strong[i] = Integer.parseInt(ss.get(i).substring(1));
 						} else {
@@ -424,7 +433,11 @@ public class RoundtripTaggedText implements RoundtripFormat {
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
 					attrValuePairs[idx++] = "strong";
-					attrValuePairs[idx++] = (strongsPrefixes == null ? "" : "" + strongsPrefixes[i]) + strongs[i];
+					if (Diffable.writeStrongsSuffix && strongsPrefixes != null && strongs != null) {
+						attrValuePairs[idx++] = Utils.formatStrongs(false, i, strongsPrefixes, strongs);
+					} else {
+						attrValuePairs[idx++] = (strongsPrefixes == null ? "" : "" + strongsPrefixes[i]) + strongs[i];
+					}
 				}
 			}
 			if (rmac != null) {
