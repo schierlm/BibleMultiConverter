@@ -22,6 +22,7 @@ public class LogosModuleRegistry extends ModuleRegistry {
 		List<Module<ExportFormat>> result = new ArrayList<Module<ExportFormat>>();
 		result.add(new Module<ExportFormat>("LogosVersificationDetector", "Detect what Logos versification to use best for exporting a module", new String[0], LogosVersificationDetector.class));
 		result.add(new Module<ExportFormat>("LogosRenumberedDiffable", "Renumber named verses for Logos before exporting as Diffable.", LogosRenumberedDiffable.HELP_TEXT, LogosRenumberedDiffable.class));
+		result.add(new Module<ExportFormat>("AugmentLogosLinks", "Add values of Logos links to Extra Attributes of a Bible", AugmentLogosLinks.HELP_TEXT, AugmentLogosLinks.class));
 		result.add(new Module<ExportFormat>("LogosHTML", "HTML Export format for Logos Bible Software", LogosHTML.HELP_TEXT, LogosHTML.class));
 		return result;
 	}
