@@ -93,6 +93,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[MySword](https://www.mysword.info/)**: import and export
 - **[Obsidian](https://obsidian.md/)**: export only
 - **[Beblia XML](https://beblia.com/)**: import and export
+- **[Laridian Book Builder](https://www.laridian.com/): export only
 
 In combination with third party tools, other export formats are available:
 

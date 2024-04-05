@@ -24,6 +24,7 @@ public class LogosModuleRegistry extends ModuleRegistry {
 		result.add(new Module<ExportFormat>("LogosRenumberedDiffable", "Renumber named verses for Logos before exporting as Diffable.", LogosRenumberedDiffable.HELP_TEXT, LogosRenumberedDiffable.class));
 		result.add(new Module<ExportFormat>("AugmentLogosLinks", "Add values of Logos links to Extra Attributes of a Bible", AugmentLogosLinks.HELP_TEXT, AugmentLogosLinks.class));
 		result.add(new Module<ExportFormat>("LogosHTML", "HTML Export format for Logos Bible Software", LogosHTML.HELP_TEXT, LogosHTML.class));
+		result.add(new Module<ExportFormat>("LaridianPocketBibleExtendedInterlinear", "Export to Laridian Pocket Bible with Interlinear fields from Logos links", LaridianPocketBibleExtendedInterlinear.HELP_TEXT, LaridianPocketBibleExtendedInterlinear.class));
 		return result;
 	}
 
