@@ -58,6 +58,7 @@ public class StrippedDiffable implements ExportFormat {
 			"- RenameBook <OldAbbr> <NewAbbr>",
 			"- RenameAllBooks [OSIS|Zefania|3LC|Paratext]",
 			"- SortBooks",
+			"- CopyToFootnote {Strongs|Morph|SourceIndex|Headline|CrossReference|Dict:<dictname>|ExtraAttribute:<category>:<key>[:<value>]|GrammarAttribute:<category>:<key>:<value>}[@[<prefixFormat>:]<format>][+<prefix>] [...]",
 			"- OptimizeFormatting [SplitCSS|FromCSS|ToCSS|RemoveCSS|JoinCSS|<OldFormatting>-><NewFormatting>[&<NewFormatting>[...]] [...]"
 	};
 
@@ -152,6 +153,13 @@ public class StrippedDiffable implements ExportFormat {
 				mappings.put(key, values);
 			}
 			optimizeFormatting(bible, out, options, mappings);
+		} else if (exportArgs.length >= 2 && exportArgs[1].equals("CopyToFootnote")) {
+			Map<String, CopyToFootnoteRule> rules = new HashMap<>();
+			for (int i = 2; i < exportArgs.length; i++) {
+				CopyToFootnoteRule rule = new CopyToFootnoteRule(exportArgs[i]);
+				rules.put(rule.key, rule);
+			}
+			copyToFootnote(bible, out, rules);
 		} else {
 			EnumSet<Feature> chosenFeeatures = EnumSet.noneOf(Feature.class);
 			for (int i = 1; i < exportArgs.length; i++) {
@@ -202,6 +210,26 @@ public class StrippedDiffable implements ExportFormat {
 		out.println();
 		out.println("Formatting instructions after optimizing:");
 		newCount.printSummary(out);
+	}
+
+	private void copyToFootnote(Bible bible, PrintStream out, Map<String, CopyToFootnoteRule> rules) {
+		for (Book book : bible.getBooks()) {
+			for (Chapter chap : book.getChapters()) {
+				if (chap.getProlog() != null) {
+					FormattedText newProlog = new FormattedText();
+					chap.getProlog().accept(new CopyToFootnoteVisitor(newProlog.getAppendVisitor(), book.getId().isNT(), rules));
+					newProlog.finished();
+					chap.setProlog(newProlog);
+				}
+				for (int j = 0; j < chap.getVerses().size(); j++) {
+					Verse v = chap.getVerses().get(j);
+					Verse nv = new Verse(v.getNumber());
+					v.accept(new CopyToFootnoteVisitor(nv.getAppendVisitor(), book.getId().isNT(), rules));
+					nv.finished();
+					chap.getVerses().set(j, nv);
+				}
+			}
+		}
 	}
 
 	private void extractPrologs(Bible bible) {
@@ -610,6 +638,202 @@ public class StrippedDiffable implements ExportFormat {
 				return new SelectVariationVisitor(getVisitor(), variation);
 			}
 			return null;
+		}
+	}
+
+	private static class CopyToFootnoteRule {
+
+		private final String key, prefix;
+		private final FormattingInstructionKind[] prefixFormat, valueFormat;
+
+		public CopyToFootnoteRule(String rule) {
+			int pos = rule.indexOf('+');
+			if (pos != -1) {
+				prefix = rule.substring(pos + 1);
+				rule = rule.substring(0, pos);
+			} else {
+				prefix = null;
+			}
+			pos = rule.indexOf('@');
+			if (pos != -1) {
+				String[] parts = rule.substring(pos + 1).split(":", 2);
+				if (parts.length == 2) {
+					prefixFormat = parseFormat(parts[0]);
+					valueFormat = parseFormat(parts[1]);
+				} else {
+					prefixFormat = null;
+					valueFormat = parseFormat(parts[0]);
+				}
+				rule = rule.substring(0, pos);
+			} else {
+				prefixFormat = valueFormat = null;
+			}
+			if (!rule.startsWith("Dict:") && !rule.startsWith("ExtraAttribute:") && !rule.startsWith("GrammarAttribute:") && !Arrays.asList("Strongs", "Morph", "SourceIndex", "Headline", "CrossReference").contains(rule)) {
+				throw new RuntimeException("Unsuspported copy to footnote rule: " + rule);
+			}
+			this.key = rule;
+		}
+
+		private static FormattingInstructionKind[] parseFormat(String format) {
+			FormattingInstructionKind[] result = new FormattingInstructionKind[format.length()];
+			for (int i = 0; i < result.length; i++) {
+				result[i] = FormattingInstructionKind.fromChar(format.charAt(i));
+			}
+			return result;
+		}
+
+		public Visitor<RuntimeException> addFootnote(Visitor<RuntimeException> visitor) {
+			Visitor<RuntimeException> result = visitor.visitFootnote();
+			if (prefix != null) {
+				Visitor<RuntimeException> v = result;
+				if (prefixFormat != null) {
+					for (FormattingInstructionKind k : prefixFormat) {
+						v = v.visitFormattingInstruction(k);
+					}
+				}
+				v.visitText(prefix);
+				result.visitText(" ");
+			}
+			if (valueFormat != null) {
+				for (FormattingInstructionKind k : valueFormat) {
+					result = result.visitFormattingInstruction(k);
+				}
+			}
+			return result;
+		}
+	}
+
+	private static class CopyToFootnoteVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
+
+		private final boolean nt;
+		private final Map<String, CopyToFootnoteRule> rules;
+
+		public CopyToFootnoteVisitor(Visitor<RuntimeException> next, boolean nt, Map<String, CopyToFootnoteRule> rules) {
+			super(next);
+			this.nt = nt;
+			this.rules = rules;
+		}
+
+		@Override
+		protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
+			return new CopyToFootnoteVisitor(childVisitor, nt, rules);
+		}
+
+		public Visitor<RuntimeException> visitHeadline(int depth) throws RuntimeException {
+			final Visitor<RuntimeException> result = super.visitHeadline(depth);
+			CopyToFootnoteRule rule = rules.get("Headline");
+			if (rule != null) {
+				return new DuplicateTextVisitor(result, rule.addFootnote(getVisitor()));
+			}
+			return result;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+			final Visitor<RuntimeException> result = super.visitCrossReference(bookAbbr, book, firstChapter, firstVerse, lastChapter, lastVerse);
+			CopyToFootnoteRule rule = rules.get("CrossReference");
+			if (rule != null) {
+				String rangeEnd;
+				if (firstChapter != lastChapter) {
+					rangeEnd = " - " + lastChapter + ":" + lastVerse;
+				} else if (!firstVerse.equals(lastVerse)) {
+					rangeEnd = "-" + lastVerse;
+				} else {
+					rangeEnd = "";
+				}
+				rule.addFootnote(getVisitor()).visitText(bookAbbr + " " + firstChapter + ":" + firstVerse + rangeEnd);
+			}
+			return result;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+			final Visitor<RuntimeException> result = super.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices);
+			final Visitor<RuntimeException> nv = getVisitor();
+			CopyToFootnoteRule rule = rules.get("Strongs");
+			if (rule != null && strongs != null) {
+				StringBuilder sb = new StringBuilder();
+				for (int i = 0; i < strongs.length; i++) {
+					if (i != 0)
+						sb.append(", ");
+					sb.append(Utils.formatStrongs(nt, i, strongsPrefixes, strongs));
+				}
+				rule.addFootnote(nv).visitText(sb.toString());
+			}
+			rule = rules.get("Morph");
+			if (rule != null && rmac != null) {
+				rule.addFootnote(nv).visitText(String.join(", ", rmac));
+			}
+			rule = rules.get("SourceIndex");
+			if (rule != null && sourceIndices != null) {
+				StringBuilder sb = new StringBuilder();
+				for (int i = 0; i < sourceIndices.length; i++) {
+					if (i != 0)
+						sb.append(", ");
+					sb.append(sourceIndices[i]);
+				}
+				rule.addFootnote(nv).visitText(sb.toString());
+			}
+			return new FormattedText.VisitorAdapter<RuntimeException>(result) {
+				@Override
+				public Visitor<RuntimeException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws RuntimeException {
+					Visitor<RuntimeException> result = super.visitExtraAttribute(prio, category, key, value);
+					if (prio == ExtraAttributePriority.SKIP) {
+						CopyToFootnoteRule rule = rules.get("GrammarAttribute:" + category + ":" + key + ":" + value);
+						if (rule != null) {
+							return new DuplicateTextVisitor(result, rule.addFootnote(nv));
+						}
+					}
+					return result;
+				}
+			};
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) throws RuntimeException {
+			final Visitor<RuntimeException> result = super.visitDictionaryEntry(dictionary, entry);
+			CopyToFootnoteRule rule = rules.get("Dict:" + dictionary);
+			if (rule != null) {
+				rule.addFootnote(getVisitor()).visitText(entry);
+			}
+			return result;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws RuntimeException {
+			final Visitor<RuntimeException> result = super.visitExtraAttribute(prio, category, key, value);
+			if (prio == ExtraAttributePriority.SKIP) {
+				CopyToFootnoteRule rule = rules.get("ExtraAttribute:" + category + ":" + key + ":" + value);
+				if (rule != null) {
+					return new DuplicateTextVisitor(result, rule.addFootnote(getVisitor()));
+				}
+			} else {
+				CopyToFootnoteRule rule = rules.get("ExtraAttribute:" + category + ":" + key);
+				if (rule != null) {
+					rule.addFootnote(getVisitor()).visitText(value);
+				}
+			}
+			return result;
+		}
+	}
+
+	private static class DuplicateTextVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
+		private final Visitor<RuntimeException> target;
+
+		public DuplicateTextVisitor(Visitor<RuntimeException> next, Visitor<RuntimeException> target) {
+			super(next);
+			this.target = target;
+		}
+
+		@Override
+		protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
+			return new DuplicateTextVisitor(childVisitor, target);
+		}
+
+		@Override
+		public void visitText(String text) throws RuntimeException {
+			target.visitText(text);
+			super.visitText(text);
 		}
 	}
 
