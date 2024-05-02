@@ -159,13 +159,11 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 
 	public static class AutoClosingFormatting implements ParatextCharacterContentPart, ParatextCharacterContentContainer {
 		private final AutoClosingFormattingKind kind;
-		private final boolean wasNested;
 		private final List<ParatextCharacterContentPart> content = new ArrayList<>(5);
 		private final Map<String, String> attributes = new HashMap<>(3);
 
-		public AutoClosingFormatting(AutoClosingFormattingKind kind, boolean wasNested) {
+		public AutoClosingFormatting(AutoClosingFormattingKind kind) {
 			this.kind = kind;
-			this.wasNested = wasNested;
 		}
 
 		public AutoClosingFormattingKind getKind() {
@@ -173,7 +171,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		}
 
 		public String getUsedTag() {
-			return (wasNested ? "+" : "") + kind.getTag();
+			return kind.getTag();
 		}
 
 		public Map<String, String> getAttributes() {

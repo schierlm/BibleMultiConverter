@@ -109,7 +109,7 @@ public class ParatextDump extends AbstractParatextFormat {
 				}
 				break;
 			case "CHARFORMAT":
-				AutoClosingFormatting acf = new AutoClosingFormatting(Objects.requireNonNull(AutoClosingFormattingKind.allTags().get(parts[1])), false);
+				AutoClosingFormatting acf = new AutoClosingFormatting(Objects.requireNonNull(AutoClosingFormattingKind.allTags().get(parts[1])));
 				target.add(acf);
 				while (!(line = br.readLine()).equals("CHARFORMATEND")) {
 					if (line.startsWith("ATTRIBUTE\t")) {

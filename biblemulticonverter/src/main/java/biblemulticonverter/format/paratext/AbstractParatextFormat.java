@@ -868,7 +868,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 						}
 						// wrap with \ft / \xt tag
 						AutoClosingFormattingKind kind = isXref ? AutoClosingFormattingKind.XREF_TARGET_REFERENCES : AutoClosingFormattingKind.FOOTNOTE_TEXT;
-						final AutoClosingFormatting formatting = new AutoClosingFormatting(kind, false);
+						final AutoClosingFormatting formatting = new AutoClosingFormatting(kind);
 						formatting.getContent().addAll(next.getCharContent().getContent());
 						next.getCharContent().getContent().clear();
 						next.getCharContent().getContent().add(formatting);
@@ -961,7 +961,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				System.out.println("WARNING: No tag found for formatting: " + css);
 				return new ParatextExportVisitor(location, nt, ctx, ccnt, paragraphKind, null);
 			}
-			final AutoClosingFormatting formatting = new AutoClosingFormatting(kind, false);
+			final AutoClosingFormatting formatting = new AutoClosingFormatting(kind);
 			getCharContent().getContent().add(formatting);
 			return new ParatextExportVisitor("in formatting", nt, null, formatting, null, null);
 		}
@@ -976,13 +976,13 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			if (ctx != null) {
 				ctx.closeParagraph();
 			} else {
-				getCharContent().getContent().add(new AutoClosingFormatting(AutoClosingFormattingKind.FOOTNOTE_PARAGRAPH, false));
+				getCharContent().getContent().add(new AutoClosingFormatting(AutoClosingFormattingKind.FOOTNOTE_PARAGRAPH));
 			}
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
-			final AutoClosingFormatting formatting = new AutoClosingFormatting(AutoClosingFormattingKind.WORDLIST, false);
+			final AutoClosingFormatting formatting = new AutoClosingFormatting(AutoClosingFormattingKind.WORDLIST);
 			if (strongs != null) {
 				StringBuilder sb = new StringBuilder();
 				for (int i = 0; i < strongs.length; i++) {

@@ -199,7 +199,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 						charContent = new ParatextCharacterContent();
 						result.getContent().add(charContent);
 					}
-					charContent.getContent().add(new AutoClosingFormatting(AutoClosingFormattingKind.PAGE_BREAK, false));
+					charContent.getContent().add(new AutoClosingFormatting(AutoClosingFormattingKind.PAGE_BREAK));
 				} else if (PARA_STYLE_UNSUPPORTED.contains(para.getStyle())) {
 					// skip
 					charContent = null;
@@ -300,7 +300,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				if (CHAR_STYLE_UNSUPPORTED.contains(chr.getStyle())) {
 					parseCharContent(chr.getContent(), container, result, context);
 				} else {
-					AutoClosingFormatting f = new AutoClosingFormatting(CHAR_STYLE_MAP.get(chr.getStyle()), false);
+					AutoClosingFormatting f = new AutoClosingFormatting(CHAR_STYLE_MAP.get(chr.getStyle()));
 					String lemma = chr.getLemma();
 					if (f.getKind() == AutoClosingFormattingKind.WORDLIST && lemma != null && !lemma.isEmpty()) {
 						f.getAttributes().put("lemma", lemma);

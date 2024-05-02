@@ -29,6 +29,7 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingF
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXrefKind;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
@@ -185,8 +186,11 @@ public class USFM extends AbstractParatextFormat {
 						containerStack.remove(containerStack.size() - 1);
 					}
 				}
-				AutoClosingFormatting nextContainer = new AutoClosingFormatting(AUTO_CLOSING_TAGS.get(tag), tag.startsWith("+"));
+				AutoClosingFormatting nextContainer = new AutoClosingFormatting(AUTO_CLOSING_TAGS.get(tag));
 				containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
+				if (tag.startsWith("+")) {
+					nextContainer = new NestedAutoClosingFormatting(nextContainer);
+				}
 				containerStack.add(nextContainer);
 			} else if (tag.equals("v")) {
 				ImportUtilities.closeOpenVerse(result, openVerse);
@@ -577,6 +581,33 @@ public class USFM extends AbstractParatextFormat {
 			if (suffix.contains("\t"))
 				suffix = suffix.split("\t", 2)[0];
 			return AUTO_CLOSING_TAGS.get(suffix);
+		}
+	}
+
+	public static class NestedAutoClosingFormatting extends AutoClosingFormatting {
+		private final AutoClosingFormatting f;
+
+		public NestedAutoClosingFormatting(AutoClosingFormatting f) {
+			super(f.getKind());
+			this.f = f;
+		}
+
+		public String getUsedTag() {
+			return "+"+f.getUsedTag();
+		}
+
+		public Map<String, String> getAttributes() {
+			return f.getAttributes();
+		}
+
+		@Override
+		public List<ParatextCharacterContentPart> getContent() {
+			return f.getContent();
+		}
+
+		@Override
+		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
+			throw new UnsupportedOperationException();
 		}
 	}
 }

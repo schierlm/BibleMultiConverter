@@ -301,7 +301,7 @@ public class USFX extends AbstractParatextFormat {
 				containerStack.add(container);
 				result.getContent().add(container);
 			}
-			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(sfm), false);
+			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(sfm));
 			containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
 			containerStack.add(nextContainer);
 			parseElements(result, containerStack, nc.getContent(), context);
@@ -355,7 +355,7 @@ public class USFX extends AbstractParatextFormat {
 			String sfm = w.getSfm();
 			if (sfm == null || sfm.isEmpty())
 				sfm = localName;
-			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(sfm), false);
+			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(sfm));
 			if (w.getL() != null && !w.getL().isEmpty())
 				nextContainer.getAttributes().put("lemma", w.getL());
 			if (w.getS() != null && !w.getS().isEmpty())
@@ -396,7 +396,7 @@ public class USFX extends AbstractParatextFormat {
 			String sfm = v.getSfm();
 			if (sfm == null || sfm.isEmpty())
 				sfm = localName;
-			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(sfm), false);
+			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(sfm));
 			if (containerStack.isEmpty()) {
 				ParatextCharacterContent container = new ParatextCharacterContent();
 				containerStack.add(container);
@@ -407,7 +407,7 @@ public class USFX extends AbstractParatextFormat {
 			parseElements(result, containerStack, v.getContent(), context);
 			containerStack.remove(nextContainer);
 		} else if (Arrays.asList("pn", "ord", "no", "ndx", "wh", "wg", "ior").contains(localName)) {
-			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(localName), false);
+			AutoClosingFormatting nextContainer = new AutoClosingFormatting(USFM.AUTO_CLOSING_TAGS.get(localName));
 			if (containerStack.isEmpty()) {
 				ParatextCharacterContent container = new ParatextCharacterContent();
 				containerStack.add(container);
