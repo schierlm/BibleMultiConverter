@@ -237,7 +237,7 @@ public class USFM extends AbstractParatextFormat {
 				result.getContent().add(openChapter);
 				closeCharacterAttributes = true;
 				textPart = parts.length == 1 ? "" : parts[1];
-			} else if (tag.matches("t[hc]r?[0-9]+")) {
+			} else if (tag.matches(TableCellStart.TABLE_CELL_TAG_REGEX)) {
 				result.getContent().add(new TableCellStart(tag));
 				closeCharacterAttributes = true;
 			} else if (FOOTNOTE_XREF_TAGS.containsKey(tag)) {

@@ -70,6 +70,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<RoundtripFormat>("USX", "XML Bible format used by Paratext and the Digital Bible Library (version 2)", USX.HELP_TEXT, USX.class));
 		result.add(new Module<RoundtripFormat>("USX3", "XML Bible format used by Paratext and the Digital Bible Library (version 3)", USX3.HELP_TEXT, USX3.class));
 		result.add(new Module<RoundtripFormat>("ParatextDump", "Dump a Paratext bible to diffable plain text", ParatextDump.HELP_TEXT, ParatextDump.class));
+		result.add(new Module<RoundtripFormat>("ParatextVPL", "VPL inspired format using Paratext tags", ParatextVPL.HELP_TEXT, ParatextVPL.class));
 		result.add(new Module<RoundtripFormat>("RoundtripODT", "ODT export and re-import", RoundtripODT.HELP_TEXT, RoundtripODT.class));
 		result.add(new Module<RoundtripFormat>("BibleWorks", "Plain text import and export format for BibleWorks", BibleWorks.HELP_TEXT, BibleWorks.class));
 		result.add(new Module<RoundtripFormat>("BibleWorksRTF", "RTF import and export format for BibleWorks", BibleWorksRTF.HELP_TEXT, BibleWorksRTF.class));

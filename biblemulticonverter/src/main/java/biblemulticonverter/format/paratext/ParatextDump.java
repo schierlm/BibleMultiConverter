@@ -155,7 +155,7 @@ public class ParatextDump extends AbstractParatextFormat {
 		}
 	}
 
-	private void writeBook(BufferedWriter bw, ParatextBook book) throws IOException {
+	protected void writeBook(BufferedWriter bw, ParatextBook book) throws IOException {
 		bw.write("BOOK\t" + book.getId().getIdentifier() + "\t" + book.getBibleName() + "\n");
 		for (Map.Entry<String, String> bookattr : book.getAttributes().entrySet()) {
 			bw.write("BOOKATTR\t" + bookattr.getKey() + "\t" + bookattr.getValue() + "\n");

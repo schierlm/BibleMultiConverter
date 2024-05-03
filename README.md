@@ -140,8 +140,9 @@ SQLite based formats or for importing MyBible.Zone bibles.
 The **ParatextConverter** tool can be used to convert between USFM/USFX/USX formats
 without converting to BibleMultiConverter's internal format first, or to remove
 tagged OT/NT/Deuterocanonical content from such a file. It can also be used to convert
-to **ParatextDump** format (which is a diffable plain text dump of the internal Paratext
-structure and useful for comparing different Paratext formats).
+from/to **ParatextDump** (which is a diffable plain text dump of the internal Paratext
+structure and useful for comparing different Paratext formats) and **ParatextVPL** (which is
+a different diffable format that looks more like VPL, but uses Paratext tags) formats.
 
 The **MyBibleZoneListDownloader** tool (part of SQLite edition) can be used to download
 the list of available MyBible.Zone modules from the module registry (that is also queried

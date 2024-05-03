@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import biblemulticonverter.data.BookID;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
@@ -524,10 +525,13 @@ public class ParatextBook {
 	}
 
 	public static class TableCellStart implements ParatextBookContentPart {
+
+		public static final String TABLE_CELL_TAG_REGEX = "t[hc](c|r?[0-9]+(-[0-9]+)?)?";
+
 		private final String tag;
 
 		public TableCellStart(String tag) {
-			this.tag = tag;
+			this.tag = Utils.validateString("tag", tag, TABLE_CELL_TAG_REGEX);
 		}
 
 		public String getTag() {
