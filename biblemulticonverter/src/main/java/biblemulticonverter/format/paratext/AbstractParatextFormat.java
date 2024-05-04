@@ -1,6 +1,7 @@
 package biblemulticonverter.format.paratext;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -333,7 +335,20 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		List<ParatextBook> result = new ArrayList<ParatextBook>();
 		if (!inputFile.isDirectory())
 			throw new IOException("Not a directory: " + inputFile);
+		File propertyFile = new File(inputFile, "biblemulticonverter.properties");
+		if (propertyFile.exists()) {
+			Properties props = new Properties();
+			try (FileInputStream fis = new FileInputStream(propertyFile)) {
+				props.load(fis);
+			}
+			for (String name : props.stringPropertyNames()) {
+				if (System.getProperty(name) == null)
+					System.setProperty(name, props.getProperty(name));
+			}
+		}
 		for (File file : inputFile.listFiles()) {
+			if (file.getName().equals("biblemulticonverter.properties"))
+				continue;
 			try {
 				ParatextBook book = doImportBook(file);
 				if (book != null)
@@ -342,7 +357,21 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				throw new RuntimeException("Failed parsing " + file.getName(), ex);
 			}
 		}
-		result.sort(Comparator.comparing(ParatextBook::getId));
+		Map<ParatextID, Integer> bookOrder = new EnumMap<>(ParatextID.class);
+		String bookOrderProperty = System.getProperty("biblemulticonverter.paratext.bookorder");
+		if (bookOrderProperty != null && !bookOrderProperty.isEmpty()) {
+			ParatextID[] values = ParatextID.values();
+			int order = 0;
+			for (String range : bookOrderProperty.split(",")) {
+				String[] bounds = range.split("-", 2);
+				ParatextID idFrom = ParatextID.fromIdentifier(bounds[0]);
+				ParatextID idTo = bounds.length == 2 ? ParatextID.fromIdentifier(bounds[1]) : idFrom;
+				for (int i = idFrom.ordinal(); i <= idTo.ordinal(); i++) {
+					bookOrder.put(values[i], ++order);
+				}
+			}
+		}
+		result.sort(Comparator.<ParatextBook, Integer> comparing(b -> bookOrder.getOrDefault(b.getId(), Integer.MAX_VALUE)).thenComparing(ParatextBook::getId));
 		return result;
 	}
 
