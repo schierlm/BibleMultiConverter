@@ -25,6 +25,7 @@ public class LogosModuleRegistry extends ModuleRegistry {
 		result.add(new Module<ExportFormat>("AugmentLogosLinks", "Add values of Logos links to Extra Attributes of a Bible", AugmentLogosLinks.HELP_TEXT, AugmentLogosLinks.class));
 		result.add(new Module<ExportFormat>("LogosHTML", "HTML Export format for Logos Bible Software", LogosHTML.HELP_TEXT, LogosHTML.class));
 		result.add(new Module<ExportFormat>("LaridianPocketBibleExtendedInterlinear", "Export to Laridian Pocket Bible with Interlinear fields from Logos links", LaridianPocketBibleExtendedInterlinear.HELP_TEXT, LaridianPocketBibleExtendedInterlinear.class));
+		result.add(new Module<ExportFormat>("ReplaceStrongs", "Replace Strongs numbers by pattern or from other Logos links (e.g. GreekGK).", ReplaceStrongs.HELP_TEXT, ReplaceStrongs.class));
 		return result;
 	}
 
