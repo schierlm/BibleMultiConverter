@@ -1,13 +1,11 @@
-BibleMultiConverter
-===================
+# BibleMultiConverter
 
 Converter written in Java to convert between different Bible program formats
 
 Copyright (c) 2007-2024 Michael Schierl
 Licensed unter MIT License; for details, see the LICENSE file.
 
-Usage
------
+## Usage
 
 If you clone from Git or download a source zip, you will need a Java JDK 8 or above (tested up to 11),
 and Apache Maven 3.5 or above, to build. Just run "mvn package" and you will find
@@ -21,16 +19,12 @@ If you download a precompiled .zip file, you will need a Java Runtime Environmen
 on the command line for usage information. Each module has its own help,
 which can be shown by using the "help" module.
 
-
-Documentation
--------------
+## Documentation
 
 The documentation is currently a bit lacking. Try the commands, or look at the
 source, or open an issue if anything is unclear.
 
-
-Supported Formats
------------------
+## Supported Formats
 
 BibleMultiConverter supports four custom formats, which are loss-less (support
 all features supported by the BibleMultiConverter framework) and are supported
@@ -93,7 +87,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[MySword](https://www.mysword.info/)**: import and export
 - **[Obsidian](https://obsidian.md/)**: export only
 - **[Beblia XML](https://beblia.com/)**: import and export
-- **[Laridian Book Builder](https://www.laridian.com/): export only
+- **[Laridian Book Builder](https://www.laridian.com/)**: export only
 
 In combination with third party tools, other export formats are available:
 
@@ -149,17 +143,13 @@ the list of available MyBible.Zone modules from the module registry (that is als
 by the Android app) and create a HTML file with download links and (JavaScript) filters.
 This is needed as the website apparently does not include all modules available in the app.
 
-Planned formats
----------------
+## Planned formats
 
 EPUB export is planned (but not high priority at the moment).
 
 If you want to see any other formats, feel free to open an issue (or a pull request :-D).
 
-
-Limitations
------------
-
+## Limitations
 
 When comparing the bible formats that are currently used (both free and commercial), they
 can be divided into two broad categories (or paradigms).
@@ -199,14 +189,12 @@ are not used by most of the available modules), like several paragraph styles or
 list and tables. All these formats get reduced to the bare minimum: paragraph breaks
 as well as line breaks with and without indentation.
 
-
-Reporting exporter bugs
------------------------
+## Reporting exporter bugs
 
 In case you are trying to export a module, but the exporter throws an error message you
 do not understand, I'd prefer if you could share a **Diffable** version of the module
 with me. However, I understand that this is not always possible, e.g. due to copyright
-restrictions. In that case, you can try if the bug can still be reproduced after 
+restrictions. In that case, you can try if the bug can still be reproduced after
 exporting export the module using the **ScrambledDiffable** export format; this format
 is designed to leave the structure of the document intact but scramble all the (Greek
 and Latin) letters and digits are scrambled beyond repair (or repairable with a password
@@ -227,9 +215,7 @@ for correlation attacks to get the plain text. Therefore, use different password
 multiple bibles (like, add the bible name to them), or better, use real encryption like AES
 instead.
 
-
-Versification handling
-----------------------
+## Versification handling
 
 Most Bible formats do not care about versifications (they just store `book chapter:verse`
 without caring how many verses a certain chapter has), or support only a single versification
@@ -269,8 +255,7 @@ Supported Versification formats:
 - **SoftProjectorVersification**: Import versification mapping from SoftProjector bible
 - **ReportHTML**: Export only (HTML report that shows difference of covered verses)
 
-SWORD import
-------------
+## SWORD import
 
 As the SWORD format is quite complex, I'm using a third party library JSword for parsing it.
 That library adds quite some footprint to the application (almost 20MB) so SWORD import is
@@ -284,9 +269,7 @@ by a slash, and use this as the filename.
 In case you do not have a SWORD module directory locally, you can use the **SWORDDownloader**
 tool to download some bibles from a SWORD http repository into a new module directory.
 
-
-Paratext formats (USFM/USX)
----------------------------
+## Paratext formats (USFM/USX)
 
 For both USFM/USX most tags are supported, not supported are `ca cp va vp fig fm`.
 
@@ -301,8 +284,7 @@ when these occur):
     - 1-4.7 becomes 1-4
     - 1.4-7 becomes 1
 
-E-Sword export
---------------
+## E-Sword export
 
 To export for E-Sword, first use the ESwordHTML export filter, which generates two
 HTML files (.bblx.html and .cmtx.html) which can then imported into ToolTipTool and
@@ -319,9 +301,7 @@ imported in ToolTipTool without issues and converted as desired.
 want to contribute an E-Sword exporter that directly writes the SQL Database files,
 it will be very much appreciated.]
 
-
-Logos Bible Software export
----------------------------
+## Logos Bible Software export
 
 As the dependencies are quite large and non-free, this feature is only available
 in the "Logos Edition" which is a separate binary download (but included in the
@@ -348,8 +328,7 @@ information will look broken in Logos.
 [In case anybody wants to contribute a Logos exporter that directly writes .docx files,
 it will be very much appreciated.]
 
-Accordance export
------------------
+## Accordance export
 
 Accordance export also is quite complex, but this time not because of the complexity
 of the format, but because of some quirks in Accordance and because - due to the
@@ -380,7 +359,6 @@ by older Accordance versions, UTF-8 supports more characters. Line endings can b
 or LF; again CR for better compatibility, LF for interoperability with other editors.
 
 For all the options, see the help text of the module.
-
 
 Another point to keep in mind are versification schemas.
 
@@ -443,7 +421,7 @@ To cover these two variants, there are several options in the exporter.
   implementation detail in Accordance 13: In some cases, it is possible to import for
   a versification in case the total verse number matches but not the chapter boundaries
   (e.g if a versification has chapters with 13 and 9 verses, and the bible has 12 and 10
-  verses, it imports fine). To allow that kind of verse number tweaking,  you can give a
+  verses, it imports fine). To allow that kind of verse number tweaking, you can give a
   `verseschemashift=<nbr>` option, where `<nbr>` is the number of verses that may
   be added/removed from a single chapter. In case a chapter has gaps at the end of
   one chapter and merged verses at the end of another chapter, the verse schema is
@@ -452,25 +430,25 @@ To cover these two variants, there are several options in the exporter.
 
 The usual workflow when using custom versifications is as follow
 
-1. Identify which versification formats you may want to use (or export all
-   if you are unsure and have the time/patience to do so).
+1.  Identify which versification formats you may want to use (or export all
+    if you are unsure and have the time/patience to do so).
 
-2. Export a versification list from Accordance. To do so, open the corresponding
-   Bible, choose `Display->Set Text Pane Display->Show As->References only` as well
-   as `Display->Set Text Pane Display->Advanced->Use English Book Names`. Then, select
-   all verses (`Edit->Select All`) and save them using
-   `File->Save Text Selection->Plain Text...`.
+2.  Export a versification list from Accordance. To do so, open the corresponding
+    Bible, choose `Display->Set Text Pane Display->Show As->References only` as well
+    as `Display->Set Text Pane Display->Advanced->Use English Book Names`. Then, select
+    all verses (`Edit->Select All`) and save them using
+    `File->Save Text Selection->Plain Text...`.
 
-3. Import the versifications into BibleMultiConverter. Therefore, a database file
-   with extension `.bmcv` (BibleMultiConverter Versification) is created. The command
-   to do so is:
+3.  Import the versifications into BibleMultiConverter. Therefore, a database file
+    with extension `.bmcv` (BibleMultiConverter Versification) is created. The command
+    to do so is:
 
-       java -jar BibleMultiConverter.jar Versification <file>.bmcv import AccordanceReferenceList <file>.txt <NAME>
+        java -jar BibleMultiConverter.jar Versification <file>.bmcv import AccordanceReferenceList <file>.txt <NAME>
 
-   Repeat this for every versification you want to import, into the *same* database
-   file, but using *different* names.
+    Repeat this for every versification you want to import, into the _same_ database
+    file, but using _different_ names.
 
-4. Run **VersificationDetector** to decide which module to use. Use the options
-   `-title` and `-ignoreheadlines` for best results.
+4.  Run **VersificationDetector** to decide which module to use. Use the options
+    `-title` and `-ignoreheadlines` for best results.
 
-5. Do the actual conversion, using the `verseschema=` option as mentioned above.
+5.  Do the actual conversion, using the `verseschema=` option as mentioned above.
