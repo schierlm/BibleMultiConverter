@@ -6,40 +6,45 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.format.StrippedDiffable.Feature;
 import biblemulticonverter.data.Verse;
 
 public class OldDiffable implements ExportFormat {
 
 	public static final String[] HELP_TEXT = {
-			"Export bibles to Diffable format of v0.0.8 or v0.0.7 (or older).",
+			"Export bibles to Diffable format of v0.0.8 or v0.0.7 or v0.0.2.",
 			"",
-			"Usage: OldDiffable [-older] <OutputFile>",
+			"Usage: OldDiffable [-older|-oldest] <OutputFile>",
 			"",
-			"When -older switch is not given, export to v0.0.8 format"
+			"When -oldest switch is given, export to v0.0.2 format;",
+			"When -older switch is given, export to v0.0.7 format;",
+			"When neither switch is given, export to v0.0.8 format."
 	};
 
 	private static final String MAGIC = "BibleMultiConverter-1.0 Title: ";
 
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
-		boolean olderFormat = exportArgs[0].equals("-older");
-		File exportFile = new File(exportArgs[olderFormat ? 1 : 0]);
+		int format = exportArgs[0].equals("-oldest") ? 2 : exportArgs[0].equals("-older") ? 7 : 8;
+		File exportFile = new File(exportArgs[format < 8 ? 1 : 0]);
 		try (Writer w = new OutputStreamWriter(new FileOutputStream(exportFile), StandardCharsets.UTF_8)) {
-			doExport(bible, w, olderFormat);
+			doExport(bible, w, format);
 		}
 	}
 
-	private void doExport(Bible bible, Writer w, boolean olderFormat) throws IOException {
+	private void doExport(Bible bible, Writer w, int format) throws IOException {
 		w.write(MAGIC + bible.getName() + "\n");
 		for (Book book : bible.getBooks()) {
 			w.write(book.getAbbr() + " = " + book.getId().getOsisID() + "\t" + book.getShortName() + "\t" + book.getLongName() + "\n");
@@ -47,10 +52,10 @@ public class OldDiffable implements ExportFormat {
 			for (Chapter ch : book.getChapters()) {
 				chapterNumber++;
 				if (ch.getProlog() != null) {
-					ch.getProlog().accept(new OldDiffableVisitor(w, book.getAbbr() + " " + chapterNumber + " ", olderFormat));
+					ch.getProlog().accept(new OldDiffableVisitor(w, book.getAbbr() + " " + chapterNumber + " ", format));
 				}
 				for (Verse v : ch.getVerses()) {
-					v.accept(new OldDiffableVisitor(w, book.getAbbr() + " " + chapterNumber + ":" + v.getNumber() + " ", olderFormat));
+					v.accept(new OldDiffableVisitor(w, book.getAbbr() + " " + chapterNumber + ":" + v.getNumber() + " ", format));
 				}
 			}
 		}
@@ -61,13 +66,13 @@ public class OldDiffable implements ExportFormat {
 		private final String linePrefix;
 		private final OldDiffableVisitor childVisitor;
 		private boolean startNewLine = false, inMainContent = false;
-		private boolean olderFormat;
+		private int format;
 
-		private OldDiffableVisitor(Writer w, String linePrefix, boolean olderFormat) throws IOException {
+		private OldDiffableVisitor(Writer w, String linePrefix, int format) throws IOException {
 			this.w = w;
 			this.linePrefix = linePrefix;
-			this.olderFormat = olderFormat;
-			childVisitor = linePrefix == null ? this : new OldDiffableVisitor(w, null, olderFormat);
+			this.format = format;
+			childVisitor = linePrefix == null ? this : new OldDiffableVisitor(w, null, format);
 			if (linePrefix != null)
 				w.write(linePrefix);
 		}
@@ -144,6 +149,37 @@ public class OldDiffable implements ExportFormat {
 
 		@Override
 		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+			if (rmac != null) {
+				boolean changed = false;
+				for (int i = 0; i < rmac.length; i++) {
+					if (rmac[i].matches(Utils.WIVU_REGEX)) {
+						rmac[i] = null;
+						changed = true;
+					}
+				}
+				if (changed) {
+					System.out.println("WARNING: Dropping WIVU morphology");
+					rmac = Arrays.asList(rmac).stream().filter(r -> r != null).toArray(String[]::new);
+					if (rmac.length == 0) {
+						rmac = null;
+					}
+				}
+			}
+			if (format == 2) {
+				int neededLength = strongs == null ? -1 : strongs.length;
+				if (rmac != null && rmac.length != neededLength) {
+					System.out.println("WARNING: Dropping RMAC for oldest format as it does not match Strongs length");
+					rmac = null;
+				}
+				if (sourceIndices != null && sourceIndices.length != neededLength) {
+					System.out.println("WARNING: Dropping Source Indices for oldest format as they does not match Strongs length");
+					sourceIndices = null;
+				}
+			}
+			if (strongs == null && rmac == null && sourceIndices == null) {
+				System.out.println("WARNING: Dropping grammar tag without attributes");
+				return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "olddiffable", "grammar", "empty");
+			}
 			checkLine();
 			w.write("<grammar strong=\"");
 			if (strongs != null) {
@@ -154,7 +190,7 @@ public class OldDiffable implements ExportFormat {
 				}
 			}
 			if (strongsPrefixes != null) {
-				if (olderFormat) {
+				if (format < 8) {
 					System.out.println("WARNING: Dropping strongs prefixes for older format");
 				} else {
 					w.write("\" strongpfx=\"");

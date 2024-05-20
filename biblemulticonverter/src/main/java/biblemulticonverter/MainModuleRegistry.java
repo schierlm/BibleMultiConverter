@@ -24,7 +24,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		List<Module<ExportFormat>> result = new ArrayList<ModuleRegistry.Module<ExportFormat>>();
 		result.add(new Module<ExportFormat>("Validate", "Validate bible for inconsistencies", Validate.HELP_TEXT, Validate.class));
 		result.add(new Module<ExportFormat>("StrippedDiffable", "Like Diffable, but with features stripped.", StrippedDiffable.HELP_TEXT, StrippedDiffable.class));
-		result.add(new Module<ExportFormat>("OldDiffable", "Export bibles to Diffable format of v0.0.8 or v0.0.7 (or older).", OldDiffable.HELP_TEXT, OldDiffable.class));
+		result.add(new Module<ExportFormat>("OldDiffable", "Export bibles to Diffable format of v0.0.8 or v0.0.7 or v0.0.2.", OldDiffable.HELP_TEXT, OldDiffable.class));
 		result.add(new Module<ExportFormat>("ZefaniaXMLMyBible", "Zefania XML - well known bible format (with MyBible optimizations).", ZefaniaXMLMyBible.HELP_TEXT, ZefaniaXMLMyBible.class));
 		result.add(new Module<ExportFormat>("ZefDicMyBible", "Zefania Dictionary exporter for MyBible.", ZefDicMyBible.HELP_TEXT, ZefDicMyBible.class));
 		result.add(new Module<ExportFormat>("MobiPocket", "MobiPocket ebook format (predecessor of Kindle's format)", MobiPocket.HELP_TEXT, MobiPocket.class));
