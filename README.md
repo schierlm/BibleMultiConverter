@@ -97,7 +97,7 @@ In addition, the following other formats are supported, with varying accuracy:
 
 In combination with third party tools, other export formats are available:
 
-- In combination with LibreOffice 4.4, it is possible to export bibles for
+- In combination with LibreOffice 4.4 to 7.5, it is possible to export bibles for
   Logos Bible Software (see below for details)
 - In combination with the E-Sword ToolTipTool NT v2.51, it is possible to
   export bibles for E-Sword (see below for details)
@@ -331,7 +331,9 @@ this export is a multi-step process:
 First run the **LogosVersificationDetector**, which will find a verse map for you
 that covers (hopefully) all verses of your Bible. Then run **LogosHTML** to produce
 a HTML file, which you can open in LibreOffice (HTML Writer format) and save as .docx
-(Office 2007 XML format).
+(Office 2007 XML format). Note that HTML import in LibreOffice 7.6 is totally broken,
+and in LibreOffice 24.2 it changed in incompatible ways, for now please use LibreOffice
+7.5 or older for conversion.
 
 In case your bible contains cross references to books/verses that are not covered
 by your bible itself, don't forget to pass the `-xref` option to the versification
