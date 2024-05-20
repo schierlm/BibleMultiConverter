@@ -43,6 +43,11 @@ both for import and for export:
 - **RoundtripXML**: Useful for interchange of modules with converters written
   in other programming languages (that prefer XML binding to plaintext parsing)
 
+Note that the **Diffable** format got new features in v0.0.8 as well as in v0.0.9, which
+are backwards compatible but *not* forwards compatible. Use the **OldDiffable** format
+to export Bibles in v0.0.9 so that v0.0.8 or older versions are guaranteed to be able
+to read them.
+
 In addition, there are other formats that can preserve all features supported by
 the BibleMultiConverter framework, and can therefore used for exchanging or editing
 modules without loss of data:
