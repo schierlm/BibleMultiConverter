@@ -205,7 +205,17 @@ public class MyBibleZone implements RoundtripFormat {
 				try {
 					mb.setValue("MyBible.zone@" + fn.replace('_', '.'), fv);
 				} catch (IllegalArgumentException ex) {
-					System.out.println("WARNING: Skipping malformed metadata property " + fn);
+					fv = fv.replaceAll("[\\p{C}\\p{Z}&&[^\n]]", " ").replaceAll("  +", " ").replaceAll(" *\n *", "\n").replaceAll("\n$", "");
+					try {
+						if (fv.isEmpty()) {
+							System.out.println("WARNING: Skipping malformed metadata property " + fn);
+						} else {
+							mb.setValue("MyBible.zone@" + fn.replace('_', '.'), fv);
+							System.out.println("WARNING: Replaced nonprintable characters with spaces in metadata property " + fn);
+						}
+					} catch (IllegalArgumentException ex2) {
+						System.out.println("WARNING: Skipping malformed metadata property " + fn);
+					}
 				}
 			}
 			if (fn.equals("strong_numbers_prefix") && fv.length() == 1) {
