@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
  */
 public class TagParser {
 
-	private static final Pattern NUMBER_MATCHER = Pattern.compile("$([a-z]+)([1-9]*)^");
+	private static final Pattern NUMBER_MATCHER = Pattern.compile("^([a-z]+)([1-9]*)$");
 
 	private String baseTag = null;
 	private int number = -1;
@@ -25,7 +25,7 @@ public class TagParser {
 		if (isValid) {
 			baseTag = matcher.group(1);
 			String rawNumber = matcher.group(2);
-			if (rawNumber != null) {
+			if (rawNumber != null && !rawNumber.isEmpty()) {
 				number = Integer.parseInt(rawNumber);
 			} else {
 				number = -1;
