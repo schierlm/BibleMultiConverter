@@ -159,6 +159,7 @@ public class MyBibleZone implements RoundtripFormat {
 
 	private boolean rawMorphology = Boolean.getBoolean("mybiblezone.morphology.raw");
 	private boolean rawFootnotes = Boolean.getBoolean("mybiblezone.footnotes.raw");
+	private boolean noteAsFootnote = Boolean.getBoolean("mybiblezone.note.asfootnote");
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
@@ -510,7 +511,8 @@ public class MyBibleZone implements RoundtripFormat {
 				else
 					vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, rmac == null ? null : new String[] { rmac }, null).visitText(cleanText(strongsWord));
 			} else if (text.startsWith("<n>")) {
-				text = convertFromVerse(text.substring(3), vv.visitCSSFormatting("font-style: italic; myBibleType=note"), hp, footnoteDB, vnums, nt, strongsPrefix);
+				Visitor<RuntimeException> vvv = noteAsFootnote ? vv.visitFootnote() :  vv.visitCSSFormatting("font-style: italic; myBibleType=note");
+				text = convertFromVerse(text.substring(3), vvv, hp, footnoteDB, vnums, nt, strongsPrefix);
 				if (!text.startsWith("</n>"))
 					System.out.println("WARNING: Unclosed <n> tag at: " + text);
 				else {
