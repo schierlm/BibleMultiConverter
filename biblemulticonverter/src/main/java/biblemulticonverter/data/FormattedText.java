@@ -422,6 +422,7 @@ public class FormattedText {
 		}
 	}
 
+	// TODO add Psalm Title and Added Text here!
 	public static enum FormattingInstructionKind {
 		BOLD('b', "b", "font-weight: bold;"),
 		ITALIC('i', "i", "font-style: italic;"),
@@ -466,6 +467,38 @@ public class FormattedText {
 					return k;
 			}
 			throw new IllegalArgumentException("Char: " + c);
+		}
+	}
+
+	// TODO: Use this instead of LineBreakKind
+	public static enum ExtendedLineBreakKind {
+
+		PARAGRAPH(false), NO_FIRST_LINE_INDENT(false), HANGING_INDENT(false), PAGE_BREAK(false), BLANK_LINE(false), SEMANTIC_DIVISION(false),
+		TABLE_ROW_FIRST_CELL(false), TABLE_ROW_NEXT_CELL(false),
+		NEWLINE(true), POETIC_LINE(true), SAME_LINE_IF_POSSIBLE(true);
+
+		public static int INDENT_CENTER = -1;
+		public static int INDENT_RIGHT_JUSTIFIED = -2;
+		private boolean sameParagraph;
+
+		private ExtendedLineBreakKind(boolean sameParagraph) {
+			this.sameParagraph = sameParagraph;
+		}
+
+		public boolean isSameParagraph() {
+			return sameParagraph;
+		}
+
+		public boolean isClosingTable() {
+			return this != NEWLINE && this != TABLE_ROW_FIRST_CELL && this != TABLE_ROW_NEXT_CELL;
+		}
+
+		public LineBreakKind toLineBreakKind(int indent) {
+			if (this == TABLE_ROW_NEXT_CELL)
+				return LineBreakKind.NEWLINE_WITH_INDENT;
+			if (!sameParagraph)
+				return LineBreakKind.PARAGRAPH;
+			return indent == 0 ? LineBreakKind.NEWLINE : LineBreakKind.NEWLINE_WITH_INDENT;
 		}
 	}
 

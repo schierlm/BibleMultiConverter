@@ -11,6 +11,7 @@ import java.util.Set;
 
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Utils;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
@@ -46,6 +47,21 @@ public class ParatextBook {
 
 	public LinkedHashMap<String, String> getAttributes() {
 		return attributes;
+	}
+
+	public static Version getMinVersionForAttribute(String key) {
+		switch (key) {
+			case "toc1":
+			case "toc2":
+				return Version.V2_0_3;
+			case "toc3":
+				return Version.V2_0_4;
+			case "toca1":
+			case "toca2":
+			case "toca3":
+				return Version.V3;
+		}
+		return Version.V1;
 	}
 
 	public List<ParatextBookContentPart> getContent() {
@@ -186,8 +202,8 @@ public class ParatextBook {
 	}
 
 	/**
-	 * One of {@link ChapterStart}, {@link ChapterEnd}, {@link ParagraphStart}, {@link TableCellStart} or
-	 * {@link ParatextCharacterContent}.
+	 * One of {@link ChapterStart}, {@link ChapterEnd}, {@link ParagraphStart}, {@link Remark},
+	 * {@link TableCellStart}, {@link SidebarStart}, {@link SidebarEnd} or {@link ParatextCharacterContent}.
 	 */
 	public static interface ParatextBookContentPart {
 		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> v) throws T;
@@ -248,157 +264,258 @@ public class ParatextBook {
 		}
 	}
 
+	public static class Remark implements ParatextBookContentPart {
+		private final String text;
+
+		public Remark(String text) {
+			this.text = text;
+		}
+
+		public String getText() {
+			return text;
+		}
+
+		@Override
+		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> v) throws T {
+			v.visitRemark(text);
+		}
+	}
+
+	public static class SidebarStart implements ParatextBookContentPart {
+
+		private final String[] categories;
+
+		public SidebarStart(String[] categories) {
+			this.categories = categories;
+		}
+
+		public String[] getCategories() {
+			return categories;
+		}
+
+		@Override
+		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> v) throws T {
+			v.visitSidebarStart(categories);
+		}
+	}
+
+	public static class SidebarEnd implements ParatextBookContentPart {
+
+		public SidebarEnd() {
+		}
+
+		@Override
+		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> v) throws T {
+			v.visitSidebarEnd();
+		}
+	}
+
+	public static class PeripheralStart implements ParatextBookContentPart {
+
+		public static final String[][] DEFINED_PERIPHERALS = {
+			{"FRT", "Title Page", "title"},
+			{"FRT", "Half Title Page", "halftitle"},
+			{"FRT", "Promotional Page", "promo"},
+			{"FRT", "Imprimatur", "imprimatur"},
+			{"FRT", "Publication Data", "pubdata"},
+			{"FRT", "Foreword", "foreword"},
+			{"FRT", "Preface", "preface"},
+			{"FRT", "Table of Contents", "contents"},
+			{"FRT", "Alphabetical Contents", "alphacontents"},
+			{"FRT", "Table of Abbreviations", "abbreviations"},
+			{"INT", "Bible Introduction", "intbible"},
+			{"INT", "Old Testament Introduction", "intot"},
+			{"INT", "Pentateuch Introduction", "intpent"},
+			{"INT", "History Introduction", "inthistory"},
+			{"INT", "Poetry Introduction", "intpoetry"},
+			{"INT", "Prophecy Introduction", "intprophesy"},
+			{"INT", "Deuterocanon Introduction", "intdc"},
+			{"INT", "New Testament Introduction", "intnt"},
+			{"INT", "Gospels Introduction", "intgospels"},
+			{"INT", "Epistles Introduction", "intepistles"},
+			{"INT", "Letters Introduction", "intletters"},
+			{"BAK", "Chronology", "chron"},
+			{"BAK", "Weights and Measures", "measures"},
+			{"BAK", "Map Index", "maps"},
+			{"BAK", "LXX Quotes in NT", "lxxquotes"},
+			{"BAK", "Cover", "cover"},
+			{"BAK", "Spine", "spine"},
+		};
+
+		private final String title;
+		private final String id;
+
+		public PeripheralStart(String title, String id) {
+			this.title = title;
+			this.id = id;
+		}
+
+		public String getId() {
+			return id;
+		}
+
+		public String getTitle() {
+			return title;
+		}
+
+		@Override
+		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> v) throws T {
+			v.visitPeripheralStart(title, id);
+		}
+	}
+
 	public static enum ParagraphKindCategory {
-		TEXT, HEADLINE, TABLE_ROW, VERTICAL_WHITE_SPACE, SKIP
+		TEXT, HEADLINE, TABLE_ROW, VERTICAL_WHITE_SPACE, SKIP, EXTRA_ATTRIBUTE_META
 	}
 
 	public static enum ParagraphKind {
 
 		//@formatter:off
 
-		INTRO_MAJOR_TITLE(Version.V1, true, ParagraphKindCategory.HEADLINE, "imt", 1, true, null),
-		INTRO_MAJOR_TITLE_1(Version.V1, true, ParagraphKindCategory.HEADLINE, "imt1", 1, true, null),
-		INTRO_MAJOR_TITLE_2(Version.V1, true, ParagraphKindCategory.HEADLINE, "imt2", 1, true, null),
-		INTRO_MAJOR_TITLE_3(Version.V1, true, ParagraphKindCategory.HEADLINE, "imt3", 1, true, null),
-		INTRO_MAJOR_TITLE_4(Version.V1, true, ParagraphKindCategory.HEADLINE, "imt4", 1, true, null),
-		INTRO_SECTION(Version.V1, true, ParagraphKindCategory.HEADLINE, "is", 2, false, null),
-		INTRO_SECTION_1(Version.V1, true, ParagraphKindCategory.HEADLINE, "is1", 2, false, null),
-		INTRO_SECTION_2(Version.V1, true, ParagraphKindCategory.HEADLINE, "is2", 3, false, null),
-		INTRO_SECTION_3(Version.V1, true, ParagraphKindCategory.HEADLINE, "is3", 4, false, null),
-		INTRO_SECTION_4(Version.V1, true, ParagraphKindCategory.HEADLINE, "is4", 5, false, null),
-		INTRO_SECTION_5(Version.V1, true, ParagraphKindCategory.HEADLINE, "is5", 6, false, null),
-		INTRO_SECTION_6(Version.V1, true, ParagraphKindCategory.HEADLINE, "is6", 7, false, null),
-		INTRO_SECTION_7(Version.V1, true, ParagraphKindCategory.HEADLINE, "is7", 8, false, null),
-		INTRO_SECTION_8(Version.V1, true, ParagraphKindCategory.HEADLINE, "is8", 9, false, null),
+		INTRO_MAJOR_TITLE(Version.V1, true, ParagraphKindCategory.HEADLINE, "imt", 2, true, null, 0, null),
+		INTRO_MAJOR_TITLE_1(Version.V1, true, ParagraphKindCategory.HEADLINE, "imt1", 2, true,  null, 0, null),
+		INTRO_MAJOR_TITLE_2(Version.V1, true, ParagraphKindCategory.HEADLINE, "imt2", 2, true,  null, 0, null),
+		INTRO_MAJOR_TITLE_3(Version.V1, true, ParagraphKindCategory.HEADLINE, "imt3", 2, true, null, 0,  null),
+		INTRO_MAJOR_TITLE_4(Version.V1, true, ParagraphKindCategory.HEADLINE, "imt4", 2, true,  null, 0, null),
+		INTRO_SECTION(Version.V1, true, ParagraphKindCategory.HEADLINE, "is", 3, false, null, 0, null),
+		INTRO_SECTION_1(Version.V1, true, ParagraphKindCategory.HEADLINE, "is1", 3, false, null, 0, null),
+		INTRO_SECTION_2(Version.V1, true, ParagraphKindCategory.HEADLINE, "is2", 4, false, null, 0, null),
+		INTRO_SECTION_3(Version.V1, true, ParagraphKindCategory.HEADLINE, "is3", 5, false, null, 0, null),
+		INTRO_SECTION_4(Version.V1, true, ParagraphKindCategory.HEADLINE, "is4", 6, false, null, 0, null),
+		INTRO_SECTION_5(Version.V1, true, ParagraphKindCategory.HEADLINE, "is5", 7, false, null, 0, null),
+		INTRO_SECTION_6(Version.V1, true, ParagraphKindCategory.HEADLINE, "is6", 8, false, null, 0, null),
+		INTRO_SECTION_7(Version.V1, true, ParagraphKindCategory.HEADLINE, "is7", 9, false, null, 0, null),
+		INTRO_SECTION_8(Version.V1, true, ParagraphKindCategory.HEADLINE, "is8", 9, false, null, 0, null),
 
-		INTRO_PARAGRAPH_P(Version.V1, true, ParagraphKindCategory.TEXT, "ip", 0, false, null),
-		INTRO_PARAGRAPH_M(Version.V1, true, ParagraphKindCategory.TEXT, "im", 0, false, null),
-		INTRO_PARAGRAPH_PI(Version.V1, true, ParagraphKindCategory.TEXT, "ipi", 0, false, null),
-		INTRO_PARAGRAPH_MI(Version.V1, true, ParagraphKindCategory.TEXT, "imi", 0, false, null),
-		INTRO_PARAGRAPH_PQ(Version.V1, true, ParagraphKindCategory.TEXT, "ipq", 0, false, null),
-		INTRO_PARAGRAPH_MQ(Version.V1, true, ParagraphKindCategory.TEXT, "imq", 0, false, null),
-		INTRO_PARAGRAPH_PR(Version.V1, true, ParagraphKindCategory.TEXT, "ipr", 0, false, null),
-		INTRO_PARAGRAPH_Q(Version.V1, true, ParagraphKindCategory.TEXT, "iq", 0, false, null),
-		INTRO_PARAGRAPH_Q1(Version.V1, true, ParagraphKindCategory.TEXT, "iq1", 0, false, null),
-		INTRO_PARAGRAPH_Q2(Version.V1, true, ParagraphKindCategory.TEXT, "iq2", 0, false, null),
-		INTRO_PARAGRAPH_Q3(Version.V1, true, ParagraphKindCategory.TEXT, "iq3", 0, false, null),
-		INTRO_PARAGRAPH_Q4(Version.V1, true, ParagraphKindCategory.TEXT, "iq4", 0, false, null),
-		INTRO_BLANK_LINE(Version.V1, true, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "ib", 0, false, null),
-		INTRO_PARAGRAPH_LI(Version.V1, true, ParagraphKindCategory.TEXT, "ili", 0, false, null),
-		INTRO_PARAGRAPH_LI1(Version.V1, true, ParagraphKindCategory.TEXT, "ili1", 0, false, null),
-		INTRO_PARAGRAPH_LI2(Version.V1, true, ParagraphKindCategory.TEXT, "ili2", 0, false, null),
-		INTRO_PARAGRAPH_LI3(Version.V1, true, ParagraphKindCategory.TEXT, "ili3", 0, false, null),
-		INTRO_PARAGRAPH_LI4(Version.V1, true, ParagraphKindCategory.TEXT, "ili4", 0, false, null),
-		INTRO_OUTLINE_TITLE(Version.V1, true, ParagraphKindCategory.HEADLINE, "iot", 7, false, null),
-		INTRO_OUTLINE(Version.V1, true, ParagraphKindCategory.TEXT, "io", 0, false, null),
-		INTRO_OUTLINE_1(Version.V1, true, ParagraphKindCategory.TEXT, "io1", 0, false, null),
-		INTRO_OUTLINE_2(Version.V1, true, ParagraphKindCategory.TEXT, "io2", 0, false, null),
-		INTRO_OUTLINE_3(Version.V1, true, ParagraphKindCategory.TEXT, "io3", 0, false, null),
-		INTRO_OUTLINE_4(Version.V1, true, ParagraphKindCategory.TEXT, "io4", 0, false, null),
-		INTRO_EXPLANATORY(Version.V1, true, ParagraphKindCategory.TEXT, "iex", 0, false, null),
+		INTRO_PARAGRAPH_P(Version.V1, true, ParagraphKindCategory.TEXT, "ip", 0, false, ExtendedLineBreakKind.PARAGRAPH, 0, null),
+		INTRO_PARAGRAPH_M(Version.V1, true, ParagraphKindCategory.TEXT, "im", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 0, null),
+		INTRO_PARAGRAPH_PI(Version.V1, true, ParagraphKindCategory.TEXT, "ipi", 0, false, ExtendedLineBreakKind.PARAGRAPH, 1, null),
+		INTRO_PARAGRAPH_MI(Version.V1, true, ParagraphKindCategory.TEXT, "imi", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 1, null),
+		INTRO_PARAGRAPH_PQ(Version.V1, true, ParagraphKindCategory.TEXT, "ipq", 0, false, ExtendedLineBreakKind.PARAGRAPH, 0, FormattingInstructionKind.ITALIC),
+		INTRO_PARAGRAPH_MQ(Version.V1, true, ParagraphKindCategory.TEXT, "imq", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 0, FormattingInstructionKind.ITALIC),
+		INTRO_PARAGRAPH_PR(Version.V1, true, ParagraphKindCategory.TEXT, "ipr", 0, false, ExtendedLineBreakKind.PARAGRAPH, ExtendedLineBreakKind.INDENT_RIGHT_JUSTIFIED, null),
+		INTRO_PARAGRAPH_Q(Version.V1, true, ParagraphKindCategory.TEXT, "iq", 0, false, ExtendedLineBreakKind.POETIC_LINE, 1, null),
+		INTRO_PARAGRAPH_Q1(Version.V1, true, ParagraphKindCategory.TEXT, "iq1", 0, false, ExtendedLineBreakKind.POETIC_LINE, 1, null),
+		INTRO_PARAGRAPH_Q2(Version.V1, true, ParagraphKindCategory.TEXT, "iq2", 0, false, ExtendedLineBreakKind.POETIC_LINE, 2, null),
+		INTRO_PARAGRAPH_Q3(Version.V1, true, ParagraphKindCategory.TEXT, "iq3", 0, false, ExtendedLineBreakKind.POETIC_LINE, 3, null),
+		INTRO_PARAGRAPH_Q4(Version.V1, true, ParagraphKindCategory.TEXT, "iq4", 0, false, ExtendedLineBreakKind.POETIC_LINE, 4, null),
+		INTRO_BLANK_LINE(Version.V1, true, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "ib", 0, false, ExtendedLineBreakKind.BLANK_LINE, 0, null),
+		INTRO_PARAGRAPH_LI(Version.V1, true, ParagraphKindCategory.TEXT, "ili", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 1, null),
+		INTRO_PARAGRAPH_LI1(Version.V1, true, ParagraphKindCategory.TEXT, "ili1", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 1, null),
+		INTRO_PARAGRAPH_LI2(Version.V1, true, ParagraphKindCategory.TEXT, "ili2", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 2, null),
+		INTRO_PARAGRAPH_LI3(Version.V1, true, ParagraphKindCategory.TEXT, "ili3", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 3, null),
+		INTRO_PARAGRAPH_LI4(Version.V1, true, ParagraphKindCategory.TEXT, "ili4", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 4, null),
+		INTRO_OUTLINE_TITLE(Version.V1, true, ParagraphKindCategory.HEADLINE, "iot", 7, false, null, 0, null),
+		INTRO_OUTLINE(Version.V1, true, ParagraphKindCategory.TEXT, "io", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 1, null),
+		INTRO_OUTLINE_1(Version.V1, true, ParagraphKindCategory.TEXT, "io1", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 1, null),
+		INTRO_OUTLINE_2(Version.V1, true, ParagraphKindCategory.TEXT, "io2", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 2, null),
+		INTRO_OUTLINE_3(Version.V1, true, ParagraphKindCategory.TEXT, "io3", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 3, null),
+		INTRO_OUTLINE_4(Version.V1, true, ParagraphKindCategory.TEXT, "io4", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 4, null),
+		INTRO_EXPLANATORY(Version.V1, true, ParagraphKindCategory.TEXT, "iex", 0, false, ExtendedLineBreakKind.PARAGRAPH, 0, null),
 
-		INTRO_MAJOR_TITLE_ENDING(Version.V1, true, ParagraphKindCategory.HEADLINE, "imte", 9, true, null),
-		INTRO_MAJOR_TITLE_ENDING_1(Version.V1, true, ParagraphKindCategory.HEADLINE, "imte1", 9, true, null),
-		INTRO_MAJOR_TITLE_ENDING_2(Version.V1, true, ParagraphKindCategory.HEADLINE, "imte2", 9, true, null),
-		INTRO_MAJOR_TITLE_ENDING_3(Version.V1, true, ParagraphKindCategory.HEADLINE, "imte3", 9, true, null),
-		INTRO_MAJOR_TITLE_ENDING_4(Version.V1, true, ParagraphKindCategory.HEADLINE, "imte4", 9, true, null),
-		INTRO_END(Version.V1, true, ParagraphKindCategory.SKIP, "ie", 0, false, null),
+		INTRO_MAJOR_TITLE_ENDING(Version.V1, true, ParagraphKindCategory.HEADLINE, "imte", 9, true, null, 0, null),
+		INTRO_MAJOR_TITLE_ENDING_1(Version.V1, true, ParagraphKindCategory.HEADLINE, "imte1", 9, true, null, 0, null),
+		INTRO_MAJOR_TITLE_ENDING_2(Version.V1, true, ParagraphKindCategory.HEADLINE, "imte2", 9, true, null, 0, null),
+		INTRO_MAJOR_TITLE_ENDING_3(Version.V1, true, ParagraphKindCategory.HEADLINE, "imte3", 9, true, null, 0, null),
+		INTRO_MAJOR_TITLE_ENDING_4(Version.V1, true, ParagraphKindCategory.HEADLINE, "imte4", 9, true, null, 0, null),
+		INTRO_END(Version.V1, true, ParagraphKindCategory.SKIP, "ie", 0, false, ExtendedLineBreakKind.BLANK_LINE, 0, null),
 
-		CHAPTER_DESCRIPTION(Version.V1, true, ParagraphKindCategory.TEXT, "cd", 0, false, null),
+		CHAPTER_DESCRIPTION(Version.V1, true, ParagraphKindCategory.TEXT, "cd", 0, false, null, 0, FormattingInstructionKind.ITALIC),
 
-		MAJOR_TITLE(Version.V1, false, ParagraphKindCategory.HEADLINE, "mt", 1, true, null),
-		MAJOR_TITLE_1(Version.V1, false, ParagraphKindCategory.HEADLINE, "mt1", 1, true, null),
-		MAJOR_TITLE_2(Version.V1, false, ParagraphKindCategory.HEADLINE, "mt2", 1, true, null),
-		MAJOR_TITLE_3(Version.V1, false, ParagraphKindCategory.HEADLINE, "mt3", 1, true, null),
-		MAJOR_TITLE_4(Version.V1, false, ParagraphKindCategory.HEADLINE, "mt4", 1, true, null),
-		MAJOR_TITLE_ENDING(Version.V1, false, ParagraphKindCategory.HEADLINE, "mte", 9, true, null),
-		MAJOR_TITLE_ENDING_1(Version.V1, false, ParagraphKindCategory.HEADLINE, "mte1", 9, true, null),
-		MAJOR_TITLE_ENDING_2(Version.V1, false, ParagraphKindCategory.HEADLINE, "mte2", 9, true, null),
-		MAJOR_TITLE_ENDING_3(Version.V1, false, ParagraphKindCategory.HEADLINE, "mte3", 9, true, null),
-		MAJOR_TITLE_ENDING_4(Version.V1, false, ParagraphKindCategory.HEADLINE, "mte4", 9, true, null),
-		MAJOR_SECTION(Version.V1, false, ParagraphKindCategory.HEADLINE, "ms", 2, false, null),
-		MAJOR_SECTION_1(Version.V1, false, ParagraphKindCategory.HEADLINE, "ms1", 2, false, null),
-		MAJOR_SECTION_2(Version.V1, false, ParagraphKindCategory.HEADLINE, "ms2", 3, false, null),
-		MAJOR_SECTION_3(Version.V1, false, ParagraphKindCategory.HEADLINE, "ms3", 4, false, null),
-		MAJOR_SECTION_4(Version.V1, false, ParagraphKindCategory.HEADLINE, "ms4", 5, false, null),
-		MAJOR_SECTION_5(Version.V1, false, ParagraphKindCategory.HEADLINE, "ms5", 6, false, null),
-		MAJOR_SECTION_REFERENCE(Version.V1, false, ParagraphKindCategory.HEADLINE, "mr", 3, true, FormattingInstructionKind.ITALIC),
-		SECTION(Version.V1, false, ParagraphKindCategory.HEADLINE, "s", 5, false, null),
-		SECTION_1(Version.V1, false, ParagraphKindCategory.HEADLINE, "s1", 5, false, null),
-		SECTION_2(Version.V1, false, ParagraphKindCategory.HEADLINE, "s2", 6, false, null),
-		SECTION_3(Version.V1, false, ParagraphKindCategory.HEADLINE, "s3", 7, false, null),
-		SECTION_4(Version.V1, false, ParagraphKindCategory.HEADLINE, "s4", 8, false, null),
-		SECTION_5(Version.V1, false, ParagraphKindCategory.HEADLINE, "s5", 9, false, null),
-		SECTION_REFERENCE(Version.V2, false, ParagraphKindCategory.HEADLINE, "sr", 6, true, FormattingInstructionKind.ITALIC),
-		PARALLEL_PASSAGE_REFERENCE(Version.V1, false, ParagraphKindCategory.HEADLINE, "r", 9, false, FormattingInstructionKind.ITALIC),
-		DESCRIPTIVE_TITLE(Version.V1, false, ParagraphKindCategory.TEXT, "d", 0, false, null),
-		HEBREW_NOTE(Version.V3, false, ParagraphKindCategory.HEADLINE, "qd", 9, false, FormattingInstructionKind.ITALIC),
+		MAJOR_TITLE(Version.V1, false, ParagraphKindCategory.HEADLINE, "mt", 1, true, null, 0, null),
+		MAJOR_TITLE_1(Version.V1, false, ParagraphKindCategory.HEADLINE, "mt1", 1, true, null, 0, null),
+		MAJOR_TITLE_2(Version.V1, false, ParagraphKindCategory.HEADLINE, "mt2", 1, true, null, 0, null),
+		MAJOR_TITLE_3(Version.V1, false, ParagraphKindCategory.HEADLINE, "mt3", 1, true, null, 0, null),
+		MAJOR_TITLE_4(Version.V1, false, ParagraphKindCategory.HEADLINE, "mt4", 1, true, null, 0, null),
+		MAJOR_TITLE_ENDING(Version.V1, false, ParagraphKindCategory.HEADLINE, "mte", 9, true, null, 0, null),
+		MAJOR_TITLE_ENDING_1(Version.V1, false, ParagraphKindCategory.HEADLINE, "mte1", 9, true, null, 0, null),
+		MAJOR_TITLE_ENDING_2(Version.V1, false, ParagraphKindCategory.HEADLINE, "mte2", 9, true, null, 0, null),
+		MAJOR_TITLE_ENDING_3(Version.V1, false, ParagraphKindCategory.HEADLINE, "mte3", 9, true, null, 0, null),
+		MAJOR_TITLE_ENDING_4(Version.V1, false, ParagraphKindCategory.HEADLINE, "mte4", 9, true, null, 0, null),
+		MAJOR_SECTION(Version.V1, false, ParagraphKindCategory.HEADLINE, "ms", 2, false, null, 0, null),
+		MAJOR_SECTION_1(Version.V1, false, ParagraphKindCategory.HEADLINE, "ms1", 2, false, null, 0, null),
+		MAJOR_SECTION_2(Version.V1, false, ParagraphKindCategory.HEADLINE, "ms2", 3, false, null, 0, null),
+		MAJOR_SECTION_3(Version.V1, false, ParagraphKindCategory.HEADLINE, "ms3", 4, false, null, 0, null),
+		MAJOR_SECTION_4(Version.V1, false, ParagraphKindCategory.HEADLINE, "ms4", 5, false, null, 0, null),
+		MAJOR_SECTION_5(Version.V1, false, ParagraphKindCategory.HEADLINE, "ms5", 6, false, null, 0, null),
+		MAJOR_SECTION_REFERENCE(Version.V1, false, ParagraphKindCategory.HEADLINE, "mr", 3, true, null, 0, FormattingInstructionKind.ITALIC),
+		SECTION(Version.V1, false, ParagraphKindCategory.HEADLINE, "s", 5, false, null, 0, null),
+		SECTION_1(Version.V1, false, ParagraphKindCategory.HEADLINE, "s1", 5, false, null, 0, null),
+		SECTION_2(Version.V1, false, ParagraphKindCategory.HEADLINE, "s2", 6, false, null, 0, null),
+		SECTION_3(Version.V1, false, ParagraphKindCategory.HEADLINE, "s3", 7, false, null, 0, null),
+		SECTION_4(Version.V1, false, ParagraphKindCategory.HEADLINE, "s4", 8, false, null, 0, null),
+		SECTION_5(Version.V1, false, ParagraphKindCategory.HEADLINE, "s5", 9, false, null, 0, null),
+		SECTION_REFERENCE(Version.V2, false, ParagraphKindCategory.HEADLINE, "sr", 6, true, null, 0, FormattingInstructionKind.ITALIC),
+		PARALLEL_PASSAGE_REFERENCE(Version.V1, false, ParagraphKindCategory.HEADLINE, "r", 9, false, null, 0, FormattingInstructionKind.ITALIC),
+		DESCRIPTIVE_TITLE(Version.V1, false, ParagraphKindCategory.TEXT, "d", 0, false, null, 0, FormattingInstructionKind.ITALIC),
+		HEBREW_NOTE(Version.V3, false, ParagraphKindCategory.HEADLINE, "qd", 9, false, null, 0, FormattingInstructionKind.ITALIC),
 
-		SPEAKER_TITLE(Version.V1, false, ParagraphKindCategory.HEADLINE, "sp", 9, false, FormattingInstructionKind.BOLD),
-		SEMANTIC_DIVISION(Version.V3, false, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "sd", 0, false, null),
-		SEMANTIC_DIVISION_1(Version.V3, false, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "sd1", 0, false, null),
-		SEMANTIC_DIVISION_2(Version.V3, false, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "sd2", 0, false, null),
-		SEMANTIC_DIVISION_3(Version.V3, false, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "sd3", 0, false, null),
-		SEMANTIC_DIVISION_4(Version.V3, false, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "sd4", 0, false, null),
+		SPEAKER_TITLE(Version.V1, false, ParagraphKindCategory.HEADLINE, "sp", 9, false, null, 0, FormattingInstructionKind.ITALIC),
+		SEMANTIC_DIVISION(Version.V3, false, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "sd", 0, false, ExtendedLineBreakKind.SEMANTIC_DIVISION, 0, null),
+		SEMANTIC_DIVISION_1(Version.V3, false, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "sd1", 0, false, ExtendedLineBreakKind.SEMANTIC_DIVISION, 0, null),
+		SEMANTIC_DIVISION_2(Version.V3, false, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "sd2", 0, false, ExtendedLineBreakKind.SEMANTIC_DIVISION, 1, null),
+		SEMANTIC_DIVISION_3(Version.V3, false, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "sd3", 0, false, ExtendedLineBreakKind.SEMANTIC_DIVISION, 2, null),
+		SEMANTIC_DIVISION_4(Version.V3, false, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "sd4", 0, false, ExtendedLineBreakKind.SEMANTIC_DIVISION, 3, null),
 
-		PARAGRAPH_P(Version.V1, false, ParagraphKindCategory.TEXT, "p", 0, false, null),
-		PARAGRAPH_P1(Version.V1, false, ParagraphKindCategory.TEXT, "p1", 0, false, null),
-		PARAGRAPH_P2(Version.V1, false, ParagraphKindCategory.TEXT, "p2", 0, false, null),
-		PARAGRAPH_M(Version.V1, false, ParagraphKindCategory.TEXT, "m", 0, false, null),
-		PARAGRAPH_PO(Version.V3, false, ParagraphKindCategory.TEXT, "po", 0, false, null),
-		PARAGRAPH_PMO(Version.V2, false, ParagraphKindCategory.TEXT, "pmo", 0, false, null),
-		PARAGRAPH_PM(Version.V2, false, ParagraphKindCategory.TEXT, "pm", 0, false, null),
-		PARAGRAPH_PMC(Version.V2, false, ParagraphKindCategory.TEXT, "pmc", 0, false, null),
-		PARAGRAPH_PMR(Version.V2, false, ParagraphKindCategory.TEXT, "pmr", 0, false, null),
-		PARAGRAPH_PI(Version.V1, false, ParagraphKindCategory.TEXT, "pi", 0, false, null),
-		PARAGRAPH_PI1(Version.V1, false, ParagraphKindCategory.TEXT, "pi1", 0, false, null),
-		PARAGRAPH_PI2(Version.V1, false, ParagraphKindCategory.TEXT, "pi2", 0, false, null),
-		PARAGRAPH_PI3(Version.V1, false, ParagraphKindCategory.TEXT, "pi3", 0, false, null),
-		PARAGRAPH_PI4(Version.V1, false, ParagraphKindCategory.TEXT, "pi4", 0, false, null),
-		PARAGRAPH_MI(Version.V1, false, ParagraphKindCategory.TEXT, "mi", 0, false, null),
-		NO_BREAK_AT_START_OF_CHAPTER(Version.V1, false, ParagraphKindCategory.TEXT, "nb", 0, false, null),
-		PARAGRAPH_CLOSING(Version.V1, false, ParagraphKindCategory.TEXT, "cls", 0, false, null),
-		PARAGRAPH_LH(Version.V3, false, ParagraphKindCategory.TEXT, "lh", 0, false, null),
-		PARAGRAPH_LI(Version.V1, false, ParagraphKindCategory.TEXT, "li", 0, false, null),
-		PARAGRAPH_LI1(Version.V1, false, ParagraphKindCategory.TEXT, "li1", 0, false, null),
-		PARAGRAPH_LI2(Version.V1, false, ParagraphKindCategory.TEXT, "li2", 0, false, null),
-		PARAGRAPH_LI3(Version.V1, false, ParagraphKindCategory.TEXT, "li3", 0, false, null),
-		PARAGRAPH_LI4(Version.V1, false, ParagraphKindCategory.TEXT, "li4", 0, false, null),
-		PARAGRAPH_LIM(Version.V3, false, ParagraphKindCategory.TEXT, "lim", 0, false, null),
-		PARAGRAPH_LIM1(Version.V3, false, ParagraphKindCategory.TEXT, "lim1", 0, false, null),
-		PARAGRAPH_LIM2(Version.V3, false, ParagraphKindCategory.TEXT, "lim2", 0, false, null),
-		PARAGRAPH_LIM3(Version.V3, false, ParagraphKindCategory.TEXT, "lim3", 0, false, null),
-		PARAGRAPH_LIM4(Version.V3, false, ParagraphKindCategory.TEXT, "lim4", 0, false, null),
-		PARAGRAPH_LF(Version.V3, false, ParagraphKindCategory.TEXT, "lf", 0, false, null),
-		PARAGRAPH_CENTERED(Version.V1, false, ParagraphKindCategory.TEXT, "pc", 0, false, null),
+		PARAGRAPH_P(Version.V1, false, ParagraphKindCategory.TEXT, "p", 0, false, null, 0, null),
+		PARAGRAPH_P1(Version.V1, false, ParagraphKindCategory.TEXT, "p1", 0, false, null, 0, null),
+		PARAGRAPH_P2(Version.V1, false, ParagraphKindCategory.TEXT, "p2", 0, false, null, 0, null),
+		PARAGRAPH_M(Version.V1, false, ParagraphKindCategory.TEXT, "m", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 0, null),
+		PARAGRAPH_PO(Version.V3, false, ParagraphKindCategory.TEXT, "po", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 0, null),
+		PARAGRAPH_PMO(Version.V2, false, ParagraphKindCategory.TEXT, "pmo", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 1, null),
+		PARAGRAPH_PM(Version.V2, false, ParagraphKindCategory.TEXT, "pm", 0, false, ExtendedLineBreakKind.PARAGRAPH, 1, null),
+		PARAGRAPH_PMC(Version.V2, false, ParagraphKindCategory.TEXT, "pmc", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 1, null),
+		PARAGRAPH_PMR(Version.V2, false, ParagraphKindCategory.TEXT, "pmr", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, ExtendedLineBreakKind.INDENT_RIGHT_JUSTIFIED, null),
+		PARAGRAPH_PI(Version.V1, false, ParagraphKindCategory.TEXT, "pi", 0, false, ExtendedLineBreakKind.PARAGRAPH, 1,  null),
+		PARAGRAPH_PI1(Version.V1, false, ParagraphKindCategory.TEXT, "pi1", 0, false, ExtendedLineBreakKind.PARAGRAPH, 1, null),
+		PARAGRAPH_PI2(Version.V1, false, ParagraphKindCategory.TEXT, "pi2", 0, false, ExtendedLineBreakKind.PARAGRAPH, 2, null),
+		PARAGRAPH_PI3(Version.V1, false, ParagraphKindCategory.TEXT, "pi3", 0, false, ExtendedLineBreakKind.PARAGRAPH, 3, null),
+		PARAGRAPH_PI4(Version.V1, false, ParagraphKindCategory.TEXT, "pi4", 0, false, ExtendedLineBreakKind.PARAGRAPH, 4, null),
+		PARAGRAPH_MI(Version.V1, false, ParagraphKindCategory.TEXT, "mi", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 1, null),
+		NO_BREAK_AT_START_OF_CHAPTER(Version.V1, false, ParagraphKindCategory.EXTRA_ATTRIBUTE_META, "nb", 0, false, null, 0, null),
+		PARAGRAPH_CLOSING(Version.V1, false, ParagraphKindCategory.TEXT, "cls", 0, false, ExtendedLineBreakKind.PARAGRAPH, ExtendedLineBreakKind.INDENT_RIGHT_JUSTIFIED, null),
+		PARAGRAPH_LH(Version.V3, false, ParagraphKindCategory.TEXT, "lh", 0, false, null, 0, null),
+		PARAGRAPH_LI(Version.V1, false, ParagraphKindCategory.TEXT, "li", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 1, null),
+		PARAGRAPH_LI1(Version.V1, false, ParagraphKindCategory.TEXT, "li1", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 1, null),
+		PARAGRAPH_LI2(Version.V1, false, ParagraphKindCategory.TEXT, "li2", 0, false, ExtendedLineBreakKind.HANGING_INDENT,2, null),
+		PARAGRAPH_LI3(Version.V1, false, ParagraphKindCategory.TEXT, "li3", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 3, null),
+		PARAGRAPH_LI4(Version.V1, false, ParagraphKindCategory.TEXT, "li4", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 4, null),
+		PARAGRAPH_LIM(Version.V3, false, ParagraphKindCategory.TEXT, "lim", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 1, null),
+		PARAGRAPH_LIM1(Version.V3, false, ParagraphKindCategory.TEXT, "lim1", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 1, null),
+		PARAGRAPH_LIM2(Version.V3, false, ParagraphKindCategory.TEXT, "lim2", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 2, null),
+		PARAGRAPH_LIM3(Version.V3, false, ParagraphKindCategory.TEXT, "lim3", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 3, null),
+		PARAGRAPH_LIM4(Version.V3, false, ParagraphKindCategory.TEXT, "lim4", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 4, null),
+		PARAGRAPH_LF(Version.V3, false, ParagraphKindCategory.TEXT, "lf", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 0, null),
+		PARAGRAPH_CENTERED(Version.V1, false, ParagraphKindCategory.TEXT, "pc", 0, false, ExtendedLineBreakKind.PARAGRAPH, ExtendedLineBreakKind.INDENT_CENTER, null),
 
 		// PARAGRAPH_RIGHT was added in USFM/USX 1.0, deprecated in USFM/USX 2.0, but it has been restored in USFM/USX 3.0.
-		PARAGRAPH_RIGHT(Version.V1, false, ParagraphKindCategory.TEXT, "pr", 0, false, null),
-		PARAGRAPH_HANGING(Version.V1, false, ParagraphKindCategory.TEXT, "ph", 0, false, null),
-		PARAGRAPH_HANGING1(Version.V1, false, ParagraphKindCategory.TEXT, "ph1", 0, false, null),
-		PARAGRAPH_HANGING2(Version.V1, false, ParagraphKindCategory.TEXT, "ph2", 0, false, null),
-		PARAGRAPH_HANGING3(Version.V1, false, ParagraphKindCategory.TEXT, "ph3", 0, false, null),
-		PARAGRAPH_HANGING4(Version.V1, false, ParagraphKindCategory.TEXT, "ph4", 0, false, null),
-		PARAGRAPH_LITURGICAL(Version.V1, false, ParagraphKindCategory.TEXT, "lit", 0, false, null),
-		BLANK_LINE(Version.V1, false, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "b", 0, false, null),
-		PAGE_BREAK(Version.V1, false, ParagraphKindCategory.SKIP, "pb", 0, false, null),
-		PARAGRAPH_Q(Version.V1, false, ParagraphKindCategory.TEXT, "q", 0, false, null),
-		PARAGRAPH_Q1(Version.V1, false, ParagraphKindCategory.TEXT, "q1", 0, false, null),
-		PARAGRAPH_Q2(Version.V1, false, ParagraphKindCategory.TEXT, "q2", 0, false, null),
-		PARAGRAPH_Q3(Version.V1, false, ParagraphKindCategory.TEXT, "q3", 0, false, null),
-		PARAGRAPH_Q4(Version.V1, false, ParagraphKindCategory.TEXT, "q4", 0, false, null),
-		PARAGRAPH_QR(Version.V1, false, ParagraphKindCategory.TEXT, "qr", 0, false, null),
-		PARAGRAPH_QC(Version.V1, false, ParagraphKindCategory.TEXT, "qc", 0, false, null),
-		PARAGRAPH_QA(Version.V1, true, ParagraphKindCategory.HEADLINE, "qa", 9, false, FormattingInstructionKind.ITALIC),
-		PARAGRAPH_QM(Version.V2, false, ParagraphKindCategory.TEXT, "qm", 0, false, null),
-		PARAGRAPH_QM1(Version.V2, false, ParagraphKindCategory.TEXT, "qm1", 0, false, null),
-		PARAGRAPH_QM2(Version.V2, false, ParagraphKindCategory.TEXT, "qm2", 0, false, null),
-		PARAGRAPH_QM3(Version.V2, false, ParagraphKindCategory.TEXT, "qm3", 0, false, null),
-		PARAGRAPH_QM4(Version.V2, false, ParagraphKindCategory.TEXT, "qm4", 0, false, null),
+		PARAGRAPH_RIGHT(Version.V1, false, ParagraphKindCategory.TEXT, "pr", 0, false, ExtendedLineBreakKind.PARAGRAPH, ExtendedLineBreakKind.INDENT_RIGHT_JUSTIFIED, null),
+		PARAGRAPH_HANGING(Version.V1, false, ParagraphKindCategory.TEXT, "ph", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 1, null),
+		PARAGRAPH_HANGING1(Version.V1, false, ParagraphKindCategory.TEXT, "ph1", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 1, null),
+		PARAGRAPH_HANGING2(Version.V1, false, ParagraphKindCategory.TEXT, "ph2", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 2, null),
+		PARAGRAPH_HANGING3(Version.V1, false, ParagraphKindCategory.TEXT, "ph3", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 3, null),
+		PARAGRAPH_HANGING4(Version.V1, false, ParagraphKindCategory.TEXT, "ph4", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 4, null),
+		PARAGRAPH_LITURGICAL(Version.V1, false, ParagraphKindCategory.TEXT, "lit", 0, false, ExtendedLineBreakKind.PARAGRAPH, ExtendedLineBreakKind.INDENT_RIGHT_JUSTIFIED, null),
+		BLANK_LINE(Version.V1, false, ParagraphKindCategory.VERTICAL_WHITE_SPACE, "b", 0, false, ExtendedLineBreakKind.BLANK_LINE, 0, null),
+		PAGE_BREAK(Version.V1, false, ParagraphKindCategory.SKIP, "pb", 0, false, ExtendedLineBreakKind.PAGE_BREAK, 0, null),
+		PARAGRAPH_Q(Version.V1, false, ParagraphKindCategory.TEXT, "q", 0, false, ExtendedLineBreakKind.POETIC_LINE, 0, null),
+		PARAGRAPH_Q1(Version.V1, false, ParagraphKindCategory.TEXT, "q1", 0, false, ExtendedLineBreakKind.POETIC_LINE, 0, null),
+		PARAGRAPH_Q2(Version.V1, false, ParagraphKindCategory.TEXT, "q2", 0, false, ExtendedLineBreakKind.POETIC_LINE, 1, null),
+		PARAGRAPH_Q3(Version.V1, false, ParagraphKindCategory.TEXT, "q3", 0, false, ExtendedLineBreakKind.POETIC_LINE, 2, null),
+		PARAGRAPH_Q4(Version.V1, false, ParagraphKindCategory.TEXT, "q4", 0, false, ExtendedLineBreakKind.POETIC_LINE, 3, null),
+		PARAGRAPH_QR(Version.V1, false, ParagraphKindCategory.TEXT, "qr", 0, false, ExtendedLineBreakKind.POETIC_LINE, ExtendedLineBreakKind.INDENT_RIGHT_JUSTIFIED, null),
+		PARAGRAPH_QC(Version.V1, false, ParagraphKindCategory.TEXT, "qc", 0, false, ExtendedLineBreakKind.POETIC_LINE, ExtendedLineBreakKind.INDENT_CENTER, null),
+		PARAGRAPH_QA(Version.V1, true, ParagraphKindCategory.HEADLINE, "qa", 9, false, null, 0, FormattingInstructionKind.ITALIC),
+		PARAGRAPH_QM(Version.V2, false, ParagraphKindCategory.TEXT, "qm", 0, false, ExtendedLineBreakKind.POETIC_LINE, 1, FormattingInstructionKind.ITALIC),
+		PARAGRAPH_QM1(Version.V2, false, ParagraphKindCategory.TEXT, "qm1", 0, false, ExtendedLineBreakKind.POETIC_LINE, 1, FormattingInstructionKind.ITALIC),
+		PARAGRAPH_QM2(Version.V2, false, ParagraphKindCategory.TEXT, "qm2", 0, false, ExtendedLineBreakKind.POETIC_LINE, 2, FormattingInstructionKind.ITALIC),
+		PARAGRAPH_QM3(Version.V2, false, ParagraphKindCategory.TEXT, "qm3", 0, false, ExtendedLineBreakKind.POETIC_LINE, 3, FormattingInstructionKind.ITALIC),
+		PARAGRAPH_QM4(Version.V2, false, ParagraphKindCategory.TEXT, "qm4", 0, false, ExtendedLineBreakKind.POETIC_LINE, 4, FormattingInstructionKind.ITALIC),
 
-		TABLE_ROW(Version.V1, false, ParagraphKindCategory.TABLE_ROW, "tr", 0, false, null),
+		TABLE_ROW(Version.V1, false, ParagraphKindCategory.TABLE_ROW, "tr", 0, false, null, 0, null),
 
-		PERIPHERALS(Version.V1, false, ParagraphKindCategory.HEADLINE, "periph", 1, false, null);
+		CHAPTER_LABEL(Version.V1, true, ParagraphKindCategory.EXTRA_ATTRIBUTE_META, "cl", 0, false, null, 0, null),
+		CHAPTER_PRESENTATION(Version.V1, true, ParagraphKindCategory.EXTRA_ATTRIBUTE_META, "cp", 0, false, null, 0, null);
 
 		//@formatter:on
 
@@ -413,15 +530,23 @@ public class ParatextBook {
 		private final String tag;
 		private final int headlineDepth;
 		private final boolean joinHeadlines;
+		private final ExtendedLineBreakKind lineBreakKind;
+		private final int lineBreakIndent;
 		private final FormattingInstructionKind extraFormatting;
 
-		private ParagraphKind(Version since, boolean prolog, ParagraphKindCategory category, String tag, int headlineDepth, boolean joinHeadlines, FormattingInstructionKind extraFormatting) {
+		private ParagraphKind(Version since, boolean prolog, ParagraphKindCategory category, String tag, int headlineDepth, boolean joinHeadlines, boolean _todo_kill_me, FormattingInstructionKind extraFormatting) {
+			this(since, prolog, category, tag, headlineDepth, joinHeadlines, null, 0, extraFormatting);
+		}
+
+		private ParagraphKind(Version since, boolean prolog, ParagraphKindCategory category, String tag, int headlineDepth, boolean joinHeadlines, ExtendedLineBreakKind lineBreakKind, int lineBreakIndent, FormattingInstructionKind extraFormatting) {
 			this.since = since;
 			this.prolog = prolog;
 			this.category = category;
 			this.tag = tag;
 			this.headlineDepth = headlineDepth;
 			this.joinHeadlines = joinHeadlines;
+			this.lineBreakKind = lineBreakKind;
+			this.lineBreakIndent = lineBreakIndent;
 			this.extraFormatting = extraFormatting;
 			TagParser parser = new TagParser();
 			parser.parse(tag);
@@ -472,6 +597,14 @@ public class ParatextBook {
 
 		public FormattingInstructionKind getExtraFormatting() {
 			return extraFormatting;
+		}
+
+		public ExtendedLineBreakKind getLineBreakKind() {
+			return lineBreakKind;
+		}
+
+		public int getLineBreakIndent() {
+			return lineBreakIndent;
 		}
 
 		/**
@@ -549,9 +682,17 @@ public class ParatextBook {
 
 		public void visitChapterEnd(ChapterIdentifier chapter) throws T;
 
+		public void visitRemark(String content) throws T;
+
 		public void visitParagraphStart(ParagraphKind kind) throws T;
 
 		public void visitTableCellStart(String tag) throws T;
+
+		public void visitSidebarStart(String[] categories) throws T;
+
+		public void visitSidebarEnd() throws T;
+
+		public void visitPeripheralStart(String title, String id) throws T;
 
 		public void visitParatextCharacterContent(ParatextCharacterContent content) throws T;
 	}
@@ -745,6 +886,15 @@ public class ParatextBook {
 		ID_REP("C1", "REP", "Reproof", BookID.BOOK_Rep),
 		ID_4BA("C2", "4BA", "4 Baruch", BookID.BOOK_4Bar),
 		ID_LAO("C3", "LAO", "Letter to the Laodiceans", BookID.BOOK_EpLao),
+
+		// Extra material
+		ID_XXA("94", "XXA", "Extra material A", BookID.EXTRA_A),
+		ID_XXB("95", "XXB", "Extra material B", BookID.EXTRA_B),
+		ID_XXC("96", "XXC", "Extra material C", BookID.EXTRA_C),
+		ID_XXD("97", "XXD", "Extra material D", BookID.EXTRA_D),
+		ID_XXE("98", "XXE", "Extra material E", BookID.EXTRA_E),
+		ID_XXF("99", "XXF", "Extra material F", BookID.EXTRA_F),
+		ID_XXG("100", "XXG", "Extra material G", BookID.EXTRA_G),
 
 		// Appendices
 		ID_BAK("A1", "BAK", "Back Matter", BookID.APPENDIX),

@@ -12,11 +12,14 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
@@ -24,14 +27,22 @@ import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisitor;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
+import biblemulticonverter.format.paratext.ParatextBook.PeripheralStart;
+import biblemulticonverter.format.paratext.ParatextBook.Remark;
+import biblemulticonverter.format.paratext.ParatextBook.SidebarEnd;
+import biblemulticonverter.format.paratext.ParatextBook.SidebarStart;
 import biblemulticonverter.format.paratext.ParatextBook.TableCellStart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.CustomMarkup;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.Figure;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXrefKind;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.Milestone;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.SpecialSpace;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
@@ -56,10 +67,7 @@ public class USFM extends AbstractParatextFormat {
 			"the book number and * for the book name."
 	};
 
-	public static final Set<String> KNOWN_CHARACTER_TAGS = new HashSet<>(Arrays.asList("f", "fe", "x"));
-
-	private static final Set<ParagraphKind> USFM_2_PARAGRAPH_KINDS = ParagraphKind.allForVersion(Version.V2_2);
-	private static final Set<AutoClosingFormattingKind> USFM_2_AUTO_CLOSING_FORMATTING_KINDS = AutoClosingFormattingKind.allForVersion(Version.V2_2);
+	public static final Set<String> KNOWN_CHARACTER_TAGS = new HashSet<>(Arrays.asList("f", "fe", "x", "ef"));
 
 	public static final Map<String, ParagraphKind> PARAGRAPH_TAGS = ParagraphKind.allTags();
 	public static final Map<String, FootnoteXrefKind> FOOTNOTE_XREF_TAGS = FootnoteXrefKind.allTags();
@@ -76,7 +84,7 @@ public class USFM extends AbstractParatextFormat {
 	 *                                   be present at the end of a line, which would otherwise be removed/ignored.
 	 */
 	public USFM(boolean preserveSpacesAtEndOfLines) {
-		super("USFM 2");
+		super("USFM");
 		this.preserveSpacesAtEndOfLines = preserveSpacesAtEndOfLines;
 	}
 
@@ -120,6 +128,7 @@ public class USFM extends AbstractParatextFormat {
 
 		VerseStart openVerse = null;
 		ChapterStart openChapter = null;
+		boolean parseAttributes = false;
 
 		while (startPos < finalPos) {
 			if (data.charAt(startPos) != '\\')
@@ -128,16 +137,16 @@ public class USFM extends AbstractParatextFormat {
 			String textPart = data.substring(startPos + 1, pos);
 			startPos = pos;
 			pos = Math.min(textPart.length(), 1 + Math.min((textPart + " ").indexOf(' '), (textPart + "*").indexOf('*')));
-			String tag = textPart.substring(0, pos).trim().toLowerCase();
+			String origTag = textPart.substring(0, pos).trim();
+			String tag = origTag.toLowerCase();
 			textPart = textPart.substring(pos);
 			if (textPart.endsWith(" ")) {
 				String nextTag = data.substring(startPos + 1, Math.min(data.length(), startPos + 10)) + " *\\";
 				pos = Math.min(nextTag.indexOf('\\'), Math.min(nextTag.indexOf(' '), nextTag.indexOf('*')));
-				if (!KNOWN_CHARACTER_TAGS.contains(nextTag.substring(0, pos))) {
+				if (!KNOWN_CHARACTER_TAGS.contains(nextTag.substring(0, pos)) && !nextTag.startsWith("z")) {
 					textPart = textPart.substring(0, textPart.length() - 1);
 				}
 			}
-
 			if (containerStack.isEmpty() && (AUTO_CLOSING_TAGS.containsKey(tag) || tag.equals("v") || FOOTNOTE_XREF_TAGS.containsKey(tag))) {
 				ParatextCharacterContent container = new ParatextCharacterContent();
 				result.getContent().add(container);
@@ -153,6 +162,9 @@ public class USFM extends AbstractParatextFormat {
 				//}
 				result.getContent().add(new ParagraphStart(kind));
 				closeCharacterAttributes = true;
+			} else if (tag.startsWith("z") && tag.endsWith("*")) {
+				// special case to avoid unwinding container stack
+				containerStack.get(containerStack.size() - 1).getContent().add(new CustomMarkup(origTag.substring(0, origTag.length() - 1), true));
 			} else if (tag.endsWith("*")) {
 				String rawTag = tag.substring(0, tag.length() - 1);
 				while (!containerStack.isEmpty() && containerStack.get(containerStack.size() - 1) instanceof AutoClosingFormatting) {
@@ -192,6 +204,43 @@ public class USFM extends AbstractParatextFormat {
 					nextContainer = new NestedAutoClosingFormatting(nextContainer);
 				}
 				containerStack.add(nextContainer);
+			} else if (tag.equals("fig")) {
+				if (!ignoreAutoClosingTags) {
+					while (!containerStack.isEmpty() && containerStack.get(containerStack.size() - 1) instanceof AutoClosingFormatting) {
+						containerStack.remove(containerStack.size() - 1);
+					}
+				}
+				Figure fig;
+				String[] legacyParts = textPart.split("\\|");
+				if (legacyParts.length == 7) {
+					 fig = new Figure(legacyParts[5].trim());
+					 for (int i=0; i<5; i++) {
+						 if (!legacyParts[i].trim().isEmpty())
+							 fig.getAttributes().put(Figure.FIGURE_PROVIDED_ATTRIBUTES[i], legacyParts[i].trim());
+					 }
+					 if (!legacyParts[6].trim().isEmpty())
+						 fig.getAttributes().put("ref", legacyParts[6].trim());
+				} else {
+					pos = textPart.lastIndexOf("|");
+					fig = new Figure(textPart.substring(0, pos).trim());
+					parseAttributeList(textPart.substring(pos + 1).trim(), fig.getAttributes());
+				}
+				containerStack.get(containerStack.size() - 1).getContent().add(fig);
+				textPart = "";
+				if (data.startsWith("\\fig*", startPos)) {
+					pos = data.indexOf('\\', startPos + 5);
+					textPart = data.substring(startPos + 5, pos);
+					startPos = pos;
+					if (textPart.endsWith(" ")) {
+						String nextTag = data.substring(startPos + 1, Math.min(data.length(), startPos + 10)) + " *\\";
+						pos = Math.min(nextTag.indexOf('\\'), Math.min(nextTag.indexOf(' '), nextTag.indexOf('*')));
+						if (!KNOWN_CHARACTER_TAGS.contains(nextTag.substring(0, pos)) && !nextTag.startsWith("z")) {
+							textPart = textPart.substring(0, textPart.length() - 1);
+						}
+					}
+				} else if (data.startsWith("\\+", startPos)) {
+					System.out.println("WARNING: Nested tags inside figure are not supported!");
+				}
 			} else if (tag.equals("v")) {
 				ImportUtilities.closeOpenVerse(result, openVerse);
 
@@ -242,12 +291,32 @@ public class USFM extends AbstractParatextFormat {
 				closeCharacterAttributes = true;
 			} else if (FOOTNOTE_XREF_TAGS.containsKey(tag)) {
 				String[] parts = textPart.split(" ", 2);
-				FootnoteXref nextContainer = new FootnoteXref(FOOTNOTE_XREF_TAGS.get(tag), parts[0]);
+				List<String> categories = new ArrayList<>();
+				while (data.startsWith("\\cat ", startPos)) {
+					pos = data.indexOf("\\", startPos + 5);
+					categories.add(data.substring(startPos + 5, pos).trim());
+					if (data.startsWith("\\cat* ", pos)) {
+						pos += 6;
+					} else if (data.startsWith("\\cat*", pos)) {
+						pos += 5;
+					}
+					startPos = pos;
+				}
+				FootnoteXref nextContainer = new FootnoteXref(FOOTNOTE_XREF_TAGS.get(tag), parts[0], categories.toArray(new String[0]));
 				containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
 				containerStack.add(nextContainer);
 				textPart = parts.length == 1 ? "" : parts[1];
 			} else if (tag.equals("id")) {
 				System.out.println("WARNING: Skipping duplicate \\id tag");
+				textPart = "";
+			} else if (tag.equals("usfm")) {
+				parseAttributes = true;
+				if (textPart.startsWith("1.") || textPart.startsWith("2.")) {
+					System.out.println("WARNING: \\usfm tag declares version " + textPart + " but has been added in version 3.0");
+					parseAttributes = false;
+				} else if (!textPart.equals("3.0") && !textPart.startsWith("3.0.")) {
+					System.out.println("WARNING: \\usfm tag declares version " + textPart + " which is not supported yet");
+				}
 				textPart = "";
 			} else if (tag.equals("ide")) {
 				Charset correctCharset;
@@ -269,9 +338,71 @@ public class USFM extends AbstractParatextFormat {
 					return doImportBook(inputFile, correctCharset);
 				}
 				textPart = "";
+			} else if (tag.equals("esb")) {
+				List<String> categories = new ArrayList<>();
+				while (data.startsWith("\\cat ", startPos)) {
+					pos = data.indexOf("\\", startPos + 5);
+					categories.add(data.substring(startPos + 5, pos).trim());
+					if (data.startsWith("\\cat* ", pos)) {
+						pos += 6;
+					} else if (data.startsWith("\\cat*", pos)) {
+						pos += 5;
+					}
+					startPos = pos;
+				}
+				result.getContent().add(new SidebarStart(categories.toArray(new String[0])));
+				textPart = "";
+			} else if (tag.equals("esbe")) {
+				result.getContent().add(new SidebarEnd());
+				textPart = "";
+			} else if (tag.equals("periph")) {
+				ImportUtilities.closeOpenChapter(result, openChapter);
+				openChapter = null;
+				if (textPart.contains("|id=\"") && textPart.endsWith("\"")) {
+					String[] parts = textPart.substring(0, textPart.length()-1).split(Pattern.quote("|id=\""), 2);
+					result.getContent().add(new PeripheralStart(parts[0], parts[1]));
+				} else {
+					result.getContent().add(new PeripheralStart(textPart, null));
+				}
+				closeCharacterAttributes = true;
+				textPart = "";
 			} else if (BOOK_HEADER_ATTRIBUTE_TAGS.contains(tag)) {
 				result.getAttributes().put(tag, textPart);
 				textPart = "";
+			} else if (tag.equals("rem")) {
+				if (!result.getContent().isEmpty()) {
+					result.getContent().add(new Remark(textPart));
+					closeCharacterAttributes = true;
+				} else if (result.getAttributes().containsKey(tag)) {
+					int number = 2;
+					while (result.getAttributes().containsKey(tag + "@" + number))
+						number++;
+					result.getAttributes().put(tag + "@" + number, textPart);
+				} else {
+					result.getAttributes().put(tag, textPart);
+				}
+				textPart = "";
+			} else if ((tag.startsWith("z") || tag.matches("qt[1-5]?(-[se])?|ts?(\\-[se])?")) && data.startsWith("\\*", startPos)) {
+				Milestone milestone = new Milestone(tag.startsWith("z") ? origTag : tag);
+				containerStack.get(containerStack.size() - 1).getContent().add(milestone);
+				if (textPart.startsWith("|")) {
+					String attList = textPart.substring(1).trim();
+					parseAttributeList(attList, milestone.getAttributes());
+				} else {
+					System.out.println("WARNING: Skipping unsupported milestone content: "+textPart);
+				}
+				pos = data.indexOf('\\', startPos + 2);
+				textPart = data.substring(startPos + 2, pos);
+				startPos = pos;
+				if (textPart.endsWith(" ")) {
+					String nextTag = data.substring(startPos + 1, Math.min(data.length(), startPos + 10)) + " *\\";
+					pos = Math.min(nextTag.indexOf('\\'), Math.min(nextTag.indexOf(' '), nextTag.indexOf('*')));
+					if (!KNOWN_CHARACTER_TAGS.contains(nextTag.substring(0, pos)) && !nextTag.startsWith("z")) {
+						textPart = textPart.substring(0, textPart.length() - 1);
+					}
+				}
+			} else if (tag.startsWith("z")) {
+				containerStack.get(containerStack.size() - 1).getContent().add(new CustomMarkup(origTag, false));
 			} else {
 				System.out.println("WARNING: Skipping unknown tag \\" + tag);
 			}
@@ -281,45 +412,54 @@ public class USFM extends AbstractParatextFormat {
 
 			if (!containerStack.isEmpty() && textPart.contains("|") && containerStack.get(containerStack.size() - 1) instanceof AutoClosingFormatting) {
 				AutoClosingFormatting nextContainer = (AutoClosingFormatting) containerStack.get(containerStack.size() - 1);
-				if (nextContainer.getKind().getDefaultAttributes() != null && data.startsWith("\\" + nextContainer.getUsedTag() + "*", startPos)) {
-					String[] defaultAttributes = nextContainer.getKind().getDefaultAttributes();
-					String[] parts = textPart.split("\\|");
-					for (int i = 1; i < parts.length; i++) {
-						if (parts[i].contains("=")) {
-							String attList = parts[i];
-							while (attList.contains("=")) {
-								pos = attList.indexOf('=');
-								String key = attList.substring(0, pos).trim();
-								attList = attList.substring(pos + 1).trim();
-								if (attList.startsWith("\"")) {
-									pos = attList.indexOf('"', 1);
-									nextContainer.getAttributes().put(key, attList.substring(1, pos));
-									attList = attList.substring(pos + 1).trim();
-								} else {
-									nextContainer.getAttributes().put(key, attList);
-									attList = "";
-								}
-							}
-						} else if (i - 1 < defaultAttributes.length) {
-							nextContainer.getAttributes().put(defaultAttributes[i - 1], parts[i]);
-						}
-					}
-					textPart = parts[0];
+				String nextTag = data.substring(startPos, Math.min(startPos+10, data.length()));
+				if ((nextContainer.getKind() == AutoClosingFormattingKind.WORDLIST || parseAttributes) && (nextContainer.getKind().getDefaultAttribute() != null || textPart.matches(".*\\|[^|]*?=[^|]*")) && nextTag.matches("\\\\[^+].*|\\\\[^ *]+\\*.*")) {
+					String defaultAttribute = nextContainer.getKind().getDefaultAttribute();
+					pos = textPart.lastIndexOf("|");
+					String attList = textPart.substring(pos+1).trim();
+					textPart = textPart.substring(0, pos);
 					if (textPart.endsWith(" ")) {
 						textPart = textPart.substring(0, textPart.length() - 1);
+					}
+					if (attList.contains("=")) {
+						parseAttributeList(attList, nextContainer.getAttributes());
+					} else {
+						nextContainer.getAttributes().put(defaultAttribute, attList);
 					}
 				}
 			}
 
-			textPart = textPart.replace(" // ", " ").replace("~", "\u00A0");
+			List<ParatextCharacterContentPart> texts = new ArrayList<>();
+			while (true) {
+				int pos1 = textPart.indexOf("~"), pos2 = textPart.indexOf(" // ");
+				ParatextCharacterContent.SpecialSpace space;
+				if (pos2 != -1 && (pos1 == -1 || pos2 < pos1)) {
+					pos1 = pos2;
+					pos2 = pos1 + 4;
+					space = new SpecialSpace(false, true);
+				} else if (pos1 != -1) {
+					pos2 = pos1 + 1;
+					space = new SpecialSpace(true, false);
+				} else {
+					break;
+				}
+				ParatextCharacterContent.Text prefix = ParatextCharacterContent.Text.from(textPart.substring(0, pos1));
+				if (prefix != null)
+					texts.add(prefix);
+				texts.add(space);
+				textPart = textPart.substring(pos2);
+			}
 			ParatextCharacterContent.Text text = ParatextCharacterContent.Text.from(textPart);
 			if (text != null) {
+				texts.add(text);
+			}
+			if (!texts.isEmpty()) {
 				if (containerStack.isEmpty()) {
 					ParatextCharacterContent container = new ParatextCharacterContent();
 					containerStack.add(container);
 					result.getContent().add(container);
 				}
-				containerStack.get(containerStack.size() - 1).getContent().add(text);
+				containerStack.get(containerStack.size() - 1).getContent().addAll(texts);
 			}
 		}
 		ImportUtilities.closeOpenVerse(result, openVerse);
@@ -327,13 +467,33 @@ public class USFM extends AbstractParatextFormat {
 		return result;
 	}
 
+	private void parseAttributeList(String attList, Map<String, String> target) {
+		while (attList.contains("=")) {
+			int pos = attList.indexOf('=');
+			String key = attList.substring(0, pos).trim();
+			attList = attList.substring(pos + 1).trim();
+			if (attList.startsWith("\"")) {
+				pos = attList.indexOf('"', 1);
+				target.put(key, attList.substring(1, pos));
+				attList = attList.substring(pos + 1).trim();
+			} else {
+				target.put(key, attList);
+				attList = "";
+			}
+		}
+	}
+
 	@Override
 	protected void doExportBook(ParatextBook book, File outFile) throws IOException {
 		try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outFile), StandardCharsets.UTF_8))) {
 			bw.write("\\id " + book.getId().getIdentifier() + " " + escape(book.getBibleName(), false));
+			Version minRequiredVersion  = getMinRequiredVersion(book);
+			if (Version.V3.isLowerOrEqualTo(minRequiredVersion)) {
+				bw.write("\n\\usfm "+minRequiredVersion.toString());
+			}
 			bw.write("\n\\ide UTF-8");
 			for (Map.Entry<String, String> attr : book.getAttributes().entrySet()) {
-				bw.write("\n\\" + attr.getKey() + " " + escape(attr.getValue(), false));
+				bw.write("\n\\" + attr.getKey().replaceFirst("@[0-9]+$", "") + " " + escape(attr.getValue(), false));
 			}
 			book.accept(new ParatextBookContentVisitor<IOException>() {
 
@@ -347,41 +507,19 @@ public class USFM extends AbstractParatextFormat {
 
 				@Override
 				public void visitChapterEnd(ChapterIdentifier location) throws IOException {
-					// Chapter end marker is not supported in USFM 2.
+					// Chapter end marker is not supported in USFM.
+				}
+
+				@Override
+				public void visitRemark(String content) throws IOException {
+					bw.write("\n\\rem "+content);
+					context.needSpace = false;
 				}
 
 				@Override
 				public void visitParagraphStart(ParagraphKind kind) throws IOException {
-					if (USFM_2_PARAGRAPH_KINDS.contains(kind)) {
-						bw.write("\n\\" + kind.getTag());
-						context.needSpace = true;
-					} else {
-						visitUnsupportedParagraphStart(kind);
-					}
-				}
-
-				private void visitUnsupportedParagraphStart(ParagraphKind kind) throws IOException {
-					if (kind == ParagraphKind.HEBREW_NOTE) {
-						// According to documentation this is very similar to `d` (ParagraphKind.DESCRIPTIVE_TITLE)
-						warningLogger.logReplaceWarning(kind, ParagraphKind.DESCRIPTIVE_TITLE);
-						visitParagraphStart(ParagraphKind.DESCRIPTIVE_TITLE);
-					} else if (kind.isSameBase(ParagraphKind.SEMANTIC_DIVISION)) {
-						// TODO maybe add more than 1 blank line?
-						warningLogger.logReplaceWarning(kind, ParagraphKind.BLANK_LINE);
-						visitParagraphStart(ParagraphKind.BLANK_LINE);
-					} else if (kind == ParagraphKind.PARAGRAPH_PO || kind == ParagraphKind.PARAGRAPH_LH || kind == ParagraphKind.PARAGRAPH_LF) {
-						warningLogger.logReplaceWarning(kind, ParagraphKind.PARAGRAPH_P);
-						visitParagraphStart(ParagraphKind.PARAGRAPH_P);
-					} else if (kind.getTag().startsWith(ParagraphKind.PARAGRAPH_LIM.getTag())) {
-						// Documentation is not entirely clear on what the exact difference is between `lim#` and `li#`
-						// one is "embedded" the other is not: https://ubsicap.github.io/usfm/lists/index.html#lim
-						// The assumption is made here that `lim#` is directly replaceable with `li#`
-						ParagraphKind replacement = ParagraphKind.PARAGRAPH_LI.getWithNumber(kind.getNumber());
-						warningLogger.logReplaceWarning(kind, replacement);
-						visitParagraphStart(replacement);
-					} else {
-						throw new RuntimeException("Could not export to USFM 2 because an unhandled paragraph type `" + kind + "` from a newer USFM/USX version was found.");
-					}
+					bw.write("\n\\" + kind.getTag());
+					context.needSpace = true;
 				}
 
 				@Override
@@ -394,11 +532,166 @@ public class USFM extends AbstractParatextFormat {
 				}
 
 				@Override
+				public void visitSidebarStart(String[] categories) throws IOException {
+					bw.write("\n\\esb");
+					context.needSpace = true;
+					for (String cat : categories) {
+						if (context.needSpace)
+							bw.write(' ');
+						context.needSpace = false;
+						bw.write("\\cat " + escape(cat, true) + "\\cat*");
+					}
+				}
+
+				@Override
+				public void visitSidebarEnd() throws IOException {
+					bw.write("\n\\esbe");
+					context.needSpace = true;
+				}
+
+				@Override
+				public void visitPeripheralStart(String title, String id) throws IOException {
+					bw.write("\n\\periph "+title);
+					if (id != null) {
+						bw.write("|id=\""+id+"\"");
+					}
+				}
+
+				@Override
 				public void visitParatextCharacterContent(ParatextCharacterContent content) throws IOException {
 					content.accept(new USFMCharacterContentVisitor(bw, context));
 				}
+
 			});
+			bw.write('\n');
 		}
+	}
+
+	private static class VersionHolder {
+		Version version = Version.V1;
+
+		void pushVersion(Version v) {
+			if (!v.isLowerOrEqualTo(version)) version = v;
+		}
+	}
+
+	public Version getMinRequiredVersion(ParatextBook book) {
+		VersionHolder vh = new VersionHolder();
+		for (Map.Entry<String, String> attr : book.getAttributes().entrySet()) {
+			vh.pushVersion(ParatextBook.getMinVersionForAttribute(attr.getKey()));
+		}
+
+		book.accept(new ParatextBookContentVisitor<RuntimeException>() {
+
+			@Override
+			public void visitChapterStart(ChapterIdentifier location) {
+			}
+
+			@Override
+			public void visitChapterEnd(ChapterIdentifier location) {
+			}
+
+			@Override
+			public void visitRemark(String content) {
+			}
+
+			@Override
+			public void visitParagraphStart(ParagraphKind kind) {
+				vh.pushVersion(kind.getVersion());
+			}
+
+			@Override
+			public void visitTableCellStart(String tag) {
+			}
+
+			@Override
+			public void visitSidebarStart(String[] categories) throws RuntimeException {
+				vh.pushVersion(Version.V2_1);
+			}
+
+			@Override
+			public void visitSidebarEnd() throws RuntimeException {
+				vh.pushVersion(Version.V2_1);
+			}
+
+			@Override
+			public void visitPeripheralStart(String title, String id) throws RuntimeException {
+				if (id != null)
+					vh.pushVersion(Version.V3);
+			}
+
+			@Override
+			public void visitParatextCharacterContent(ParatextCharacterContent content) {
+				content.accept(new ParatextCharacterContentVisitor<RuntimeException>() {
+
+					@Override
+					public void visitVerseStart(VerseIdentifier location, String verseNumber) throws RuntimeException {
+					}
+
+					@Override
+					public ParatextCharacterContentVisitor<RuntimeException> visitFootnoteXref(FootnoteXrefKind kind, String caller, String[] categories) throws RuntimeException {
+						if (kind == FootnoteXrefKind.STUDY_EXTENDED_FOOTNOTE) {
+							vh.pushVersion(Version.V2_1);
+						} else if (kind == FootnoteXrefKind.STUDY_EXTENDED_XREF) {
+							vh.pushVersion(Version.V2_3);
+						}
+						return this;
+					}
+
+					@Override
+					public ParatextCharacterContentVisitor<RuntimeException> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws RuntimeException {
+						vh.pushVersion(kind.getVersion());
+						if (kind == AutoClosingFormattingKind.WORDLIST) {
+							if (attributes.size() > 1 || (attributes.size() == 1 && !attributes.containsKey("lemma"))) {
+								vh.pushVersion(Version.V3);
+							}
+						} else {
+							if (!attributes.isEmpty())
+								vh.pushVersion(Version.V3);
+						}
+						return this;
+					}
+
+					@Override
+					public void visitFigure(String caption, Map<String, String> attributes) throws RuntimeException {
+						Set<String> attrKeys = new HashSet<>(attributes.keySet());
+						attrKeys.removeAll(Arrays.asList(Figure.FIGURE_PROVIDED_ATTRIBUTES));
+						if (!attrKeys.isEmpty())
+							vh.pushVersion(Version.V3);
+					}
+
+					@Override
+					public void visitMilestone(String tag, Map<String, String> attributes) throws RuntimeException {
+						vh.pushVersion(Version.V3);
+					}
+
+					@Override
+					public void visitReference(Reference reference) throws RuntimeException {
+					}
+
+					@Override
+					public void visitCustomMarkup(String tag, boolean ending) throws RuntimeException {
+					}
+
+					@Override
+					public void visitSpecialSpace(boolean nonBreakSpace, boolean optionalLineBreak) throws RuntimeException {
+					}
+
+					@Override
+					public void visitText(String text) throws RuntimeException {
+					}
+
+					@Override
+					public void visitEnd() throws RuntimeException {
+					}
+
+					@Override
+					public void visitVerseEnd(VerseIdentifier verseLocation) throws RuntimeException {
+					}
+				});
+			}
+		});
+		return vh.version;
 	}
 
 	private static String escape(String text, boolean escapePipe) {
@@ -439,7 +732,7 @@ public class USFM extends AbstractParatextFormat {
 		}
 
 		@Override
-		public ParatextCharacterContentVisitor<IOException> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws IOException {
+		public ParatextCharacterContentVisitor<IOException> visitFootnoteXref(FootnoteXrefKind kind, String caller, String[] categories) throws IOException {
 			if (context.needSpace) {
 				bw.write(" ");
 			}
@@ -452,90 +745,112 @@ public class USFM extends AbstractParatextFormat {
 			}
 			bw.write("\\" + kind.getTag() + " " + normalizedCaller);
 			context.needSpace = true;
+			for (String cat : categories) {
+				if (context.needSpace)
+					bw.write(' ');
+				context.needSpace = false;
+				bw.write("\\cat " + escape(cat, true) + "\\cat*");
+			}
 			pushSuffix(kind.getTag());
 			return this;
 		}
 
 		@Override
+		public void visitCustomMarkup(String tag, boolean ending) throws IOException {
+			if (context.needSpace) {
+				bw.write(" ");
+			}
+			bw.write("\\" + tag + (ending ? "*" : ""));
+			context.needSpace = !ending;
+		}
+
+		@Override
 		public ParatextCharacterContentVisitor<IOException> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws IOException {
-			if (USFM_2_AUTO_CLOSING_FORMATTING_KINDS.contains(kind)) {
-				if (context.needSpace)
-					bw.write(" ");
-				AutoClosingFormattingKind lastTag = getLastTag();
-				String thisTag = (lastTag != null ? "+" : "") + kind.getTag();
-				bw.write("\\" + thisTag);
-				context.needSpace = true;
-				if (attributes.isEmpty()) {
-					pushSuffix(thisTag);
-				} else {
-					// TODO it can happen that newer attributes are unintentionally exported
-					StringBuilder attrs = new StringBuilder("");
-					for (Map.Entry<String, String> entry : attributes.entrySet()) {
-						if (attrs.length() > 0)
-							attrs.append(" ");
-						attrs.append(entry.getKey() + "=\"" + entry.getValue() + "\"");
-					}
-					pushSuffix(thisTag + "\t|" + attrs.toString());
-				}
+			if (context.needSpace)
+				bw.write(" ");
+			AutoClosingFormattingKind lastTag = getLastTag();
+			String thisTag = (lastTag != null ? "+" : "") + kind.getTag();
+			bw.write("\\" + thisTag);
+			context.needSpace = true;
+			if (attributes.isEmpty()) {
+				pushSuffix(thisTag);
 			} else {
-				return visitUnsupportedAutoClosingFormatting(kind, attributes);
+				StringBuilder attrs = new StringBuilder("");
+				List<String> attributeKeys = new ArrayList<>(attributes.keySet());
+				List<String> orderedAttributeKeys = new ArrayList<>();
+				if (kind.getProvidedAttributes() != null) {
+					orderedAttributeKeys.addAll(Arrays.asList(kind.getProvidedAttributes()));
+				}
+				orderedAttributeKeys.removeAll(Arrays.asList(AutoClosingFormattingKind.LINKING_ATTRIBUTES));
+				orderedAttributeKeys.addAll(Arrays.asList(AutoClosingFormattingKind.LINKING_ATTRIBUTES));
+				orderedAttributeKeys.retainAll(attributeKeys);
+				attributeKeys.removeAll(orderedAttributeKeys);
+				attributeKeys.sort(Comparator.naturalOrder());
+				orderedAttributeKeys.addAll(attributeKeys);
+				for (String key : orderedAttributeKeys) {
+					if (attrs.length() > 0)
+						attrs.append(" ");
+					attrs.append(key + "=\"" + attributes.get(key) + "\"");
+				}
+				pushSuffix(thisTag + "\t|" + attrs.toString());
 			}
 			return this;
 		}
 
-		private ParatextCharacterContentVisitor<IOException> visitUnsupportedAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws IOException {
-			if (kind == AutoClosingFormattingKind.LIST_TOTAL || kind == AutoClosingFormattingKind.LIST_KEY || kind.isSameBase(AutoClosingFormattingKind.LIST_VALUE)) {
-				// It should not be too much of an issue to just skip these list tags
-				// E.g.
-				// \li1 \lik Reuben\lik* \liv1 Eliezer son of Zichri\liv1*
-				// Wil become:
-				// \li1 Reuben Eliezer son of Zichri
-				context.logger.logSkippedWarning(kind);
-				return new USFMCharacterContentVisitor(bw, context);
-			} else if (kind == AutoClosingFormattingKind.FOOTNOTE_WITNESS_LIST) {
-				// The Footnote witness list is just extra markup found within a footnote, however according to
-				// documentation found here: https://ubsicap.github.io/usfm/v3.0.rc1/notes_basic/fnotes.html
-				// Each element within a footnote must start with it's appropriate tag. So we can't just skip this tag
-				// since it could contain text. It would be better to turn this into a text entry `ft`.
-				context.logger.logReplaceWarning(kind, AutoClosingFormattingKind.FOOTNOTE_TEXT);
-				return visitAutoClosingFormatting(AutoClosingFormattingKind.FOOTNOTE_TEXT, attributes);
-			} else if (kind == AutoClosingFormattingKind.XREF_PUBLISHED_ORIGIN) {
-				// Published cross reference origin texts do not exist in USFM 2.x
-				// There is not really a nice way to downgrade these, we cannot put the `xop` tag into `xo` because it
-				// might not follow the usual `<chapter><separator><verse>` pattern.
-				// TODO, maybe we can just write the contents to the parent target, just like FOOTNOTE_WITNESS_LIST?
-				context.logger.logRemovedWarning(kind);
-				return null;
-			} else if (kind == AutoClosingFormattingKind.XREF_TARGET_REFERENCES_TEXT) {
-				// "Target reference(s) extra / added text" does not exist in USFM 2.x
-				// We should be able to get away with just adding the raw content directly `target`.
-				context.logger.logSkippedWarning(kind);
-				return new USFMCharacterContentVisitor(bw, context);
-			} else if (kind == AutoClosingFormattingKind.SUPERSCRIPT) {
-				// There is not really a good way to represent superscript in USFM 2.x
-				// To avoid losing data, we skip the tag and just add the content directly to `target`.
-				// TODO, maybe we can use `sc` (Small caps) instead?
-				context.logger.logSkippedWarning(kind, "This might lead to text that is not separated by whitespace," +
-						"since the previous text and superscript text may not have had been separated by whitespace.");
-				return new USFMCharacterContentVisitor(bw, context);
-			} else if (kind == AutoClosingFormattingKind.ARAMAIC_WORD) {
-				// There is not really a good way to represent Aramaic words in USFM 2.x
-				// To avoid losing data, we skip the tag and just add the content directly to `target`.
-				context.logger.logSkippedWarning(kind);
-				return new USFMCharacterContentVisitor(bw, context);
-			} else if (kind == AutoClosingFormattingKind.PROPER_NAME_GEOGRAPHIC) {
-				// This marker just gives geographic names a different presentation, thus can easily be skipped without
-				// too much loss.
-				context.logger.logSkippedWarning(kind);
-				return new USFMCharacterContentVisitor(bw, context);
-			} else {
-				throw new RuntimeException("Could not export to USFM 2 because an unhandled char type `" + kind + "` from a newer USFM/USX version was found.");
+		@Override
+		public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
+			if (context.needSpace)
+				bw.write(" ");
+			bw.write("\\fig ");
+			context.needSpace = false;
+			visitText(caption);
+			if (!attributes.isEmpty()) {
+				StringBuilder attrs = new StringBuilder("");
+				List<String> attributeKeys = new ArrayList<>(attributes.keySet());
+				List<String> orderedAttributeKeys = new ArrayList<>();
+				orderedAttributeKeys.addAll(Arrays.asList(Figure.FIGURE_PROVIDED_ATTRIBUTES));
+				orderedAttributeKeys.retainAll(attributeKeys);
+				attributeKeys.removeAll(orderedAttributeKeys);
+				attributeKeys.sort(Comparator.naturalOrder());
+				orderedAttributeKeys.addAll(attributeKeys);
+				for (String key : orderedAttributeKeys) {
+					if (attrs.length() > 0)
+						attrs.append(" ");
+					attrs.append(key + "=\"" + attributes.get(key) + "\"");
+				}
+				bw.write("|" + attrs.toString());
 			}
+			bw.write("\\fig*");
+		}
+
+		@Override
+		public void visitMilestone(String tag, Map<String, String> attributes) throws IOException {
+			if (context.needSpace)
+				bw.write(" ");
+			bw.write("\\" + tag+" ");
+			if (!attributes.isEmpty()) {
+				StringBuilder attrs = new StringBuilder("");
+				List<String> orderedAttributeKeys = new ArrayList<>(attributes.keySet());
+				orderedAttributeKeys.sort(Comparator.naturalOrder());
+				for (String key : orderedAttributeKeys) {
+					if (attrs.length() > 0)
+						attrs.append(" ");
+					attrs.append(key + "=\"" + attributes.get(key) + "\"");
+				}
+				bw.write("|" + attrs.toString());
+			}
+			bw.write("\\*");
+			context.needSpace = false;
 		}
 
 		@Override
 		public void visitReference(Reference reference) throws IOException {
 			visitText(reference.getContent());
+		}
+
+		@Override
+		public void visitSpecialSpace(boolean nonBreakSpace, boolean optionalLineBreak) throws IOException {
+			visitText(nonBreakSpace ? "~" : " // ");
 		}
 
 		@Override
@@ -547,7 +862,7 @@ public class USFM extends AbstractParatextFormat {
 			// 	text = text.substring(0, text.length() - 1);
 			// }
 			AutoClosingFormattingKind lastTag = getLastTag();
-			bw.write(escape(text, lastTag != null && lastTag.getDefaultAttributes() != null));
+			bw.write(escape(text, lastTag != null && (lastTag.getProvidedAttributes() != null)));
 			context.needSpace = false;
 		}
 

@@ -4,7 +4,10 @@ public enum Version {
 	V1(1, 0, 0),
 	V2(2, 0, 0),
 	V2_0_3(2, 0, 3),
+	V2_0_4(2, 0, 4),
+	V2_1(2, 1, 0),
 	V2_2(2, 2, 0),
+	V2_3(2, 3, 0),
 	V3(3, 0, 0);
 
 	private final int major;
@@ -28,5 +31,17 @@ public enum Version {
 			}
 		}
 		return false;
+	}
+
+	@Override
+	public String toString() {
+		String result = major + "." + minor;
+		if (patch != 0) {
+			if (major >= 3) {
+				result += ".";
+			}
+			result += patch;
+		}
+		return result;
 	}
 }

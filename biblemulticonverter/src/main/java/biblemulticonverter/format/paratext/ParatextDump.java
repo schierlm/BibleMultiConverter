@@ -8,8 +8,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.nio.channels.IllegalSelectorException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -19,18 +21,26 @@ import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisitor;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
+import biblemulticonverter.format.paratext.ParatextBook.PeripheralStart;
+import biblemulticonverter.format.paratext.ParatextBook.SidebarEnd;
+import biblemulticonverter.format.paratext.ParatextBook.SidebarStart;
 import biblemulticonverter.format.paratext.ParatextBook.TableCellStart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.CustomMarkup;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.Figure;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXrefKind;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.Milestone;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.SpecialSpace;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
+import biblemulticonverter.schema.usx3.Periph;
 
 /**
  * Simple importer and exporter that dumps the internal Paratext format to a diffable plain text.
@@ -44,7 +54,7 @@ public class ParatextDump extends AbstractParatextFormat {
 			"",
 			"Point the importer to .txt files, not to directories!",
 	};
-	
+
 	public ParatextDump() {
 		super("ParatextDump");
 	}
@@ -71,11 +81,23 @@ public class ParatextDump extends AbstractParatextFormat {
 					case "CHAPTER-END":
 						currentBook.getContent().add(new ParatextBook.ChapterEnd(ChapterIdentifier.fromLocationString(parts[1])));
 						break;
+					case "REMARK":
+						currentBook.getContent().add(new ParatextBook.Remark(parts[1]));
+						break;
 					case "PARAGRAPH":
 						currentBook.getContent().add(new ParagraphStart(Objects.requireNonNull(allParagraphKinds.get(parts[1]))));
 						break;
 					case "TABLECELL":
 						currentBook.getContent().add(new TableCellStart(parts[1]));
+						break;
+					case "SIDEBAR":
+						currentBook.getContent().add(new SidebarStart(parts[1].isEmpty() ? new String[0] : parts[1].split(" ")));
+						break;
+					case "SIDEBAR-END":
+						currentBook.getContent().add(new SidebarEnd());
+						break;
+					case "PERIPHERAL":
+						currentBook.getContent().add(new PeripheralStart(parts[1], parts.length == 2 ? null : parts[2]));
 						break;
 					case "CHARCONTENTSTART":
 						ParatextCharacterContent cc = new ParatextCharacterContent();
@@ -102,7 +124,8 @@ public class ParatextDump extends AbstractParatextFormat {
 				target.add(new ParatextCharacterContent.VerseEnd(VerseIdentifier.fromStringOrThrow(parts[2])));
 				break;
 			case "FOOTNOTE":
-				FootnoteXref fx = new FootnoteXref(Objects.requireNonNull(FootnoteXrefKind.allTags().get(parts[1])), parts[2]);
+				String[] callerAndAttributes = parts[2].split(" ");
+				FootnoteXref fx = new FootnoteXref(Objects.requireNonNull(FootnoteXrefKind.allTags().get(parts[1])), callerAndAttributes[0], Arrays.copyOfRange(callerAndAttributes, 1, callerAndAttributes.length));
 				target.add(fx);
 				while (!(line = br.readLine()).equals("FOOTNOTEEND")) {
 					importCharContent(fx.getContent(), br, line);
@@ -120,8 +143,38 @@ public class ParatextDump extends AbstractParatextFormat {
 					}
 				}
 				break;
+			case "FIGURE":
+				Figure f = new Figure(Objects.requireNonNull(parts[1]));
+				target.add(f);
+				while (!(line = br.readLine()).equals("FIGUREEND")) {
+					if (line.startsWith("ATTRIBUTE\t")) {
+						parts = line.split("\t", 3);
+						f.getAttributes().put(parts[1], parts[2]);
+					} else {
+						throw new RuntimeException("Unsupported figure line: "+line);
+					}
+				}
+				break;
+			case "MILESTONE":
+				final Milestone m = new Milestone(Objects.requireNonNull(parts[1]));
+				target.add(m);
+				while (!(line = br.readLine()).equals("MILESTONEEND")) {
+					if (line.startsWith("ATTRIBUTE\t")) {
+						parts = line.split("\t", 3);
+						m.getAttributes().put(parts[1], parts[2]);
+					} else {
+						throw new RuntimeException("Unsupported milestone line: "+line);
+					}
+				}
+				break;
 			case "REFERENCE":
 				target.add(Reference.parse(parts[1], parts[2]));
+				break;
+			case "CUSTOM-MARKUP":
+				target.add(new CustomMarkup(parts[1], Boolean.parseBoolean(parts[2])));
+				break;
+			case "SPACE":
+				target.add(new SpecialSpace(Boolean.parseBoolean(parts[1]), Boolean.parseBoolean(parts[2])));
 				break;
 			case "TEXT":
 				Text text = Text.from(parts[2]);
@@ -173,6 +226,11 @@ public class ParatextDump extends AbstractParatextFormat {
 			}
 
 			@Override
+			public void visitRemark(String content) throws IOException {
+				bw.write("REMARK\t" + content + "\n");
+			}
+
+			@Override
 			public void visitParagraphStart(ParagraphKind kind) throws IOException {
 				bw.write("PARAGRAPH\t" + kind.getTag() + "\n");
 			}
@@ -180,6 +238,21 @@ public class ParatextDump extends AbstractParatextFormat {
 			@Override
 			public void visitTableCellStart(String tag) throws IOException {
 				bw.write("TABLECELL\t" + tag + "\n");
+			}
+
+			@Override
+			public void visitSidebarStart(String[] categories) throws IOException {
+				bw.write("SIDEBAR\t"+String.join(" ", categories)+"\n");
+			}
+
+			@Override
+			public void visitSidebarEnd() throws IOException {
+				bw.write("SIDEBAR-END\n");
+			}
+
+			@Override
+			public void visitPeripheralStart(String title, String id) throws IOException {
+				bw.write("PERIPHERAL\t"+title+(id == null ? "" : "\t"+id)+"\n");
 			}
 
 			@Override
@@ -206,8 +279,12 @@ public class ParatextDump extends AbstractParatextFormat {
 		}
 
 		@Override
-		public ParatextCharacterContentVisitor<IOException> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws IOException {
-			bw.write("FOOTNOTE\t" + kind.getTag() + "\t" + caller + "\n");
+		public ParatextCharacterContentVisitor<IOException> visitFootnoteXref(FootnoteXrefKind kind, String caller, String[] categories) throws IOException {
+			bw.write("FOOTNOTE\t" + kind.getTag() + "\t" + caller);
+			for (String cat : categories) {
+				bw.write(" " + cat);
+			}
+			bw.write("\n");
 			return new ParatextDumpCharacterContentVisitor(bw, "FOOTNOTEEND\n");
 		}
 
@@ -221,8 +298,36 @@ public class ParatextDump extends AbstractParatextFormat {
 		}
 
 		@Override
+		public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
+			bw.write("FIGURE\t"+caption+"\n");
+			for (Map.Entry<String, String> attr : attributes.entrySet()) {
+				bw.write("ATTRIBUTE\t" + attr.getKey() + "\t" + attr.getValue() + "\n");
+			}
+			bw.write("FIGUREEND\n");
+		}
+
+		@Override
+		public void visitMilestone(String tag, Map<String, String> attributes) throws IOException {
+			bw.write("MILESTONE\t"+tag+"\n");
+			for (Map.Entry<String, String> attr : attributes.entrySet()) {
+				bw.write("ATTRIBUTE\t" + attr.getKey() + "\t" + attr.getValue() + "\n");
+			}
+			bw.write("MILESTONEEND\n");
+		}
+
+		@Override
 		public void visitReference(Reference reference) throws IOException {
 			bw.write("REFERENCE\t" + reference.toString() + "\t" + reference.getContent() + "\n");
+		}
+
+		@Override
+		public void visitCustomMarkup(String tag, boolean ending) throws IOException {
+			bw.write("CUSTOM-MARKUP\t" + tag + "\t" + ending + "\n");
+		}
+
+		@Override
+		public void visitSpecialSpace(boolean nonBreakSpace, boolean optionalLineBreak) throws IOException {
+			bw.write("SPACE\t" + nonBreakSpace + "\t" + optionalLineBreak + "\n");
 		}
 
 		@Override

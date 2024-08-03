@@ -118,6 +118,7 @@ Trang version used: trang-20181222
             </xs:choice>
             <xs:attribute name="style" use="required" type="CharStyle"/>
             <xs:attribute name="closed" type="xs:boolean"/>
+            <xs:attribute name="gloss" type="NonEmptyString"/>
             <xs:attribute name="lemma" type="NonEmptyString"/>
             <xs:attribute name="strong" type="NonEmptyOrBlankString"/>
             <xs:attribute name="srcloc" type="NonEmptyOrBlankString"/>
@@ -320,6 +321,13 @@ Trang version used: trang-20181222
                 <xs:simpleType>
                     <xs:restriction base="xs:string">
                         <xs:pattern value="[\p{L}_\-\.:]+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="who">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:minLength value="2"/>
                     </xs:restriction>
                 </xs:simpleType>
             </xs:attribute>
@@ -585,6 +593,11 @@ Trang version used: trang-20181222
             <xs:simpleType>
                 <xs:restriction base="xs:string">
                     <xs:pattern value="ts?(\-[se])?"/>
+                </xs:restriction>
+            </xs:simpleType>
+            <xs:simpleType>
+                <xs:restriction base="xs:string">
+                    <xs:pattern value="qt[1-5]?(\-[se])?"/>
                 </xs:restriction>
             </xs:simpleType>
             <xs:simpleType>

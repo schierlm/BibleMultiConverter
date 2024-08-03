@@ -31,6 +31,7 @@ import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
+import biblemulticonverter.format.paratext.ParatextBook.PeripheralStart;
 import biblemulticonverter.format.paratext.ParatextBook.TableCellStart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
@@ -229,15 +230,7 @@ public class USFX extends AbstractParatextFormat {
 				}
 			}
 		} else if (localName.equals("periph")) {
-			result.getContent().add(new ParagraphStart(ParagraphKind.PERIPHERALS));
-			containerStack.clear();
-			ParatextCharacterContent container = new ParatextCharacterContent();
-			Text text = Text.from((String) element.getValue());
-			if(text != null) {
-				container.getContent().add(text);
-			}
-			containerStack.add(container);
-			result.getContent().add(container);
+			result.getContent().add(new PeripheralStart((String) element.getValue(), null));
 		} else if (localName.equals("v")) {
 			String id;
 			if (element.getValue() instanceof Usfx.Book.V) {
@@ -279,7 +272,7 @@ public class USFX extends AbstractParatextFormat {
 			String caller = nc.getCaller();
 			if (caller == null || caller.isEmpty())
 				caller = "+";
-			FootnoteXref nextContainer = new FootnoteXref(USFM.FOOTNOTE_XREF_TAGS.get(sfm), caller);
+			FootnoteXref nextContainer = new FootnoteXref(USFM.FOOTNOTE_XREF_TAGS.get(sfm), caller, new String[0]);
 			if (containerStack.isEmpty()) {
 				ParatextCharacterContent container = new ParatextCharacterContent();
 				containerStack.add(container);
@@ -414,7 +407,7 @@ public class USFX extends AbstractParatextFormat {
 				result.getContent().add(container);
 			}
 			containerStack.get(containerStack.size() - 1).getContent().add(nextContainer);
-			
+
 			Text text = Text.from((String) element.getValue());
 			if(text != null) {
 				nextContainer.getContent().add(text);
@@ -423,7 +416,7 @@ public class USFX extends AbstractParatextFormat {
 			System.out.println("WARNING: Unexpected tag: " + localName);
 		}
 	}
-	
+
 	@Override
 	protected ParatextBook doImportBook(File inputFile) throws Exception {
 		throw new UnsupportedOperationException();

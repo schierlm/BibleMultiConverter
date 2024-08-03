@@ -1,0 +1,193 @@
+\id MAT All USFM 3 Tags
+\usfm 3.0
+\ide UTF-8
+\rem This is a sample file that contains all possible USFM 3 Tags
+\sts 2
+\h All USFM3 Tags
+\rem Comments can be everywhere
+\toc1 Gospel of Matthew
+\toc2 Matthew
+\rem even between headers,
+\rem more than once,
+\toc3 Mt
+\rem (Latin is the alternate language here)
+\toca1 Evangelium Secundum Matthaeum
+\toca2 Secundum Matthaeum
+\toca3 Mat
+\rem or at the end of the header.
+\mt2 Gospel of
+\mt1 Matthew
+\pb
+\imt1 Introduction
+\is1 First introduction section
+\ip This is the introduction to \bk Matthew\bk*. This paragraph's first line is indented, but the rest of it is not.
+\ipi An indented paragraph. This paragraph's first line is indented even more.
+\is1 Section with subsections
+\is2 Flush margins
+\im For this paragraph, the first line is not indented.
+\imi And now, the whole paragraph is indented, but its first line is not indented more.
+\is2 Quotations
+\ip Here is a quotation with reference:
+\ipq Here is wisdom about the beast and its number is 666.
+\ipr (Rev 13:18)
+\ib
+\im Without indentation:
+\imq Here is wisdom about the beast and its number is 666.
+\ipr (The same as above)
+\ib
+\ip Poetic:
+\iq1 This is a poem
+\iq2 which is very
+\iq1 poetic
+\iq2 or what do
+\iq3 you think?
+\ib
+\ip Or, as somebody said, \iqt you can also quote inline\iqt*.
+\is2 Lists
+\ip Here is a list
+\ili 1 \k One\k*
+\ili1 2 \k Two\k*
+\ili2 a) \k A\k*
+\ili2 b) \k B\k*
+\ili 3 \k Three\k*
+\iot Outline
+\io1 First part \ior (1-2)\ior*
+\io1 Second part \ior (3-9)\ior*
+\io2 First subpart \ior (3-5)\ior*
+\io2 Second subpart \ior (6-9)\ior*
+\io1 Third part \ior (10-12)\ior*
+\imte2 End of the
+\imte1 Introduction to the Gospel of Matthew
+\ie
+\pb
+\cl Chapterly
+\c 1 \ca 11\ca*
+\cp A
+\rem Comments can also be in chapters before paragraphs.
+\ms1 First Part
+\mr (Chapters 1-4)
+\ms2 First Subpart
+\mr (Chapters 1-2)
+\s1 Section
+\sr (1:1-6)
+\s2 Subsection
+\r (42:43, 8:7)
+\d This is not a Psalm.
+\p
+\v 1 First\ef † \cat Etymology\cat*\fr 1.1:\fr*\fq First:\fq*\ft Fore-est\ft*\ef* verse\efm †\efm* \zCustomTag with \bd bold\zCustomTag* words\bd*, and
+\v 2 Second verse that spans multiple paragraphs.
+\esb \cat Sidey\cat*
+\ms This is a sidebar title
+\p And some sidebar text as well.
+\esbe
+\p It happens to have a sidebar in it.
+\iex Verses 3-5 are missing from this translation.
+\sd2
+\p
+\v 6 And here is the next verse. You may know:
+\q1 "Poetic quotes
+\q2 are very powerful,
+\q1 especially
+\q2 when there is source."\rq Mark 99:2\rq*
+\sp Some Speaker
+\p
+\v 7 \vp 77\vp*Verses can have display numbers.
+\v 8 More to come.
+\c 2 \ca 22\ca*
+\cl Chapterlyly Twoeyly
+\cd Some text before first verse.
+\p
+\v 1 \va 1\va*Here it is. \va 2\va*Some think it is two verses.
+\v 2 \va 3\va*And another verse.
+\v 3 Empty.
+\p
+\v 4 Normal paragraph,
+\q1 Some poetry,
+\m and continues with no margin now.
+\po
+\v 5 Epistle opening, no first line indent,
+\pr and right aligned.
+\cls Epistle closing,
+\pr may look like right aligned again.
+\pmo Embedded text.
+\pm Next paragraph (with first line indent).
+\pmr Refrain (right aligned).
+\pmc Closing embeded text (no extra indent).
+\pi1 Indented paragraph.
+\mi Without first line indent.
+\pi2 More indented paragraph.
+\v 6 Sometimes it happens,
+\c 3
+\nb
+\v 1 that a chapter does not start a new paragraph. And,
+\pc I.N.R.I.
+\m was written in the center. Hanging indent:
+\ph1 First level hanging indent,
+\ph2 Second level hanging indent,
+\ph1 First level again.
+\b
+\m Here was a blank line.
+\q1 Often there is poetry
+\q2 For example in psalms
+\q1 With funny indention
+\q3 This one really wide
+\q1 And everything back.
+\qr Right-aligned refrain
+\qc Center!
+\q1 Short text. \qs Selah!\qs*
+\qa Aleph
+\q1 \qac A\qac*crostic heading in Psalms
+\q2 \qac B\qac*elong to an alphabet,
+\q1 \qac C\qac*uz order is important.
+\q2 \qac D\qac*one with this example!
+\q1 Quoting some embedded poetry
+\qm Outer level
+\qm2 Inner level
+\qm1 And outer again.
+\b
+\qd A musical performance comment ad the end of the poetry!
+\c 4
+\lh
+\v 1 List follows:
+\li1 One,
+\li1 Two,
+\li2 Two-One,
+\li2 Two-Two,
+\li1 Three!
+\lf List above.
+\p Some verselist:
+\lim
+\v 2 \lik Second verse\lik*\liv is entry\liv*\litl 1\litl*.
+\lim
+\v 3 \lik Third verse\lik*\liv is entry\liv*\litl 2\litl*.
+\p
+\v 4 There is a table:
+\tr \th1 Left\th2-3 \w Spanning|lemma="span" strong="G0123" srcloc="version:1.2.3.4"\w*\thr4 Right Headers
+\tr \tc1-2 Left spanning\tc3 \w Middle\w*\tcr4 \it \+bd \+w Right|lemma="correct"\+w*\+bd* cell\it*
+\p And\f + \fr 4.4:\fr*\ft Footnote with default caller.\ft*\fp Second paragraph in footnote.\fp*\f* the\f - \fr 4.4:\fr*\ft Footnote with no caller.\ft*\fdc This bible contains deuterocanonical content.\fdc*\f* text\f * \fr 4.4:\fr*\ft Footnote with custom caller; may also be replaced with\ft*\fqa characters go on. \+fv 5\+fv* Frequently...\fqa*\f* continues\fe + \fr 4.4:\fr*\ft Endnote\ft*\fe*.
+\v 5 Sometimes\f + \fr 4.5:\fr*\fq Sometimes:\fq*\ft Also translated as\ft*\fqa often\fqa*\ft .\ft*\f* we\f + \fr 4.5:\fr*\fk we:\fk*\ft Not in\ft*\fl LXX\fl*\fw X Y Z\fw*\f* repeat\fm *\fm* ourselves.
+\p
+\v 6 \x - \xo 4.6:\xo*\xt Rev 2.3\xt*\x*Cross\x + \xo 4.6:\xo*\xop ibidem:\xop*\xk Cross:\xk*\xq Quotation\xq*\xta Compare with\xta*\xt Gen 9.8|link-href="GEN 9:8"\xt*\xot Exo 1.1\xot*\xnt Acts 2.3\xnt*\xdc Sir 2.3\xdc*\x* Reference.
+\ms2 Character \no styling\no* heading // with an \bdit optional\bdit* line break
+\c 5
+\p
+\v 1 The \bk Book of \+nd God\+nd*\bk* is an example of nested markers, \add and\add* this is important \dc in deuterocanonical books\dc*.
+\lit Pray.
+\p On the 1\ord st\ord* day, \pn Peter\pn* went to \png Jerusalem\png* \addpn The Great\addpn*, wrote \sig his name\sig* and said:
+\q1 \qt This is quoted, but \+no normal.\+no*\qt*
+\p And \sls gourmets\sls* saw \tl Menetekel\tl*, while Jesus said: \wj Yeah\wj*.
+\v 2 \em Emphasized+\em*\bd bold+\bd*\it italic+\it*\bdit both+\bdit*\sc Small Caps+\sc*\sup superscript\sup*; no~break~space.
+\v 3 \ndx Indexed Figures.\ndx*\fig At once they left their nets.|src="avnt016.jpg" size="span" ref="5.3"\fig*\fig Took her by the hand.|alt="doctor" src="avnt017.tif" size="col" loc="5.1-4" copy="Public Domain" ref="5.3"\fig*
+\v 4 \rb Ruby|gloss="Roo:bee"\rb* glosses \pro Gloh-sehs\pro*. \wg Greek+\wg*\wh Hebrew+\wh*\wa Aramaic\wa* word list.
+\v 5 Linking \jmp to nowhere|link-href="https://schierlm.github.io" x-why="That's me"\jmp*. Here is \jmp |link-id="a-loop"\jmp*\jmp A loop|link-href="#a-loop" link-title="Loop"\jmp*.\ts \*
+\v 6 Standalone\zmyMilestone \* Milestone,\qt-s |sid="qqA" who="Nobody"\*" Fake Quote:\qt2-s |sid="qqB" who="Nobodier"\* Nobody said this!\qt-e |eid="qqB"\*"\qt-e |eid="qqA"\*\ts \*
+\mte2 End of the
+\mte1 Gospel of Matthew
+\periph Chronology
+\ip One two three.
+\periph Weights and Measures|id="measures"
+\ip Kilograms.
+\periph Custom peripheral without ID
+\ip Short.
+\periph Another custom with id|id="x-custom"
+\ip Longer.

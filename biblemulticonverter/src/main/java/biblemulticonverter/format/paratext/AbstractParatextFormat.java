@@ -22,6 +22,7 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
@@ -65,25 +66,13 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 	private static Map<String, AutoClosingFormattingKind> ALL_FORMATTINGS_CSS = AutoClosingFormattingKind.allCSS();
 
 	protected static final Set<String> BOOK_HEADER_ATTRIBUTE_TAGS = new HashSet<>(Arrays.asList(
-			"ide",
+			"ide", "sts",
 			"h", "h1", "h2", "h3",
-			"toc1", "toc2", "toc3", "toca1", "toca2", "toca3",
-			"rem", "usfm")
+			"toc1", "toc2", "toc3", "toca1", "toca2", "toca3")
 	);
-	
-	private final String formatName;
-	protected final StandardExportWarningMessages warningLogger;
-	
-	public AbstractParatextFormat(String formatName) {
-		this.formatName = formatName;
-		this.warningLogger = new StandardExportWarningMessages(formatName);
-	}
 
-	@Override
-	public Bible doImport(File inputFile) throws Exception {
-		List<ParatextBook> books = doImportBooks(inputFile);
+	protected static String getBibleName(List<ParatextBook> books) {
 		String bibleName = null;
-		final Map<ParatextID, String> bookAbbrs = new EnumMap<>(ParatextID.class);
 		for (ParatextBook book : books) {
 			if (bibleName == null || book.getBibleName().isEmpty()) {
 				bibleName = book.getBibleName();
@@ -102,6 +91,24 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					}
 				}
 			}
+		}
+		return bibleName;
+	}
+
+	private final String formatName;
+	protected final StandardExportWarningMessages warningLogger;
+
+	public AbstractParatextFormat(String formatName) {
+		this.formatName = formatName;
+		this.warningLogger = new StandardExportWarningMessages(formatName);
+	}
+
+	@Override
+	public Bible doImport(File inputFile) throws Exception {
+		List<ParatextBook> books = doImportBooks(inputFile);
+		final String bibleName = getBibleName(books);
+		final Map<ParatextID, String> bookAbbrs = new EnumMap<>(ParatextID.class);
+		for (ParatextBook book : books) {
 			String abbr = book.getAttributes().get("toc3"), fallbackAbbr = book.getId().getId().getOsisID().replace("x-", "").replace("-", "");
 			if (abbr == null)
 				abbr = fallbackAbbr;
@@ -113,13 +120,15 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			bookAbbrs.put(book.getId(), abbr);
 		}
 		Bible bible = new Bible((bibleName == null || bibleName.isEmpty()) ? "Imported Bible" : bibleName.trim());
+		List<Book> sidebars = new ArrayList<>();
 		for (ParatextBook book : books) {
-			bible.getBooks().add(importParatextBook(book, bookAbbrs));
+			bible.getBooks().add(importParatextBook(book, bookAbbrs, sidebars));
 		}
+		bible.getBooks().addAll(sidebars);
 		return bible;
 	}
 
-	protected final Book importParatextBook(ParatextBook book, Map<ParatextID, String> bookAbbrs) {
+	protected final Book importParatextBook(ParatextBook book, Map<ParatextID, String> bookAbbrs, List<Book> sidebars) {
 		String longName = book.getAttributes().get("toc1");
 		if (longName == null || longName.isEmpty())
 			longName = book.getId().getEnglishName();
@@ -129,12 +138,17 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		final Book bk = new Book(bookAbbrs.get(book.getId()), book.getId().getId(), shortName, longName);
 		final boolean forceProlog = book.getId().getId().getZefID() < 0;
 		final ParatextImportContext ctx = new ParatextImportContext();
+		ctx.bk = bk;
 		ctx.bookAbbrs = bookAbbrs;
 		book.fixTrailingWhitespace();
 		book.accept(new ParatextBookContentVisitor<RuntimeException>() {
 
 			@Override
 			public void visitChapterStart(ChapterIdentifier location) throws RuntimeException {
+				if (ctx.contextOutsideSidebar != null) {
+					System.out.println("WARNING: ignoring chapter start inside sidebar");
+					return;
+				}
 				if (ctx.cnum != -1 && !ctx.headlines.isEmpty()) {
 					System.out.println("WARNING: Ignoring unreferenced headlines");
 					ctx.headlines.clear();
@@ -147,11 +161,11 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					if (ctx.cnum == -1)
 						ctx.cnum = 0;
 					while (ctx.cnum < newChapter - 1) {
-						bk.getChapters().add(new Chapter());
+						ctx.bk.getChapters().add(new Chapter());
 						ctx.cnum++;
 					}
 					ctx.currentChapter = new Chapter();
-					bk.getChapters().add(ctx.currentChapter);
+					ctx.bk.getChapters().add(ctx.currentChapter);
 					ctx.cnum = newChapter;
 				} else {
 					System.out.println("WARNING: Ignoring chapter number " + newChapter + ", current chapter is " + ctx.cnum);
@@ -169,14 +183,26 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			}
 
 			@Override
+			public void visitRemark(String content) throws RuntimeException {
+				// Not supported in the internal format
+			}
+
+			@Override
 			public void visitParagraphStart(ParagraphKind kind) throws RuntimeException {
 				if (exportAllTags && kind.getCategory() == ParagraphKindCategory.SKIP && ctx.currentVisitor != null) {
 					ctx.currentVisitor.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag()).visitText("\uFEFF");
 				}
+				ctx.outsideCellVisitor = null;
+				ExtendedLineBreakKind elbk = kind.getLineBreakKind();
 				if (ctx.currentParagraph != ParatextImportContext.CurrentParagraph.NONE) {
 					if (ctx.currentParagraph == ParatextImportContext.CurrentParagraph.PROLOG ||
 							(ctx.currentParagraph == ParatextImportContext.CurrentParagraph.NORMAL && ctx.currentVisitor != null)) {
-						ctx.currentVisitor.visitLineBreak(LineBreakKind.PARAGRAPH);
+						if (elbk != null) {
+							ctx.currentVisitor.visitLineBreak(elbk.toLineBreakKind(kind.getLineBreakIndent()));
+							elbk = null;
+						} else {
+							ctx.currentVisitor.visitLineBreak(LineBreakKind.PARAGRAPH);
+						}
 					}
 					if (ctx.currentParagraph != ParatextImportContext.CurrentParagraph.NORMAL) {
 						ctx.currentVisitor = null;
@@ -214,12 +240,12 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 						ctx.currentParagraphExtraCSS = null;
 					}
 					ctx.currentVisitorExtraCSS = ctx.currentParagraphExtraCSS;
-				} else { // BLANK_LINE, TABLE_ROW, TEXT
-					if (kind.isProlog() || forceProlog) {
+				} else { // BLANK_LINE, TABLE_ROW, TEXT, EXTRA_ATTRIBUTE
+					if (kind.isProlog() || forceProlog || ctx.contextOutsideSidebar != null) {
 						if (ctx.cnum == -1) {
 							ctx.cnum = 0;
 							ctx.currentChapter = new Chapter();
-							bk.getChapters().add(ctx.currentChapter);
+							ctx.bk.getChapters().add(ctx.currentChapter);
 						}
 						if (ctx.currentChapter.getProlog() == null) {
 							ctx.currentChapter.setProlog(new FormattedText());
@@ -237,6 +263,9 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 							ctx.currentParagraphExtraCSS = null;
 						}
 						ctx.currentVisitorExtraCSS = ctx.currentParagraphExtraCSS;
+						if (kind.getCategory() == ParagraphKindCategory.EXTRA_ATTRIBUTE_META) {
+							ctx.currentVisitor = ctx.currentVisitor.visitExtraAttribute(ExtraAttributePriority.SKIP, "paratext", "meta-paragraph", kind.getTag());
+						}
 					} else {
 						ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NORMAL;
 						if (kind == ParagraphKind.DESCRIPTIVE_TITLE) {
@@ -247,6 +276,9 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 							ctx.currentParagraphExtraCSS = null;
 						}
 					}
+					if (ctx.currentVisitor != null && elbk != null) {
+						ctx.currentVisitor.visitLineBreak(elbk.toLineBreakKind(kind.getLineBreakIndent()));
+					}
 				}
 			}
 
@@ -256,9 +288,53 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				if (exportAllTags && ctx.currentVisitor != null) {
 					ctx.currentVisitor.visitCSSFormatting("-bmc-usfm-tag: " + tag).visitText("\uFEFF");
 				}
-				if (!tag.matches("t[hc]r?1") && ctx.currentParagraph != ParatextImportContext.CurrentParagraph.HEADLINE && ctx.currentVisitor != null) {
-					ctx.currentVisitor.visitLineBreak(LineBreakKind.NEWLINE_WITH_INDENT);
+				if (ctx.currentParagraph != ParatextImportContext.CurrentParagraph.HEADLINE && ctx.currentVisitor != null) {
+					ExtendedLineBreakKind lbk = ExtendedLineBreakKind.TABLE_ROW_FIRST_CELL;
+					if (ctx.outsideCellVisitor != null) {
+						ctx.currentVisitor = ctx.outsideCellVisitor;
+						lbk = ExtendedLineBreakKind.TABLE_ROW_NEXT_CELL;
+					}
+					int indent = tag.contains("r") ? ExtendedLineBreakKind.INDENT_RIGHT_JUSTIFIED : 0;
+					Matcher colspanMatcher = Utils.compilePattern("t[hcr]+([0-9]+)-([0-9]+)").matcher(tag);
+					if (colspanMatcher.matches()) {
+						int colspan = Integer.parseInt(colspanMatcher.group(2)) - Integer.parseInt(colspanMatcher.group(1)) + 1;
+						if (colspan > 1)
+							indent = colspan;
+					}
+					ctx.currentVisitor.visitLineBreak(lbk.toLineBreakKind(indent));
+					ctx.outsideCellVisitor = ctx.currentVisitor;
+					if (tag.startsWith("th")) {
+						ctx.currentVisitor = ctx.currentVisitor.visitFormattingInstruction(FormattingInstructionKind.BOLD);
+					}
 				}
+			}
+
+			@Override
+			public void visitSidebarStart(String[] categories) throws RuntimeException {
+				int snum = sidebars == null ? 1 : sidebars.size() + 1;
+				Book sidebar = new Book("Sb"+snum, BookID.DICTIONARY_ENTRY, "Sidebar "+snum, "Sidebar "+snum);
+				ctx.startSidebar(sidebar);
+				if (sidebars == null) {
+					System.out.println("WARNING: Discarding sidebar content (exporting to single book)");
+				} else {
+					sidebars.add(sidebar);
+				}
+			}
+
+			@Override
+			public void visitSidebarEnd() throws RuntimeException {
+				ctx.endSidebar();
+			}
+
+			@Override
+			public void visitPeripheralStart(String title, String id) throws RuntimeException {
+				Headline hl = new Headline(1);
+				ctx.headlines.add(hl);
+				Visitor<RuntimeException> v = hl.getAppendVisitor();
+				if (exportAllTags) {
+					v = v.visitCSSFormatting("-bmc-usfm-periph-id: "+id);
+				}
+				v.visitText(title);
 			}
 
 			@Override
@@ -267,6 +343,10 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				content.accept(new ParatextImportVisitor(ctx));
 			}
 		});
+		if (ctx.contextOutsideSidebar != null) {
+			System.out.println("WARNING: Closing unclosed sidebar");
+			ctx.endSidebar();
+		}
 		if (!ctx.headlines.isEmpty()) {
 			System.out.println("WARNING: Ignoring unreferenced headlines");
 			ctx.headlines.clear();
@@ -479,14 +559,16 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 	private static class ParatextImportContext {
 		private int cnum = -1;
+		private Book bk = null;
 		private Chapter currentChapter = null;
 		private Verse currentVerse = null;
 		private List<Headline> headlines = new ArrayList<>();
-		private Visitor<RuntimeException> currentVisitor;
+		private Visitor<RuntimeException> currentVisitor, outsideCellVisitor;
 		private String currentVisitorExtraCSS;
 		private CurrentParagraph currentParagraph = CurrentParagraph.NONE;
 		private String currentParagraphExtraCSS;
 		private Map<ParatextID, String> bookAbbrs;
+		private ParatextImportContext contextOutsideSidebar = null;
 
 		private static final boolean allowMixedHeadlineDepth = Boolean.getBoolean("paratext.allowmixedheadlinedepth");
 
@@ -499,6 +581,44 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				hl.accept(currentVisitor.visitHeadline(lastDepth));
 			}
 			headlines.clear();
+		}
+
+		public void startSidebar(Book sidebarBook) {
+			if (contextOutsideSidebar != null)
+				throw new IllegalStateException("Nested sidebars are not supported");
+			contextOutsideSidebar = new ParatextImportContext();
+			swapFields(contextOutsideSidebar);
+			this.bk = sidebarBook;
+		}
+
+		public void endSidebar() {
+			if (contextOutsideSidebar == null)
+				throw new IllegalStateException("No sidebar open");
+			if (!headlines.isEmpty()) {
+				System.out.println("WARNING: Ignoring unreferenced headlines");
+			}
+			for (Chapter ch : bk.getChapters()) {
+				if (ch.getProlog() != null)
+					ch.getProlog().finished();
+				for (Verse v : ch.getVerses())
+					v.finished();
+			}
+			swapFields(contextOutsideSidebar);
+			contextOutsideSidebar = null;
+		}
+
+		private void swapFields(ParatextImportContext other) {
+			// do not swap `bookAbbrs` and `contextOutsideSidebar` fields!
+			int x = this.cnum; this.cnum = other.cnum; other.cnum = x;
+			Book b = this.bk; this.bk = other.bk; other.bk = b;
+			Chapter c = this.currentChapter; this.currentChapter = other.currentChapter; other.currentChapter = c;
+			Verse v= this.currentVerse; this.currentVerse = other.currentVerse; other.currentVerse = v;
+			List<Headline> h = this.headlines; this.headlines = other.headlines; other.headlines = h;
+			Visitor<RuntimeException> vv = this.currentVisitor; this.currentVisitor = other.currentVisitor; other.currentVisitor = vv;
+			vv = this.outsideCellVisitor; this.outsideCellVisitor = other.outsideCellVisitor; other.outsideCellVisitor = vv;
+			String s = this.currentVisitorExtraCSS; this.currentVisitorExtraCSS = other.currentVisitorExtraCSS; other.currentVisitorExtraCSS = s;
+			CurrentParagraph p = this.currentParagraph; this.currentParagraph = other.currentParagraph; other.currentParagraph =p;
+			s = this.currentParagraphExtraCSS; this.currentParagraphExtraCSS = other.currentParagraphExtraCSS; other.currentParagraphExtraCSS = s;
 		}
 
 		private void ensureParagraph() {
@@ -591,7 +711,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		}
 
 		@Override
-		public ParatextCharacterContentVisitor<RuntimeException> visitFootnoteXref(FootnoteXrefKind kind, String caller) {
+		public ParatextCharacterContentVisitor<RuntimeException> visitFootnoteXref(FootnoteXrefKind kind, String caller, String[] categories) {
 			if (ctx.currentParagraph == ParatextImportContext.CurrentParagraph.NORMAL && getCurrentVisitor() == null) {
 				System.out.println("WARNING: Skipping footnote/xref outside of verse/headline/prolog");
 				return null;
@@ -601,7 +721,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			if (exportAllTags) {
 				v = v.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag());
 			}
-			if (kind == FootnoteXrefKind.XREF)
+			if (kind.isXref())
 				v.visitText(FormattedText.XREF_MARKER);
 			visitorStackAdd(v);
 			inFootnoteDepth = 0;
@@ -614,18 +734,27 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				System.out.println("WARNING: Skipping formatting outside of verse/headline/prolog");
 				return null;
 			}
+			if (kind == AutoClosingFormattingKind.LINK && attributes.containsKey("link-id")) {
+				return null;
+			}
 			Visitor<RuntimeException> newVisitor;
 			if (kind.getLineBreakKind() != null) {
-				getCurrentVisitor().visitLineBreak(kind.getLineBreakKind());
+				getCurrentVisitor().visitLineBreak(kind.getLineBreakKind().toLineBreakKind(kind.getIndent()));
 				newVisitor = getCurrentVisitor();
-				if (exportAllTags) {
+				if (exportAllTags || kind.getEndLineBreakKind() != null) {
+					Visitor<RuntimeException> outerNewVisitor = newVisitor;
 					newVisitor = newVisitor.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag());
+					if (kind.getEndLineBreakKind() != null) {
+						outerNewVisitor.visitLineBreak(kind.getEndLineBreakKind().toLineBreakKind(kind.getIndent()));
+					}
 				}
 			} else if (kind.getFormat() != null) {
 				newVisitor = getCurrentVisitor().visitFormattingInstruction(kind.getFormat());
 				if (exportAllTags) {
 					newVisitor = newVisitor.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag());
 				}
+			} else if (kind.getExtraAttribute() != null) {
+				newVisitor = getCurrentVisitor().visitExtraAttribute(ExtraAttributePriority.SKIP, "paratext", "meta-character-style", kind.getTag());
 			} else if (kind == AutoClosingFormattingKind.WORDLIST && !attributes.isEmpty()) {
 				StringBuilder strongsPrefixes = new StringBuilder();
 				List<Integer> strongs = new ArrayList<>();
@@ -666,7 +795,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 						newVisitor = newVisitor.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag());
 					}
 				}
-			} else if (justOpenedFootnote != null && kind.equals(justOpenedFootnote.equals(FootnoteXrefKind.XREF) ? AutoClosingFormattingKind.XREF_TARGET_REFERENCES : AutoClosingFormattingKind.FOOTNOTE_TEXT)) {
+			} else if (justOpenedFootnote != null && kind.equals(justOpenedFootnote.isXref() ? AutoClosingFormattingKind.XREF_TARGET_REFERENCES : AutoClosingFormattingKind.FOOTNOTE_TEXT)) {
 				// footnote consists of just text; skip the start tag
 				newVisitor = getCurrentVisitor();
 				if (exportAllTags) {
@@ -678,6 +807,27 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			justOpenedFootnote = null;
 			visitorStackAdd(newVisitor);
 			return this;
+		}
+
+		@Override
+		public void visitFigure(String caption, Map<String, String> attributes) throws RuntimeException {
+			if (ctx.currentParagraph == ParatextImportContext.CurrentParagraph.NORMAL && getCurrentVisitor() == null) {
+				System.out.println("WARNING: Skipping text outside of verse/headline/prolog");
+				return;
+			}
+			justOpenedFootnote = null;
+			String src = attributes.getOrDefault("src", "");
+			Visitor<RuntimeException> v = getCurrentVisitor().visitFormattingInstruction(FormattingInstructionKind.ITALIC);
+			v.visitRawHTML(RawHTMLMode.OFFLINE, "<a href=\"" + src + "\">");
+			v.visitRawHTML(RawHTMLMode.ONLINE, "<img src=\"" + src + "\" alt=\"");
+			v.visitText(caption);
+			v.visitRawHTML(RawHTMLMode.OFFLINE, "</a>");
+			v.visitRawHTML(RawHTMLMode.ONLINE, "\">");
+		}
+
+		@Override
+		public void visitMilestone(String tag, Map<String, String> attributes) throws RuntimeException {
+			// ignore
 		}
 
 		@Override
@@ -711,6 +861,16 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			}
 
 			v.visitCrossReference(ctx.bookAbbrs.getOrDefault(reference.getBook(), reference.getBook().getId().getOsisID()), reference.getBook().getId(), firstChapter, firstVerse, lastChapter, lastVerse).visitText(reference.getContent());
+		}
+
+		@Override
+		public void visitCustomMarkup(String tag, boolean ending) throws RuntimeException {
+			// ignore
+		}
+
+		@Override
+		public void visitSpecialSpace(boolean nonBreakSpace, boolean optionalLineBreak) throws RuntimeException {
+			if (nonBreakSpace) visitText("\u00A0");
 		}
 
 		@Override
@@ -862,7 +1022,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitFootnote() {
-			final FootnoteXref footnote = new FootnoteXref(FootnoteXrefKind.FOOTNOTE, "+");
+			final FootnoteXref footnote = new FootnoteXref(FootnoteXrefKind.FOOTNOTE, "+", new String[0]);
 			getCharContent().getContent().add(footnote);
 
 			return new VisitorAdapter<RuntimeException>(new ParatextExportVisitor("in footnote", nt, null, footnote, null, null)) {
@@ -887,7 +1047,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				public boolean visitEnd() throws RuntimeException {
 					ParatextExportVisitor next = (ParatextExportVisitor) getVisitor();
 					if (!next.getCharContent().getContent().isEmpty()) {
-						boolean isXref = footnote.getKind().equals(FootnoteXrefKind.XREF);
+						boolean isXref = footnote.getKind().isXref();
 						ParatextCharacterContentPart firstPart = next.getCharContent().getContent().get(0);
 						if (firstPart instanceof AutoClosingFormatting) {
 							if (((AutoClosingFormatting) firstPart).getKind().getTag().startsWith(isXref ? "x" : "f")) {

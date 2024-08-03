@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
+
 public abstract class AbstractUSXFormat<ParaStyle extends Enum<ParaStyle>, CharStyle extends Enum<CharStyle>> extends AbstractParatextFormat {
 
 	protected Map<ParatextBook.ParagraphKind, ParaStyle> PARA_KIND_MAP = new EnumMap<>(ParatextBook.ParagraphKind.class);
@@ -27,7 +29,7 @@ public abstract class AbstractUSXFormat<ParaStyle extends Enum<ParaStyle>, CharS
 
 		this.charStyleWrapper = charStyleWrapper;
 		CHAR_STYLE_MAP = new EnumMap<>(charStyleWrapper.getStyleClass());
-		CHAR_STYLE_UNSUPPORTED = EnumSet.copyOf(charStyleWrapper.getUnsupportedStyles());
+		CHAR_STYLE_UNSUPPORTED = charStyleWrapper.getUnsupportedStyles().isEmpty() ? EnumSet.noneOf(charStyleWrapper.getStyleClass()) : EnumSet.copyOf(charStyleWrapper.getUnsupportedStyles());
 
 		prepareParaMaps();
 		prepareCharMaps();
@@ -37,7 +39,7 @@ public abstract class AbstractUSXFormat<ParaStyle extends Enum<ParaStyle>, CharS
 		// Checks if every ParaGraphKind is mapped to a ParaStyle
 		Map<String, ParatextBook.ParagraphKind> paraTags = ParatextBook.ParagraphKind.allTags();
 		for (ParaStyle style : paraStyleWrapper.values()) {
-			if (!(PARA_STYLE_UNSUPPORTED.contains(style) || BOOK_HEADER_ATTRIBUTE_TAGS.contains(paraStyleWrapper.tag(style)))) {
+			if (!(PARA_STYLE_UNSUPPORTED.contains(style) || paraStyleWrapper.tag(style).equals("rem") || paraStyleWrapper.tag(style).equals("periph") || paraStyleWrapper.tag(style).equals("usfm") || BOOK_HEADER_ATTRIBUTE_TAGS.contains(paraStyleWrapper.tag(style)))) {
 				if (!paraTags.containsKey(paraStyleWrapper.tag(style))) {
 					throw new RuntimeException("Found unhandled ParaStyle " + style);
 				} else {
@@ -84,7 +86,7 @@ public abstract class AbstractUSXFormat<ParaStyle extends Enum<ParaStyle>, CharS
 
 	private void assertParaKindMapIsComplete() {
 		// These are part of the internal model for ParagraphKind's but are in USX not seen as paragraphs.
-		Set<ParatextBook.ParagraphKind> skipInMapping = EnumSet.of(ParatextBook.ParagraphKind.TABLE_ROW, ParatextBook.ParagraphKind.PERIPHERALS);
+		Set<ParatextBook.ParagraphKind> skipInMapping = EnumSet.of(ParatextBook.ParagraphKind.TABLE_ROW);
 
 		for (ParatextBook.ParagraphKind kind : ParatextBook.ParagraphKind.values()) {
 			if (!PARA_KIND_MAP.containsKey(kind) && !skipInMapping.contains(kind) && isParagraphKindSupported(kind)) {

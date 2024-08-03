@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.format.paratext.ParatextBook.ChapterEnd;
@@ -24,14 +25,21 @@ import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentPart;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisitor;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
+import biblemulticonverter.format.paratext.ParatextBook.PeripheralStart;
+import biblemulticonverter.format.paratext.ParatextBook.Remark;
+import biblemulticonverter.format.paratext.ParatextBook.SidebarEnd;
+import biblemulticonverter.format.paratext.ParatextBook.SidebarStart;
 import biblemulticonverter.format.paratext.ParatextBook.TableCellStart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.CustomMarkup;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.Figure;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXrefKind;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.Milestone;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.SpecialSpace;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseEnd;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
@@ -88,6 +96,8 @@ public class ParatextVPL extends AbstractParatextFormat {
 						result.add(currentBook = new ParatextBook(ParatextID.fromIdentifier(parts[0].substring(1, parts[0].length() - 1)), parts[1]));
 					} else if (parts[0].startsWith("[#") && parts[0].endsWith("]")) {
 						currentBook.getAttributes().put(parts[0].substring(2, parts[0].length() - 1), parts[1]);
+					} else if (parts[0].equals("[rem]")) {
+						currentBook.getContent().add(new Remark(parts[1]));
 					} else {
 						if (parts[0].startsWith("[") && parts[0].endsWith("]")) {
 							if (!containerStack.isEmpty()) {
@@ -98,6 +108,15 @@ public class ParatextVPL extends AbstractParatextFormat {
 							String tag = parts[0].substring(1, parts[0].length() - 1);
 							if (Utils.compilePattern(TableCellStart.TABLE_CELL_TAG_REGEX).matcher(tag).matches()) {
 								currentBook.getContent().add(new TableCellStart(tag));
+							} else if (tag.equals("esb")) {
+								currentBook.getContent().add(new SidebarStart(parts[1].isEmpty() ? new String[0] : parts[1].split(" ")));
+								parts[1] = "";
+							} else if (tag.equals("esbe")) {
+								currentBook.getContent().add(new SidebarEnd());
+							} else if (tag.equals("periph")) {
+								String[] args = parts[1].split(Pattern.quote("[=ID=]"), 2);
+								currentBook.getContent().add(new PeripheralStart(args[0], args.length == 1 ? null : args[1]));
+								parts[1] = "";
 							} else {
 								currentBook.getContent().add(new ParagraphStart(Objects.requireNonNull(allParagraphKinds.get(tag))));
 							}
@@ -116,6 +135,7 @@ public class ParatextVPL extends AbstractParatextFormat {
 								}
 								currentChapter = cid;
 								currentBook.getContent().add(new ChapterStart(currentChapter));
+								currentContainer = null;
 							} else if (subparts.length == 3) {
 								if (currentChapter == null || !currentChapter.toString().equals(cid.toString())) {
 									throw new IOException("Verse" + parts[0] + " inside unrelated chapter " + currentChapter);
@@ -201,10 +221,40 @@ public class ParatextVPL extends AbstractParatextFormat {
 										}
 										currentContainer.getContent().add(Reference.parse(args.remove("target"), rest.substring(startPos, pos)));
 										startPos = pos + 3;
+									} else if (tag.equals("custom")) {
+										currentContainer.getContent().add(new CustomMarkup(args.remove("tag"), Boolean.parseBoolean(args.remove("ending"))));
+									} else if (tag.equals("space")) {
+										currentContainer.getContent().add(new SpecialSpace(Boolean.parseBoolean(args.remove("nbsp")), Boolean.parseBoolean(args.remove("olb"))));
+									} else if (tag.equals("fig")) {
+										pos = rest.indexOf('<', startPos);
+										if (!rest.startsWith("</>", pos)) {
+											throw new IOException("Unsupported figure content: " + rest.substring(startPos));
+										}
+
+										Figure fig = new Figure(rest.substring(startPos, pos));
+										if (args != null) {
+											fig.getAttributes().putAll(args);
+											args = null;
+										}
+										currentContainer.getContent().add(fig);
+										startPos = pos + 3;
+									} else if (tag.startsWith("milestone_")) {
+										pos = rest.indexOf('<', startPos);
+										if (!rest.startsWith("</>", startPos)) {
+											throw new IOException("Milestone must be empty: " + rest.substring(startPos));
+										}
+										Milestone ms = new Milestone(tag.substring(10));
+										if (args != null) {
+											ms.getAttributes().putAll(args);
+											args = null;
+										}
+										currentContainer.getContent().add(ms);
+										startPos += 3;
 									} else {
 										FootnoteXrefKind footnote = allFootnoteKinds.get(tag);
 										if (footnote != null) {
-											FootnoteXref fx = new FootnoteXref(footnote, args.remove("caller"));
+											String categories = args.remove("categories");
+											FootnoteXref fx = new FootnoteXref(footnote, args.remove("caller"), categories == null || categories.isEmpty() ? new String[0] : categories.split(" "));
 											currentContainer.getContent().add(fx);
 											containerStack.add(currentContainer);
 											currentContainer = fx;
@@ -285,6 +335,11 @@ public class ParatextVPL extends AbstractParatextFormat {
 			}
 
 			@Override
+			public void visitRemark(String content) throws IOException {
+				bw.write("\n[rem] "+content);
+			}
+
+			@Override
 			public void visitParagraphStart(ParagraphKind kind) throws IOException {
 				bw.write("\n[" + kind.getTag() + "] ");
 			}
@@ -292,6 +347,23 @@ public class ParatextVPL extends AbstractParatextFormat {
 			@Override
 			public void visitTableCellStart(String tag) throws IOException {
 				bw.write("\n[" + tag + "] ");
+			}
+
+			@Override
+			public void visitSidebarStart(String[] categories) throws IOException {
+				bw.write("\n[esb] "+String.join(" ", categories));
+			}
+
+			@Override
+			public void visitSidebarEnd() throws IOException {
+				bw.write("\n[esbe] ");
+			}
+
+			@Override
+			public void visitPeripheralStart(String title, String id) throws IOException {
+				bw.write("\n[periph] "+title);
+				if (id != null)
+					bw.write("[=ID=]"+id);
 			}
 
 			@Override
@@ -333,8 +405,8 @@ public class ParatextVPL extends AbstractParatextFormat {
 		}
 
 		@Override
-		public ParatextCharacterContentVisitor<IOException> visitFootnoteXref(FootnoteXrefKind kind, String caller) throws IOException {
-			bw.write("<" + kind.getTag() + " caller=\"" + caller + "\">");
+		public ParatextCharacterContentVisitor<IOException> visitFootnoteXref(FootnoteXrefKind kind, String caller, String[] categories) throws IOException {
+			bw.write("<" + kind.getTag() + (categories.length == 0 ? "" : " categories=\"" + String.join(" ", categories)+"\"") + " caller=\"" + caller + "\">");
 			return new ParatextVPLCharacterContentVisitor(bookChapter, bw, "</>");
 		}
 
@@ -348,11 +420,42 @@ public class ParatextVPL extends AbstractParatextFormat {
 			return new ParatextVPLCharacterContentVisitor(bookChapter, bw, "</>");
 		}
 
+
+		@Override
+		public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
+			bw.write("<fig");
+			for (Map.Entry<String, String> attr : attributes.entrySet()) {
+				bw.write(" " + attr.getKey() + "=\"" + attr.getValue() + "\"");
+			}
+			bw.write('>');
+			visitText(caption);
+			bw.write("</>");
+		}
+
+		@Override
+		public void visitMilestone(String tag, Map<String, String> attributes) throws IOException {
+			bw.write("<milestone_" + tag);
+			for (Map.Entry<String, String> attr : attributes.entrySet()) {
+				bw.write(" " + attr.getKey() + "=\"" + attr.getValue() + "\"");
+			}
+			bw.write("></>");
+		}
+
 		@Override
 		public void visitReference(Reference reference) throws IOException {
 			bw.write("<ref target=\"" + reference.toString() + "\">");
 			visitText(reference.getContent());
 			bw.write("</>");
+		}
+
+		@Override
+		public void visitCustomMarkup(String tag, boolean ending) throws IOException {
+			bw.write("<custom tag=\"" + tag + "\" ending=\"" + ending + "\">");
+		}
+
+		@Override
+		public void visitSpecialSpace(boolean nonBreakSpace, boolean optionalLineBreak) throws IOException {
+			bw.write("<space nbsp=\"" + nonBreakSpace + "\" olb=\"" + optionalLineBreak + "\">");
 		}
 
 		@Override

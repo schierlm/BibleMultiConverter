@@ -1,0 +1,181 @@
+~
+~
+ 
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+\ili 1 \k One
+\ili1 2 \k Two
+\ili2 a) \k A
+\ili2 b) \k B
+\ili 3 \k Three
+~
+\io1 First part \ior (1-2)
+\io1 Second part \ior (3-9)
+\io2 First subpart \ior (3-5)
+\io2 Second subpart \ior (6-9)
+\io1 Third part \ior (10-12)
+~
+~
+~
+~
+~
+\c 1 \ca 11
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+\v 1 First\ef † \cat Etymology\fr 1.1:\fq First:\ft Fore-est\ef* verse\efm †\efm* \zCustomTag with \bd bold\zCustomTag* words\bd*, and
+~
+\esb \cat Sidey
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+\q2 when there is source."\rq Mark 99:2
+~
+~
+~
+~
+\c 2 \ca 22
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+\v 2 \lik Second verse\liv is entry\litl 1\litl*.
+~
+\v 3 \lik Third verse\liv is entry\litl 2\litl*.
+~
+~
+\tr \th1 Left\th2-3 \w Spanning|lemma="span" strong="G0123" srcloc="version:1.2.3.4"\thr4 Right Headers
+\tr \tc1-2 Left spanning\tc3 \w Middle\tcr4 \it \+bd \+w Right|lemma="correct"\+bd* cell
+\p And\f + \fr 4.4:\ft Footnote with default caller.\fp Second paragraph in footnote.\f* the\f - \fr 4.4:\ft Footnote with no caller.\fdc This bible contains deuterocanonical content.\f* text\f * \fr 4.4:\ft Footnote with custom caller; may also be replaced with\fqa characters go on. \+fv 5\+fv* Frequently...\f* continues\fe + \fr 4.4:\ft Endnote\fe*.
+\v 5 Sometimes\f + \fr 4.5:\fq Sometimes:\ft Also translated as\fqa often\ft .\f* we\f + \fr 4.5:\fk we:\ft Not in\fl LXX\fw X Y Z\f* repeat\fm *\fm* ourselves.
+~
+\v 6 \x - \xo 4.6:\xt Rev 2.3\x*Cross\x + \xo 4.6:\xop ibidem:\xk Cross:\xq Quotation\xta Compare with\xt Gen 9.8|GEN 9:8\xot Exo 1.1\xnt Acts 2.3\xdc Sir 2.3\x* Reference.
+~
+~
+~
+\v 1 The \bk Book of \+nd God\bk* is an example of nested markers, \add and\add* this is important \dc in deuterocanonical books\dc*.
+~
+~
+\q1 \qt This is quoted, but \+no normal.
+~
+\v 2 \em Emphasized+\bd bold+\it italic+\bdit both+\sc Small Caps+\sup superscript\sup*; no~break~space.
+\v 3 \ndx Indexed Figures.\fig |avnt016.jpg|span|||At once they left their nets.|5.3\fig doctor|avnt017.tif|col|5.1-4|Public Domain|Took her by the hand.|5.3
+\v 4 \rb Ruby|Roo:bee\rb* glosses \pro Gloh-sehs\pro*. \wg Greek+\wh Hebrew+\wa Aramaic\wa* word list.

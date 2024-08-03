@@ -127,6 +127,14 @@ public enum BookID {
 	APPENDIX_TOPICAL("x-App-Topical", true, -10, "Appendix Topical Index", "ApT"),
 	APPENDIX_NAMES("x-App-Names", true, -10, "Appendix Names Index", "ApN"),
 
+	EXTRA_A("x-Extra-A", true, -11, "Extra Material A", "XxA"),
+	EXTRA_B("x-Extra-B", true, -12, "Extra Material B", "XxB"),
+	EXTRA_C("x-Extra-C", true, -13, "Extra Material C", "XxC"),
+	EXTRA_D("x-Extra-D", true, -14, "Extra Material D", "XxD"),
+	EXTRA_E("x-Extra-E", true, -15, "Extra Material E", "XxE"),
+	EXTRA_F("x-Extra-F", true, -16, "Extra Material F", "XxF"),
+	EXTRA_G("x-Extra-G", true, -17, "Extra Material G", "XxG"),
+
 	DICTIONARY_ENTRY("x-Dict", true, -5, "Dictionary Entry", "Dct");
 
 	private final String osisID, englishName, threeLetterCode;

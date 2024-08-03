@@ -1,5 +1,8 @@
 package biblemulticonverter.format.paratext;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -7,13 +10,19 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import biblemulticonverter.data.Bible;
+import biblemulticonverter.tools.Validate;
 
 public class USX3Test {
 
@@ -166,13 +175,13 @@ public class USX3Test {
 		assertEquals(expectedLines.hasNext(), actualLines.hasNext());
 	}
 
-	private static File createTempFile(String prefix, String suffix) throws IOException {
+	public static File createTempFile(String prefix, String suffix) throws IOException {
 		File tempFile = File.createTempFile(prefix, suffix);
 		tempFile.deleteOnExit();
 		return tempFile;
 	}
 
-	private static File getResource(String path) {
+	public static File getResource(String path) {
 		try {
 			URI pathUri = USX3Test.class.getResource(path).toURI();
 			if (pathUri.getScheme().equals("file"))

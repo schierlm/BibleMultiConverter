@@ -68,7 +68,7 @@ public class AbstractParatextFormatTest {
 		Map<ParatextBook.ParatextID, String> abbrs = new EnumMap<>(ParatextBook.ParatextID.class);
 		abbrs.put(ParatextBook.ParatextID.ID_1CO, "1co");
 
-		Book book = format.importParatextBook(paratextBook, abbrs);
+		Book book = format.importParatextBook(paratextBook, abbrs, null);
 
 		Chapter chapter = book.getChapters().get(0);
 		assertEquals("5", chapter.getVerses().get(0).getNumber());
