@@ -293,8 +293,6 @@ tool to download some bibles from a SWORD http repository into a new module dire
 Paratext formats (USFM/USX)
 ---------------------------
 
-For both USFM/USX most tags are supported, not supported are `ca cp va vp fig fm`.
-
 Not all verse number formats are supported by Paratext, the following conversions can occur
 when converting from a non Paratext format to a Paratext format (warnings will be shown
 when these occur):
