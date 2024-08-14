@@ -389,7 +389,7 @@ public class USFM extends AbstractParatextFormat {
 				if (textPart.startsWith("|")) {
 					String attList = textPart.substring(1).trim();
 					parseAttributeList(attList, milestone.getAttributes());
-				} else {
+				} else if (!textPart.isEmpty()){
 					System.out.println("WARNING: Skipping unsupported milestone content: "+textPart);
 				}
 				pos = data.indexOf('\\', startPos + 2);
