@@ -200,7 +200,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 					if (!para.getContent().isEmpty()) {
 						charContent = new ParatextCharacterContent();
 						result.getContent().add(charContent);
-						parseCharContent(para.getContent(), charContent);
+						parseCharContent(para.getContent(), charContent, result);
 					}
 				}
 			} else if (o instanceof Table) {
@@ -210,10 +210,8 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 					for (Object oo : row.getVerseOrCell()) {
 						if (oo instanceof Verse) {
 							Verse verse = (Verse) oo;
-							ParatextCharacterContent.ParatextCharacterContentPart verseStartOrEnd = handleVerse(verse);
-							charContent = new ParatextCharacterContent();
-							result.getContent().add(charContent);
-							charContent.getContent().add(verseStartOrEnd);
+							ParatextBook.ParatextBookContentPart verseStartOrEnd = handleVerse(verse);
+							result.getContent().add(verseStartOrEnd);
 						} else if (oo instanceof Cell) {
 							Cell cell = (Cell) oo;
 							String tag = cell.getStyle().value();
@@ -223,7 +221,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 							result.getContent().add(new ParatextBook.TableCellStart(tag));
 							charContent = new ParatextCharacterContent();
 							result.getContent().add(charContent);
-							parseCharContent(cell.getContent(), charContent);
+							parseCharContent(cell.getContent(), charContent, result);
 						} else {
 							throw new IOException("Unsupported table row element: " + o.getClass().getName());
 						}
@@ -262,7 +260,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				Note note = (Note) o;
 				ParatextCharacterContent.FootnoteXref nx = new ParatextCharacterContent.FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller(), note.getCategory() == null ? new String[0] : note.getCategory().split(" "));
 				charContent.getContent().add(nx);
-				parseCharContent(note.getContent(), nx);
+				parseCharContent(note.getContent(), nx, null);
 			} else if (o instanceof Sidebar) {
 				Sidebar s = (Sidebar) o;
 				result.getContent().add(new SidebarStart(s.getCategory() == null ? new String[0] : s.getCategory().split(" ")));
@@ -289,7 +287,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 							if (!para.getContent().isEmpty()) {
 								charContent = new ParatextCharacterContent();
 								result.getContent().add(charContent);
-								parseCharContent(para.getContent(), charContent);
+								parseCharContent(para.getContent(), charContent, null);
 							}
 						}
 					} else if (os instanceof Table) {
@@ -299,16 +297,14 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 							for (Object oo : row.getVerseOrCell()) {
 								if (oo instanceof Verse) {
 									Verse verse = (Verse) oo;
-									ParatextCharacterContent.ParatextCharacterContentPart verseStartOrEnd = handleVerse(verse);
-									charContent = new ParatextCharacterContent();
-									result.getContent().add(charContent);
-									charContent.getContent().add(verseStartOrEnd);
+									ParatextBook.ParatextBookContentPart verseStartOrEnd = handleVerse(verse);
+									result.getContent().add(verseStartOrEnd);
 								} else if (oo instanceof Cell) {
 									Cell cell = (Cell) oo;
 									result.getContent().add(new ParatextBook.TableCellStart(cell.getStyle().value()));
 									charContent = new ParatextCharacterContent();
 									result.getContent().add(charContent);
-									parseCharContent(cell.getContent(), charContent);
+									parseCharContent(cell.getContent(), charContent, result);
 								} else {
 									throw new IOException("Unsupported table row element: " + os.getClass().getName());
 								}
@@ -323,7 +319,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 						Note note = (Note) os;
 						ParatextCharacterContent.FootnoteXref nx = new ParatextCharacterContent.FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller(), note.getCategory() == null ? new String[0] : note.getCategory().split(" "));
 						charContent.getContent().add(nx);
-						parseCharContent(note.getContent(), nx);
+						parseCharContent(note.getContent(), nx, null);
 					} else {
 						throw new IOException("Unsupported sidebar element: " + os.getClass().getName());
 					}
@@ -356,7 +352,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 							if (!para.getContent().isEmpty()) {
 								charContent = new ParatextCharacterContent();
 								result.getContent().add(charContent);
-								parseCharContent(para.getContent(), charContent);
+								parseCharContent(para.getContent(), charContent, result);
 							}
 						}
 					} else if (os instanceof Table) {
@@ -366,16 +362,14 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 							for (Object oo : row.getVerseOrCell()) {
 								if (oo instanceof Verse) {
 									Verse verse = (Verse) oo;
-									ParatextCharacterContent.ParatextCharacterContentPart verseStartOrEnd = handleVerse(verse);
-									charContent = new ParatextCharacterContent();
-									result.getContent().add(charContent);
-									charContent.getContent().add(verseStartOrEnd);
+									ParatextBook.ParatextBookContentPart verseStartOrEnd = handleVerse(verse);
+									result.getContent().add(verseStartOrEnd);
 								} else if (oo instanceof Cell) {
 									Cell cell = (Cell) oo;
 									result.getContent().add(new ParatextBook.TableCellStart(cell.getStyle().value()));
 									charContent = new ParatextCharacterContent();
 									result.getContent().add(charContent);
-									parseCharContent(cell.getContent(), charContent);
+									parseCharContent(cell.getContent(), charContent, result);
 								} else {
 									throw new IOException("Unsupported table row element: " + os.getClass().getName());
 								}
@@ -390,7 +384,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 						Note note = (Note) os;
 						ParatextCharacterContent.FootnoteXref nx = new ParatextCharacterContent.FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller(), note.getCategory() == null ? new String[0] : note.getCategory().split(" "));
 						charContent.getContent().add(nx);
-						parseCharContent(note.getContent(), nx);
+						parseCharContent(note.getContent(), nx, null);
 					} else {
 						throw new IOException("Unsupported peripheral element: " + os.getClass().getName());
 					}
@@ -404,7 +398,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		return result;
 	}
 
-	private void parseCharContent(List<Object> content, ParatextBook.ParatextCharacterContentContainer container) throws IOException {
+	private void parseCharContent(List<Object> content, ParatextBook.ParatextCharacterContentContainer container, ParatextBook bookIfToplevel) throws IOException {
 		for (Object o : content) {
 			if (o instanceof Optbreak) {
 				container.getContent().add(new SpecialSpace(false, true));
@@ -425,9 +419,9 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				if(text != null) {
 					container.getContent().add(text);
 				}
-			} else if (o instanceof Figure) {
+			} else if (o instanceof Figure && bookIfToplevel != null) {
 				Figure fig = (Figure) o;
-				ParatextCharacterContent.Figure f = new ParatextCharacterContent.Figure(fig.getContent());
+				ParatextBook.Figure f = new ParatextBook.Figure(fig.getContent());
 				if (fig.getCopy() != null)
 					f.getAttributes().put("copy", fig.getCopy());
 				if (fig.getAlt() != null)
@@ -439,7 +433,9 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 					f.getAttributes().put("ref", fig.getRef());
 				if (fig.getSize() != null)
 					f.getAttributes().put("size", fig.getSize());
-				container.getContent().add(f);
+				bookIfToplevel.getContent().add(f);
+				container = new ParatextCharacterContent();
+				bookIfToplevel.getContent().add((ParatextCharacterContent) container);
 			} else if (o instanceof Ms) {
 				Ms ms = (Ms) o;
 				ParatextCharacterContent.Milestone m = new ParatextCharacterContent.Milestone(ms.getStyle());
@@ -453,7 +449,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 			} else if (o instanceof Char) {
 				Char chr = (Char) o;
 				if (CHAR_STYLE_UNSUPPORTED.contains(chr.getStyle())) {
-					parseCharContent(chr.getContent(), container);
+					parseCharContent(chr.getContent(), container, bookIfToplevel);
 				} else {
 					ParatextCharacterContent.AutoClosingFormatting f = new ParatextCharacterContent.AutoClosingFormatting(CHAR_STYLE_MAP.get(chr.getStyle()));
 					if (f.getKind() == ParatextCharacterContent.AutoClosingFormattingKind.WORDLIST) {
@@ -488,29 +484,31 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 						f.getAttributes().put("link-title", linktitle);
 					}
 					container.getContent().add(f);
-					parseCharContent(chr.getContent(), f);
+					parseCharContent(chr.getContent(), f, null);
 				}
-			} else if (o instanceof Verse) {
-				container.getContent().add(handleVerse((Verse) o));
+			} else if (o instanceof Verse && bookIfToplevel != null) {
+				bookIfToplevel.getContent().add(handleVerse((Verse) o));
+				container = new ParatextCharacterContent();
+				bookIfToplevel.getContent().add((ParatextCharacterContent) container);
 			} else if (o instanceof Note) {
 				Note note = (Note) o;
 				ParatextCharacterContent.FootnoteXref nx = new ParatextCharacterContent.FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller(), note.getCategory() == null ? new String[0] : note.getCategory().split(" "));
 				container.getContent().add(nx);
-				parseCharContent(note.getContent(), nx);
+				parseCharContent(note.getContent(), nx, null);
 			} else {
 				throw new IOException("Unsupported character content element: " + o.getClass().getName());
 			}
 		}
 	}
 
-	private ParatextCharacterContent.ParatextCharacterContentPart handleVerse(Verse verse) throws IOException {
+	private ParatextBook.ParatextBookContentPart handleVerse(Verse verse) throws IOException {
 		try {
 			if (verse.getSid() != null) {
-				return new ParatextCharacterContent.VerseStart(
+				return new ParatextBook.VerseStart(
 						VerseIdentifier.fromStringOrThrow(verse.getSid()),
 						verse.getNumber());
 			} else if (verse.getEid() != null) {
-				return new ParatextCharacterContent.VerseEnd(
+				return new ParatextBook.VerseEnd(
 						VerseIdentifier.fromStringOrThrow(verse.getEid()));
 			} else {
 				throw new IOException("Invalid verse found, both sid and eid are undefined: " + verse);
@@ -665,6 +663,43 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 			}
 
 			@Override
+			public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
+				if (currentContent == null)
+					visitParagraphStart(ParatextBook.ParagraphKind.PARAGRAPH_P);
+				else if (!currentContent.isEmpty() && verseSeparatorText != null)
+					currentContent.add(verseSeparatorText);
+				Verse verse = new Verse();
+				verse.setStyle("v");
+				verse.setSid(location.toString());
+				verse.setNumber(verseNumber);
+				currentContent.add(verse);
+			}
+			@Override
+			public void visitVerseEnd(VerseIdentifier location) throws IOException {
+				if (currentContent == null)
+					visitParagraphStart(ParatextBook.ParagraphKind.PARAGRAPH_P);
+				Verse verse = new Verse();
+				verse.setEid(location.toString());
+				currentContent.add(verse);
+			}
+
+			@Override
+			public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
+				Figure fig = new Figure();
+				fig.setStyle("fig");
+				fig.setContent(caption);
+				fig.setCopy(attributes.get("copy"));
+				fig.setAlt(attributes.get("alt"));
+				fig.setFile(attributes.get("src"));
+				fig.setLoc(attributes.get("loc"));
+				fig.setRef(attributes.get("ref"));
+				fig.setSize(attributes.get("size"));
+				if (currentContent == null)
+					visitParagraphStart(ParatextBook.ParagraphKind.PARAGRAPH_P);
+				currentContent.add(fig);
+			}
+
+			@Override
 			public void visitParatextCharacterContent(ParatextCharacterContent content) throws IOException {
 				if (currentContent == null && content.getContent().size() == 1 && content.getContent().get(0) instanceof ParatextCharacterContent.AutoClosingFormatting && !currentRoot.isEmpty() && currentRoot.get(currentRoot.size() - 1) instanceof Chapter) {
 					ParatextCharacterContent.AutoClosingFormatting acf = (ParatextCharacterContent.AutoClosingFormatting) content.getContent().get(0);
@@ -702,17 +737,6 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		}
 
 		@Override
-		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
-			if (!target.isEmpty() && verseSeparatorText != null)
-				target.add(verseSeparatorText);
-			Verse verse = new Verse();
-			verse.setStyle("v");
-			verse.setSid(location.toString());
-			verse.setNumber(verseNumber);
-			target.add(verse);
-		}
-
-		@Override
 		public ParatextCharacterContent.ParatextCharacterContentVisitor<IOException> visitFootnoteXref(ParatextCharacterContent.FootnoteXrefKind kind, String caller, String[] categories) throws IOException {
 			Note note = new Note();
 			note.setCaller(caller);
@@ -736,20 +760,6 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				chr.setStyle(CHAR_KIND_MAP.get(kind));
 				target.add(chr);
 				return new USX3.USXCharacterContentVisitor(chr.getContent());
-		}
-
-		@Override
-		public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
-			Figure fig = new Figure();
-			fig.setStyle("fig");
-			fig.setContent(caption);
-			fig.setCopy(attributes.get("copy"));
-			fig.setAlt(attributes.get("alt"));
-			fig.setFile(attributes.get("src"));
-			fig.setLoc(attributes.get("loc"));
-			fig.setRef(attributes.get("ref"));
-			fig.setSize(attributes.get("size"));
-			target.add(fig);
 		}
 
 		@Override
@@ -791,13 +801,6 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 
 		@Override
 		public void visitEnd() throws IOException {
-		}
-
-		@Override
-		public void visitVerseEnd(VerseIdentifier location) throws IOException {
-			Verse verse = new Verse();
-			verse.setEid(location.toString());
-			target.add(verse);
 		}
 	}
 

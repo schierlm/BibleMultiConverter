@@ -50,7 +50,6 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextChar
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import biblemulticonverter.format.paratext.utilities.LocationParser;
@@ -337,6 +336,65 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				v.visitText(title);
 			}
 
+
+			@Override
+			public void visitVerseStart(VerseIdentifier location, String verseNumber) {
+				if (ctx.currentParagraph != ParatextImportContext.CurrentParagraph.NORMAL) {
+					System.out.println("WARNING: Skipping verse number inside paragraph type " + ctx.currentParagraph);
+					return;
+				}
+				if (ctx.currentChapter == null) {
+					System.out.println("WARNING: Skipping verse number outside of chapter");
+					return;
+				}
+
+				if (Verse.isValidNumber(verseNumber)) {
+					// Try the raw full number first, which can be 5, 6-7, 6-7a, or even 6a-7b.
+					ctx.currentVerse = new Verse(verseNumber);
+				} else if (Verse.isValidNumber(location.verse())) {
+					// Try the verse from the identifier if the above fails.
+					ctx.currentVerse = new Verse(location.verse());
+				} else if (Verse.isValidNumber(location.startVerse)) {
+					System.out.println("WARNING: Using shortened verse number (" + location.startVerse + "), because the full verse number (" + verseNumber + ") is not a valid number for conversion");
+					// raw full number and identifier verse are both not valid for the internal format, fallback to the first number which can be: 5, 6a etc.
+					ctx.currentVerse = new Verse(location.startVerse);
+				} else {
+					System.out.println("WARNING: Skipping verse number, because it is not a valid number for conversion: " + verseNumber);
+					return;
+				}
+				ctx.currentChapter.getVerses().add(ctx.currentVerse);
+				ctx.currentVisitor = ctx.currentVerse.getAppendVisitor();
+				ctx.flushHeadlines();
+				ctx.currentVisitorExtraCSS = ctx.currentParagraphExtraCSS;
+				if (ctx.currentParagraphExtraCSS != null) {
+					ctx.currentVisitor = ctx.currentVisitor.visitCSSFormatting(ctx.currentParagraphExtraCSS);
+				}
+				if (exportAllTags && !verseNumber.equals(ctx.currentVerse.getNumber())) {
+					ctx.currentVisitor = ctx.currentVisitor.visitCSSFormatting("-bmc-usfm-verse: " + verseNumber);
+				}
+			}
+
+			@Override
+			public void visitVerseEnd(VerseIdentifier verseLocation) {
+				// Internal format does not have verse end milestones
+			}
+
+
+			@Override
+			public void visitFigure(String caption, Map<String, String> attributes) throws RuntimeException {
+				if (ctx.currentVisitor == null) {
+					System.out.println("WARNING: Skipping figure outside of verse/headline/prolog");
+					return;
+				}
+				String src = attributes.getOrDefault("src", "");
+				Visitor<RuntimeException> v = ctx.currentVisitor.visitFormattingInstruction(FormattingInstructionKind.ITALIC);
+				v.visitRawHTML(RawHTMLMode.OFFLINE, "<a href=\"" + src + "\">");
+				v.visitRawHTML(RawHTMLMode.ONLINE, "<img src=\"" + src + "\" alt=\"");
+				v.visitText(caption);
+				v.visitRawHTML(RawHTMLMode.OFFLINE, "</a>");
+				v.visitRawHTML(RawHTMLMode.ONLINE, "\">");
+			}
+
 			@Override
 			public void visitParatextCharacterContent(ParatextCharacterContent content) throws RuntimeException {
 				ctx.ensureParagraph();
@@ -485,7 +543,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			if (cnum > 1)
 				ctx.startChapter(cnum);
 			if (ch.getProlog() != null) {
-				ch.getProlog().accept(new ParatextExportVisitor("in prolog", bk.getId().isNT(), ctx, null, cnum == 1 ? ParagraphKind.INTRO_PARAGRAPH_P : ParagraphKind.CHAPTER_DESCRIPTION, null));
+				ch.getProlog().accept(new ParatextExportVisitor("in prolog", bk.getId().isNT(), ctx, null, cnum == 1 ? ParagraphKind.INTRO_PARAGRAPH_P : ParagraphKind.CHAPTER_DESCRIPTION));
 			}
 			if (cnum == 1)
 				ctx.startChapter(cnum);
@@ -495,7 +553,9 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					throw new IllegalArgumentException("Could not export verse " + ctx.book.getId().getIdentifier() + " " + cnum + ":" + v.getNumber() + " because the verse number could not be transformed to a valid Paratext verse number");
 				}
 				VerseIdentifier location = VerseIdentifier.fromVerseNumberRangeOrThrow(pid, cnum, verseNumber);
-				v.accept(new ParatextExportVisitor("in verse", bk.getId().isNT(), ctx, null, ParagraphKind.PARAGRAPH_P, location));
+				ctx.startVerse(location);
+				v.accept(new ParatextExportVisitor("in verse", bk.getId().isNT(), ctx, null, ParagraphKind.PARAGRAPH_P));
+				ctx.endVerse(location);
 			}
 			ctx.endChapter(cnum);
 		}
@@ -669,48 +729,6 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitVerseStart(VerseIdentifier location, String verseNumber) {
-			justOpenedFootnote = null;
-			if (visitorStack.size() != 1) {
-				System.out.println("WARNING: Skipping verse number nested deeply in character markup");
-				return;
-			}
-			if (ctx.currentParagraph != ParatextImportContext.CurrentParagraph.NORMAL) {
-				System.out.println("WARNING: Skipping verse number inside paragraph type " + ctx.currentParagraph);
-				return;
-			}
-			if (ctx.currentChapter == null) {
-				System.out.println("WARNING: Skipping verse number outside of chapter");
-				return;
-			}
-
-			if (Verse.isValidNumber(verseNumber)) {
-				// Try the raw full number first, which can be 5, 6-7, 6-7a, or even 6a-7b.
-				ctx.currentVerse = new Verse(verseNumber);
-			} else if (Verse.isValidNumber(location.verse())) {
-				// Try the verse from the identifier if the above fails.
-				ctx.currentVerse = new Verse(location.verse());
-			} else if (Verse.isValidNumber(location.startVerse)) {
-				System.out.println("WARNING: Using shortened verse number (" + location.startVerse + "), because the full verse number (" + verseNumber + ") is not a valid number for conversion");
-				// raw full number and identifier verse are both not valid for the internal format, fallback to the first number which can be: 5, 6a etc.
-				ctx.currentVerse = new Verse(location.startVerse);
-			} else {
-				System.out.println("WARNING: Skipping verse number, because it is not a valid number for conversion: " + verseNumber);
-				return;
-			}
-			ctx.currentChapter.getVerses().add(ctx.currentVerse);
-			ctx.currentVisitor = ctx.currentVerse.getAppendVisitor();
-			ctx.flushHeadlines();
-			ctx.currentVisitorExtraCSS = ctx.currentParagraphExtraCSS;
-			if (ctx.currentParagraphExtraCSS != null) {
-				ctx.currentVisitor = ctx.currentVisitor.visitCSSFormatting(ctx.currentParagraphExtraCSS);
-			}
-			if (exportAllTags && !verseNumber.equals(ctx.currentVerse.getNumber())) {
-				ctx.currentVisitor = ctx.currentVisitor.visitCSSFormatting("-bmc-usfm-verse: " + verseNumber);
-			}
-		}
-
-		@Override
 		public ParatextCharacterContentVisitor<RuntimeException> visitFootnoteXref(FootnoteXrefKind kind, String caller, String[] categories) {
 			if (ctx.currentParagraph == ParatextImportContext.CurrentParagraph.NORMAL && getCurrentVisitor() == null) {
 				System.out.println("WARNING: Skipping footnote/xref outside of verse/headline/prolog");
@@ -810,22 +828,6 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitFigure(String caption, Map<String, String> attributes) throws RuntimeException {
-			if (ctx.currentParagraph == ParatextImportContext.CurrentParagraph.NORMAL && getCurrentVisitor() == null) {
-				System.out.println("WARNING: Skipping text outside of verse/headline/prolog");
-				return;
-			}
-			justOpenedFootnote = null;
-			String src = attributes.getOrDefault("src", "");
-			Visitor<RuntimeException> v = getCurrentVisitor().visitFormattingInstruction(FormattingInstructionKind.ITALIC);
-			v.visitRawHTML(RawHTMLMode.OFFLINE, "<a href=\"" + src + "\">");
-			v.visitRawHTML(RawHTMLMode.ONLINE, "<img src=\"" + src + "\" alt=\"");
-			v.visitText(caption);
-			v.visitRawHTML(RawHTMLMode.OFFLINE, "</a>");
-			v.visitRawHTML(RawHTMLMode.ONLINE, "\">");
-		}
-
-		@Override
 		public void visitMilestone(String tag, Map<String, String> attributes) throws RuntimeException {
 			// ignore
 		}
@@ -889,11 +891,6 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				inFootnoteDepth--;
 			visitorStack.remove(visitorStack.size() - 1);
 		}
-
-		@Override
-		public void visitVerseEnd(VerseIdentifier verseLocation) {
-			// Internal format does not have verse end milestones
-		}
 	}
 
 	private static class ParatextExportContext {
@@ -913,6 +910,16 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		public void endChapter(int cnum) {
 			book.getContent().add(new ParatextBook.ChapterEnd(new ChapterIdentifier(book.getId(), cnum)));
+		}
+
+		public void startVerse(VerseIdentifier verse) {
+			book.getContent().add(new ParatextBook.VerseStart(verse, verse.verse()));
+			charContent = null;
+		}
+
+		public void endVerse(VerseIdentifier verse) {
+			book.getContent().add(new ParatextBook.VerseEnd(verse));
+			charContent = null;
 		}
 
 		public void closeParagraph() {
@@ -941,15 +948,13 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		private final ParatextExportContext ctx;
 		private final ParatextCharacterContentContainer ccnt;
 		private final ParagraphKind paragraphKind;
-		private final VerseIdentifier verseLocation;
 
-		public ParatextExportVisitor(String location, boolean nt, ParatextExportContext ctx, ParatextCharacterContentContainer ccnt, ParagraphKind paragraphKind, VerseIdentifier verseLocation) {
+		public ParatextExportVisitor(String location, boolean nt, ParatextExportContext ctx, ParatextCharacterContentContainer ccnt, ParagraphKind paragraphKind) {
 			this.location = location;
 			this.nt = nt;
 			this.ctx = ctx;
 			this.ccnt = ccnt;
 			this.paragraphKind = paragraphKind;
-			this.verseLocation = verseLocation;
 			if ((ccnt == null) == (ctx == null))
 				throw new IllegalStateException();
 			if ((ctx == null) != (paragraphKind == null))
@@ -1002,14 +1007,11 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				};
 			}
 			ctx.closeParagraph();
-			return new ParatextExportVisitor("in headline", nt, null, ctx.getCharContent(headlineKinds[depth - 1]), null, null);
+			return new ParatextExportVisitor("in headline", nt, null, ctx.getCharContent(headlineKinds[depth - 1]), null);
 		}
 
 		@Override
 		public void visitStart() {
-			if (verseLocation != null) {
-				getCharContent().getContent().add(new VerseStart(verseLocation, verseLocation.verse()));
-			}
 		}
 
 		@Override
@@ -1025,7 +1027,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			final FootnoteXref footnote = new FootnoteXref(FootnoteXrefKind.FOOTNOTE, "+", new String[0]);
 			getCharContent().getContent().add(footnote);
 
-			return new VisitorAdapter<RuntimeException>(new ParatextExportVisitor("in footnote", nt, null, footnote, null, null)) {
+			return new VisitorAdapter<RuntimeException>(new ParatextExportVisitor("in footnote", nt, null, footnote, null)) {
 				boolean start = true;
 
 				@Override
@@ -1148,11 +1150,11 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			}
 			if (kind == null) {
 				System.out.println("WARNING: No tag found for formatting: " + css);
-				return new ParatextExportVisitor(location, nt, ctx, ccnt, paragraphKind, null);
+				return new ParatextExportVisitor(location, nt, ctx, ccnt, paragraphKind);
 			}
 			final AutoClosingFormatting formatting = new AutoClosingFormatting(kind);
 			getCharContent().getContent().add(formatting);
-			return new ParatextExportVisitor("in formatting", nt, null, formatting, null, null);
+			return new ParatextExportVisitor("in formatting", nt, null, formatting, null);
 		}
 
 		@Override
@@ -1192,12 +1194,12 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				formatting.getAttributes().put("x-morph", prefix + String.join(",", Arrays.asList(rmac)));
 			}
 			getCharContent().getContent().add(formatting);
-			return new ParatextExportVisitor("in formatting", nt, null, formatting, null, null);
+			return new ParatextExportVisitor("in formatting", nt, null, formatting, null);
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) {
-			return new ParatextExportVisitor(location, nt, ctx, ccnt, paragraphKind, null);
+			return new ParatextExportVisitor(location, nt, ctx, ccnt, paragraphKind);
 		}
 
 		@Override
@@ -1217,9 +1219,6 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		@Override
 		public boolean visitEnd() {
-			if (verseLocation != null) {
-				getCharContent().getContent().add(new ParatextCharacterContent.VerseEnd(verseLocation));
-			}
 			return false;
 		}
 	}

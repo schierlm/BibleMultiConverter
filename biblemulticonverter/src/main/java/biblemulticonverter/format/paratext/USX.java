@@ -1,14 +1,5 @@
 package biblemulticonverter.format.paratext;
 
-import javax.xml.XMLConstants;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamReader;
-import javax.xml.validation.Schema;
-import javax.xml.validation.SchemaFactory;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -26,6 +17,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 
+import javax.xml.XMLConstants;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamReader;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+
 import org.xml.sax.SAXException;
 
 import biblemulticonverter.data.Utils;
@@ -39,6 +39,7 @@ import biblemulticonverter.format.paratext.ParatextBook.PeripheralStart;
 import biblemulticonverter.format.paratext.ParatextBook.Remark;
 import biblemulticonverter.format.paratext.ParatextBook.SidebarEnd;
 import biblemulticonverter.format.paratext.ParatextBook.SidebarStart;
+import biblemulticonverter.format.paratext.ParatextBook.VerseStart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
@@ -47,7 +48,6 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextChar
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.SpecialSpace;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import biblemulticonverter.format.paratext.model.Version;
@@ -247,7 +247,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 					if (!para.getContent().isEmpty()) {
 						charContent = new ParatextCharacterContent();
 						result.getContent().add(charContent);
-						parseCharContent(para.getContent(), charContent, result, context);
+						parseCharContent(para.getContent(), charContent, false, result, context);
 					}
 				}
 			} else if (o instanceof Table) {
@@ -257,17 +257,13 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 					for (Object oo : row.getVerseOrCell()) {
 						if (oo instanceof Verse) {
 							ImportUtilities.closeOpenVerse(result, context.openVerse);
-
-							context.openVerse = handleVerse(result, (Verse) oo);
-							charContent = new ParatextCharacterContent();
-							result.getContent().add(charContent);
-							charContent.getContent().add(context.openVerse);
+							result.getContent().add(context.openVerse);
 						} else if (oo instanceof Cell) {
 							Cell cell = (Cell) oo;
 							result.getContent().add(new ParatextBook.TableCellStart(cell.getStyle().value()));
 							charContent = new ParatextCharacterContent();
 							result.getContent().add(charContent);
-							parseCharContent(cell.getContent(), charContent, result, context);
+							parseCharContent(cell.getContent(), charContent, false, result, context);
 						} else {
 							throw new IOException("Unsupported table row element: " + o.getClass().getName());
 						}
@@ -310,7 +306,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				}
 				FootnoteXref nx = new FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller(), categories.toArray(new String[0]));
 				charContent.getContent().add(nx);
-				parseCharContent(nc, nx, result, context);
+				parseCharContent(nc, nx, true, result, context);
 			} else if (o instanceof Sidebar) {
 				Sidebar s = (Sidebar) o;
 				result.getContent().add(new SidebarStart(s.getCategory() == null ? new String[0] : s.getCategory().split(" ")));
@@ -337,7 +333,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 							if (!para.getContent().isEmpty()) {
 								charContent = new ParatextCharacterContent();
 								result.getContent().add(charContent);
-								parseCharContent(para.getContent(), charContent, result, context);
+								parseCharContent(para.getContent(), charContent, false, result, context);
 							}
 						}
 					} else if (os instanceof Table) {
@@ -347,17 +343,14 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 							for (Object oo : row.getVerseOrCell()) {
 								if (oo instanceof Verse) {
 									ImportUtilities.closeOpenVerse(result, context.openVerse);
-
 									context.openVerse = handleVerse(result, (Verse) oo);
-									charContent = new ParatextCharacterContent();
-									result.getContent().add(charContent);
-									charContent.getContent().add(context.openVerse);
+									result.getContent().add(context.openVerse);
 								} else if (oo instanceof Cell) {
 									Cell cell = (Cell) oo;
 									result.getContent().add(new ParatextBook.TableCellStart(cell.getStyle().value()));
 									charContent = new ParatextCharacterContent();
 									result.getContent().add(charContent);
-									parseCharContent(cell.getContent(), charContent, result, context);
+									parseCharContent(cell.getContent(), charContent, false, result, context);
 								} else {
 									throw new IOException("Unsupported table row element: " + os.getClass().getName());
 								}
@@ -378,7 +371,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 						}
 						FootnoteXref nx = new FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller(), categories.toArray(new String[0]));
 						charContent.getContent().add(nx);
-						parseCharContent(nc, nx, result, context);
+						parseCharContent(nc, nx, true, result, context);
 					} else {
 						throw new IOException("Unsupported sidebar level element: " + os.getClass().getName());
 					}
@@ -394,7 +387,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		return result;
 	}
 
-	private void parseCharContent(List<Object> content, ParatextCharacterContentContainer container, ParatextBook result, ImportContext context) throws IOException {
+	private void parseCharContent(List<Object> content, ParatextCharacterContentContainer container, boolean nested, ParatextBook result, ImportContext context) throws IOException {
 		for (Object o : content) {
 			if (o instanceof Optbreak) {
 				container.getContent().add(new SpecialSpace(false, true));
@@ -415,9 +408,9 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				if(text != null) {
 					container.getContent().add(text);
 				}
-			} else if (o instanceof Figure) {
+			} else if (o instanceof Figure && !nested) {
 				Figure fig = (Figure) o;
-				ParatextCharacterContent.Figure f = new ParatextCharacterContent.Figure(fig.getContent());
+				ParatextBook.Figure f = new ParatextBook.Figure(fig.getContent());
 				if (!fig.getCopy().isEmpty())
 					f.getAttributes().put("copy", fig.getCopy());
 				if (!fig.getDesc().isEmpty())
@@ -427,11 +420,13 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 					f.getAttributes().put("loc", fig.getLoc());
 				f.getAttributes().put("ref", fig.getRef());
 				f.getAttributes().put("size", fig.getSize());
-				container.getContent().add(f);
+				result.getContent().add(f);
+				container = new ParatextCharacterContent();
+				result.getContent().add((ParatextCharacterContent)container);
 			} else if (o instanceof Char) {
 				Char chr = (Char) o;
 				if (CHAR_STYLE_UNSUPPORTED.contains(chr.getStyle())) {
-					parseCharContent(chr.getContent(), container, result, context);
+					parseCharContent(chr.getContent(), container, nested, result, context);
 				} else {
 					AutoClosingFormatting f = new AutoClosingFormatting(CHAR_STYLE_MAP.get(chr.getStyle()));
 					String lemma = chr.getLemma();
@@ -439,12 +434,14 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 						f.getAttributes().put("lemma", lemma);
 					}
 					container.getContent().add(f);
-					parseCharContent(chr.getContent(), f, result, context);
+					parseCharContent(chr.getContent(), f, true, result, context);
 				}
-			} else if (o instanceof Verse) {
+			} else if (o instanceof Verse && !nested) {
 				ImportUtilities.closeOpenVerse(result, context.openVerse);
 				context.openVerse = handleVerse(result, (Verse) o);
-				container.getContent().add(context.openVerse);
+				result.getContent().add(context.openVerse);
+				container = new ParatextCharacterContent();
+				result.getContent().add((ParatextCharacterContent)container);
 			} else if (o instanceof Note) {
 				Note note = (Note) o;
 				List<Object> nc = note.getContent();
@@ -455,7 +452,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 				}
 				FootnoteXref nx = new FootnoteXref(NOTE_STYLE_MAP.get(note.getStyle()), note.getCaller(), categories.toArray(new String[0]));
 				container.getContent().add(nx);
-				parseCharContent(nc, nx, result, context);
+				parseCharContent(nc, nx, true, result, context);
 			} else {
 				throw new IOException("Unsupported character content element: " + o.getClass().getName());
 			}
@@ -637,6 +634,39 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 			}
 
 			@Override
+			public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
+				if (currentContent == null)
+					visitParagraphStart(ParagraphKind.PARAGRAPH_P);
+				else if (!currentContent.isEmpty() && verseSeparatorText != null)
+					currentContent.add(verseSeparatorText);
+				Verse verse = new Verse();
+				verse.setStyle("v");
+				verse.setNumber(verseNumber);
+				currentContent.add(verse);
+			}
+
+			@Override
+			public void visitVerseEnd(VerseIdentifier verseNumber) throws IOException {
+				// USX 2.x does not support verse end milestones, hence we don't add them.
+			}
+
+			@Override
+			public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
+				Figure fig = new Figure();
+				fig.setStyle("fig");
+				fig.setContent(caption);
+				fig.setCopy(attributes.getOrDefault("copy",""));
+				fig.setDesc(attributes.getOrDefault("alt",""));
+				fig.setFile(attributes.get("src"));
+				fig.setLoc(attributes.getOrDefault("loc",""));
+				fig.setRef(attributes.get("ref"));
+				fig.setSize(attributes.get("size"));
+				if (currentContent == null)
+					visitParagraphStart(ParagraphKind.PARAGRAPH_P);
+				currentContent.add(fig);
+			}
+
+			@Override
 			public void visitParatextCharacterContent(ParatextCharacterContent content) throws IOException {
 				if (currentContent == null && content.getContent().size() == 1 && content.getContent().get(0) instanceof AutoClosingFormatting && !currentRoot.isEmpty() && currentRoot.get(currentRoot.size() - 1) instanceof Chapter) {
 					AutoClosingFormatting acf = (AutoClosingFormatting) content.getContent().get(0);
@@ -672,16 +702,6 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		public USXCharacterContentVisitor(StandardExportWarningMessages logger, List<Object> target) {
 			this.target = target;
 			this.logger = logger;
-		}
-
-		@Override
-		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
-			if (!target.isEmpty() && verseSeparatorText != null)
-				target.add(verseSeparatorText);
-			Verse verse = new Verse();
-			verse.setStyle("v");
-			verse.setNumber(verseNumber);
-			target.add(verse);
 		}
 
 		@Override
@@ -784,20 +804,6 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		}
 
 		@Override
-		public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
-			Figure fig = new Figure();
-			fig.setStyle("fig");
-			fig.setContent(caption);
-			fig.setCopy(attributes.getOrDefault("copy",""));
-			fig.setDesc(attributes.getOrDefault("alt",""));
-			fig.setFile(attributes.get("src"));
-			fig.setLoc(attributes.getOrDefault("loc",""));
-			fig.setRef(attributes.get("ref"));
-			fig.setSize(attributes.get("size"));
-			target.add(fig);
-		}
-
-		@Override
 		public void visitMilestone(String tag, Map<String, String> attributes) throws IOException {
 			// ignore
 		}
@@ -832,11 +838,6 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		@Override
 		public void visitEnd() throws IOException {
 
-		}
-
-		@Override
-		public void visitVerseEnd(VerseIdentifier verseNumber) throws IOException {
-			// USX 2.x does not support verse end milestones, hence we don't add them.
 		}
 	}
 

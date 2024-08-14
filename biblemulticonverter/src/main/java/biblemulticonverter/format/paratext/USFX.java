@@ -33,12 +33,13 @@ import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContent
 import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
 import biblemulticonverter.format.paratext.ParatextBook.PeripheralStart;
 import biblemulticonverter.format.paratext.ParatextBook.TableCellStart;
+import biblemulticonverter.format.paratext.ParatextBook.VerseEnd;
+import biblemulticonverter.format.paratext.ParatextBook.VerseStart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import biblemulticonverter.format.paratext.utilities.ImportUtilities;
@@ -242,19 +243,16 @@ public class USFX extends AbstractParatextFormat {
 			} else {
 				throw new IllegalStateException(element.getValue().getClass().getName());
 			}
-			if (containerStack.isEmpty()) {
-				ParatextCharacterContent container = new ParatextCharacterContent();
-				containerStack.add(container);
-				result.getContent().add(container);
-			}
 			ChapterStart chapter = result.findLastBookContent(ChapterStart.class);
 			if (chapter == null) {
 				throw new IllegalStateException("Verse found before chapter start: " + id);
 			}
 			VerseIdentifier location = new VerseIdentifier(result.getId(), chapter.getChapter(), id);
-			containerStack.get(containerStack.size() - 1).getContent().add(new VerseStart(location, id));
+			result.getContent().add(new VerseStart(location, id));
+			containerStack.clear();
 		} else if (localName.equals("ve")) {
-			VerseStart start = result.findLastCharacterContent(VerseStart.class);
+
+			VerseStart start = (VerseStart) result.getContent().stream().filter(p -> p instanceof VerseStart).reduce((a,b) -> b).orElse(null);
 			if (start == null) {
 				throw new IllegalStateException("Verse end found before verse start!");
 			}
@@ -263,7 +261,8 @@ public class USFX extends AbstractParatextFormat {
 				containerStack.add(container);
 				result.getContent().add(container);
 			}
-			containerStack.get(containerStack.size() - 1).getContent().add(new ParatextCharacterContent.VerseEnd(start.getLocation()));
+			result.getContent().add(new VerseEnd(start.getLocation()));
+			containerStack.clear();
 		} else if (Arrays.asList("f", "x", "fe").contains(localName)) {
 			NoteContents nc = (NoteContents) element.getValue();
 			String sfm = nc.getSfm();

@@ -17,8 +17,8 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingF
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseEnd;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
+import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.format.paratext.utilities.TagParser;
 
@@ -108,26 +108,6 @@ public class ParatextBook {
 		return result;
 	}
 
-	/**
-	 * Finds the last instance of the given {@link ParatextCharacterContentPart} type in the content of this book.
-	 *
-	 * @return the last instance of the given type or null if not found.
-	 */
-	public <T extends ParatextCharacterContentPart> T findLastCharacterContent(Class<T> type) {
-		ListIterator<ParatextBookContentPart> iterator = content.listIterator(content.size());
-		while (iterator.hasPrevious()) {
-			ParatextBookContentPart part = iterator.previous();
-			if (part instanceof ParatextCharacterContentContainer) {
-				final ParatextCharacterContentContainer content = ((ParatextCharacterContentContainer) part);
-				final T nestedPart = content.findLastContent(type);
-				if (nestedPart != null) {
-					return nestedPart;
-				}
-			}
-		}
-		return null;
-	}
-
 	public <T extends Throwable> void accept(ParatextBookContentVisitor<T> v) throws T {
 		for (ParatextBookContentPart p : content) {
 			p.acceptThis(v);
@@ -156,10 +136,9 @@ public class ParatextBook {
 							cc.getContent().set(j, Text.from(oldText.getChars().replaceFirst(" +$", "")));
 						}
 					}
-					seenVerseEnd = j < cc.getContent().size() && (cc.getContent().get(j) instanceof VerseEnd);
 				}
 			} else {
-				seenVerseEnd = content.get(i) instanceof TableCellStart;
+				seenVerseEnd = content.get(i) instanceof TableCellStart || content.get(i) instanceof VerseEnd;
 			}
 		}
 	}
@@ -203,7 +182,8 @@ public class ParatextBook {
 
 	/**
 	 * One of {@link ChapterStart}, {@link ChapterEnd}, {@link ParagraphStart}, {@link Remark},
-	 * {@link TableCellStart}, {@link SidebarStart}, {@link SidebarEnd} or {@link ParatextCharacterContent}.
+	 * {@link TableCellStart}, {@link SidebarStart}, {@link SidebarEnd}, {@link PeripheralStart},
+	 * {@link VerseStart}, {@link VerseEnd}, {@link Figure} or {@link ParatextCharacterContent}.
 	 */
 	public static interface ParatextBookContentPart {
 		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> v) throws T;
@@ -361,6 +341,73 @@ public class ParatextBook {
 		@Override
 		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> v) throws T {
 			v.visitPeripheralStart(title, id);
+		}
+	}
+
+	public static class VerseStart implements ParatextBookContentPart {
+
+		private final VerseIdentifier location;
+		private final String verseNumber;
+
+		public VerseStart(VerseIdentifier location, String verseNumber) {
+			this.location = location;
+			this.verseNumber = verseNumber;
+		}
+
+		public VerseIdentifier getLocation() {
+			return location;
+		}
+
+		public String getVerseNumber() {
+			return verseNumber;
+		}
+
+		@Override
+		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> visitor) throws T {
+			visitor.visitVerseStart(location, verseNumber);
+		}
+	}
+
+	public static class VerseEnd implements ParatextBookContentPart {
+
+		private final VerseIdentifier location;
+
+		public VerseEnd(VerseIdentifier location) {
+			this.location = location;
+		}
+
+		public VerseIdentifier getLocation() {
+			return location;
+		}
+
+		@Override
+		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> visitor) throws T {
+			visitor.visitVerseEnd(location);
+		}
+	}
+
+	public static class Figure implements ParatextBookContentPart {
+
+		public static final String[] FIGURE_PROVIDED_ATTRIBUTES = {"alt", "src", "size", "loc", "copy", "ref"};
+
+		private final String caption;
+		private final Map<String, String> attributes = new HashMap<>(3);
+
+		public Figure(String caption) {
+			this.caption = caption;
+		}
+
+		public String getCaption() {
+			return caption;
+		}
+
+		public Map<String, String> getAttributes() {
+			return attributes;
+		}
+
+		@Override
+		public <T extends Throwable> void acceptThis(ParatextBookContentVisitor<T> visitor) throws T {
+			visitor.visitFigure(caption, attributes);
 		}
 	}
 
@@ -693,6 +740,12 @@ public class ParatextBook {
 		public void visitSidebarEnd() throws T;
 
 		public void visitPeripheralStart(String title, String id) throws T;
+
+		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws T;
+
+		public void visitVerseEnd(VerseIdentifier verseLocation) throws T;
+
+		public void visitFigure(String caption, Map<String,String> attributes) throws T;
 
 		public void visitParatextCharacterContent(ParatextCharacterContent content) throws T;
 	}

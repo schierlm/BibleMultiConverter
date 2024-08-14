@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.format.paratext.ParatextBook.ChapterEnd;
 import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
+import biblemulticonverter.format.paratext.ParatextBook.Figure;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentPart;
@@ -30,10 +31,11 @@ import biblemulticonverter.format.paratext.ParatextBook.Remark;
 import biblemulticonverter.format.paratext.ParatextBook.SidebarEnd;
 import biblemulticonverter.format.paratext.ParatextBook.SidebarStart;
 import biblemulticonverter.format.paratext.ParatextBook.TableCellStart;
+import biblemulticonverter.format.paratext.ParatextBook.VerseEnd;
+import biblemulticonverter.format.paratext.ParatextBook.VerseStart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.CustomMarkup;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.Figure;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXrefKind;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Milestone;
@@ -41,8 +43,6 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextChar
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.SpecialSpace;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseEnd;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
 
@@ -117,6 +117,35 @@ public class ParatextVPL extends AbstractParatextFormat {
 								String[] args = parts[1].split(Pattern.quote("[=ID=]"), 2);
 								currentBook.getContent().add(new PeripheralStart(args[0], args.length == 1 ? null : args[1]));
 								parts[1] = "";
+							} else if (tag.startsWith("fig")) {
+								if (!parts[1].startsWith("<fig "))
+									throw new IOException("Invalid <fig> tag: "+parts[1]);
+								int endPos = parts[1].indexOf('>');
+								if (endPos == -1)
+									throw new IOException("Unclosed tag: " + parts[1]);
+								int startPos = endPos + 1;
+								Map<String, String> args = null;
+								String argRest = parts[1].substring(5, endPos).trim();
+								args = new HashMap<>();
+								while (!argRest.isEmpty()) {
+									int pos2 = argRest.indexOf("=\"");
+									String key = argRest.substring(0, pos2);
+									argRest = argRest.substring(pos2 + 2);
+									pos2 = argRest.indexOf("\"");
+									String value = argRest.substring(0, pos2);
+									argRest = argRest.substring(pos2 + 1).trim();
+									args.put(key, value);
+								}
+								int pos = parts[1].indexOf('<', startPos);
+								if (!parts[1].startsWith("</>", pos)) {
+									throw new IOException("Unsupported figure content: " + parts[1].substring(startPos));
+								}
+								Figure fig = new Figure(parts[1].substring(startPos, pos));
+								if (args != null) {
+									fig.getAttributes().putAll(args);
+								}
+								currentBook.getContent().add(fig);
+								parts[1] = parts[1].substring(pos+3);
 							} else {
 								currentBook.getContent().add(new ParagraphStart(Objects.requireNonNull(allParagraphKinds.get(tag))));
 							}
@@ -135,22 +164,17 @@ public class ParatextVPL extends AbstractParatextFormat {
 								}
 								currentChapter = cid;
 								currentBook.getContent().add(new ChapterStart(currentChapter));
-								currentContainer = null;
 							} else if (subparts.length == 3) {
 								if (currentChapter == null || !currentChapter.toString().equals(cid.toString())) {
 									throw new IOException("Verse" + parts[0] + " inside unrelated chapter " + currentChapter);
 								}
-								if (currentContainer == null) {
-									ParatextCharacterContent pcc = new ParatextCharacterContent();
-									currentContainer = pcc;
-									currentBook.getContent().add(pcc);
-								}
 								if (currentVerse != null) {
-									currentContainer.getContent().add(new ParatextCharacterContent.VerseEnd(currentVerse));
+									currentBook.getContent().add(new VerseEnd(currentVerse));
 								}
 								currentVerse = VerseIdentifier.fromStringOrThrow(currentChapter + ":" + subparts[2]);
-								currentContainer.getContent().add(new VerseStart(currentVerse, subparts[2]));
+								currentBook.getContent().add(new VerseStart(currentVerse, subparts[2]));
 							}
+							currentContainer = null;
 						}
 						if (!parts[1].isEmpty()) {
 							if (currentContainer == null) {
@@ -172,7 +196,8 @@ public class ParatextVPL extends AbstractParatextFormat {
 									if (!containerStack.isEmpty()) {
 										currentContainer = containerStack.remove(containerStack.size() - 1);
 									} else if (currentVerse != null) {
-										currentContainer.getContent().add(new ParatextCharacterContent.VerseEnd(currentVerse));
+										currentContainer = null;
+										currentBook.getContent().add(new VerseEnd(currentVerse));
 										currentVerse = null;
 									} else if (currentChapter != null) {
 										currentContainer = null;
@@ -225,19 +250,6 @@ public class ParatextVPL extends AbstractParatextFormat {
 										currentContainer.getContent().add(new CustomMarkup(args.remove("tag"), Boolean.parseBoolean(args.remove("ending"))));
 									} else if (tag.equals("space")) {
 										currentContainer.getContent().add(new SpecialSpace(Boolean.parseBoolean(args.remove("nbsp")), Boolean.parseBoolean(args.remove("olb"))));
-									} else if (tag.equals("fig")) {
-										pos = rest.indexOf('<', startPos);
-										if (!rest.startsWith("</>", pos)) {
-											throw new IOException("Unsupported figure content: " + rest.substring(startPos));
-										}
-
-										Figure fig = new Figure(rest.substring(startPos, pos));
-										if (args != null) {
-											fig.getAttributes().putAll(args);
-											args = null;
-										}
-										currentContainer.getContent().add(fig);
-										startPos = pos + 3;
 									} else if (tag.startsWith("milestone_")) {
 										pos = rest.indexOf('<', startPos);
 										if (!rest.startsWith("</>", startPos)) {
@@ -315,7 +327,7 @@ public class ParatextVPL extends AbstractParatextFormat {
 		List<ParatextBookContentPart> content = bb.getContent();
 		content.addAll(book.getContent());
 		for (int i = 0; i < content.size() - 1; i++) {
-			if (content.get(i) instanceof ChapterEnd && content.get(i + 1) instanceof ChapterStart) {
+			if ((content.get(i) instanceof ChapterEnd && content.get(i + 1) instanceof ChapterStart) || (content.get(i) instanceof VerseEnd && content.get(i + 1) instanceof VerseStart)) {
 				content.remove(i);
 				i--;
 			}
@@ -367,16 +379,28 @@ public class ParatextVPL extends AbstractParatextFormat {
 			}
 
 			@Override
-			public void visitParatextCharacterContent(ParatextCharacterContent content) throws IOException {
-				ParatextCharacterContent cc = new ParatextCharacterContent();
-				cc.getContent().addAll(content.getContent());
-				for (int i = 0; i < cc.getContent().size() - 1; i++) {
-					if (cc.getContent().get(i) instanceof VerseEnd && cc.getContent().get(i + 1) instanceof VerseStart) {
-						cc.getContent().remove(i);
-						i--;
-					}
+			public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
+				bw.write("\n" + id + "." + currchapter + "." + verseNumber + " ");
+			}
+
+			@Override
+			public void visitVerseEnd(VerseIdentifier location) throws IOException {
+				bw.write("</>");
+			}
+			@Override
+			public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
+				bw.write("\n[fig] <fig");
+				for (Map.Entry<String, String> attr : attributes.entrySet()) {
+					bw.write(" " + attr.getKey() + "=\"" + attr.getValue() + "\"");
 				}
-				cc.accept(new ParatextVPLCharacterContentVisitor(id + "." + currchapter + ".", bw, ""));
+				bw.write('>');
+				bw.write(caption.replace("<", "<<>"));
+				bw.write("</>");
+			}
+
+			@Override
+			public void visitParatextCharacterContent(ParatextCharacterContent content) throws IOException {
+				content.accept(new ParatextVPLCharacterContentVisitor(bw, ""));
 			}
 		});
 		bw.write('\n');
@@ -384,30 +408,18 @@ public class ParatextVPL extends AbstractParatextFormat {
 
 	public class ParatextVPLCharacterContentVisitor implements ParatextCharacterContentVisitor<IOException> {
 
-		private final String bookChapter;
 		private final BufferedWriter bw;
 		private final String suffix;
 
-		public ParatextVPLCharacterContentVisitor(String bookChapter, BufferedWriter bw, String suffix) {
-			this.bookChapter = bookChapter;
+		public ParatextVPLCharacterContentVisitor(BufferedWriter bw, String suffix) {
 			this.bw = bw;
 			this.suffix = suffix;
 		}
 
 		@Override
-		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
-			bw.write("\n" + bookChapter + verseNumber + " ");
-		}
-
-		@Override
-		public void visitVerseEnd(VerseIdentifier location) throws IOException {
-			bw.write("</>");
-		}
-
-		@Override
 		public ParatextCharacterContentVisitor<IOException> visitFootnoteXref(FootnoteXrefKind kind, String caller, String[] categories) throws IOException {
 			bw.write("<" + kind.getTag() + (categories.length == 0 ? "" : " categories=\"" + String.join(" ", categories)+"\"") + " caller=\"" + caller + "\">");
-			return new ParatextVPLCharacterContentVisitor(bookChapter, bw, "</>");
+			return new ParatextVPLCharacterContentVisitor(bw, "</>");
 		}
 
 		@Override
@@ -417,20 +429,9 @@ public class ParatextVPL extends AbstractParatextFormat {
 				bw.write(" " + attr.getKey() + "=\"" + attr.getValue() + "\"");
 			}
 			bw.write('>');
-			return new ParatextVPLCharacterContentVisitor(bookChapter, bw, "</>");
+			return new ParatextVPLCharacterContentVisitor(bw, "</>");
 		}
 
-
-		@Override
-		public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
-			bw.write("<fig");
-			for (Map.Entry<String, String> attr : attributes.entrySet()) {
-				bw.write(" " + attr.getKey() + "=\"" + attr.getValue() + "\"");
-			}
-			bw.write('>');
-			visitText(caption);
-			bw.write("</>");
-		}
 
 		@Override
 		public void visitMilestone(String tag, Map<String, String> attributes) throws IOException {

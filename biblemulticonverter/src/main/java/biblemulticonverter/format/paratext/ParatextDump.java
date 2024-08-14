@@ -8,7 +8,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.nio.channels.IllegalSelectorException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
+import biblemulticonverter.format.paratext.ParatextBook.Figure;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisitor;
@@ -25,10 +25,11 @@ import biblemulticonverter.format.paratext.ParatextBook.PeripheralStart;
 import biblemulticonverter.format.paratext.ParatextBook.SidebarEnd;
 import biblemulticonverter.format.paratext.ParatextBook.SidebarStart;
 import biblemulticonverter.format.paratext.ParatextBook.TableCellStart;
+import biblemulticonverter.format.paratext.ParatextBook.VerseEnd;
+import biblemulticonverter.format.paratext.ParatextBook.VerseStart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.CustomMarkup;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.Figure;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXrefKind;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Milestone;
@@ -37,10 +38,8 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextChar
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.SpecialSpace;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Text;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
-import biblemulticonverter.schema.usx3.Periph;
 
 /**
  * Simple importer and exporter that dumps the internal Paratext format to a diffable plain text.
@@ -99,6 +98,24 @@ public class ParatextDump extends AbstractParatextFormat {
 					case "PERIPHERAL":
 						currentBook.getContent().add(new PeripheralStart(parts[1], parts.length == 2 ? null : parts[2]));
 						break;
+					case "VERSE":
+						currentBook.getContent().add(new VerseStart(VerseIdentifier.fromStringOrThrow(parts[1]), parts[2]));
+						break;
+					case "VERSE-END":
+						currentBook.getContent().add(new VerseEnd(VerseIdentifier.fromStringOrThrow(parts[2])));
+						break;
+					case "FIGURE":
+						Figure f = new Figure(Objects.requireNonNull(parts[1]));
+						currentBook.getContent().add(f);
+						while (!(line = br.readLine()).equals("FIGUREEND")) {
+							if (line.startsWith("ATTRIBUTE\t")) {
+								parts = line.split("\t", 3);
+								f.getAttributes().put(parts[1], parts[2]);
+							} else {
+								throw new RuntimeException("Unsupported figure line: "+line);
+							}
+						}
+						break;
 					case "CHARCONTENTSTART":
 						ParatextCharacterContent cc = new ParatextCharacterContent();
 						currentBook.getContent().add(cc);
@@ -117,12 +134,6 @@ public class ParatextDump extends AbstractParatextFormat {
 	private void importCharContent(List<ParatextCharacterContentPart> target, BufferedReader br, String line) throws IOException {
 		String[] parts = line.split("\t", 3);
 		switch (parts[0]) {
-			case "VERSE":
-				target.add(new VerseStart(VerseIdentifier.fromStringOrThrow(parts[1]), parts[2]));
-				break;
-			case "VERSE-END":
-				target.add(new ParatextCharacterContent.VerseEnd(VerseIdentifier.fromStringOrThrow(parts[2])));
-				break;
 			case "FOOTNOTE":
 				String[] callerAndAttributes = parts[2].split(" ");
 				FootnoteXref fx = new FootnoteXref(Objects.requireNonNull(FootnoteXrefKind.allTags().get(parts[1])), callerAndAttributes[0], Arrays.copyOfRange(callerAndAttributes, 1, callerAndAttributes.length));
@@ -140,18 +151,6 @@ public class ParatextDump extends AbstractParatextFormat {
 						acf.getAttributes().put(parts[1], parts[2]);
 					} else {
 						importCharContent(acf.getContent(), br, line);
-					}
-				}
-				break;
-			case "FIGURE":
-				Figure f = new Figure(Objects.requireNonNull(parts[1]));
-				target.add(f);
-				while (!(line = br.readLine()).equals("FIGUREEND")) {
-					if (line.startsWith("ATTRIBUTE\t")) {
-						parts = line.split("\t", 3);
-						f.getAttributes().put(parts[1], parts[2]);
-					} else {
-						throw new RuntimeException("Unsupported figure line: "+line);
 					}
 				}
 				break;
@@ -256,6 +255,25 @@ public class ParatextDump extends AbstractParatextFormat {
 			}
 
 			@Override
+			public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
+				bw.write("VERSE\t" + location + "\t" + verseNumber + "\n");
+			}
+
+			@Override
+			public void visitVerseEnd(VerseIdentifier location) throws IOException {
+				bw.write("VERSE-END\t\t" + location + "\n");
+			}
+
+			@Override
+			public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
+				bw.write("FIGURE\t"+caption+"\n");
+				for (Map.Entry<String, String> attr : attributes.entrySet()) {
+					bw.write("ATTRIBUTE\t" + attr.getKey() + "\t" + attr.getValue() + "\n");
+				}
+				bw.write("FIGUREEND\n");
+			}
+
+			@Override
 			public void visitParatextCharacterContent(ParatextCharacterContent content) throws IOException {
 				bw.write("CHARCONTENTSTART\n");
 				content.accept(new ParatextDumpCharacterContentVisitor(bw, "CHARCONTENTEND\n"));
@@ -271,11 +289,6 @@ public class ParatextDump extends AbstractParatextFormat {
 		public ParatextDumpCharacterContentVisitor(BufferedWriter bw, String suffix) {
 			this.bw = bw;
 			this.suffix = suffix;
-		}
-
-		@Override
-		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
-			bw.write("VERSE\t" + location + "\t" + verseNumber + "\n");
 		}
 
 		@Override
@@ -295,15 +308,6 @@ public class ParatextDump extends AbstractParatextFormat {
 				bw.write("ATTRIBUTE\t" + attr.getKey() + "\t" + attr.getValue() + "\n");
 			}
 			return new ParatextDumpCharacterContentVisitor(bw, "CHARFORMATEND\n");
-		}
-
-		@Override
-		public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
-			bw.write("FIGURE\t"+caption+"\n");
-			for (Map.Entry<String, String> attr : attributes.entrySet()) {
-				bw.write("ATTRIBUTE\t" + attr.getKey() + "\t" + attr.getValue() + "\n");
-			}
-			bw.write("FIGUREEND\n");
 		}
 
 		@Override
@@ -338,11 +342,6 @@ public class ParatextDump extends AbstractParatextFormat {
 		@Override
 		public void visitEnd() throws IOException {
 			bw.write(suffix);
-		}
-
-		@Override
-		public void visitVerseEnd(VerseIdentifier location) throws IOException {
-			bw.write("VERSE-END\t\t" + location + "\n");
 		}
 	}
 }

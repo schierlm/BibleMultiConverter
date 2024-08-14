@@ -11,9 +11,11 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import biblemulticonverter.data.Bible;
+import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentPart;
 import biblemulticonverter.tools.Validate;
 
 public class USFM3AllTagsTest {
@@ -60,10 +62,14 @@ public class USFM3AllTagsTest {
 
 	@Test
 	public void testValidateModule() throws Exception {
+		// act on a copy as ParatextBook.fixTrailingWhitespace messes with the document!
+		File originalFile = USX3Test.getResource("/usfm3allTags/01-MAT.usfm");
+		ParatextBook testBookCopy = new USFM().doImportBook(originalFile);
+
 		Bible bible = new AbstractParatextFormat("Dummy") {
 			@Override
 			protected List<ParatextBook> doImportAllBooks(File inputFile) throws Exception {
-				return Arrays.asList(testBook);
+				return Arrays.asList(testBookCopy);
 			}
 
 			@Override

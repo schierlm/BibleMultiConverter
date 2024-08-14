@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
+import biblemulticonverter.format.paratext.ParatextBook.Figure;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphStart;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentVisitor;
@@ -32,10 +33,10 @@ import biblemulticonverter.format.paratext.ParatextBook.Remark;
 import biblemulticonverter.format.paratext.ParatextBook.SidebarEnd;
 import biblemulticonverter.format.paratext.ParatextBook.SidebarStart;
 import biblemulticonverter.format.paratext.ParatextBook.TableCellStart;
+import biblemulticonverter.format.paratext.ParatextBook.VerseStart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.CustomMarkup;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.Figure;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXrefKind;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Milestone;
@@ -43,7 +44,6 @@ import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextChar
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentVisitor;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.SpecialSpace;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.VerseStart;
 import biblemulticonverter.format.paratext.model.ChapterIdentifier;
 import biblemulticonverter.format.paratext.model.VerseIdentifier;
 import biblemulticonverter.format.paratext.model.Version;
@@ -225,7 +225,8 @@ public class USFM extends AbstractParatextFormat {
 					fig = new Figure(textPart.substring(0, pos).trim());
 					parseAttributeList(textPart.substring(pos + 1).trim(), fig.getAttributes());
 				}
-				containerStack.get(containerStack.size() - 1).getContent().add(fig);
+				result.getContent().add(fig);
+				closeCharacterAttributes = true;
 				textPart = "";
 				if (data.startsWith("\\fig*", startPos)) {
 					pos = data.indexOf('\\', startPos + 5);
@@ -264,8 +265,8 @@ public class USFM extends AbstractParatextFormat {
 				VerseIdentifier location = VerseIdentifier.fromStringOrThrow(openChapter.getLocation() + ":" + parts[0]);
 
 				openVerse = new VerseStart(location, parts[0]);
-
-				containerStack.get(containerStack.size() - 1).getContent().add(openVerse);
+				result.getContent().add(openVerse);
+				closeCharacterAttributes = true;
 				textPart = parts.length == 1 ? "" : parts[1];
 			} else if (tag.equals("c")) {
 
@@ -558,6 +559,41 @@ public class USFM extends AbstractParatextFormat {
 				}
 
 				@Override
+				public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
+					bw.write("\n\\v " + verseNumber);
+					context.needSpace = true;
+				}
+
+				@Override
+				public void visitVerseEnd(VerseIdentifier verse) throws IOException {
+					// USFM 2.x does not support verse end milestones, hence we don't add them.
+				}
+
+				@Override
+				public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
+					bw.write("\\fig ");
+					context.needSpace = false;
+					new USFMCharacterContentVisitor(bw, context).visitText(caption);
+					if (!attributes.isEmpty()) {
+						StringBuilder attrs = new StringBuilder("");
+						List<String> attributeKeys = new ArrayList<>(attributes.keySet());
+						List<String> orderedAttributeKeys = new ArrayList<>();
+						orderedAttributeKeys.addAll(Arrays.asList(Figure.FIGURE_PROVIDED_ATTRIBUTES));
+						orderedAttributeKeys.retainAll(attributeKeys);
+						attributeKeys.removeAll(orderedAttributeKeys);
+						attributeKeys.sort(Comparator.naturalOrder());
+						orderedAttributeKeys.addAll(attributeKeys);
+						for (String key : orderedAttributeKeys) {
+							if (attrs.length() > 0)
+								attrs.append(" ");
+							attrs.append(key + "=\"" + attributes.get(key) + "\"");
+						}
+						bw.write("|" + attrs.toString());
+					}
+					bw.write("\\fig*");
+				}
+
+				@Override
 				public void visitParatextCharacterContent(ParatextCharacterContent content) throws IOException {
 					content.accept(new USFMCharacterContentVisitor(bw, context));
 				}
@@ -621,12 +657,24 @@ public class USFM extends AbstractParatextFormat {
 			}
 
 			@Override
+			public void visitVerseStart(VerseIdentifier location, String verseNumber) throws RuntimeException {
+			}
+
+			@Override
+			public void visitVerseEnd(VerseIdentifier verseLocation) throws RuntimeException {
+			}
+
+			@Override
+			public void visitFigure(String caption, Map<String, String> attributes) throws RuntimeException {
+				Set<String> attrKeys = new HashSet<>(attributes.keySet());
+				attrKeys.removeAll(Arrays.asList(Figure.FIGURE_PROVIDED_ATTRIBUTES));
+				if (!attrKeys.isEmpty())
+					vh.pushVersion(Version.V3);
+			}
+
+			@Override
 			public void visitParatextCharacterContent(ParatextCharacterContent content) {
 				content.accept(new ParatextCharacterContentVisitor<RuntimeException>() {
-
-					@Override
-					public void visitVerseStart(VerseIdentifier location, String verseNumber) throws RuntimeException {
-					}
 
 					@Override
 					public ParatextCharacterContentVisitor<RuntimeException> visitFootnoteXref(FootnoteXrefKind kind, String caller, String[] categories) throws RuntimeException {
@@ -653,14 +701,6 @@ public class USFM extends AbstractParatextFormat {
 					}
 
 					@Override
-					public void visitFigure(String caption, Map<String, String> attributes) throws RuntimeException {
-						Set<String> attrKeys = new HashSet<>(attributes.keySet());
-						attrKeys.removeAll(Arrays.asList(Figure.FIGURE_PROVIDED_ATTRIBUTES));
-						if (!attrKeys.isEmpty())
-							vh.pushVersion(Version.V3);
-					}
-
-					@Override
 					public void visitMilestone(String tag, Map<String, String> attributes) throws RuntimeException {
 						vh.pushVersion(Version.V3);
 					}
@@ -683,10 +723,6 @@ public class USFM extends AbstractParatextFormat {
 
 					@Override
 					public void visitEnd() throws RuntimeException {
-					}
-
-					@Override
-					public void visitVerseEnd(VerseIdentifier verseLocation) throws RuntimeException {
 					}
 				});
 			}
@@ -723,12 +759,6 @@ public class USFM extends AbstractParatextFormat {
 
 		private void pushSuffix(String suffix) {
 			suffixStack.add(suffix);
-		}
-
-		@Override
-		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws IOException {
-			bw.write("\n\\v " + verseNumber);
-			context.needSpace = true;
 		}
 
 		@Override
@@ -798,32 +828,6 @@ public class USFM extends AbstractParatextFormat {
 		}
 
 		@Override
-		public void visitFigure(String caption, Map<String, String> attributes) throws IOException {
-			if (context.needSpace)
-				bw.write(" ");
-			bw.write("\\fig ");
-			context.needSpace = false;
-			visitText(caption);
-			if (!attributes.isEmpty()) {
-				StringBuilder attrs = new StringBuilder("");
-				List<String> attributeKeys = new ArrayList<>(attributes.keySet());
-				List<String> orderedAttributeKeys = new ArrayList<>();
-				orderedAttributeKeys.addAll(Arrays.asList(Figure.FIGURE_PROVIDED_ATTRIBUTES));
-				orderedAttributeKeys.retainAll(attributeKeys);
-				attributeKeys.removeAll(orderedAttributeKeys);
-				attributeKeys.sort(Comparator.naturalOrder());
-				orderedAttributeKeys.addAll(attributeKeys);
-				for (String key : orderedAttributeKeys) {
-					if (attrs.length() > 0)
-						attrs.append(" ");
-					attrs.append(key + "=\"" + attributes.get(key) + "\"");
-				}
-				bw.write("|" + attrs.toString());
-			}
-			bw.write("\\fig*");
-		}
-
-		@Override
 		public void visitMilestone(String tag, Map<String, String> attributes) throws IOException {
 			if (context.needSpace)
 				bw.write(" ");
@@ -880,11 +884,6 @@ public class USFM extends AbstractParatextFormat {
 				bw.write("\\" + suffix + "*");
 				context.needSpace = false;
 			}
-		}
-
-		@Override
-		public void visitVerseEnd(VerseIdentifier verse) throws IOException {
-			// USFM 2.x does not support verse end milestones, hence we don't add them.
 		}
 
 		private AutoClosingFormattingKind getLastTag() {

@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.junit.Test;
 
@@ -34,8 +35,8 @@ public class AbstractParatextFormatTest {
 				.create();
 
 		final ParatextBook paratextBook = new TestParatextFormat().exportToParatextBook(book, "test");
-		
-		final List<ParatextCharacterContent.VerseStart> actualVerses = paratextBook.findAllCharacterContent(ParatextCharacterContent.VerseStart.class);
+
+		final List<ParatextBook.VerseStart> actualVerses = paratextBook.getContent().stream().filter(cp -> cp instanceof ParatextBook.VerseStart).map(cp -> (ParatextBook.VerseStart) cp).collect(Collectors.toList());
 		assertEquals("5", actualVerses.get(0).getVerseNumber());
 		assertEquals("11", actualVerses.get(1).getVerseNumber());
 		assertEquals("4", actualVerses.get(2).getVerseNumber());
@@ -53,14 +54,12 @@ public class AbstractParatextFormatTest {
 		ParatextBook paratextBook = new ParatextBook(ParatextBook.ParatextID.ID_1CO, null);
 		paratextBook.getContent().add(new ParatextBook.ChapterStart(new ChapterIdentifier(paratextBook.getId(), 1)));
 		paratextBook.getContent().add(new ParatextBook.ParagraphStart(ParatextBook.ParagraphKind.PARAGRAPH_P));
-		ParatextCharacterContent characterContent = new ParatextCharacterContent();
-		paratextBook.getContent().add(characterContent);
 
 		// Normal verse number
-		addDummyVerse(characterContent, new VerseIdentifier(paratextBook.getId(), 1, "5", null), "5");
+		addDummyVerse(paratextBook, new VerseIdentifier(paratextBook.getId(), 1, "5", null), "5");
 
 		// Paratext only supported verse number
-		addDummyVerse(characterContent, new VerseIdentifier(paratextBook.getId(), 1, "6b", "7a"), "6b-7a");
+		addDummyVerse(paratextBook, new VerseIdentifier(paratextBook.getId(), 1, "6b", "7a"), "6b-7a");
 		paratextBook.getContent().add(new ParatextBook.ChapterEnd(new ChapterIdentifier(paratextBook.getId(), 1)));
 
 		AbstractParatextFormat format = new TestParatextFormat();
@@ -109,12 +108,12 @@ public class AbstractParatextFormatTest {
 		assertEquals(lastVerse, actual.getLastVerse());
 	}
 
-	private void addDummyVerse(ParatextCharacterContent content, VerseIdentifier identifier, String number) {
-		content.getContent().add(
-				new ParatextCharacterContent.VerseStart(identifier, number)
-		);
+	private void addDummyVerse(ParatextBook paratextBook, VerseIdentifier identifier, String number) {
+		paratextBook.getContent().add(new ParatextBook.VerseStart(identifier, number));
+		ParatextCharacterContent content = new ParatextCharacterContent();
+		paratextBook.getContent().add(content);
 		content.getContent().add(ParatextCharacterContent.Text.from("Lorem Ipsum"));
-		content.getContent().add(new ParatextCharacterContent.VerseEnd(identifier));
+		paratextBook.getContent().add(new ParatextBook.VerseEnd(identifier));
 	}
 
 	private static class TestParatextFormat extends AbstractParatextFormat {

@@ -36,21 +36,19 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 	}
 
 	/**
-	 * One of {@link VerseStart}, {@link VerseEnd}, {@link FootnoteXref},
-	 * {@link AutoClosingFormatting}, {@link Reference}, {@link CustomMarkup} or {@link Text}.
+	 * One of {@link FootnoteXref}, {@link AutoClosingFormatting}, {@link Milestone}, {@link Reference},
+	 * {@link CustomMarkup}, {@link SpecialSpace} or {@link Text}.
 	 */
 	public static interface ParatextCharacterContentPart {
 		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T;
 	}
 
+	// TODO try to move VerseStart, VerseEnd and Figure into ParatextBook?
 	public static interface ParatextCharacterContentVisitor<T extends Throwable> {
-		public void visitVerseStart(VerseIdentifier location, String verseNumber) throws T;
 
 		public ParatextCharacterContentVisitor<T> visitFootnoteXref(FootnoteXrefKind kind, String caller, String[] categories) throws T;
 
 		public ParatextCharacterContentVisitor<T> visitAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws T;
-
-		public void visitFigure(String caption, Map<String,String> attributes) throws T;
 
 		public void visitMilestone(String tag, Map<String,String> attributes) throws T;
 
@@ -63,50 +61,6 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		public void visitSpecialSpace(boolean nonBreakSpace, boolean optionalLineBreak) throws T;
 
 		public void visitEnd() throws T;
-
-		public void visitVerseEnd(VerseIdentifier verseLocation) throws T;
-	}
-
-	public static class VerseStart implements ParatextCharacterContentPart {
-
-		private final VerseIdentifier location;
-		private final String verseNumber;
-
-		public VerseStart(VerseIdentifier location, String verseNumber) {
-			this.location = location;
-			this.verseNumber = verseNumber;
-		}
-
-		public VerseIdentifier getLocation() {
-			return location;
-		}
-
-		public String getVerseNumber() {
-			return verseNumber;
-		}
-
-		@Override
-		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
-			visitor.visitVerseStart(location, verseNumber);
-		}
-	}
-
-	public static class VerseEnd implements ParatextCharacterContentPart {
-
-		private final VerseIdentifier location;
-
-		public VerseEnd(VerseIdentifier location) {
-			this.location = location;
-		}
-
-		public VerseIdentifier getLocation() {
-			return location;
-		}
-
-		@Override
-		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
-			visitor.visitVerseEnd(location);
-		}
 	}
 
 	public static class FootnoteXref implements ParatextCharacterContentPart, ParatextCharacterContentContainer {
@@ -491,31 +445,6 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 
 	public static enum KeepIf {
 		OT, NT, DC
-	}
-
-	public static class Figure implements ParatextCharacterContentPart {
-
-		public static final String[] FIGURE_PROVIDED_ATTRIBUTES = {"alt", "src", "size", "loc", "copy", "ref"};
-
-		private final String caption;
-		private final Map<String, String> attributes = new HashMap<>(3);
-
-		public Figure(String caption) {
-			this.caption = caption;
-		}
-
-		public String getCaption() {
-			return caption;
-		}
-
-		public Map<String, String> getAttributes() {
-			return attributes;
-		}
-
-		@Override
-		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T {
-			visitor.visitFigure(caption, attributes);
-		}
 	}
 
 	public static class Milestone implements ParatextCharacterContentPart {
