@@ -6,6 +6,7 @@ import java.util.ListIterator;
 
 import biblemulticonverter.format.paratext.ParatextBook;
 import biblemulticonverter.format.paratext.ParatextBook.Figure;
+import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphKindCategory;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
 import biblemulticonverter.format.paratext.ParatextBook.VerseEnd;
@@ -43,8 +44,9 @@ public class ImportUtilities {
 			while (bookPartsIterator.hasPrevious()) {
 				ParatextBook.ParatextBookContentPart bookPart = bookPartsIterator.previous();
 				if (bookPart instanceof ParatextBook.ParagraphStart) {
-					ParagraphKindCategory category = ((ParatextBook.ParagraphStart) bookPart).getKind().getCategory();
-					if (category == ParatextBook.ParagraphKindCategory.TEXT && lastSuitableContentContainer != null) {
+					ParagraphKind kind = ((ParatextBook.ParagraphStart) bookPart).getKind();
+					ParagraphKindCategory category = kind.getCategory();
+					if (category == ParatextBook.ParagraphKindCategory.TEXT && !kind.name().startsWith("INTRO_") && lastSuitableContentContainer != null) {
 						bookParts.add(bookParts.indexOf(lastSuitableContentContainer) + 1, new ParatextBook.VerseEnd(openVerse.getLocation()));
 						didAddVerseEndMilestone = true;
 						break;

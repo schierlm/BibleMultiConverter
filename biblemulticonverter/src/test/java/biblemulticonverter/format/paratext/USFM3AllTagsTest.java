@@ -86,6 +86,10 @@ public class USFM3AllTagsTest {
 	}
 
 	private void testSingleFormat(AbstractParatextFormat format, String extraArg, String expectedContent) throws Exception {
+		testSingleFormat(format, extraArg, expectedContent, false);
+	}
+
+	private void testSingleFormat(AbstractParatextFormat format, String extraArg, String expectedContent, boolean normalizeOutputWhitespace) throws Exception {
 		File roundtripFile = File.createTempFile("~roundtrip", ".tmp");
 		if (!extraArg.isEmpty()) {
 			roundtripFile.delete();
@@ -99,8 +103,12 @@ public class USFM3AllTagsTest {
 		USFM usfm = new USFM();
 		File resultFile = USX3Test.createTempFile("export", ".usfm");
 		usfm.doExportBook(books.get(0), resultFile);
-		assertEquals(expectedContent == null ? testBookContent : expectedContent, new String(Files.readAllBytes(resultFile.toPath()), StandardCharsets.UTF_8));
-		if (expectedContent != null) {
+		String actualContent = new String(Files.readAllBytes(resultFile.toPath()), StandardCharsets.UTF_8);
+		if (normalizeOutputWhitespace) {
+			actualContent = actualContent.replaceAll("  +", " ").replaceAll(" +\n", "\n");
+		}
+		assertEquals(expectedContent == null ? testBookContent : expectedContent, actualContent);
+		if (expectedContent != null && !normalizeOutputWhitespace) {
 			usfm.doExportBook(usfm.doImportBook(resultFile), resultFile);
 			assertEquals(expectedContent, new String(Files.readAllBytes(resultFile.toPath()), StandardCharsets.UTF_8));
 		}
@@ -126,6 +134,17 @@ public class USFM3AllTagsTest {
 				.replace(" x-why=\"That's me\"", "").replace("\\periph Custom peripheral without ID", "\\periph Custom peripheral without ID|id=\"x-undefined\"")
 				.replace("\\periph Chronology", "\\periph Chronology|id=\"chron\"");
 		testSingleFormat(new USX3(), "#-*.usx", expectedContent);
+	}
+
+	@Test
+	public void testUSFX() throws Exception {
+		String expectedContent = testBookContent.replace("\\ca ", " \n\\p \\ca ").replace("\\cat Etymology\\cat*", "")
+				.replace("\\tc1-2", "\\tc1 \\tc2").replace("\\th2-3", "\\th2 \\th3").replace("~", " ").replace("|link-href=\"GEN 9:8\"", "")
+				.replace("|gloss=\"Roo:bee\"", "").replace("|link-href=\"https://schierlm.github.io\" x-why=\"That's me\"", "")
+				.replace("\\ndx*\\fig", "\\ndx* \\fig").replace("|link-id=\"a-loop\"", "").replace("|link-href=\"#a-loop\" link-title=\"Loop\"", "")
+				.replace("|id=\"measures\"", "").replace("|id=\"x-custom\"", "")
+				.replaceFirst("\\\\esb(.|\n)*?\\\\esbe\n", "").replaceAll("  +", " ").replaceAll(" +\n", "\n");
+		testSingleFormat(new USFX(), "", expectedContent, true);
 	}
 
 	@Test

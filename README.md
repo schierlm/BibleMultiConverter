@@ -93,7 +93,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **Paratext:**
   - **[USFM 2](https://markups.paratext.org/usfm/)**: import and export
   - **[USX 2/USX 3](https://markups.paratext.org/usx/)**: import and export
-- **[USFX](https://ebible.org/usfx/)**: import only
+- **[USFX](https://ebible.org/usfx/)**: import and export
 - **[SwordSearcher](https://www.swordsearcher.com/) ([Forge](https://www.swordsearcher.com/forge/))**: export only
 - **[MySword](https://www.mysword.info/)**: import and export
 - **[Obsidian](https://obsidian.md/)**: export only
