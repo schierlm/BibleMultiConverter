@@ -2,20 +2,35 @@ package biblemulticonverter.format.paratext;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assume.assumeTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Marshaller;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.w3c.dom.Document;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentPart;
+import biblemulticonverter.schema.usfx.ObjectFactory;
+import biblemulticonverter.schema.usfx.PType;
+import biblemulticonverter.schema.usfx.Usfx;
 import biblemulticonverter.tools.Validate;
 
 public class USFM3AllTagsTest {
@@ -138,6 +153,30 @@ public class USFM3AllTagsTest {
 
 	@Test
 	public void testUSFX() throws Exception {
+		// Some newer Java versions with current JAXB version are unable to marshal mixed content.
+		// skip this test for them.
+		ObjectFactory of = new ObjectFactory();
+		Usfx usfx = of.createUsfx();
+		Usfx.Book book = of.createUsfxBook();
+		usfx.getContent().add(of.createUsfxBook(book));
+		PType p = of.createPType();
+		book.getContent().add(of.createUsfxBookP(p));
+		p.getContent().add("X");
+		p.getContent().add(of.createPTypeBk(of.createPType()));
+		final Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
+		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
+		Marshaller m = ctx.createMarshaller();
+		m.marshal(usfx, doc);
+		doc.getDocumentElement().setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+		doc.getDocumentElement().setAttribute("xsi:noNamespaceSchemaLocation", "https://eBible.org/usfx.xsd");
+		Transformer transformer = TransformerFactory.newInstance().newTransformer();
+		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+		transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+		StringWriter sw = new StringWriter();
+		transformer.transform(new DOMSource(doc), new StreamResult(sw));
+		assumeTrue(sw.toString().contains("<p>X<bk/>"));
+
+		// now we are fine
 		String expectedContent = testBookContent.replace("\\ca ", " \n\\p \\ca ").replace("\\cat Etymology\\cat*", "")
 				.replace("\\tc1-2", "\\tc1 \\tc2").replace("\\th2-3", "\\th2 \\th3").replace("~", " ").replace("|link-href=\"GEN 9:8\"", "")
 				.replace("|gloss=\"Roo:bee\"", "").replace("|link-href=\"https://schierlm.github.io\" x-why=\"That's me\"", "")
