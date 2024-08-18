@@ -154,8 +154,10 @@ public class BebliaXML implements RoundtripFormat {
 			m.setSchema(getSchema());
 		m.marshal(xmlbible, doc);
 		Transformer transformer = TransformerFactory.newInstance().newTransformer();
-		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-		transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+		if (Boolean.getBoolean("biblemulticonverter.indentxml")) {
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+		}
 		transformer.transform(new DOMSource(doc), new StreamResult(file));
 	}
 

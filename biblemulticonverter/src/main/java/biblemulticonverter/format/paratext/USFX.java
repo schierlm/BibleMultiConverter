@@ -579,8 +579,10 @@ public class USFX extends AbstractParatextFormat {
 		doc.getDocumentElement().setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
 		doc.getDocumentElement().setAttribute("xsi:noNamespaceSchemaLocation", "https://eBible.org/usfx.xsd");
 		Transformer transformer = TransformerFactory.newInstance().newTransformer();
-		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-		transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+		if (Boolean.getBoolean("biblemulticonverter.indentxml")) {
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+		}
 		transformer.transform(new DOMSource(doc), new StreamResult(file));
 	}
 

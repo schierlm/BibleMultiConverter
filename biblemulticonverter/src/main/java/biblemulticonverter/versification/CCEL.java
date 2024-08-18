@@ -429,8 +429,10 @@ public class CCEL implements VersificationFormat {
 		Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
 		m.marshal(refsys, doc);
 		Transformer transformer = TransformerFactory.newInstance().newTransformer();
-		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-		transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+		if (Boolean.getBoolean("biblemulticonverter.indentxml")) {
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+		}
 		transformer.transform(new DOMSource(doc), new StreamResult(outputFile));
 	}
 

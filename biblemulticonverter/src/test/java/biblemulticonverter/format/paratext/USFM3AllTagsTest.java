@@ -101,10 +101,6 @@ public class USFM3AllTagsTest {
 	}
 
 	private void testSingleFormat(AbstractParatextFormat format, String extraArg, String expectedContent) throws Exception {
-		testSingleFormat(format, extraArg, expectedContent, false);
-	}
-
-	private void testSingleFormat(AbstractParatextFormat format, String extraArg, String expectedContent, boolean normalizeOutputWhitespace) throws Exception {
 		File roundtripFile = File.createTempFile("~roundtrip", ".tmp");
 		if (!extraArg.isEmpty()) {
 			roundtripFile.delete();
@@ -119,11 +115,8 @@ public class USFM3AllTagsTest {
 		File resultFile = USX3Test.createTempFile("export", ".usfm");
 		usfm.doExportBook(books.get(0), resultFile);
 		String actualContent = new String(Files.readAllBytes(resultFile.toPath()), StandardCharsets.UTF_8);
-		if (normalizeOutputWhitespace) {
-			actualContent = actualContent.replaceAll("  +", " ").replaceAll(" +\n", "\n");
-		}
 		assertEquals(expectedContent == null ? testBookContent : expectedContent, actualContent);
-		if (expectedContent != null && !normalizeOutputWhitespace) {
+		if (expectedContent != null) {
 			usfm.doExportBook(usfm.doImportBook(resultFile), resultFile);
 			assertEquals(expectedContent, new String(Files.readAllBytes(resultFile.toPath()), StandardCharsets.UTF_8));
 		}
@@ -153,37 +146,13 @@ public class USFM3AllTagsTest {
 
 	@Test
 	public void testUSFX() throws Exception {
-		// Some newer Java versions with current JAXB version are unable to marshal mixed content.
-		// skip this test for them.
-		ObjectFactory of = new ObjectFactory();
-		Usfx usfx = of.createUsfx();
-		Usfx.Book book = of.createUsfxBook();
-		usfx.getContent().add(of.createUsfxBook(book));
-		PType p = of.createPType();
-		book.getContent().add(of.createUsfxBookP(p));
-		p.getContent().add("X");
-		p.getContent().add(of.createPTypeBk(of.createPType()));
-		final Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
-		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
-		Marshaller m = ctx.createMarshaller();
-		m.marshal(usfx, doc);
-		doc.getDocumentElement().setAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
-		doc.getDocumentElement().setAttribute("xsi:noNamespaceSchemaLocation", "https://eBible.org/usfx.xsd");
-		Transformer transformer = TransformerFactory.newInstance().newTransformer();
-		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-		transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
-		StringWriter sw = new StringWriter();
-		transformer.transform(new DOMSource(doc), new StreamResult(sw));
-		assumeTrue(sw.toString().contains("<p>X<bk/>"));
-
-		// now we are fine
 		String expectedContent = testBookContent.replace("\\ca ", " \n\\p \\ca ").replace("\\cat Etymology\\cat*", "")
 				.replace("\\tc1-2", "\\tc1 \\tc2").replace("\\th2-3", "\\th2 \\th3").replace("~", " ").replace("|link-href=\"GEN 9:8\"", "")
 				.replace("|gloss=\"Roo:bee\"", "").replace("|link-href=\"https://schierlm.github.io\" x-why=\"That's me\"", "")
-				.replace("\\ndx*\\fig", "\\ndx* \\fig").replace("|link-id=\"a-loop\"", "").replace("|link-href=\"#a-loop\" link-title=\"Loop\"", "")
+				.replace("|link-id=\"a-loop\"", "").replace("|link-href=\"#a-loop\" link-title=\"Loop\"", "")
 				.replace("|id=\"measures\"", "").replace("|id=\"x-custom\"", "")
 				.replaceFirst("\\\\esb(.|\n)*?\\\\esbe\n", "").replaceAll("  +", " ").replaceAll(" +\n", "\n");
-		testSingleFormat(new USFX(), "", expectedContent, true);
+		testSingleFormat(new USFX(), "", expectedContent);
 	}
 
 	@Test

@@ -641,8 +641,10 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 		maskWhitespaceNodes(docc.getDocumentElement());
 		try (FileOutputStream fos = new FileOutputStream(exportArgs[0])) {
 			Transformer transformer = TransformerFactory.newInstance().newTransformer();
-			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-			transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+			if (Boolean.getBoolean("biblemulticonverter.indentxml")) {
+				transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+				transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+			}
 			transformer.transform(new DOMSource(docc), new StreamResult(fos));
 		}
 	}
