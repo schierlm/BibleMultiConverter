@@ -166,6 +166,11 @@ public class USFM3AllTagsTest {
 	}
 
 	@Test
+	public void testParatextCompact() throws Exception {
+		testSingleFormat(new ParatextCompact(), "", null);
+	}
+
+	@Test
 	public void testParatextUSFM() throws Exception {
 		testSingleFormat(new USFM(), "#-*.usfm", null);
 	}

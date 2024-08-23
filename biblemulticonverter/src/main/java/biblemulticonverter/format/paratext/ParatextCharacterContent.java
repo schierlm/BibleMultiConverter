@@ -43,7 +43,6 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		public <T extends Throwable> void acceptThis(ParatextCharacterContentVisitor<T> visitor) throws T;
 	}
 
-	// TODO try to move VerseStart, VerseEnd and Figure into ParatextBook?
 	public static interface ParatextCharacterContentVisitor<T extends Throwable> {
 
 		public ParatextCharacterContentVisitor<T> visitFootnoteXref(FootnoteXrefKind kind, String caller, String[] categories) throws T;
@@ -668,6 +667,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		public boolean isNonBreakSpace() {
 			return nonBreakSpace;
 		}
+
 		public boolean isOptionalLineBreak() {
 			return optionalLineBreak;
 		}
