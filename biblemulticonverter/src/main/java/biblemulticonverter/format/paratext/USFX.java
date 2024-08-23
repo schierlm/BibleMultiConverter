@@ -883,7 +883,7 @@ public class USFX extends AbstractParatextFormat {
 		@Override
 		public void visitReference(Reference reference) throws RuntimeException {
 			RefType rt = of.createRefType();
-			rt.setTgt(reference.toString());
+			rt.setTgt(reference.toString().replace(' ', '.').replace(':', '.'));
 			rt.setContent(reference.getContent());
 			parent.getContent().add(of.createPTypeRef(rt));
 		}
@@ -954,7 +954,7 @@ public class USFX extends AbstractParatextFormat {
 		@Override
 		public void visitReference(Reference reference) throws RuntimeException {
 			RefType rt = of.createRefType();
-			rt.setTgt(reference.toString());
+			rt.setTgt(reference.toString().replace(' ', '.').replace(':', '.'));
 			rt.setContent(reference.getContent());
 			parent.getContent().add(of.createNoteContentsRef(rt));
 		}
