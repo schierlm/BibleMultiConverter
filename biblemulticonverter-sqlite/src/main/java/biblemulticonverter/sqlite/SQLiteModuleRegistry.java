@@ -18,6 +18,7 @@ import biblemulticonverter.format.ExportFormat;
 import biblemulticonverter.format.ImportFormat;
 import biblemulticonverter.format.RoundtripFormat;
 import biblemulticonverter.sqlite.format.BibleAnalyzerDatabase;
+import biblemulticonverter.sqlite.format.ESwordV11;
 import biblemulticonverter.sqlite.format.MyBibleZone;
 import biblemulticonverter.sqlite.format.MyBibleZoneCrossreferences;
 import biblemulticonverter.sqlite.format.MyBibleZoneDictionary;
@@ -57,6 +58,7 @@ public class SQLiteModuleRegistry extends ModuleRegistry {
 		result.add(new Module<ExportFormat>("MyBibleZoneDictionary", "MyBible.zone (Bible Reader for Android) Dictionary.", MyBibleZoneDictionary.HELP_TEXT, MyBibleZoneDictionary.class));
 		result.add(new Module<ExportFormat>("MyBibleZoneCrossreferences", "MyBible.zone (Bible Reader for Android) Crossreferences.", MyBibleZoneCrossreferences.HELP_TEXT, MyBibleZoneCrossreferences.class));
 		result.add(new Module<ExportFormat>("BibleAnalyzerDatabase", "Database Export format for Bible Analyzer", BibleAnalyzerDatabase.HELP_TEXT, BibleAnalyzerDatabase.class));
+		result.add(new Module<ExportFormat>("ESwordV11", "Export format for new (version 11) E-Sword modules", ESwordV11.HELP_TEXT, ESwordV11.class));
 		return result;
 	}
 

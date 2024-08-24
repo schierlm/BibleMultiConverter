@@ -99,13 +99,14 @@ In addition, the following other formats are supported, with varying accuracy:
 - **[Obsidian](https://obsidian.md/)**: export only
 - **[Beblia XML](https://beblia.com/)**: import and export
 - **[Laridian Book Builder](https://www.laridian.com/)**: export only
+- **[e-Sword](https://e-sword.net/)**: export only
 
 In combination with third party tools, other export formats are available:
 
 - In combination with LibreOffice 4.4 to 7.5, it is possible to export bibles for
   Logos Bible Software (see below for details)
 - In combination with the E-Sword ToolTipTool NT v2.51, it is possible to
-  export bibles for E-Sword (see below for details)
+  export bibles for E-Sword versions older than 11 (see below for details)
 
 While the focus of this tool is for bible texts, there is also limited support
 for (Strong) dictionaries.
@@ -307,6 +308,13 @@ when these occur):
 
 E-Sword export
 --------------
+
+BibleMultiConverter has two export filters. One (**ESwordV11**) targets the new (version 11)
+module format, which is based on SQLite and HTML, and can be exported without any third party
+tools and natively supports Strong's numbers and footnotes.
+The other one is the format for older versions (**ESwordHTML**), requires third party tools
+(ToolTipTool), and does not support native footnotes (puts them into a commentary module instead).
+The rest of this chapter is about the second one.
 
 To export for E-Sword, first use the ESwordHTML export filter, which generates two
 HTML files (.bblx.html and .cmtx.html) which can then imported into ToolTipTool and
