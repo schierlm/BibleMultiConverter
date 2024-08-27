@@ -549,34 +549,9 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 					currentContent = para.getContent();
 					currentTable = null;
 				} else {
-					visitUnsupportedParagraphStart(kind);
-				}
-			}
-
-			private void visitUnsupportedParagraphStart(ParagraphKind kind) throws IOException {
-				if (kind == ParagraphKind.HEBREW_NOTE) {
-					// According to documentation this is very similar to `d` (ParagraphKind.DESCRIPTIVE_TITLE)
-					visitParagraphStart(ParagraphKind.DESCRIPTIVE_TITLE);
-					logger.logReplaceWarning(kind, ParagraphKind.DESCRIPTIVE_TITLE);
-				} else if (kind.isSameBase(ParagraphKind.SEMANTIC_DIVISION)) {
-					// TODO maybe add more than 1 blank line?
-					visitParagraphStart(ParagraphKind.BLANK_LINE);
-					logger.logReplaceWarning(kind, ParagraphKind.BLANK_LINE);
-				} else if (kind == ParagraphKind.PARAGRAPH_PO || kind == ParagraphKind.PARAGRAPH_LH || kind == ParagraphKind.PARAGRAPH_LF) {
-					logger.logReplaceWarning(kind, ParagraphKind.PARAGRAPH_P);
-					visitParagraphStart(ParagraphKind.PARAGRAPH_P);
-				} else if (kind == ParagraphKind.PARAGRAPH_LF) {
-					logger.logReplaceWarning(kind, ParagraphKind.PARAGRAPH_M);
-					visitParagraphStart(ParagraphKind.PARAGRAPH_M);
-				} else if (kind.getTag().startsWith(ParagraphKind.PARAGRAPH_LIM.getTag())) {
-					// Documentation is not entirely clear on what the exact difference is between `lim#` and `li#`
-					// one is "embedded" the other is not: https://ubsicap.github.io/usfm/lists/index.html#lim
-					// The assumption is made here that `lim#` is directly replaceable with `li#`
-					ParagraphKind replacement = ParagraphKind.PARAGRAPH_LI.getWithNumber(kind.getNumber());
+					ParagraphKind replacement = ParatextStripped.replaceParagraphKind(kind);
 					logger.logReplaceWarning(kind, replacement);
 					visitParagraphStart(replacement);
-				} else {
-					throw new RuntimeException("Could not export to USX 2 because an unhandled paragraph type `" + kind + "` from a newer USFM/USX version was found.");
 				}
 			}
 
@@ -737,34 +712,7 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		}
 
 		private ParatextCharacterContentVisitor<IOException> visitUnsupportedAutoClosingFormatting(AutoClosingFormattingKind kind, Map<String, String> attributes) throws IOException {
-			if (kind == AutoClosingFormattingKind.LIST_TOTAL || kind == AutoClosingFormattingKind.LIST_KEY || kind.isSameBase(AutoClosingFormattingKind.LIST_VALUE)) {
-				// It should not be too much of an issue to just skip these list tags
-				// E.g.
-				// \li1 \lik Reuben\lik* \liv1 Eliezer son of Zichri\liv1*
-				// Wil become:
-				// \li1 Reuben Eliezer son of Zichri
-				USX.this.logger.logSkippedWarning(kind);
-				return new USXCharacterContentVisitor(USX.this.logger, target);
-			} else if (kind == AutoClosingFormattingKind.FOOTNOTE_WITNESS_LIST) {
-				// The Footnote witness list is just extra markup found within a footnote, however according to
-				// documentation found here: https://ubsicap.github.io/usfm/v3.0.rc1/notes_basic/fnotes.html
-				// Each element within a footnote must start with it's appropriate tag. So we can't just skip this tag
-				// since it could contain text. It would be better to turn this into a text entry `ft`.
-				USX.this.logger.logReplaceWarning(kind, AutoClosingFormattingKind.FOOTNOTE_TEXT);
-				return visitAutoClosingFormatting(AutoClosingFormattingKind.FOOTNOTE_TEXT, attributes);
-			} else if (kind == AutoClosingFormattingKind.XREF_PUBLISHED_ORIGIN) {
-				// Published cross reference origin texts do not exist in USFM 2.x
-				// There is not really a nice way to downgrade these, we cannot put the `xop` tag into `xo` because it
-				// might not follow the usual `<chapter><separator><verse>` pattern.
-				// TODO, maybe we can just write the contents to the parent target, just like FOOTNOTE_WITNESS_LIST?
-				USX.this.logger.logRemovedWarning(kind);
-				return null;
-			} else if (kind == AutoClosingFormattingKind.XREF_TARGET_REFERENCES_TEXT) {
-				// "Target reference(s) extra / added text" does not exist in USFM 2.x
-				// We should be able to get away with just adding the raw content directly `target`.
-				USX.this.logger.logSkippedWarning(kind);
-				return new USXCharacterContentVisitor(USX.this.logger, target);
-			} else if (kind == AutoClosingFormattingKind.SUPERSCRIPT) {
+			if (kind == AutoClosingFormattingKind.SUPERSCRIPT) {
 				// There is not really a good way to represent superscript in USFM 2.x
 				// To avoid losing data, we skip the tag and just add the content directly to `target`.
 				// TODO, maybe we can use `sc` (Small caps) instead?
@@ -772,15 +720,6 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 						"separated by whitespace, since the previous text and superscript text may not have had been" +
 						"separated by whitespace.");
 				return new USXCharacterContentVisitor(USX.this.logger, target);
-			} else if (kind == AutoClosingFormattingKind.ARAMAIC_WORD) {
-				// There is not really a good way to represent Aramaic words in USFM 2.x
-				// To avoid losing data, we skip the tag and just add the content directly to `target`.
-				USX.this.logger.logSkippedWarning(kind);
-				return new USXCharacterContentVisitor(USX.this.logger, target);
-			} else if (kind == AutoClosingFormattingKind.PROPER_NAME_GEOGRAPHIC) {
-				// This marker just gives geographic names a different presentation, replace by PROPER_NAME.
-				USX.this.logger.logReplaceWarning(kind, AutoClosingFormattingKind.PROPER_NAME);
-				return visitAutoClosingFormatting(AutoClosingFormattingKind.PROPER_NAME, attributes);
 			} else if (kind == AutoClosingFormattingKind.RUBY) {
 				// Replace by putting the gloss into PRONUNCIATION.
 				USX.this.logger.logReplaceWarning(kind, AutoClosingFormattingKind.PRONUNCIATION);
@@ -790,16 +729,25 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 						outer.visitAutoClosingFormatting(AutoClosingFormattingKind.PRONUNCIATION, new HashMap<>(3)).visitText(attributes.get("gloss"));
 					}
 				};
-			} else if (kind == AutoClosingFormattingKind.LINK) {
-				// just strip the tag and keep the contents.
-				USX.this.logger.logSkippedWarning(kind);
-				return new USXCharacterContentVisitor(USX.this.logger, target);
-			} else if (kind == AutoClosingFormattingKind.EXTENDED_FOOTNOTE_MARK) {
-				// Use non-extended footnote mark instead
-				USX.this.logger.logReplaceWarning(kind, AutoClosingFormattingKind.FOOTNOTE_MARK);
-				return visitAutoClosingFormatting(AutoClosingFormattingKind.FOOTNOTE_MARK, attributes);
 			} else {
-				throw new RuntimeException("Could not export to USX 2 because an unhandled char type `" + kind + "` from a newer USFM/USX version was found.");
+				AutoClosingFormattingKind[] replacement = ParatextStripped.replaceAutoClosingFormattingKind(kind);
+				if (replacement == null) {
+					USX.this.logger.logRemovedWarning(kind);
+					return null;
+				} else if (replacement.length == 0) {
+					USX.this.logger.logSkippedWarning(kind);
+					return new USXCharacterContentVisitor(USX.this.logger, target);
+				} else if (replacement.length == 1) {
+					USX.this.logger.logReplaceWarning(kind, replacement[0]);
+					return visitAutoClosingFormatting(replacement[0], attributes);
+				} else {
+					USX.this.logger.logReplaceWarning(kind, replacement);
+					ParatextCharacterContentVisitor<IOException> v = this;
+					for(AutoClosingFormattingKind r: replacement) {
+						v = v.visitAutoClosingFormatting(r, attributes);
+					}
+					return v;
+				}
 			}
 		}
 

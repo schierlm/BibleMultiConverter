@@ -1,5 +1,8 @@
 package biblemulticonverter.format.paratext.utilities;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 import biblemulticonverter.format.paratext.ParatextBook;
 import biblemulticonverter.format.paratext.ParatextCharacterContent;
 
@@ -47,6 +50,21 @@ public class StandardExportWarningMessages {
 	public void logReplaceWarning(ParatextCharacterContent.AutoClosingFormattingKind original, ParatextCharacterContent.AutoClosingFormattingKind replacement) {
 		System.out.println("WARNING: Replaced char style marker `" + original.getTag() + "` with `" +
 				replacement.getTag() + "`, because this char style cannot be represented in " + targetFormat + ".");
+	}
+
+	/**
+	 * Log a message to indicate that a specific char style marker was replaced
+	 * with a list of other char style markers during the export.
+	 *
+	 * @param original
+	 *            the char style maker that was replaced.
+	 * @param replacement
+	 *            the char style marker that was used as replacement.
+	 */
+	public void logReplaceWarning(ParatextCharacterContent.AutoClosingFormattingKind original, ParatextCharacterContent.AutoClosingFormattingKind[] replacement) {
+		System.out.println("WARNING: Replaced char style marker `" + original.getTag() + "` with " +
+				Arrays.stream(replacement).map(r ->"`"+r.getTag()+"`").collect(Collectors.joining(" and ")) +
+				", because this char style cannot be represented in " + targetFormat + ".");
 	}
 
 	/**

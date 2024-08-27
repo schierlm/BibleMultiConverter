@@ -2,35 +2,19 @@ package biblemulticonverter.format.paratext;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assume.assumeTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.Marshaller;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
-import org.w3c.dom.Document;
 
 import biblemulticonverter.data.Bible;
-import biblemulticonverter.format.paratext.ParatextBook.ParatextBookContentPart;
-import biblemulticonverter.schema.usfx.ObjectFactory;
-import biblemulticonverter.schema.usfx.PType;
-import biblemulticonverter.schema.usfx.Usfx;
+import biblemulticonverter.format.paratext.model.Version;
 import biblemulticonverter.tools.Validate;
 
 public class USFM3AllTagsTest {
@@ -122,17 +106,38 @@ public class USFM3AllTagsTest {
 		}
 	}
 
-	@Test
-	public void testUSX() throws Exception {
-		String expectedContent = testBookContent.replaceAll("\n\\\\toca.*", "").replaceAll("\n\\\\usfm 3.0", "").replaceAll("\\\\zCustomTag[* ]", "")
-				.replace("\\sd2", "\\b").replace("\\ph", "\\li").replace("\\po", "\\p").replace("\\pr ", "\\pmr ").replace("\\pr*", "\\pmr*").replace("\\qd", "\\d")
-				.replace("\\lh", "\\p").replace("\\lf", "\\p").replace("\\lim", "\\li").replaceAll("\\\\li([kv]|tl)\\*", " ").replaceAll("\\\\li([kv]|tl) ", "")
+	private String toVersion2_2(String version3) {
+		return version3.replace("\\usfm 3.0\n", "").replaceAll("\n\\\\toca[123].*", "").replace("\\qd", "\\d")
+				.replace("\\efm", "\\fm").replace("\\sd2", "\\b").replace("\\po", "\\p").replace("\\lh", "\\p")
+				.replace("\\lf", "\\m").replace("\\lim", "\\li").replaceAll("\\\\li([kv]|tl)[ *]", "")
 				.replace(" strong=\"G0123\" srcloc=\"version:1.2.3.4\"\\w*", "\\w*").replace("\\png", "\\pn").replaceAll("\\\\wa[ *]", "").replace("\\efm", "\\fm")
-				.replace("\\sup ", "").replace("\\sup*", " ").replace("~", " ").replace("\\rb Ruby|gloss=\"Roo:bee\"\\rb*", "Ruby\\pro Roo:bee\\pro*")
+				.replace("\\rb Ruby|gloss=\"Roo:bee\"\\rb*", "\\pro Ruby\\pro*").replace("\\sup ", "").replace("\\sup*", "")
 				.replace("\\tc1-2", "\\tc1 \\tc2").replace("\\th2-3", "\\th2 \\th3").replace("\\fw", "\\ft").replace("\\xop ibidem:\\xop*", "").replaceAll("\\\\xta[ *]", "").replace("|link-href=\"GEN 9:8\"\\xt*", "\\xt*")
 				.replace("|id=\"measures\"", "").replace("|id=\"x-custom\"", "")
-				.replace("\\jmp to nowhere|link-href=\"https://schierlm.github.io\" x-why=\"That's me\"\\jmp*. Here is \\jmp |link-id=\"a-loop\"\\jmp*\\jmp A loop|link-href=\"#a-loop\" link-title=\"Loop\"\\jmp*.\\ts \\*", "to nowhere . Here is A loop .")
-				.replace("\\zmyMilestone \\* Milestone,\\qt-s |sid=\"qqA\" who=\"Nobody\"\\*\" Fake Quote:\\qt2-s |sid=\"qqB\" who=\"Nobodier\"\\* Nobody said this!\\qt-e |eid=\"qqB\"\\*\"\\qt-e |eid=\"qqA\"\\*\\ts \\*", " Milestone, \" Fake Quote: Nobody said this! \"");
+				.replace("\\jmp to nowhere|link-href=\"https://schierlm.github.io\" x-why=\"That's me\"\\jmp*. Here is \\jmp |link-id=\"a-loop\"\\jmp*\\jmp A loop|link-href=\"#a-loop\" link-title=\"Loop\"\\jmp*.\\ts \\*", "to nowhere. Here is A loop.")
+				.replace("\\zmyMilestone \\* Milestone,\\qt-s |sid=\"qqA\" who=\"Nobody\"\\*\" Fake Quote:\\qt2-s |sid=\"qqB\" who=\"Nobodier\"\\* Nobody said this!\\qt-e |eid=\"qqB\"\\*\"\\qt-e |eid=\"qqA\"\\*\\ts \\*", " Milestone,\" Fake Quote: Nobody said this!\"");
+	}
+
+	private String toVersion2_1(String version3) {
+		return toVersion2_2(version3).replace("\\iqt", "\\qt").replace("\\xot", "\\xt").replace("\\xnt", "\\xt");
+	}
+
+	private String toVersion2_0_4(String version3) {
+		return toVersion2_1(version3).replace("\\ef", "\\f").replaceFirst("\\\\esb(.|\n)*?\\\\esbe\n", "");
+	}
+
+	private String toVersion2(String version3) {
+		return toVersion2_0_4(testBookContent).replaceAll("\n\\\\toc[123] .*", "").replaceAll("\\\\f[pl]", "\\\\ft");
+	}
+
+	@Test
+	public void testUSX() throws Exception {
+		String expectedContent = toVersion2_2(testBookContent.replace("\\sup*", " ").replaceAll("\\\\li([kv]|tl)\\*", " ")
+				.replace("\\rb Ruby|gloss=\"Roo:bee\"\\rb*", "Ruby\\pro Roo:bee\\pro*"))
+				.replace("\\pr ", "\\pmr ").replace("\\ph", "\\li")
+				.replace("~", " ").replaceAll("\\\\zCustomTag[* ]", "")
+				.replace("nowhere. Here is A loop.", "nowhere . Here is A loop .")
+				.replace("Milestone,\" Fake Quote: Nobody said this!\"", "Milestone, \" Fake Quote: Nobody said this! \"");
 		testSingleFormat(new USX(), "#-*.usx", expectedContent);
 	}
 
@@ -173,6 +178,83 @@ public class USFM3AllTagsTest {
 	@Test
 	public void testParatextUSFM() throws Exception {
 		testSingleFormat(new USFM(), "#-*.usfm", null);
+	}
+
+	private void testParatextStripped(String[] exportArgs, String expectedContent, Version expectedVersion) throws Exception {
+		File originalFile = USX3Test.getResource("/usfm3allTags/01-MAT.usfm");
+		ParatextBook testBookCopy = new USFM().doImportBook(originalFile);
+		new ParatextStripped().stripBooks(Arrays.asList(testBookCopy), exportArgs);
+		USFM usfm = new USFM();
+		assertEquals(expectedVersion, usfm.getMinRequiredVersion(testBookCopy));
+		File resultFile = USX3Test.createTempFile("export", ".usfm");
+		usfm.doExportBook(testBookCopy, resultFile);
+		String actualContent = new String(Files.readAllBytes(resultFile.toPath()), StandardCharsets.UTF_8);
+		assertEquals(expectedContent, actualContent);
+		usfm.doExportBook(usfm.doImportBook(resultFile), resultFile);
+		assertEquals(expectedContent, new String(Files.readAllBytes(resultFile.toPath()), StandardCharsets.UTF_8));
+	}
+
+	@Test
+	public void testConvertVersion3() throws Exception {
+		testParatextStripped(new String[0], testBookContent, Version.V3);
+		testParatextStripped(new String[] { "CompatibleVersion=" + Version.V3.toString() }, testBookContent, Version.V3);
+	}
+
+	@Test
+	public void testConvertVersion2_2() throws Exception {
+		String expectedContent = toVersion2_2(testBookContent);
+		testParatextStripped(new String[] { "CompatibleVersion=" + Version.V2_3.toString() }, expectedContent, Version.V2_2);
+		testParatextStripped(new String[] { "CompatibleVersion=" + Version.V2_2.toString() }, expectedContent, Version.V2_2);
+	}
+
+	@Test
+	public void testConvertVersion2_1() throws Exception {
+		String expectedContent = toVersion2_1(testBookContent);
+		testParatextStripped(new String[] { "CompatibleVersion=" + Version.V2_1.toString() }, expectedContent, Version.V2_1);
+	}
+
+	@Test
+	public void testConvertVersion2_0_4() throws Exception {
+		String expectedContent = toVersion2_0_4(testBookContent);
+		testParatextStripped(new String[] { "CompatibleVersion=" + Version.V2_0_4.toString() }, expectedContent, Version.V2_0_4);
+	}
+
+	@Test
+	public void testConvertVersion2_0_3() throws Exception {
+		String expectedContent = toVersion2_0_4(testBookContent).replaceFirst("\n\\\\toc3 .*", "");
+		testParatextStripped(new String[] { "CompatibleVersion=" + Version.V2_0_3.toString() }, expectedContent, Version.V2_0_3);
+	}
+
+	@Test
+	public void testConvertVersion2() throws Exception {
+		String expectedContent = toVersion2(testBookContent);
+		testParatextStripped(new String[] { "CompatibleVersion=" + Version.V2.toString() }, expectedContent, Version.V2);
+	}
+
+	@Test
+	public void testConvertVersion1() throws Exception {
+		String expectedContent = toVersion2(testBookContent).replace("\\sr ", "\\mr ").replace("\\pmo ", "\\mi ")
+				.replace("\\pm ", "\\pi ").replace("\\pmr ", "\\pr ").replace("\\pmc ", "\\mi ").replace("\\em", "\\it")
+				.replace("\\qm", "\\q").replace("\\addpn The Great\\addpn*", "\\add \\+pn The Great\\+pn*\\add*")
+				.replaceAll("\\\\(wj|pro)[ *]", "");
+		testParatextStripped(new String[] { "CompatibleVersion=" + Version.V1.toString() }, expectedContent, Version.V1);
+	}
+
+	@Test
+	public void testStripEverything() throws Exception {
+		String expectedContent = testBookContent.replaceAll("\n\\\\(i[mspbloeq]|rem ).*?(?=\n)", "")
+				.replace("\\ef † \\cat Etymology\\cat*\\fr 1.1:\\fr*\\fq First:\\fq*\\ft Fore-est\\ft*\\ef*", "")
+				.replaceFirst("\\\\esb (.|\n)*?\\\\esbe\n", "")
+				.replaceAll("\\\\zCustomTag[ *]", "").replace("\\zmyMilestone \\*", "")
+				.replace("\\fdc This bible contains deuterocanonical content.\\fdc*", "")
+				.replace("\\dc in deuterocanonical books\\dc*", "")
+				.replace("\\xot Exo 1.1\\xot*", "").replace("\\xdc Sir 2.3\\xdc*", "")
+				.replaceAll("\\|(lemma|link|gloss|[se]id).*?\\\\", "\\\\");
+		testParatextStripped(new String[] {
+				"StripStudyContent", "StripCustomMarkup", "StripIntroductions", "StripTagAttributes",
+				"StripRemarks", "StripReferences", "StripPart=OT", "StripPart=DC",
+				"StripStudyCategory=Sidey", "StripStudyCategory=Etymology", "StripParagraph=qxq",
+		}, expectedContent, Version.V3);
 	}
 
 	private static void deleteRecursively(File f) throws IOException {

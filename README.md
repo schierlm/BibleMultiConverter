@@ -149,7 +149,9 @@ tagged OT/NT/Deuterocanonical content from such a file. It can also be used to c
 from/to **ParatextDump** (which is a diffable plain text dump of the internal Paratext
 structure and useful for comparing different Paratext formats), **ParatextCompact* (a more compact
 representation intended for archival which will remain forward compatible) and **ParatextVPL** (which is
-a different diffable format that looks more like VPL, but uses Paratext tags) formats.
+a different diffable format that looks more like VPL, but uses Paratext tags) formats. In combination
+with the **ParatextStripped** format, various features of the file can be stripped or it can be
+made compatible to an older USFM version.
 
 The **MyBibleZoneListDownloader** tool (part of SQLite edition) can be used to download
 the list of available MyBible.Zone modules from the module registry (that is also queried
