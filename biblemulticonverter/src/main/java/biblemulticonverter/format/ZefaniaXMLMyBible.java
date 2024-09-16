@@ -278,6 +278,12 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 							}
 
 							@Override
+							public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+								System.out.println("WARNING: Cross references in captions are not supported (stripped)");
+								return this;
+							}
+
+							@Override
 							public Visitor<RuntimeException> visitFormattingInstruction(FormattingInstructionKind kind) throws RuntimeException {
 								System.out.println("WARNING: Formatting instructions in captions are not supported (stripped)");
 								return this;

@@ -770,6 +770,15 @@ public class MyBibleZone implements RoundtripFormat {
 							}
 
 							@Override
+							public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+								if (BOOK_NUMBERS.containsKey(book)) {
+									String endVerse = firstChapter != lastChapter ? "-" + lastChapter + ":" + lastVerse : !firstVerse.equals(lastVerse) ? "-" + lastVerse : "";
+									sb.append("<x>" + BOOK_NUMBERS.get(book) + " " + firstChapter + ":" + firstVerse + endVerse + "</x>");
+								}
+								return this;
+							}
+
+							@Override
 							public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
 								// handle this separately; we do not like
 								// footnote text inside the headline!

@@ -963,7 +963,7 @@ public class FormattedText {
 		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID bookID, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
 			if (context.ordinal() >= ValidationContext.XREF.ordinal())
 				violation(ValidationCategory.NESTED_XREF, "");
-			if (context != ValidationContext.NORMAL_TEXT && context.ordinal() < ValidationContext.FOOTNOTE.ordinal())
+			if (context == ValidationContext.VERSE)
 				violation(ValidationCategory.INVALID_XREF_LOCATION, "");
 			visitInlineElement();
 			Book book = bible.getBook(bookAbbr, bookID);
@@ -1133,7 +1133,7 @@ public class FormattedText {
 		INVALID_VIRTUAL_VERSE_ORDER("Invalid order of virtual verses: "),
 		INVALID_HEADLINE_DEPTH_ORDER("Invalid headline depth order: "),
 		INVALID_SEPARATOR_LOCATION("Verse separators are only allowed in verses!"),
-		INVALID_XREF_LOCATION("cross references may only appear inside footnotes"),
+		INVALID_XREF_LOCATION("cross references may only appear inside footnotes, prologs or headlines"),
 		INVALID_LINE_BREAK_LOCATION("Line breaks only allowed in block context or footnotes"),
 
 		WHITESPACE_ADJACENT("Whitespace adjacent to whitespace found"),
