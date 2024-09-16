@@ -18,11 +18,11 @@ jobs:
         java-version: 1.8
     - name: Build with Maven
       run: mvn -B package
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: BibleMultiConverter-Release
         path: biblemulticonverter/target/BibleMultiConverter-0.0-SNAPSHOT-dist
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: BibleMultiConverter-AllInOneEdition-Release
         path: biblemulticonverter-allinone/target/BibleMultiConverter-AllInOneEdition-0.0-SNAPSHOT-dist
