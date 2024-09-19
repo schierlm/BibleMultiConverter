@@ -200,6 +200,7 @@ public class LogosHTML implements ExportFormat {
 	private LogosLinksGenerator linksGenerator;
 
 	private boolean wordNestedHyperlinks = Boolean.getBoolean("biblemulticonverter.logos.nestedhyperlinks.word");
+	private boolean word2024 = Boolean.getBoolean("biblemulticonverter.logos.word2024");
 
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
@@ -265,9 +266,15 @@ public class LogosHTML implements ExportFormat {
 					"<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />\n" +
 					"<style>" +
 					"body, h1, h2, h3, h4, h5, h6 { font-family: \"Times New Roman\";}\n" +
-					"a { color: black; text-decoration: none; so-language: en-US;}\n" +
-					"a.sdfootnotesym, a.sdendnotesym { font-style: italic;}\n" +
-					"h1 {font-size: 24pt;}\n" +
+					"a { color: black; text-decoration: none; so-language: en-US;}\n");
+			if (word2024) {
+				bw.write(".redcol, .redcol a { color: red; }\n" +
+						".bluecol, .bluecol a { color: blue; }\n" +
+						"span.MsoFootnoteReference { vertical-align:super; }\n");
+			} else {
+				bw.write("a.sdfootnotesym, a.sdendnotesym { font-style: italic;}\n");
+			}
+			bw.write("h1 {font-size: 24pt;}\n" +
 					"h2 {font-size: 22pt;}\n" +
 					"h3 {font-size: 20pt;}\n" +
 					"h4 {font-size: 18pt;}\n" +
@@ -732,6 +739,12 @@ public class LogosHTML implements ExportFormat {
 			footnoteCounter++;
 			footnoteNumber++;
 
+			if (word2024) {
+				footnoteWriter.write("<div style='mso-element:footnote' id=ftn" + footnoteCounter + "><a style='mso-footnote-id:ftn" + footnoteCounter + "' href=\"#_ftnref" + footnoteCounter + "\" name=\"_ftn" + footnoteCounter + "\" title=\"\"><span class=MsoFootnoteReference>" + footnoteNumber + "</span></a> ");
+				writer.write("<a style='mso-footnote-id:ftn" + footnoteCounter + "' href=\"#_ftn" + footnoteCounter + "\" name=\"_ftnref" + footnoteCounter + "\" title=\"\"><span class=MsoFootnoteReference>" + footnoteNumber + "</span></a>");
+				return new LogosVisitor(footnoteWriter, "</div>\n", null, nt, verseReference, versemap, schemes, null, null, null, usedHeadlines, null);
+			}
+
 			footnoteWriter.write("<DIV ID=\"sdfootnote" + footnoteCounter + "\">");
 			writer.write("<A CLASS=\"sdfootnoteanc\" HREF=\"#sdfootnote" + footnoteCounter + "sym\" sdfixed><sup>" + footnoteNumber + "</sup></A>");
 			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, verseReference, versemap, schemes, null, null, null, usedHeadlines, null);
@@ -745,6 +758,29 @@ public class LogosHTML implements ExportFormat {
 				return this;
 			}
 			return super.visitFormattingInstruction(kind);
+		}
+
+		@Override
+		protected String createFormattingInstructionStartTag(FormattingInstructionKind kind) {
+			if (word2024 && kind.getCss().contains("color: red;")) {
+				return "<span class=\"redcol\" \"style=\"" + kind.getCss() + "\">";
+			} else if (word2024 && kind.getCss().contains("color: blue;")) {
+				return "<span class=\"bluecol\" style=\"" + kind.getCss() + "\">";
+			}
+			return super.createFormattingInstructionStartTag(kind);
+		}
+
+		@Override
+		public Visitor<IOException> visitCSSFormatting(String css) throws IOException {
+			if (word2024) {
+				String extraClass = css.matches(".*color: *red.*") ? "redcol" : css.matches(".*color: *blue.*") ? "bluecol" : null;
+				if (extraClass != null) {
+					writer.write("<span class=\"css " + extraClass + "\" style=\"" + css + "\">");
+					pushSuffix("</span>");
+					return this;
+				}
+			}
+			return super.visitCSSFormatting(css);
 		}
 
 		@Override
@@ -816,6 +852,16 @@ public class LogosHTML implements ExportFormat {
 			List<String> links = linksGenerator.generateLinks(nt, verseReference, strongsPrefixes, strongs, rmac, sourceIndices);
 			if (links.size() == 0) {
 				pushSuffix("");
+			} else if (word2024) {
+				Collections.reverse(links);
+				StringBuilder prefix = new StringBuilder("<a href=\"" + links.remove(0) + "\">");
+				StringBuilder suffix = new StringBuilder();
+				for (String link : links) {
+					prefix.append("<span style='mso-field-code: \"HYPERLINK \\0022" + link.replace(":", "\\:") + "\\0022 \\\\h\"'>");
+					suffix.append("</span>");
+				}
+				writer.write(prefix.toString());
+				pushSuffix(suffix.toString() + "</a>");
 			} else {
 				// LibreOffice seems to have a problem when there are too many
 				// hyperlinks.
