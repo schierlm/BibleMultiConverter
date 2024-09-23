@@ -385,6 +385,11 @@ public class USFM extends AbstractParatextFormat {
 				textPart = "";
 			} else if ((tag.startsWith("z") || tag.matches("qt[1-5]?(-[se])?|ts?(\\-[se])?")) && data.startsWith("\\*", startPos)) {
 				Milestone milestone = new Milestone(tag.startsWith("z") ? origTag : tag);
+				if (containerStack.isEmpty()) {
+					ParatextCharacterContent container = new ParatextCharacterContent();
+					containerStack.add(container);
+					result.getContent().add(container);
+				}
 				containerStack.get(containerStack.size() - 1).getContent().add(milestone);
 				if (textPart.startsWith("|")) {
 					String attList = textPart.substring(1).trim();
@@ -403,6 +408,11 @@ public class USFM extends AbstractParatextFormat {
 					}
 				}
 			} else if (tag.startsWith("z")) {
+				if (containerStack.isEmpty()) {
+					ParatextCharacterContent container = new ParatextCharacterContent();
+					containerStack.add(container);
+					result.getContent().add(container);
+				}
 				containerStack.get(containerStack.size() - 1).getContent().add(new CustomMarkup(origTag, false));
 			} else {
 				System.out.println("WARNING: Skipping unknown tag \\" + tag);

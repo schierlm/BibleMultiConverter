@@ -168,7 +168,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		INTRODUCTION_QUOTED_TEXT(Version.V2_2, "iqt", FormattingInstructionKind.ITALIC),
 
 		QUOTATION_REFERENCE(Version.V1, "rq", null, "font-style: italic;-bmc-usfm-tag: rq;", ExtendedLineBreakKind.NEWLINE, ExtendedLineBreakKind.INDENT_RIGHT_JUSTIFIED, ExtendedLineBreakKind.NEWLINE, 0, null, null),
-		SELAH(Version.V1, "qs", FormattingInstructionKind.ITALIC, FormattingInstructionKind.DIVINE_NAME),
+		SELAH(Version.V1, "qs", null, buildCSS(new FormattingInstructionKind[] {FormattingInstructionKind.ITALIC, FormattingInstructionKind.DIVINE_NAME}) + "-bmc-usfm-tag: qa;", ExtendedLineBreakKind.SAME_LINE_IF_POSSIBLE, ExtendedLineBreakKind.INDENT_RIGHT_JUSTIFIED, null, 0, null, null),
 		ACROSTIC_CHARACTER(Version.V1, "qac", FormattingInstructionKind.BOLD, FormattingInstructionKind.ITALIC),
 
 		LIST_TOTAL(Version.V3, "litl"),

@@ -180,7 +180,7 @@
 \v 3 \ndx Indexed Figures.\ndx*\fig At once they left their nets.|src="avnt016.jpg" size="span" ref="5.3"\fig*\fig Took her by the hand.|alt="doctor" src="avnt017.tif" size="col" loc="5.1-4" copy="Public Domain" ref="5.3"\fig*
 \v 4 \rb Ruby|gloss="Roo:bee"\rb* glosses \pro Gloh-sehs\pro*. \wg Greek+\wg*\wh Hebrew+\wh*\wa Aramaic\wa* word list.
 \v 5 Linking \jmp to nowhere|link-href="https://schierlm.github.io" x-why="That's me"\jmp*. Here is \jmp |link-id="a-loop"\jmp*\jmp A loop|link-href="#a-loop" link-title="Loop"\jmp*.\ts \*
-\v 6 Standalone\zmyMilestone \* Milestone,\qt-s |sid="qqA" who="Nobody"\*" Fake Quote:\qt2-s |sid="qqB" who="Nobodier"\* Nobody said this!\qt-e |eid="qqB"\*"\qt-e |eid="qqA"\*\ts \*
+\v 6 Standalone\zmyMilestone \* Milestone,\qt-s |sid="qqA" who="Nobody"\*" Fake Quote:\qt2-s |sid="qqB" who="Nobodier"\* Nobody said this!\qt2-e |eid="qqB"\*"\qt-e |eid="qqA"\*\ts \*
 \mte2 End of the
 \mte1 Gospel of Matthew
 \periph Chronology

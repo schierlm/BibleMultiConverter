@@ -65,6 +65,8 @@ public class USFM3AllTagsTest {
 		File originalFile = USX3Test.getResource("/usfm3allTags/01-MAT.usfm");
 		ParatextBook testBookCopy = new USFM().doImportBook(originalFile);
 
+		assertEquals(0, new ParatextValidate().validateBook(testBookCopy));
+
 		Bible bible = new AbstractParatextFormat("Dummy") {
 			@Override
 			protected List<ParatextBook> doImportAllBooks(File inputFile) throws Exception {
@@ -115,7 +117,7 @@ public class USFM3AllTagsTest {
 				.replace("\\tc1-2", "\\tc1 \\tc2").replace("\\th2-3", "\\th2 \\th3").replace("\\fw", "\\ft").replace("\\xop ibidem:\\xop*", "").replaceAll("\\\\xta[ *]", "").replace("|link-href=\"GEN 9:8\"\\xt*", "\\xt*")
 				.replace("|id=\"measures\"", "").replace("|id=\"x-custom\"", "")
 				.replace("\\jmp to nowhere|link-href=\"https://schierlm.github.io\" x-why=\"That's me\"\\jmp*. Here is \\jmp |link-id=\"a-loop\"\\jmp*\\jmp A loop|link-href=\"#a-loop\" link-title=\"Loop\"\\jmp*.\\ts \\*", "to nowhere. Here is A loop.")
-				.replace("\\zmyMilestone \\* Milestone,\\qt-s |sid=\"qqA\" who=\"Nobody\"\\*\" Fake Quote:\\qt2-s |sid=\"qqB\" who=\"Nobodier\"\\* Nobody said this!\\qt-e |eid=\"qqB\"\\*\"\\qt-e |eid=\"qqA\"\\*\\ts \\*", " Milestone,\" Fake Quote: Nobody said this!\"");
+				.replace("\\zmyMilestone \\* Milestone,\\qt-s |sid=\"qqA\" who=\"Nobody\"\\*\" Fake Quote:\\qt2-s |sid=\"qqB\" who=\"Nobodier\"\\* Nobody said this!\\qt2-e |eid=\"qqB\"\\*\"\\qt-e |eid=\"qqA\"\\*\\ts \\*", " Milestone,\" Fake Quote: Nobody said this!\"");
 	}
 
 	private String toVersion2_1(String version3) {

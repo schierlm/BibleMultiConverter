@@ -262,9 +262,6 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 							ctx.currentParagraphExtraCSS = null;
 						}
 						ctx.currentVisitorExtraCSS = ctx.currentParagraphExtraCSS;
-						if (kind.getCategory() == ParagraphKindCategory.EXTRA_ATTRIBUTE_META) {
-							ctx.currentVisitor = ctx.currentVisitor.visitExtraAttribute(ExtraAttributePriority.SKIP, "paratext", "meta-paragraph", kind.getTag());
-						}
 					} else {
 						ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NORMAL;
 						if (kind == ParagraphKind.DESCRIPTIVE_TITLE) {
@@ -275,7 +272,10 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 							ctx.currentParagraphExtraCSS = null;
 						}
 					}
-					if (ctx.currentVisitor != null && elbk != null) {
+					if (kind.getCategory() == ParagraphKindCategory.EXTRA_ATTRIBUTE_META) {
+						ctx.currentVisitor = ctx.currentVisitor.visitExtraAttribute(ExtraAttributePriority.SKIP, "paratext", "meta-paragraph", kind.getTag());
+					}
+					if (ctx.currentVisitor != null && elbk != null && elbk != ExtendedLineBreakKind.SAME_LINE_IF_POSSIBLE) {
 						ctx.currentVisitor.visitLineBreak(elbk.toLineBreakKind(kind.getLineBreakIndent()));
 					}
 				}

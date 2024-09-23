@@ -134,6 +134,7 @@ public class ParatextBook {
 							cc.getContent().remove(j);
 						} else {
 							cc.getContent().set(j, Text.from(oldText.getChars().replaceFirst(" +$", "")));
+							break;
 						}
 					}
 				}
@@ -152,6 +153,21 @@ public class ParatextBook {
 				String suffix = extractTrailingWhitespace((AutoClosingFormatting) cc.getContent().get(i));
 				if (!suffix.isEmpty()) {
 					cc.getContent().add(i + 1, Text.from(suffix));
+				}
+				if (((AutoClosingFormatting) cc.getContent().get(i)).getKind().getLineBreakKind() == ExtendedLineBreakKind.SAME_LINE_IF_POSSIBLE) {
+					ParatextCharacterContentPart last = cc.getContent().get(i-1);
+					if (last instanceof AutoClosingFormatting) {
+						extractTrailingWhitespace((AutoClosingFormatting) last);
+					} else if (last instanceof Text) {
+						String oldText = ((Text) last).getChars();
+						String newText = oldText.replaceFirst(" +$", "");
+						if (newText.isEmpty()) {
+							cc.getContent().remove(i-1);
+							i--;
+						} else if (!newText.equals(oldText)) {
+							cc.getContent().set(i - 1, Text.from(newText));
+						}
+					}
 				}
 			}
 		}
@@ -519,7 +535,7 @@ public class ParatextBook {
 		PARAGRAPH_PI3(Version.V1, false, ParagraphKindCategory.TEXT, "pi3", 0, false, ExtendedLineBreakKind.PARAGRAPH, 3, null),
 		PARAGRAPH_PI4(Version.V1, false, ParagraphKindCategory.TEXT, "pi4", 0, false, ExtendedLineBreakKind.PARAGRAPH, 4, null),
 		PARAGRAPH_MI(Version.V1, false, ParagraphKindCategory.TEXT, "mi", 0, false, ExtendedLineBreakKind.NO_FIRST_LINE_INDENT, 1, null),
-		NO_BREAK_AT_START_OF_CHAPTER(Version.V1, false, ParagraphKindCategory.EXTRA_ATTRIBUTE_META, "nb", 0, false, null, 0, null),
+		NO_BREAK_AT_START_OF_CHAPTER(Version.V1, false, ParagraphKindCategory.TEXT, "nb", 0, false, ExtendedLineBreakKind.SAME_LINE_IF_POSSIBLE, 0, null),
 		PARAGRAPH_CLOSING(Version.V1, false, ParagraphKindCategory.TEXT, "cls", 0, false, ExtendedLineBreakKind.PARAGRAPH, ExtendedLineBreakKind.INDENT_RIGHT_JUSTIFIED, null),
 		PARAGRAPH_LH(Version.V3, false, ParagraphKindCategory.TEXT, "lh", 0, false, null, 0, null),
 		PARAGRAPH_LI(Version.V1, false, ParagraphKindCategory.TEXT, "li", 0, false, ExtendedLineBreakKind.HANGING_INDENT, 1, null),
