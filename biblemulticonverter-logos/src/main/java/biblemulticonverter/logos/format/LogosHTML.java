@@ -29,6 +29,8 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
@@ -266,10 +268,10 @@ public class LogosHTML implements ExportFormat {
 					"<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />\n" +
 					"<style>" +
 					"body, h1, h2, h3, h4, h5, h6 { font-family: \"Times New Roman\";}\n" +
-					"a { color: black; text-decoration: none; so-language: en-US;}\n");
+					"a.g { color: black; text-decoration: none; so-language: en-US;}\n");
 			if (word2024) {
-				bw.write(".redcol, .redcol a { color: red; }\n" +
-						".bluecol, .bluecol a { color: blue; }\n" +
+				bw.write(".redcol, .redcol a.g { color: red; }\n" +
+						".bluecol, .bluecol a.g { color: blue; }\n" +
 						"span.MsoFootnoteReference { vertical-align:super; }\n");
 			} else {
 				bw.write("a.sdfootnotesym, a.sdendnotesym { font-style: italic;}\n");
@@ -733,7 +735,7 @@ public class LogosHTML implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean xref) throws IOException {
 			if (footnoteWriter == null)
 				throw new IllegalStateException("Footnote inside footnote not supported");
 			footnoteCounter++;
@@ -747,6 +749,9 @@ public class LogosHTML implements ExportFormat {
 
 			footnoteWriter.write("<DIV ID=\"sdfootnote" + footnoteCounter + "\">");
 			writer.write("<A CLASS=\"sdfootnoteanc\" HREF=\"#sdfootnote" + footnoteCounter + "sym\" sdfixed><sup>" + footnoteNumber + "</sup></A>");
+			if (xref) {
+				footnoteWriter.write(System.getProperty("biblemulticonverter.logos.xrefmarker", FormattedText.XREF_MARKER));
+			}
 			return new LogosVisitor(footnoteWriter, "</DIV>\n", null, nt, verseReference, versemap, schemes, null, null, null, usedHeadlines, null);
 		}
 
@@ -784,12 +789,12 @@ public class LogosHTML implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
 			String verseMap = (versemap == null ? "Bible" : versemap);
-			if (!isVerseCovered(schemes.get(verseMap), book, firstChapter, firstVerse) || !isVerseCovered(schemes.get(verseMap), book, lastChapter, lastVerse)) {
+			if (!isVerseCovered(schemes.get(verseMap), firstBook, firstChapter, firstVerse) || !isVerseCovered(schemes.get(verseMap), lastBook, lastChapter, lastVerse)) {
 				verseMap = null;
 				for(Map.Entry<String, VersificationScheme> candidate : schemes.entrySet()) {
-					if (isVerseCovered(candidate.getValue(), book, firstChapter, firstVerse) && isVerseCovered(candidate.getValue(), book, lastChapter, lastVerse)) {
+					if (isVerseCovered(candidate.getValue(), firstBook, firstChapter, firstVerse) && isVerseCovered(candidate.getValue(), lastBook, lastChapter, lastVerse)) {
 						verseMap = candidate.getKey();
 						break;
 					}
@@ -802,18 +807,37 @@ public class LogosHTML implements ExportFormat {
 				return this;
 			}
 			writer.write(searchField("crossref", true, 0, verseReference) + "[[ ");
-			String ref = firstChapter + ":" + firstVerse;
-			if (firstChapter != lastChapter) {
-				ref += "-" + lastChapter + ":" + lastVerse;
-			} else if (!firstVerse.equals(lastVerse)) {
-				ref += "-" + lastVerse;
+			String ref = LOGOS_BOOKS.get(firstBook) + " " + firstChapter + ":" + firstVerse;
+			if (lastChapter == -1) {
+				if (firstBook != lastBook) {
+					ref += LOGOS_BOOKS.get(firstBook) + "-" + LOGOS_BOOKS.get(lastBook);
+				} else {
+					ref = LOGOS_BOOKS.get(firstBook);
+				}
+			} else if (lastVerse.equals("*")) {
+				ref = LOGOS_BOOKS.get(firstBook) + " " + firstChapter;
+				if (firstBook != lastBook) {
+					ref += "-" + LOGOS_BOOKS.get(lastBook) + " " + lastChapter;
+				} else if (firstChapter != lastChapter) {
+					ref += "-" + lastChapter;
+				}
+			} else {
+				if (firstBook != lastBook) {
+					ref += "-" + LOGOS_BOOKS.get(lastBook) + " " + lastChapter + ":" + lastVerse;
+				} else if (firstChapter != lastChapter) {
+					ref += "-" + lastChapter + ":" + lastVerse;
+				} else if (!firstVerse.equals(lastVerse)) {
+					ref += "-" + lastVerse;
+				}
 			}
-			pushSuffix(" &gt;&gt; " + verseMap + ":" + LOGOS_BOOKS.get(book) + " " + ref + "]]" + searchField("crossref", false, 0, verseReference));
+			pushSuffix(" &gt;&gt; " + verseMap + ":" + ref + "]]" + searchField("crossref", false, 0, verseReference));
 			return this;
 		}
 
 		private boolean isVerseCovered(VersificationScheme scheme, BookID book, int chapter, String verse) {
 			BitSet[] chapterVerses = scheme.getCoveredBooks().get(book);
+			if (chapter == -1) chapter = 1;
+			if (verse.equals("*")) verse = "1";
 			if (chapterVerses == null || chapter > chapterVerses.length)
 				return false;
 			BitSet allowedVerses = chapterVerses[chapter - 1];
@@ -826,7 +850,7 @@ public class LogosHTML implements ExportFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws IOException {
 			grammarFlag = false;
 			writer.write(lineSeparator);
 		}
@@ -848,13 +872,13 @@ public class LogosHTML implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
-			List<String> links = linksGenerator.generateLinks(nt, verseReference, strongsPrefixes, strongs, rmac, sourceIndices);
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+			List<String> links = linksGenerator.generateLinks(nt, verseReference, strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
 			if (links.size() == 0) {
 				pushSuffix("");
 			} else if (word2024) {
 				Collections.reverse(links);
-				StringBuilder prefix = new StringBuilder("<a href=\"" + links.remove(0) + "\">");
+				StringBuilder prefix = new StringBuilder("<a class=\"g\" href=\"" + links.remove(0) + "\">");
 				StringBuilder suffix = new StringBuilder();
 				for (String link : links) {
 					prefix.append("<span style='mso-field-code: \"HYPERLINK \\0022" + link.replace(":", "\\:") + "\\0022 \\\\h\"'>");
@@ -870,10 +894,10 @@ public class LogosHTML implements ExportFormat {
 				// for postprocessing later.
 				grammarCounter++;
 				String firstLink = links.remove(0);
-				String prefix = "<a href=\"" + firstLink + "\">";
+				String prefix = "<a class=\"g\" href=\"" + firstLink + "\">";
 				StringBuilder suffix = new StringBuilder("</a>");
 				for (String link : links) {
-					suffix.append("<a href=\"" + link + "\">\u2295</a>");
+					suffix.append("<a class=\"g\" href=\"" + link + "\">\u2295</a>");
 				}
 				boolean stackProblem = suffixStack.size() > 1;
 				if (suffixStack.size() == 2 && suffixStack.get(1).equals("</span>")) {
@@ -899,6 +923,12 @@ public class LogosHTML implements ExportFormat {
 					return new GrammarHackVisitor(this, writer, prefix, suffix.toString(), altPrefix.toString(), "</strike>");
 				}
 			}
+			return this;
+		}
+
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			pushSuffix("");
 			return this;
 		}
 

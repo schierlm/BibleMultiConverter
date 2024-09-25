@@ -16,6 +16,7 @@ import biblemulticonverter.ModuleRegistry.Module;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
@@ -79,7 +80,7 @@ public class Bible implements VersificationFormat {
 							}
 
 							@Override
-							public void visitLineBreak(LineBreakKind kind) {
+							public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws RuntimeException {
 								accountForRef();
 							}
 
@@ -142,12 +143,14 @@ public class Bible implements VersificationFormat {
 							}
 
 							@Override
-							public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+							public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
 								if (sources.contains(ImportSource.XREF)) {
-									Reference startRef = new Reference(book, firstChapter, firstVerse);
+									Reference startRef = new Reference(firstBook, firstChapter, firstVerse);
 									if (!xrefRefs.contains(startRef))
 										xrefRefs.add(startRef);
-									Reference endRef = new Reference(book, lastChapter, lastVerse);
+									if (lastVerse.equals("*"))
+										return this;
+									Reference endRef = new Reference(lastBook, lastChapter, lastVerse);
 									if (!xrefRefs.contains(endRef))
 										xrefRefs.add(endRef);
 								}

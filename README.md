@@ -169,6 +169,70 @@ EPUB export is planned (but not high priority at the moment).
 If you want to see any other formats, feel free to open an issue (or a pull request :-D).
 
 
+New `FormattedText` Model
+-------------------------
+
+BibleMultiConverter is currently switching to a new `FormattedText` model (intermediate format) which can
+handle USX3 and USFM3 inputs better. Some formats are **not** yet converted, and therefore are still
+limited to the old intermediate format.
+
+**Status:**
+
+| Format                               | Implementation *(missing features*)      | Testing        |
+| ------------------------------------ | ---------------------------------------- | -------------- |
+| `NeUeParser`                         | complete                                 | extensive      |
+| `Validate`                           | complete                                 | partial        |
+| `Compact`                            | complete                                 | unit tests     |
+| `Diffable`                           | complete                                 | unit tests     |
+| `RoundtripTaggedText`                | complete                                 | unit tests     |
+| `RoundtripXML`                       | complete                                 | unit tests     |
+| `AbstractParatextFormat`             | partial *(maybe complete?)*              | unit tests     |
+| `RoundtripHTML`                      | partial *(Show `ga-` attributes)*        | unit tests     |
+| `RoundtripODT`                       | partial *(Handling of hyperlinks)*       | unit tests     |
+| `AbstractVersificationDetector`      | complete                                 | none           |
+| `AugmentGrammar`                     | complete                                 | none           |
+| `AugmentLogosLinks`                  | complete                                 | none           |
+| `BebliaXML`                          | complete                                 | none           |
+| `LogosRenumberedDiffable`            | complete                                 | none           |
+| `MorphGNT`                           | complete                                 | none           |
+| `OldDiffable`                        | complete                                 | none           |
+| `ReplaceStrongs`                     | complete                                 | none           |
+| `SimpleJSON`                         | complete                                 | none           |
+| `StrippedDiffable`                   | complete                                 | none           |
+| `TranslatorsAmalgamated`             | complete                                 | none           |
+| `VersificationCountsDetector`        | complete                                 | none           |
+| `VersificationMappedDiffable`        | complete                                 | none           |
+| `Accordance`                         | partial                                  | none           |
+| `LaridianPocketBible`    (2x)        | partial                                  | none           |
+| `LogosHTML`                          | partial                                  | none           |
+| `MobiPocket`                         | partial                                  | none           |
+| `MyBibleZone`                        | partial                                  | none           |
+| `OSIS` + `SWORD`                     | partial                                  | none           |
+| `BibleAnalyzerDatabase`              | minimal                                  | none           |
+| `BibleWorks`                         | minimal                                  | none           |
+| `BrowserBible`                       | minimal                                  | none           |
+| `ESwordHTML`                         | minimal                                  | none           |
+| `ESwordV11`                          | minimal                                  | none           |
+| `EquipdEPUB`                         | minimal                                  | none           |
+| `HaggaiXML`                          | minimal                                  | none           |
+| `MyBibleZoneCrossreferences`         | minimal                                  | none           |
+| `MySword`                            | minimal                                  | none           |
+| `OSHB`                               | minimal                                  | none           |
+| `Obsidian`                           | minimal                                  | none           |
+| `OnLineBible`                        | minimal                                  | none           |
+| `QuickBible`                         | minimal                                  | none           |
+| `SoftProjector`                      | minimal                                  | none           |
+| `StrongConcordance`                  | minimal                                  | none           |
+| `StrongDictionary`                   | minimal                                  | none           |
+| `SwordSearcher`                      | minimal                                  | none           |
+| `TheWord`                            | minimal                                  | none           |
+| `UnboundBible`                       | minimal                                  | none           |
+| `Volksbibel2000`                     | minimal                                  | none           |
+| `YCHPalmBible`                       | minimal                                  | none           |
+| `ZefDic` *(2x)*                      | minimal                                  | none           |
+| `ZefaniaXML` *(3x)*                  | minimal                                  | none           |
+
+
 Limitations
 -----------
 
@@ -218,7 +282,7 @@ Reporting exporter bugs
 In case you are trying to export a module, but the exporter throws an error message you
 do not understand, I'd prefer if you could share a **Diffable** version of the module
 with me. However, I understand that this is not always possible, e.g. due to copyright
-restrictions. In that case, you can try if the bug can still be reproduced after 
+restrictions. In that case, you can try if the bug can still be reproduced after
 exporting export the module using the **ScrambledDiffable** export format; this format
 is designed to leave the structure of the document intact but scramble all the (Greek
 and Latin) letters and digits are scrambled beyond repair (or repairable with a password

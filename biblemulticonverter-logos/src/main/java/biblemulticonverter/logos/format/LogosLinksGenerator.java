@@ -12,6 +12,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Utils;
@@ -36,7 +38,7 @@ public class LogosLinksGenerator {
 						System.out.println("WARNING: ExtraLinkFile " + extraLinkFile + " incomplete line: " + line);
 						continue;
 					}
-					if (!fields[0].matches("[A-Z][1-9][0-9]*")) {
+					if (!fields[0].matches("[A-Z][1-9][0-9]*[A-Za-z]?")) {
 						System.out.println("WARNING: ExtraLinkFile " + extraLinkFile + " skipping invalid Strong number: " + line);
 						continue;
 					}
@@ -76,23 +78,34 @@ public class LogosLinksGenerator {
 		}
 	}
 
-	public List<String> generateLinks(boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+	public List<String> generateLinks(boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 		List<String> links = new ArrayList<String>();
 		String[] expandedStrongs = strongs == null ? null : new String[strongs.length];
 		if (strongs != null) {
 			for (int i = 0; i < strongs.length; i++) {
-				expandedStrongs[i] = Utils.formatStrongs(nt, i, strongsPrefixes, strongs);
+				expandedStrongs[i] = Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, "");
 			}
 		}
 		int max = Math.max(strongs == null ? 0 : strongs.length, rmac == null ? 0 : rmac.length);
+		Map<String,List<String>> logosAttributes = new HashMap<>();
+		if (attributeKeys != null) {
+			for(int i=0; i<attributeKeys.length; i++) {
+				if (attributeKeys[i].startsWith("logos:")) {
+					List<String> values = logosAttributes.computeIfAbsent(attributeKeys[i].substring(6), x -> new ArrayList<>());
+					values.add(attributeValues[i]);
+					if (values.size() > max) max = values.size();
+				}
+			}
+		}
 		for (int i = 0; i < max; i++) {
 			if (strongs != null && i < strongs.length) {
 				boolean skipStrongs = false;
 				for (ExtraLinkRule r : extraLinkRules.getOrDefault(expandedStrongs[i], Collections.emptyList())) {
+					Map<String,String> placeholders = new HashMap<>();
 					if (r.conditions != null) {
 						boolean conditionFound = false;
 						for (ExtraLinkCondition cond : r.conditions) {
-							if (cond.matches(verseReference, expandedStrongs, rmac)) {
+							if (cond.matches(verseReference, expandedStrongs, rmac, attributeKeys, attributeValues, placeholders)) {
 								conditionFound = true;
 								break;
 							}
@@ -101,7 +114,7 @@ public class LogosLinksGenerator {
 							continue;
 					}
 					skipStrongs |= r.skipStrongs;
-					links.addAll(r.links);
+					links.addAll(r.getLinks(placeholders));
 				}
 				if (!skipStrongs) {
 					boolean useNT = nt;
@@ -125,6 +138,11 @@ public class LogosLinksGenerator {
 					}
 				}
 			}
+			for(Map.Entry<String,List<String>> logosAttr : logosAttributes.entrySet()) {
+				if (i < logosAttr.getValue().size()) {
+					links.add(logosAttr.getKey() + ":" + logosAttr.getValue().get(i));
+				}
+			}
 		}
 		return links;
 	}
@@ -140,17 +158,32 @@ public class LogosLinksGenerator {
 			this.links = links;
 			this.skipStrongs = skipStrongs;
 		}
+
+		public List<String> getLinks(Map<String,String> placeholders) {
+			if (placeholders.isEmpty())
+				return links;
+			List<String> result = new ArrayList<>();
+			for(String link : links) {
+				for(Map.Entry<String, String> placeholder: placeholders.entrySet()) {
+					link = link.replace("${"+placeholder.getKey()+"}", placeholder.getValue());
+				}
+				result.add(link);
+			}
+			return result;
+		}
 	}
 
 	private static class ExtraLinkCondition {
 		private final Versification.Reference verseNumber;
 		private final List<String> strongNumbers;
 		private final List<String> rmacNumbers;
+		private final List<String> attributePairs;
 
 		public static ExtraLinkCondition parse(String[] conditions) {
 			Reference verseNumber = null;
 			final List<String> strongNumbers = new ArrayList<>();
 			final List<String> rmacNumbers = new ArrayList<>();
+			final List<String> attributePairs = new ArrayList<>();
 			for (String cond : conditions) {
 				try {
 					if (cond.matches(".*\\.[0-9]+\\." + Utils.VERSE_REGEX)) {
@@ -158,10 +191,12 @@ public class LogosLinksGenerator {
 						if (verseNumber != null)
 							throw new IllegalArgumentException("More than one verse reference");
 						verseNumber = new Versification.Reference(BookID.fromOsisId(parts[0]), Integer.parseInt(parts[1]), parts[2]);
-					} else if (cond.matches("[A-Z][1-9][0-9]*")) {
+					} else if (cond.matches("[A-Z][1-9][0-9]*[a-zA-Z]?")) {
 						strongNumbers.add(cond);
 					} else if (cond.matches(Utils.MORPH_REGEX)) {
 						rmacNumbers.add(cond);
+					} else if (cond.contains("=")) {
+						attributePairs.add(cond);
 					} else {
 						throw new IllegalArgumentException("Unsupported condition format");
 					}
@@ -170,17 +205,18 @@ public class LogosLinksGenerator {
 					return null;
 				}
 			}
-			return new ExtraLinkCondition(verseNumber, strongNumbers, rmacNumbers);
+			return new ExtraLinkCondition(verseNumber, strongNumbers, rmacNumbers, attributePairs);
 		}
 
-		private ExtraLinkCondition(Reference verseNumber, List<String> strongNumbers, List<String> rmacNumbers) {
+		private ExtraLinkCondition(Reference verseNumber, List<String> strongNumbers, List<String> rmacNumbers, List<String> attributePairs) {
 			super();
 			this.verseNumber = verseNumber;
 			this.strongNumbers = strongNumbers;
 			this.rmacNumbers = rmacNumbers;
+			this.attributePairs = attributePairs;
 		}
 
-		public boolean matches(Reference verseNum, String[] strongs, String[] rmacs) {
+		public boolean matches(Reference verseNum, String[] strongs, String[] rmacs, String[] attributeKeys, String[] attributeValues, Map<String,String> placeholders) {
 			if (verseNumber != null && !verseNumber.equals(verseNum))
 				return false;
 			for (String strong : strongNumbers) {
@@ -191,6 +227,40 @@ public class LogosLinksGenerator {
 				if (rmacs == null || !Arrays.asList(rmacs).contains(rmac)) {
 					return false;
 				}
+			}
+			for(String apair: attributePairs) {
+				if (attributeKeys == null)
+					return false;
+				String[] parts = apair.split("=", 2);
+				String key, phName, valuePattern;
+				if (parts[0].endsWith("~")) {
+					key = parts[0].substring(0, parts[0].length()-1);
+					phName = null;
+					valuePattern = parts[1];
+				} else if (parts[0].contains("~")) {
+					String[] subparts = parts[0].split("~", 2);
+					key = subparts[0];
+					phName = subparts[1];
+					valuePattern = parts[1];
+				} else {
+					key = parts[0];
+					phName = null;
+					valuePattern = Pattern.quote(parts[1]);
+				}
+				boolean found = false;
+				for(int i=0; i<attributeKeys.length; i++ ) {
+					if (attributeKeys[i].equals(key) && attributeValues[i].matches(valuePattern)) {
+						found = true;
+						if (phName != null) {
+							Matcher m = Utils.compilePattern(valuePattern).matcher(attributeValues[i]);
+							if (!m.matches())
+								throw new IllegalStateException();
+							placeholders.put(phName, m.group(phName));
+						}
+					}
+				}
+				if (!found)
+					return false;
 			}
 			return true;
 		}

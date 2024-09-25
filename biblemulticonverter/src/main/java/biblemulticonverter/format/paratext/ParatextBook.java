@@ -510,7 +510,7 @@ public class ParatextBook {
 		SECTION_5(Version.V1, false, ParagraphKindCategory.HEADLINE, "s5", 9, false, null, 0, null),
 		SECTION_REFERENCE(Version.V2, false, ParagraphKindCategory.HEADLINE, "sr", 6, true, null, 0, FormattingInstructionKind.ITALIC),
 		PARALLEL_PASSAGE_REFERENCE(Version.V1, false, ParagraphKindCategory.HEADLINE, "r", 9, false, null, 0, FormattingInstructionKind.ITALIC),
-		DESCRIPTIVE_TITLE(Version.V1, false, ParagraphKindCategory.TEXT, "d", 0, false, null, 0, FormattingInstructionKind.ITALIC),
+		DESCRIPTIVE_TITLE(Version.V1, false, ParagraphKindCategory.TEXT, "d", 0, false, null, 0, FormattingInstructionKind.PSALM_DESCRIPTIVE_TITLE),
 		HEBREW_NOTE(Version.V3, false, ParagraphKindCategory.HEADLINE, "qd", 9, false, null, 0, FormattingInstructionKind.ITALIC),
 
 		SPEAKER_TITLE(Version.V1, false, ParagraphKindCategory.HEADLINE, "sp", 9, false, null, 0, FormattingInstructionKind.ITALIC),

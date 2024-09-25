@@ -15,8 +15,12 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
+import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Verse;
@@ -259,7 +263,14 @@ public class EquipdEPUB implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
+			Visitor<IOException> result = visitFootnote0();
+			if (ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<IOException> visitFootnote0() throws IOException {
 			if (footnoteWriter == null) {
 				unsupportedFeatures.add("footnote" + featureSuffix);
 				return null;
@@ -271,14 +282,15 @@ public class EquipdEPUB implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
 			unsupportedFeatures.add("cross reference" + featureSuffix);
 			pushSuffix("");
 			return this;
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
+			LineBreakKind kind = lbk.toLineBreakKind(indent);
 			switch (kind) {
 			case NEWLINE:
 				writer.write("<br />");
@@ -294,17 +306,21 @@ public class EquipdEPUB implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			if (rmac != null)
 				unsupportedFeatures.add("rmac" + featureSuffix);
 			if (sourceIndices != null)
 				unsupportedFeatures.add("source index" + featureSuffix);
+			if (attributeKeys != null)
+				unsupportedFeatures.add("grammar attributes" + featureSuffix);
 			if (VALIDATABLE || strongs == null) {
 				pushSuffix("");
 				return this;
 			}
 			if (strongs.length != 1)
 				unsupportedFeatures.add("multi strongs" + featureSuffix);
+			if (strongsSuffixes != null)
+				unsupportedFeatures.add("strongs suffixes" + featureSuffix);
 			boolean useNT = nt;
 			if (strongsPrefixes != null && strongsPrefixes[0] == 'G')
 				useNT = true;
@@ -321,5 +337,11 @@ public class EquipdEPUB implements ExportFormat {
 			pushSuffix("");
 			return this;
 		}
+
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
 	}
 }

@@ -23,14 +23,16 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
-import biblemulticonverter.data.Utils;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VerseRange;
 import biblemulticonverter.data.VersificationSet;
@@ -53,12 +55,14 @@ public class StrippedDiffable implements ExportFormat {
 			"- RearrangeChapterBoundaries",
 			"- AddStrongsPrefixes",
 			"- RemoveStrongsPrefixes",
+			"- AddXrefMarkers",
+			"- ParseXrefMarkers",
 			"- SelectVariation <Name>",
 			"- ChangeVerseStructure {Raw|Virtual|Virtual_ignoring_Headlines|Range|Range_Ascending} [<VersificationFile> <VersificationName>]",
 			"- RenameBook <OldAbbr> <NewAbbr>",
 			"- RenameAllBooks [OSIS|Zefania|3LC|Paratext]",
 			"- SortBooks",
-			"- CopyToFootnote {Strongs|Morph|SourceIndex|Headline|CrossReference|Dict:<dictname>|ExtraAttribute:<category>:<key>[:<value>]|GrammarAttribute:<category>:<key>:<value>}[@[<prefixFormat>:]<format>][+<prefix>] [...]",
+			"- CopyToFootnote {Strongs|Morph|SourceIndex|Headline|CrossReference|Dict:<dictname>|ExtraAttribute:<category>:<key>[:<value>]|GrammarAttribute:{<key>|<category>:<key>:<value>}}[@[<prefixFormat>:]<format>][+<prefix>] [...]",
 			"- OptimizeFormatting [SplitCSS|FromCSS|ToCSS|RemoveCSS|JoinCSS|<OldFormatting>-><NewFormatting>[&<NewFormatting>[...]] [...]"
 	};
 
@@ -88,6 +92,12 @@ public class StrippedDiffable implements ExportFormat {
 		} else if (exportArgs.length == 2&&exportArgs[1].equals("RemoveStrongsPrefixes")) {
 			changeStrongsPrefixes(bible, false);
 			out.println("Strongs prefixes removed.");
+		} else if (exportArgs.length == 2 && exportArgs[1].equals("AddXrefMarkers")) {
+			addXrefMarkers(bible);
+			out.println("Xref markers added.");
+		} else if (exportArgs.length == 2&&exportArgs[1].equals("ParseXrefMarkers")) {
+			parseXrefMarkers(bible);
+			out.println("Xref markers parsed and removed.");
 		} else if (exportArgs.length == 3 && exportArgs[1].equals("SelectVariation")) {
 			selectVariation(bible, exportArgs[2]);
 			out.println("Variation " + exportArgs[2] + " kept.");
@@ -278,7 +288,7 @@ public class StrippedDiffable implements ExportFormat {
 				boolean first = true;
 				for (FormattedText oldProlog : prologBuffer) {
 					if (!first)
-						v.visitLineBreak(LineBreakKind.PARAGRAPH);
+						v.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					first = false;
 					oldProlog.accept(v);
 				}
@@ -293,7 +303,7 @@ public class StrippedDiffable implements ExportFormat {
 					Chapter ch = book.getChapters().get(0);
 					Visitor<RuntimeException> v = ch.getProlog().getAppendVisitor();
 					for (FormattedText oldProlog : prologBuffer) {
-						v.visitLineBreak(LineBreakKind.PARAGRAPH);
+						v.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 						oldProlog.accept(v);
 					}
 					break;
@@ -380,7 +390,7 @@ public class StrippedDiffable implements ExportFormat {
 				}
 
 				@Override
-				public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+				public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 					if (innerVisitor != null) {
 						innerVisitor.visitText("]");
 						innerVisitor = null;
@@ -434,6 +444,36 @@ public class StrippedDiffable implements ExportFormat {
 					Verse v1 = verses.get(i);
 					Verse v2 = new Verse(v1.getNumber());
 					v1.accept(new ChangeStrongsPrefixesVisitor(v2.getAppendVisitor(), book.getId().isNT() ? 'G' : 'H', add));
+					v2.finished();
+					verses.set(i, v2);
+				}
+			}
+		}
+	}
+
+	private void addXrefMarkers(Bible bible) {
+		for (Book book : bible.getBooks()) {
+			for (Chapter chapter : book.getChapters()) {
+				List<Verse> verses = chapter.getVerses();
+				for (int i = 0; i < verses.size(); i++) {
+					Verse v1 = verses.get(i);
+					Verse v2 = new Verse(v1.getNumber());
+					v1.accept(new AddXrefMarkersVisitor(v2.getAppendVisitor()));
+					v2.finished();
+					verses.set(i, v2);
+				}
+			}
+		}
+	}
+
+	private void parseXrefMarkers(Bible bible) {
+		for (Book book : bible.getBooks()) {
+			for (Chapter chapter : book.getChapters()) {
+				List<Verse> verses = chapter.getVerses();
+				for (int i = 0; i < verses.size(); i++) {
+					Verse v1 = verses.get(i);
+					Verse v2 = new Verse(v1.getNumber());
+					v1.accept(new ParseXrefMarkersVisitor(v2.getAppendVisitor()));
 					v2.finished();
 					verses.set(i, v2);
 				}
@@ -612,6 +652,8 @@ public class StrippedDiffable implements ExportFormat {
 		StripCrossReferences, StripFormatting, StripCSSFormatting, StripGrammar, StripDictionaryReferences,
 		StripRawHTML, StripExtraAttributes, StripOrKeepExtraAttributes, StripLineBreaks, StripVariations,
 		StripStrongs, StripStrongsWithPrefixes, StripRMAC, StripMorph, StripWIVU, StripSourceIndexes,
+		StripStrongsSuffixes, StripGrammarAttributes, StripExtendedLineBreaks, StripFootnoteTypes,
+		StripSpeakers, StripHyperlinks,
 		StripOldTestament, StripNewTestament, StripDeuterocanonicalBooks,
 		StripMetadataBook, StripIntroductionBooks, StripDictionaryEntries, StripAppendixBook
 	}
@@ -683,7 +725,7 @@ public class StrippedDiffable implements ExportFormat {
 		}
 
 		public Visitor<RuntimeException> addFootnote(Visitor<RuntimeException> visitor) {
-			Visitor<RuntimeException> result = visitor.visitFootnote();
+			Visitor<RuntimeException> result = visitor.visitFootnote(false);
 			if (prefix != null) {
 				Visitor<RuntimeException> v = result;
 				if (prefixFormat != null) {
@@ -729,26 +771,38 @@ public class StrippedDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-			final Visitor<RuntimeException> result = super.visitCrossReference(bookAbbr, book, firstChapter, firstVerse, lastChapter, lastVerse);
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
+			final Visitor<RuntimeException> result = super.visitCrossReference(firstBookAbbr, firstBook, firstChapter, firstVerse, lastBookAbbr, lastBook, lastChapter, lastVerse);
 			CopyToFootnoteRule rule = rules.get("CrossReference");
 			if (rule != null) {
-				String rangeEnd;
-				if (firstChapter != lastChapter) {
-					rangeEnd = " - " + lastChapter + ":" + lastVerse;
-				} else if (!firstVerse.equals(lastVerse)) {
-					rangeEnd = "-" + lastVerse;
+				String ref;
+				if (lastChapter == -1) {
+					ref = firstBookAbbr + (firstBook != lastBook ? " - " + lastBookAbbr : "");
+				} else if (lastVerse.equals("*")) {
+					ref = firstBookAbbr + " " + firstChapter;
+					if (firstBook != lastBook) {
+						ref += " - " + lastBookAbbr + " " + lastChapter;
+					} else if (firstChapter != lastChapter) {
+						ref += " - " + lastChapter;
+					}
 				} else {
-					rangeEnd = "";
+					ref = firstBookAbbr + " " + firstChapter + ":" + firstVerse;
+					if (firstBook != lastBook) {
+						ref += " - " + lastBookAbbr + " " + lastChapter + ":" + lastVerse;
+					} else if (firstChapter != lastChapter) {
+						ref += " - " + lastChapter + ":" + lastVerse;
+					} else if (!firstVerse.equals(lastVerse)) {
+						ref += "-" + lastVerse;
+					}
 				}
-				rule.addFootnote(getVisitor()).visitText(bookAbbr + " " + firstChapter + ":" + firstVerse + rangeEnd);
+				rule.addFootnote(getVisitor()).visitText(ref);
 			}
 			return result;
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
-			final Visitor<RuntimeException> result = super.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices);
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+			final Visitor<RuntimeException> result = super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
 			final Visitor<RuntimeException> nv = getVisitor();
 			CopyToFootnoteRule rule = rules.get("Strongs");
 			if (rule != null && strongs != null) {
@@ -756,7 +810,7 @@ public class StrippedDiffable implements ExportFormat {
 				for (int i = 0; i < strongs.length; i++) {
 					if (i != 0)
 						sb.append(", ");
-					sb.append(Utils.formatStrongs(nt, i, strongsPrefixes, strongs));
+					sb.append(Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, ""));
 				}
 				rule.addFootnote(nv).visitText(sb.toString());
 			}
@@ -773,6 +827,12 @@ public class StrippedDiffable implements ExportFormat {
 					sb.append(sourceIndices[i]);
 				}
 				rule.addFootnote(nv).visitText(sb.toString());
+			}
+			for (int i = 0; i < attributeKeys.length; i++) {
+				rule = rules.get("GrammarAttribute:" + attributeKeys[i]);
+				if (rule != null) {
+					rule.addFootnote(nv).visitText(attributeValues[i]);
+				}
 			}
 			return new FormattedText.VisitorAdapter<RuntimeException>(result) {
 				@Override
@@ -854,10 +914,12 @@ public class StrippedDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-			if (bookAbbr.equals(oldName))
-				bookAbbr = newName;
-			return super.visitCrossReference(bookAbbr, book, firstChapter, firstVerse, lastChapter, lastVerse);
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
+			if (firstBookAbbr.equals(oldName))
+				firstBookAbbr = newName;
+			if (lastBookAbbr.equals(oldName))
+				lastBookAbbr = newName;
+			return super.visitCrossReference(firstBookAbbr, firstBook, firstChapter, firstVerse, lastBookAbbr, lastBook, lastChapter, lastVerse);
 		}
 	}
 
@@ -898,20 +960,23 @@ public class StrippedDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 			if (isEnabled(Feature.StripFootnotes, chosenFeatures, foundFeatures)) {
 				return null;
 			} else {
-				return new StripVisitor(next.visitFootnote(), chosenFeatures, foundFeatures);
+				if (ofCrossReferences && isEnabled(Feature.StripFootnoteTypes, chosenFeatures, foundFeatures)) {
+					ofCrossReferences = false;
+				}
+				return new StripVisitor(next.visitFootnote(ofCrossReferences), chosenFeatures, foundFeatures);
 			}
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
 			if (isEnabled(Feature.StripCrossReferences, chosenFeatures, foundFeatures)) {
 				return null;
 			} else {
-				return new StripVisitor(next.visitCrossReference(bookAbbr, book, firstChapter, firstVerse, lastChapter, lastVerse), chosenFeatures, foundFeatures);
+				return new StripVisitor(next.visitCrossReference(firstBookAbbr, firstBook, firstChapter, firstVerse, lastBookAbbr, lastBook, lastChapter, lastVerse), chosenFeatures, foundFeatures);
 			}
 		}
 
@@ -949,24 +1014,39 @@ public class StrippedDiffable implements ExportFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		@SuppressWarnings("deprecation")
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws RuntimeException {
 			if (!isEnabled(Feature.StripLineBreaks, chosenFeatures, foundFeatures)) {
-				next.visitLineBreak(kind);
+				if (((kind != ExtendedLineBreakKind.PARAGRAPH || indent != 0) && (kind != ExtendedLineBreakKind.NEWLINE || (indent != 0 && indent != 1))
+						 && isEnabled(Feature.StripExtendedLineBreaks, chosenFeatures, foundFeatures))) {
+					LineBreakKind lbk = kind.toLineBreakKind(indent);
+					switch (lbk) {
+						case NEWLINE: kind = ExtendedLineBreakKind.NEWLINE; indent = 0; break;
+						case NEWLINE_WITH_INDENT: kind = ExtendedLineBreakKind.NEWLINE; indent = 1; break;
+						case PARAGRAPH: kind = ExtendedLineBreakKind.PARAGRAPH; indent = 0; break;
+					}
+				}
+				next.visitLineBreak(kind, indent);
 			}
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			if (isEnabled(Feature.StripGrammar, chosenFeatures, foundFeatures)) {
 				return this;
 			} else {
 				if (strongsPrefixes != null && isEnabled(Feature.StripStrongsWithPrefixes, chosenFeatures, foundFeatures)) {
 					strongsPrefixes = null;
 					strongs = null;
+					strongsSuffixes = null;
 				}
 				if (strongs != null && isEnabled(Feature.StripStrongs, chosenFeatures, foundFeatures)) {
 					strongs = null;
 					strongsPrefixes = null;
+					strongsSuffixes = null;
+				}
+				if (strongsSuffixes != null && isEnabled(Feature.StripStrongs, chosenFeatures, foundFeatures)) {
+					strongsSuffixes = null;
 				}
 				if (rmac != null && isEnabled(Feature.StripMorph, chosenFeatures, foundFeatures))
 					rmac = null;
@@ -990,10 +1070,14 @@ public class StrippedDiffable implements ExportFormat {
 				}
 				if (sourceIndices != null && isEnabled(Feature.StripSourceIndexes, chosenFeatures, foundFeatures))
 					sourceIndices = null;
-				if (strongs == null && rmac == null && sourceIndices == null) {
+				if (attributeKeys != null && attributeValues != null && isEnabled(Feature.StripGrammarAttributes, chosenFeatures, foundFeatures)) {
+					attributeKeys = null;
+					attributeValues = null;
+				}
+				if (strongs == null && rmac == null && sourceIndices == null && attributeKeys == null) {
 					return this;
 				}
-				return new StripVisitor(next.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices), chosenFeatures, foundFeatures);
+				return new StripVisitor(next.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues), chosenFeatures, foundFeatures);
 			}
 		}
 
@@ -1003,6 +1087,24 @@ public class StrippedDiffable implements ExportFormat {
 				return null;
 			} else {
 				return new StripVisitor(next.visitDictionaryEntry(dictionary, entry), chosenFeatures, foundFeatures);
+			}
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) throws RuntimeException {
+			if (isEnabled(Feature.StripSpeakers, chosenFeatures, foundFeatures)) {
+				return null;
+			} else {
+				return new StripVisitor(next.visitSpeaker(labelOrStrongs), chosenFeatures, foundFeatures);
+			}
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) throws RuntimeException {
+			if (isEnabled(Feature.StripHyperlinks, chosenFeatures, foundFeatures)) {
+				return null;
+			} else {
+				return new StripVisitor(next.visitHyperlink(type, target), chosenFeatures, foundFeatures);
 			}
 		}
 
@@ -1369,7 +1471,7 @@ public class StrippedDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			if (add && strongsPrefixes == null && strongs != null) {
 				strongsPrefixes = new char[strongs.length];
 				Arrays.fill(strongsPrefixes, defaultPrefix);
@@ -1384,7 +1486,81 @@ public class StrippedDiffable implements ExportFormat {
 				if (allDefault)
 					strongsPrefixes = null;
 			}
-			return super.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices);
+			return super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
+		}
+	}
+
+	private static class AddXrefMarkersVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
+
+		private AddXrefMarkersVisitor(Visitor<RuntimeException> next) throws RuntimeException {
+			super(next);
+		}
+
+		@Override
+		protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
+			return new AddXrefMarkersVisitor(childVisitor);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
+			Visitor<RuntimeException> result =  super.visitFootnote(false);
+			if (ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+	}
+
+	private static class ParseXrefMarkersVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
+
+		private ParseXrefMarkersVisitor(Visitor<RuntimeException> next) throws RuntimeException {
+			super(next);
+		}
+
+		@Override
+		protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
+			return new ParseXrefMarkersVisitor(childVisitor);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
+			if (ofCrossReferences)
+				return super.visitFootnote(ofCrossReferences);
+			return new VisitorAdapter<RuntimeException>(null) {
+
+				private Visitor<RuntimeException> laterNext = null;
+
+				@Override
+				protected Visitor<RuntimeException> getVisitor() throws RuntimeException {
+					if (laterNext == null) throw new IllegalStateException();
+					return laterNext;
+				}
+
+				@Override
+				protected void beforeVisit() throws RuntimeException {
+					if (laterNext == null) {
+						laterNext = ParseXrefMarkersVisitor.super.visitFootnote(false);
+					}
+					super.beforeVisit();
+				}
+
+				@Override
+				public int visitElementTypes(String elementTypes) throws RuntimeException {
+					return 0;
+				}
+
+				@Override
+				public void visitStart() throws RuntimeException {
+				}
+
+				@Override
+				public void visitText(String text) throws RuntimeException {
+					if (laterNext == null && text.startsWith(FormattedText.XREF_MARKER)) {
+						text = text.substring(FormattedText.XREF_MARKER.length());
+						laterNext = ParseXrefMarkersVisitor.super.visitFootnote(true);
+					}
+					super.visitText(text);
+				}
+			};
 		}
 	}
 }

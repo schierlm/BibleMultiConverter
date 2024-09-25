@@ -3,6 +3,7 @@ package biblemulticonverter.format;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
@@ -14,9 +15,11 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -301,7 +304,14 @@ public class ESwordHTML implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
+			Visitor<RuntimeException> result = visitFootnote0();
+			if (ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<RuntimeException> visitFootnote0() throws RuntimeException {
 			if (footnotePrefix == null)
 				return null;
 			target.append(marker + "</p>\n<p><!--keep-->" + footnotePrefix);
@@ -311,7 +321,15 @@ public class ESwordHTML implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
+			if (firstBook == lastBook  && !lastVerse.equals("*")) {
+				return visitCrossReference0(firstBookAbbr, firstBook, firstChapter, firstVerse, lastChapter, lastVerse);
+			} else {
+				return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "cross", "reference");
+			}
+		}
+
+		public Visitor<RuntimeException> visitCrossReference0(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
 			ESwordBookInfo info = BOOK_INFO_BY_ID.get(book);
 			String bookName = info == null ? bookAbbr : info.name;
 			target.append(textPrefix);
@@ -342,16 +360,16 @@ public class ESwordHTML implements ExportFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) {
 			target.append("<br />");
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			StringBuilder newSuffix = new StringBuilder();
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
-					newSuffix.append("<sup class=\"str\">" + Utils.formatStrongs(nt, i, strongsPrefixes, strongs) + "</sup> ");
+					newSuffix.append("<sup class=\"str\">" + Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, "") + "</sup> ");
 				}
 			}
 			return new ESwordVisitor(newSuffix.toString(), this);
@@ -371,6 +389,16 @@ public class ESwordHTML implements ExportFormat {
 		@Override
 		public Visitor<RuntimeException> visitVariationText(String[] variations) throws RuntimeException {
 			throw new RuntimeException("Variations are not supported");
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 		}
 
 		@Override

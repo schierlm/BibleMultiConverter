@@ -3,17 +3,18 @@ BiMuCo-1.0:Coverage Test
 0 <btitle:</ Coverage Test Bible<B0<bdescription:</ Small sample bible used for coverage testing the export and roundtrip formats.<B2It should use every feature possible to provide good test coverage.<B0<bMore.Complex@Key-Example1:</ .<B0
 =Gn	Gen	Gen	Genesis
 0 This is some <<prolog>. <R2"<pre>Raw!</raw:1></pre><!-- endraw 1-->"O<R0!n!<R1!ff!line!<E1cat key value>Skipped</
- <G7225:HR/Ncfsa>In the beginning</ <GH430>God</ <GG1254>created</ the <GL1:HVpi1cs/Sp3mp>hea</<G2>vens</ and the earth.
+ <G7225:HR/Ncfsa>In the beginning</ <GH430a +foo=1 +bar=<"&a'@&g +foo=3>God</ <GG1254 @>created</ the <GL1Z:HVpi1cs/Sp3mp>hea</<G2>vens</ and the earth.
 Now the earth was <Cborder: 0px;>formless and empty</.<H8Headline inside a verse</<Dx dark>>Darkness</ was on the surface of the deep. God`s Spirit was hovering over the surface of the waters.
 ++8 They heard the voice <bof <dYahweh</ <iGod</</ walking in the <igarden</ in the cool of the day, and the man and his wife hid themselves from the presence of <dYahweh</ God among the trees of the garden.
 =Ps	Ps	Ps	Psalm
 ++++++++++++++++++++++ <Ol,d>The <dLord</</<Oy>Yahweh</ is my shepherd: <V<B2I shall lack nothing. <V<B1
-2a He makes me to lie down in <fgreen pastures</<FNo reason to reference <XRv Rev 13 18 13 18>Revelation</ here.<B1Lines may break.</. <V<B2
+2a He makes me to lie down in <fgreen pastures</<FNo <L1#tbbl>reason</:</ <Yto reference <XRv Rev 13 18 13 18>Revelation</ or <XGn:Rv Gen:Rev 1 1 -1 *>Bookrange</ or <XPs Ps 23 1 24 *>Chapterrange</ here.<B1Lines may break.</. <V<B2
 2b He leads me beside still waters. <V<B1
 He restores my soul. <V<B2He guides me in the paths of <lrighteousness</ for his name`s sake. <V<B1
++ <mSing along with David.</<BRTwo<BC<L0tbbl></Cells <L2https://www.google.de>linking</ an <L3dummy.png>Image</.<BdLThis <awas added</. Noah said <SNoah>Oh</.<BySSelah.
 =Mt	Matt	Matt	Matthew
 +++7 Jesus said to him, <w"Again, it is written, `You shall not test the Lord, your God.`"</
 +++0 Prolog at end of book
 =Rv	Rev	Rev	Revelation
 +++0 Prolog only
-+++++++++18 <H1Headline<s2</<p3</</<G5602:ADV:1>Here</ <G1510:V-PAI-3S:4>is</ <i<G3588:T-NSF:2 4678:N-NSF:3>wisdom</.<B0He</ who has understanding, <G::8>let him</ calculate the number of the <G:N-GSN>beast</, for it is the <G706::10>number</ of a man. His number is six hundred <G1835:A-NPM:22 1803:A-NPM:23>sixty-six</.
++++++++++18 <H1Headline<s2</<p3</</<G5602:ADV:1>Here</ <G1510:V-PAI-3S:4>is</ <i<G3588:T-NSF:2 4678e:N-NSF:3>wisdom</.<B0He</ who has understanding, <G::8>let him</ calculate the number of the <G:N-GSN>beast</, for it is the <G706::10>number</ of a man. His number is six hundred <G1835q:A-NPM:22 1803Q:A-NPM:23>sixty-six</.

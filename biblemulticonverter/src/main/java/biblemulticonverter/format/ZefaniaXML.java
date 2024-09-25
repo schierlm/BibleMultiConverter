@@ -36,9 +36,11 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -291,7 +293,7 @@ public class ZefaniaXML implements RoundtripFormat {
 						if (remark.getContent().size() != 1)
 							continue;
 						String remarkText = normalize((String) remark.getContent().get(0), true).trim();
-						v.getAppendVisitor().visitFootnote().visitText(remarkText);
+						v.getAppendVisitor().visitFootnote(false).visitText(remarkText);
 					} else if (e3 instanceof XREF) {
 						XREF xref = (XREF) e3;
 						int vref = xref.getVref().intValue();
@@ -299,7 +301,7 @@ public class ZefaniaXML implements RoundtripFormat {
 						if (idx == -1)
 							continue;
 						Verse v = chapter.getVerses().get(idx);
-						Visitor<RuntimeException> footnoteVisitor = v.getAppendVisitor().visitFootnote();
+						Visitor<RuntimeException> footnoteVisitor = v.getAppendVisitor().visitFootnote(false);
 						boolean first = true;
 						for (String mscope : xref.getMscope().split(" ")) {
 							Matcher m = Utils.compilePattern("([0-9]+);([0-9]+)(-[0-9]+)?;([0-9]+)(-[0-9]+)?").matcher(mscope);
@@ -326,7 +328,7 @@ public class ZefaniaXML implements RoundtripFormat {
 								first = false;
 							else
 								footnoteVisitor.visitText(" ");
-							footnoteVisitor.visitCrossReference(xrefAbbr, xrefBookID, xrefChapter, verse, endChapter, endVerse).visitText(xrefAbbr + " " + xrefChapter + ":" + verse);
+							footnoteVisitor.visitCrossReference(xrefAbbr, xrefBookID, xrefChapter, verse, xrefAbbr, xrefBookID, endChapter, endVerse).visitText(xrefAbbr + " " + xrefChapter + ":" + verse);
 						}
 						if (first)
 							visitEmptyMarker(footnoteVisitor);
@@ -403,7 +405,7 @@ public class ZefaniaXML implements RoundtripFormat {
 				if (note.getContent().size() == 0)
 					continue;
 				Visitor<RuntimeException> v;
-				v = visitor.visitFootnote();
+				v = visitor.visitFootnote(false);
 				boolean subContentFound = parseContent(v, note.getContent(), abbrMap);
 				if (!subContentFound)
 					visitEmptyMarker(v);
@@ -418,15 +420,16 @@ public class ZefaniaXML implements RoundtripFormat {
 				if (count < 1 || count > 10)
 					count = 1;
 				for (int ii = 0; ii < count; ii++) {
-					if (br.getArt() == EnumBreak.X_P)
-						v.visitLineBreak(LineBreakKind.PARAGRAPH);
-					else
-						v.visitLineBreak(LineBreakKind.NEWLINE);
+					if (br.getArt() == EnumBreak.X_P) {
+						v.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
+					} else {
+						v.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
+					}
 				}
 				contentFound = true;
 			} else if (n instanceof XREF) {
 				XREF xref = (XREF) n;
-				Visitor<RuntimeException> footnoteVisitor = visitor.visitFootnote();
+				Visitor<RuntimeException> footnoteVisitor = visitor.visitFootnote(false);
 				footnoteVisitor.visitText(FormattedText.XREF_MARKER.trim());
 				boolean first = true;
 				if (xref.getMscope() == null) {
@@ -454,7 +457,7 @@ public class ZefaniaXML implements RoundtripFormat {
 								continue;
 							}
 							footnoteVisitor.visitText(" ");
-							footnoteVisitor.visitCrossReference(xBook, xID, xChapter, xVerse, xChapter, xVerse).visitText(xBook + " " + xChapter + ":" + xVerse);
+							footnoteVisitor.visitCrossReference(xBook, xID, xChapter, xVerse, xBook, xID, xChapter, xVerse).visitText(xBook + " " + xChapter + ":" + xVerse);
 						}
 					}
 				} else {
@@ -483,7 +486,7 @@ public class ZefaniaXML implements RoundtripFormat {
 							first = false;
 						else
 							footnoteVisitor.visitText(" ");
-						footnoteVisitor.visitCrossReference(abbr, bookID, chapter, verse, endChapter, endVerse).visitText(abbr + " " + chapter + ":" + verse);
+						footnoteVisitor.visitCrossReference(abbr, bookID, chapter, verse, abbr, bookID, endChapter, endVerse).visitText(abbr + " " + chapter + ":" + verse);
 					}
 				}
 				if (first)
@@ -542,10 +545,12 @@ public class ZefaniaXML implements RoundtripFormat {
 					Visitor<RuntimeException> strongVisitor = visitor;
 					int[] strongs = null;
 					char[] strongsPrefixes = null;
+					char[] strongsSuffixes = null;
 					if (gram.getStr() != null) {
 						List<String> strongList = new ArrayList<String>(Arrays.asList(gram.getStr().trim().replaceAll(" ++", " ").split(" ")));
+						char[] prefixSuffixHolder = new char[2];
 						for (int i = 0; i < strongList.size(); i++) {
-							if (Utils.parseStrongs(strongList.get(i), '?', null) == -1) {
+							if (Utils.parseStrongs(strongList.get(i), '?', prefixSuffixHolder) == -1) {
 								System.out.println("WARNING: Skipping invalid Strong number " + strongList.get(i));
 								strongList.remove(i);
 								i--;
@@ -553,14 +558,18 @@ public class ZefaniaXML implements RoundtripFormat {
 						}
 						strongs = new int[strongList.size()];
 						strongsPrefixes = strongList.size() == 0 ? null : new char[strongList.size()];
-						char[] prefixHolder = new char[1];
+						strongsSuffixes = strongList.size() == 0 ? null : new char[strongList.size()];
 						for (int i = 0; i < strongs.length; i++) {
-							strongs[i] = Utils.parseStrongs(strongList.get(i), '?', prefixHolder);
-							if (prefixHolder[0] == '?') {
+							strongs[i] = Utils.parseStrongs(strongList.get(i), '?', prefixSuffixHolder);
+							if (prefixSuffixHolder[0] == '?') {
 								strongsPrefixes = null;
 							} else {
-								strongsPrefixes[i] = prefixHolder[0];
+								strongsPrefixes[i] = prefixSuffixHolder[0];
 							}
+							strongsSuffixes[i] = prefixSuffixHolder[1];
+						}
+						if (strongsSuffixes != null && new String(strongsSuffixes).trim().isEmpty()) {
+							strongsSuffixes = null;
 						}
 					}
 					String[] rmac = null;
@@ -584,7 +593,7 @@ public class ZefaniaXML implements RoundtripFormat {
 					if (rmac != null && rmac.length == 0)
 						rmac = null;
 					if (strongs != null || rmac != null)
-						strongVisitor = strongVisitor.visitGrammarInformation(strongsPrefixes, strongs, rmac, null);
+						strongVisitor = strongVisitor.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, null, null, null);
 					if (!parseContent(strongVisitor, gram.getContent(), abbrMap) && strongVisitor != visitor) {
 						visitEmptyMarker(strongVisitor);
 					}
@@ -765,7 +774,8 @@ public class ZefaniaXML implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
+			LineBreakKind kind = lbk.toLineBreakKind(indent);
 			BR br = of.createBR();
 			if (kind == LineBreakKind.PARAGRAPH)
 				br.setArt(EnumBreak.X_P);
@@ -815,7 +825,14 @@ public class ZefaniaXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
+			Visitor<IOException> result = visitFootnote0();
+			if (result != null && ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<IOException> visitFootnote0() throws IOException {
 			if (containingVerse == null) {
 				System.out.println("WARNING: Skipping footnote outside of verse");
 				return null;
@@ -844,6 +861,16 @@ public class ZefaniaXML implements RoundtripFormat {
 		}
 
 		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
+		}
+
+		@Override
 		public Visitor<IOException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws IOException {
 			return prio.handleVisitor(category, this);
 		}
@@ -859,14 +886,14 @@ public class ZefaniaXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			final GRAM gram = of.createGRAM();
 			result.add(new JAXBElement<GRAM>(new QName("gr"), GRAM.class, gram));
 			Visitor<IOException> nextVisitor = new CreateContentVisitor(of, gram.getContent(), null);
 			if (strongs != null) {
 				StringBuilder entryBuilder = new StringBuilder();
 				for (int i = 0; i < strongs.length; i++) {
-					entryBuilder.append((i > 0 ? " " : "") + (strongsPrefixes == null ? strongs[i] : Utils.formatStrongs(false, i, strongsPrefixes, strongs)));
+					entryBuilder.append((i > 0 ? " " : "") + (strongsPrefixes == null ? strongs[i] : Utils.formatStrongs(false, i, strongsPrefixes, strongs, strongsSuffixes, "")));
 				}
 				String entry = entryBuilder.toString();
 				gram.setStr(entry);
@@ -884,7 +911,15 @@ public class ZefaniaXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
+			if (firstBook == lastBook  && !lastVerse.equals("*")) {
+				return visitCrossReference0(firstBookAbbr, firstBook, firstChapter, firstVerse, lastChapter, lastVerse);
+			} else {
+				return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "cross", "reference");
+			}
+		}
+
+		public Visitor<IOException> visitCrossReference0(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
 			try {
 				Integer.parseInt(firstVerse);
 				Integer.parseInt(lastVerse);

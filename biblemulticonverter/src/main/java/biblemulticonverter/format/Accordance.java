@@ -26,6 +26,7 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
@@ -47,10 +48,12 @@ public class Accordance implements RoundtripFormat {
 			"",
 			"Usage: Accordance <outfile> [<element>=<formatting> [...]] [lineending|encoding|verseref|verseschema=<value>]",
 			"",
-			"Supported elements: H*, H1-H9, FN, VN, XREF, STRONG, MORPH, DICT, GRAMMAR, PL,",
+			"Supported elements: H*, H1-H9, FN, FX, VN, XREF, GRAMMAR, PL,",
+			"                    STRONG, MORPH, SOURCEIDX, DICT, HYPERLINK, SPEAKER, ",
 			"                    B, I, U, L, F, S, P, D, T, W",
 			"Every supported element is also supported with prefix PL: (when in prolog).",
 			"The prefix CSS: can be used to style CSS rules.",
+			"The prefix GRAMATTR: can be used to style grammar attributes.",
 			"Metadata elements:  BIBN, BKSN, BKLN (Bible name, book short/long name)",
 			"",
 			"Supported formattings:",
@@ -198,9 +201,10 @@ public class Accordance implements RoundtripFormat {
 	}
 
 	private static Set<String> SUPPORTED_ELEMENTS = new HashSet<>(Arrays.asList(
-			"B", "I", "U", "L", "F", "S", "P", "D", "T", "W", "VN", "XREF", "STRONG", "MORPH", "DICT", "GRAMMAR",
-			"FN", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "BIBN", "BKSN", "BKLN", "PL", "PL:XREF",
-			"PL:B", "PL:I", "PL:U", "PL:L", "PL:F", "PL:S", "PL:P", "PL:D", "PL:T", "PL:W", "PL:FN",
+			"B", "I", "U", "L", "F", "S", "P", "D", "T", "W", "VN", "XREF", "STRONG", "MORPH",
+			"SOURCEIDX", "DICT", "GRAMMAR", "HYPERLINK", "SPEAKER",
+			"FN", "FX", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "BIBN", "BKSN", "BKLN", "PL", "PL:XREF",
+			"PL:B", "PL:I", "PL:U", "PL:L", "PL:F", "PL:S", "PL:P", "PL:D", "PL:T", "PL:W", "PL:FN", "PL:FX",
 			"PL:H1", "PL:H2", "PL:H3", "PL:H4", "PL:H5", "PL:H6", "PL:H7", "PL:H8", "PL:H9"));
 
 	@Override
@@ -257,7 +261,7 @@ public class Accordance implements RoundtripFormat {
 				rest = rest.substring(pos + 1).trim();
 				if (rest.startsWith("¶")) {
 					if (v != null)
-						v.getAppendVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
+						v.getAppendVisitor().visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					rest = rest.substring(1).trim();
 				}
 				if (bookID == null || chapterNumber == -1)
@@ -311,7 +315,7 @@ public class Accordance implements RoundtripFormat {
 					pos1 = text.length();
 				while (pos2 != -1 && pos2 < pos1) {
 					vv.visitText(text.substring(start, pos2).replaceAll(" +$", ""));
-					vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+					vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					start = pos2 + 1;
 					while (start < text.length() && text.charAt(start) == ' ')
 						start++;
@@ -343,7 +347,7 @@ public class Accordance implements RoundtripFormat {
 					throw new IOException("Unclosed COLOR tag: " + text.substring(start));
 				start += 8;
 			} else if (tag.equals("BR")) {
-				vv.visitLineBreak(LineBreakKind.NEWLINE);
+				vv.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 			} else {
 				FormattingInstructionKind kind;
 				switch (tag) {
@@ -971,7 +975,7 @@ public class Accordance implements RoundtripFormat {
 				parseFormatRule(parts[0].replace('*', (char) ('0' + i)) + "=" + parts[1], formatRules);
 			return;
 		}
-		if (!parts[0].startsWith("CSS:") && !parts[0].startsWith("PL:CSS:") && !SUPPORTED_ELEMENTS.contains(parts[0]))
+		if (!parts[0].startsWith("CSS:") && !parts[0].startsWith("PL:CSS:") && !parts[0].startsWith("GRAMATTR:") && !SUPPORTED_ELEMENTS.contains(parts[0]))
 			throw new RuntimeException("Unsupported element in format rule: " + rule);
 		if (parts[1].equals("-")) {
 			formatRules.put(parts[0], new String[0]);
@@ -1175,30 +1179,25 @@ public class Accordance implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() {
-			return visitElement("FN", DEFAULT_SKIP);
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) {
+			return visitElement(ofCrossReferences ? "FX" : "FN", DEFAULT_SKIP);
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) {
+		public FormattedText.Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
 			return visitElement("XREF", DEFAULT_KEEP);
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) {
-			switch (kind) {
-			case NEWLINE:
-			case NEWLINE_WITH_INDENT:
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) {
+			if (kind.isSameParagraph() || kind == ExtendedLineBreakKind.TABLE_ROW_NEXT_CELL)
 				sb.append("<br>");
-				return;
-			case PARAGRAPH:
+			else
 				sb.append("<para>");
-				break;
-			}
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+		public FormattedText.Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			Visitor<RuntimeException> next = visitElement("GRAMMAR", DEFAULT_KEEP);
 			if (next == null)
 				return null;
@@ -1208,7 +1207,7 @@ public class Accordance implements RoundtripFormat {
 				if (rule.length > 0) {
 					StringBuilder sb = new StringBuilder();
 					for (int i = 0; i < strongs.length; i++) {
-						sb.append(" ").append(Utils.formatStrongs(nt, i, strongsPrefixes, strongs));
+						sb.append(" ").append(Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, ""));
 					}
 					appendRule(suffixes, rule, sb.toString().trim());
 				}
@@ -1221,6 +1220,33 @@ public class Accordance implements RoundtripFormat {
 						sb.append(" ").append(morph);
 					}
 					appendRule(suffixes, rule, sb.toString().trim());
+				}
+			}
+			if (sourceIndices != null) {
+				String[] rule = getElementRule("SOURCEIDX", DEFAULT_SKIP);
+				if (rule.length > 0) {
+					StringBuilder sb = new StringBuilder();
+					for (int idx : sourceIndices) {
+						sb.append(" ").append(idx);
+					}
+					appendRule(suffixes, rule, sb.toString().trim());
+				}
+			}
+			if (attributeKeys != null) {
+				Map<String, List<String>> sortedAttributes = new HashMap<>();
+				for (int i = 0; i < attributeKeys.length; i++) {
+					List<String> values = sortedAttributes.computeIfAbsent(attributeKeys[i].substring(6), x -> new ArrayList<>());
+					values.add(attributeValues[i]);
+				}
+				for (Map.Entry<String, List<String>> sortedAttr : sortedAttributes.entrySet()) {
+					String[] rule = getElementRule("GRAMATTR:" + sortedAttr.getKey(), DEFAULT_SKIP);
+					if (rule.length > 0) {
+						StringBuilder sb = new StringBuilder();
+						for (String val : sortedAttr.getValue()) {
+							sb.append(" ").append(val);
+						}
+						appendRule(suffixes, rule, sb.toString().trim());
+					}
 				}
 			}
 			if (!suffixes[1].isEmpty())
@@ -1238,6 +1264,14 @@ public class Accordance implements RoundtripFormat {
 		public void visitRawHTML(RawHTMLMode mode, String raw) {
 			unspecifiedFormattings.add(elementPrefix + "RAWHTML");
 		}
+
+		public FormattedText.Visitor<RuntimeException> visitHyperlink(biblemulticonverter.data.FormattedText.HyperlinkType type, String target) throws RuntimeException {
+			return visitElement("HYPERLINK", DEFAULT_KEEP);
+		}
+
+		public FormattedText.Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) throws RuntimeException {
+			return visitElement("SPEAKER", DEFAULT_KEEP);
+		};
 
 		@Override
 		public Visitor<RuntimeException> visitVariationText(String[] variations) {

@@ -94,7 +94,11 @@
 			<documentation>
 				List of supported line break kinds (styles). Compared to other bible formats like USFM, this list is rather
 				short. Paragraphs usually include some vertical space while newlines do not. Newlines with indent are mostly
-				used inside the Psalms.
+				used inside the Psalms, and are a legacy style which is equivalent to a newline with an indent of 1.
+
+				indent for semanticDivision is the division height, and for table cells it is the colspan. Tables end on
+				any line break that is neither one of the table ones nor a newline. Formats that do not support tables will
+				convert tableRowFirstCell to a paragraph and tableRowNextCell to a newline with indentation.
 
 				As this format follows the "verses first" paradigm, line breaks are stored inside the verses. A line break
 				or paragraph between two verses is stored at the end of the previous verse.
@@ -106,6 +110,15 @@
 			<enumeration value="paragraph" />
 			<enumeration value="newline" />
 			<enumeration value="newlineWithIndent" />
+			<enumeration value="noFirstLineIndent" />
+			<enumeration value="hangingIndent" />
+			<enumeration value="pageBreak" />
+			<enumeration value="blankLine" />
+			<enumeration value="semanticDivision" />
+			<enumeration value="tableRowFirstCell" />
+			<enumeration value="tableRowNextCell" />
+			<enumeration value="poeticLine" />
+			<enumeration value="sameLineIfPossible" />
 		</restriction>
 	</simpleType>
 
@@ -126,6 +139,25 @@
 			<enumeration value="online"></enumeration>
 			<enumeration value="offline"></enumeration>
 			<enumeration value="both"></enumeration>
+		</restriction>
+	</simpleType>
+
+
+	<simpleType name="HyperlinkTypeType">
+		<annotation>
+			<documentation>
+				Hyperlink or anchor type.
+
+				Internal link targets start with # and reference an anchor of same name.
+
+				External link and image link targets are absolute URLs.
+			</documentation>
+		</annotation>
+		<restriction base="string">
+			<enumeration value="anchor"></enumeration>
+			<enumeration value="internalLink"></enumeration>
+			<enumeration value="externalLink"></enumeration>
+			<enumeration value="image"></enumeration>
 		</restriction>
 	</simpleType>
 
@@ -202,6 +234,22 @@
 			<enumeration value="divineName" />
 			<enumeration value="strikeThrough" />
 			<enumeration value="wordsOfJesus" />
+			<enumeration value="addition">
+				<annotation>
+					<documentation>
+						Text that was added by the translator and did not exist in the source of the translation.
+						Usually rendered in italics.
+					</documentation>
+				</annotation>
+			</enumeration>
+			<enumeration value="psalmDescriptiveTitle">
+				<annotation>
+					<documentation>
+						Descriptive text (e.g. about David and musical instruments) at the beginning of a Psalm.
+						Sometimes part of verse 1, sometimes before. Usually rendered in italics.
+					</documentation>
+				</annotation>
+			</enumeration>
 		</restriction>
 	</simpleType>
 
@@ -453,12 +501,15 @@
 			<element name="footnote">
 				<annotation>
 					<documentation>
-						Some explanatory text that gets represented as a footnote mark. Cross references have to be inside footnotes (or in the prolog).
+						Some explanatory text that gets represented as a footnote mark. Cross references have to be inside footnotes (if they are not in the prolog),
+						which should have ofCrossReferences=true.
 					</documentation>
 				</annotation>
 				<complexType>
 					<complexContent>
-						<extension base="tns:FormattedTextType" />
+						<extension base="tns:FormattedTextType">
+							<attribute name="ofCrossReferences" type="boolean" use="optional" />
+						</extension>
 					</complexContent>
 				</complexType>
 			</element>
@@ -475,10 +526,12 @@
 						<extension base="tns:FormattedTextType">
 							<attribute name="bookAbbr" type="tns:AbbrType" use="required" />
 							<attribute name="book" type="tns:BookIDType" use="required" />
-							<attribute name="firstChapter" type="tns:positiveIntType" use="required" />
-							<attribute name="firstVerse" type="tns:VerseNumberType" use="required" />
-							<attribute name="lastChapter" type="tns:positiveIntType" use="required" />
-							<attribute name="lastVerse" type="tns:VerseNumberType" use="required" />
+							<attribute name="lastBookAbbr" type="tns:AbbrType" use="optional" />
+							<attribute name="lastBook" type="tns:BookIDType" use="optional" />
+							<attribute name="firstChapter" type="tns:positiveIntType" use="optional" />
+							<attribute name="firstVerse" type="tns:VerseNumberType" use="optional" />
+							<attribute name="lastChapter" type="tns:positiveIntType" use="optional" />
+							<attribute name="lastVerse" type="tns:VerseNumberType" use="optional" />
 						</extension>
 					</complexContent>
 				</complexType>
@@ -520,6 +573,8 @@
 					<documentation>
 						A marker for a line break.
 
+						Indent of -1 is treated as centered, and -2 as right justified.
+
 						As this format follows the "verses first" paradigm, line breaks are stored inside the verses. A line break
 						or paragraph between two verses is stored at the end of the previous verse.
 
@@ -528,6 +583,14 @@
 				</annotation>
 				<complexType>
 					<attribute name="kind" type="tns:LineBreakKindType" use="required" />
+					<attribute name="indent" use="optional">
+						<simpleType>
+							<restriction base="int">
+								<minInclusive value="-2"></minInclusive>
+								<maxInclusive value="9"></maxInclusive>
+							</restriction>
+						</simpleType>
+					</attribute>
 				</complexType>
 			</element>
 			<element name="grammarInformation">
@@ -539,13 +602,15 @@
 
 						If the strong numbers are just numbers, the prefix (G or H) is determined by the Testament the current
 						verse is in. In case the prefix is different (e. g. LXX bible), it can be given as well (as a single
-						letter).
+						letter). Strongs suffixes that are either uppercase or lowercase are also supported.
 
 						RMAC codes should follow the RMACType rules to ensure that every RMAC can be converted
 						if required.
 
 						Source indices can refer to word numbers in some reference source text. This format does not
 						store which source text is used in any way.
+
+						Attr is for general key/value attributes. A key may occur more than once, neither keys nor values may contain whitespace.
 					</documentation>
 				</annotation>
 				<complexType>
@@ -556,12 +621,13 @@
 									<list>
 										<simpleType>
 											<restriction base="string">
-												<pattern value="[A-Z]?[1-9][0-9]*"></pattern>
+												<pattern value="[A-Z]?[1-9][0-9]*[a-zA-Z]?"></pattern>
 											</restriction>
 										</simpleType>
 									</list>
 								</simpleType>
 							</attribute>
+							<attribute name="emptyStrongsSuffixesPresent" type="boolean" use="optional" />
 							<attribute name="rmac" use="optional">
 								<simpleType>
 									<list itemType="tns:RMACType" />
@@ -574,6 +640,17 @@
 											<restriction base="int">
 												<minInclusive value="1"></minInclusive>
 												<maxInclusive value="99"></maxInclusive>
+											</restriction>
+										</simpleType>
+									</list>
+								</simpleType>
+							</attribute>
+							<attribute name="attr" use="optional">
+								<simpleType>
+									<list>
+										<simpleType>
+											<restriction base="string">
+												<pattern value="[a-z0-9_:-]+=.*"></pattern>
 											</restriction>
 										</simpleType>
 									</list>
@@ -630,6 +707,42 @@
 							<attribute name="mode" type="tns:RawHTMLModeType" use="required" />
 						</extension>
 					</simpleContent>
+				</complexType>
+			</element>
+			<element name="speaker">
+				<annotation>
+					<documentation>
+						This tag wraps text spoken by a speaker. The speaker can be either a name or a Strongs number.
+					</documentation>
+				</annotation>
+				<complexType>
+					<complexContent>
+						<extension base="tns:FormattedTextType">
+							<attribute name="who" use="required">
+								<simpleType>
+									<restriction base="string">
+										<pattern value="[A-Za-z0-9_:-]+"></pattern>
+									</restriction>
+								</simpleType>
+							</attribute>
+						</extension>
+					</complexContent>
+				</complexType>
+			</element>
+			<element name="hyperlink">
+				<annotation>
+					<documentation>
+						Links to a different point in this document (specified by an anchor), to a different document, or to an image
+						(which may be displayed inline).
+					</documentation>
+				</annotation>
+				<complexType>
+					<complexContent>
+						<extension base="tns:FormattedTextType">
+							<attribute name="type" type="tns:HyperlinkTypeType" use="required" />
+							<attribute name="target" type="string" use="required" />
+						</extension>
+					</complexContent>
 				</complexType>
 			</element>
 			<element name="variation">

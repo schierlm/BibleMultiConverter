@@ -8,9 +8,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 import biblemulticonverter.Main;
 import biblemulticonverter.ModuleRegistry.Module;
@@ -38,6 +42,8 @@ public class AugmentGrammar implements ExportFormat {
 			"   I:  Read Indices and augment Morphology",
 			"   SI: Read Strongs and augment Indices",
 			"   IS: Read Indices and augment Strongs",
+			"   SA:  Read Strongs and augment Attributes",
+			"   IA:  Read Indices and augment Attributes",
 			"",
 			"Database can only be used to augment using a mode if the mode was also present when analyzing."
 	};
@@ -62,23 +68,24 @@ public class AugmentGrammar implements ExportFormat {
 					private Reference lastReference = null;
 
 					@Override
-					public Visitor<RuntimeException> handleGrammar(Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+					public Visitor<RuntimeException> handleGrammar(Versification.Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 						if (!reference.equals(lastReference)) {
 							counter = 0;
 							lastReference = reference;
 						}
 						counter++;
-						String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs);
-						int max = Math.max(Math.max(fullStrongs == null ? 0 : fullStrongs.length, rmac == null ? 0 : rmac.length), sourceIndices == null ? 0 : sourceIndices.length);
+						String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs, strongsSuffixes);
+						String[] fullAttr = buildFullAttributes(false, null, attributeKeys, attributeValues);
+						int max = Math.max(Math.max(fullStrongs == null ? 0 : fullStrongs.length, rmac == null ? 0 : rmac.length), Math.max(sourceIndices == null ? 0 : sourceIndices.length, fullAttr == null ? 0 : fullAttr.length));
 						try {
 							for (int i = 0; i < max; i++) {
-								bw.write(reference.toString() + "\t" + counter + "\t" + (i + 1) + "\t" + (fullStrongs != null && i < fullStrongs.length ? fullStrongs[i] : "") + "\t" + (rmac != null && i < rmac.length ? rmac[i] : "") + "\t" + (sourceIndices != null && i < sourceIndices.length ? sourceIndices[i] : ""));
+								bw.write(reference.toString() + "\t" + counter + "\t" + (i + 1) + "\t" + (fullStrongs != null && i < fullStrongs.length ? fullStrongs[i] : "") + "\t" + (rmac != null && i < rmac.length ? rmac[i] : "") + "\t" + (sourceIndices != null && i < sourceIndices.length ? sourceIndices[i] : "") + "\t" + (fullAttr != null && i < fullAttr.length ? fullAttr[i] : ""));
 								bw.newLine();
 							}
 						} catch (IOException ex) {
 							throw new RuntimeException(ex);
 						}
-						return next.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices);
+						return next.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
 					}
 				});
 			}
@@ -105,8 +112,8 @@ public class AugmentGrammar implements ExportFormat {
 				}
 
 				@Override
-				public Visitor<RuntimeException> handleGrammar(Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
-					String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs);
+				public Visitor<RuntimeException> handleGrammar(Versification.Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+					String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs, strongsSuffixes);
 					String[] idxStrings = null;
 					if (sourceIndices != null) {
 						idxStrings = new String[sourceIndices.length];
@@ -128,9 +135,15 @@ public class AugmentGrammar implements ExportFormat {
 						case STRONGS2INDEX:
 							analyze(reference, '@', idxStrings, "@", fullStrongs);
 							break;
+						case STRONGS2ATTR:
+							analyze(reference, '*', fullStrongs, "+", buildFullAttributes(true, fullStrongs, attributeKeys, attributeValues));
+							break;
+						case INDEX2ATTR:
+							analyze(reference, '@', idxStrings, "+", buildFullAttributes(true, idxStrings, attributeKeys, attributeValues));
+							break;
 						}
 					}
-					return next.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices);
+					return next.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
 				}
 			});
 			try (FileOutputStream out = new FileOutputStream(exportArgs[1])) {
@@ -143,8 +156,8 @@ public class AugmentGrammar implements ExportFormat {
 			}
 			runOperation(bible, new GrammarOperation() {
 				@Override
-				public Visitor<RuntimeException> handleGrammar(Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
-					String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs);
+				public Visitor<RuntimeException> handleGrammar(Versification.Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+					String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs, strongsSuffixes);
 					String keyPrefix = reference.getBook().getOsisID() + "." + reference.getChapter() + "." + reference.getVerse();
 					for (Mode mode : modes) {
 						switch (mode) {
@@ -176,15 +189,26 @@ public class AugmentGrammar implements ExportFormat {
 							if (sourceIndices != null && strongs == null) {
 								strongsPrefixes = new char[sourceIndices.length];
 								strongs = new int[sourceIndices.length];
+								strongsSuffixes = new char[sourceIndices.length];
 								for (int i = 0; i < sourceIndices.length; i++) {
 									String value = props.getProperty(keyPrefix + "@" + sourceIndices[i] + "@", "*");
 									if (value.equals("*")) {
 										strongsPrefixes = null;
 										strongs = null;
+										strongsSuffixes = null;
 										break;
 									}
 									strongsPrefixes[i] = value.charAt(0);
-									strongs[i] = Integer.parseInt(value.substring(1));
+									if (value.matches("[A-Z][0-9]+[a-zA-Z]")) {
+										strongs[i] = Integer.parseInt(value.substring(1, value.length()-1));
+										strongsSuffixes[i] = value.charAt(value.length()-1);
+									} else {
+										strongs[i] = Integer.parseInt(value.substring(1));
+										strongsSuffixes[i] = ' ';
+									}
+								}
+								if (strongsSuffixes != null && new String(strongsSuffixes).trim().isEmpty()) {
+									strongsSuffixes = null;
 								}
 							}
 							break;
@@ -201,9 +225,43 @@ public class AugmentGrammar implements ExportFormat {
 								}
 							}
 							break;
+						case INDEX2ATTR:
+							if (sourceIndices != null && attributeKeys == null) {
+								String[] attrPairs = new String[sourceIndices.length];
+								for (int i = 0; i < sourceIndices.length; i++) {
+									attrPairs[i] = props.getProperty(keyPrefix + "@" + sourceIndices[i] + "+", "*");
+									if (attrPairs[i].equals("*")) {
+										attrPairs = null;
+										break;
+									}
+								}
+								if (attrPairs != null) {
+									attributeKeys = new String[parseAttrPairs(attrPairs, null, null)];
+									attributeValues = new String[attributeKeys.length];
+									parseAttrPairs(attrPairs, attributeKeys, attributeValues);
+								}
+							}
+							break;
+						case STRONGS2ATTR:
+							if (fullStrongs != null && attributeKeys == null) {
+								String[] attrPairs = new String[fullStrongs.length];
+								for (int i = 0; i < fullStrongs.length; i++) {
+									attrPairs[i] = props.getProperty(keyPrefix + "*" + fullStrongs[i] + "+", "*");
+									if (attrPairs[i].equals("*")) {
+										attrPairs = null;
+										break;
+									}
+								}
+								if (attrPairs != null) {
+									attributeKeys = new String[parseAttrPairs(attrPairs, null, null)];
+									attributeValues = new String[attributeKeys.length];
+									parseAttrPairs(attrPairs, attributeKeys, attributeValues);
+								}
+							}
+							break;
 						}
 					}
-					return next.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices);
+					return next.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
 				}
 			});
 			Module<ExportFormat> exportModule = Main.exportFormats.get(exportArgs[2]);
@@ -216,7 +274,7 @@ public class AugmentGrammar implements ExportFormat {
 				private Reference lastReference = null;
 
 				@Override
-				public Visitor<RuntimeException> handleGrammar(Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+				public Visitor<RuntimeException> handleGrammar(Versification.Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 					if (!reference.equals(lastReference)) {
 						counter = 0;
 						lastReference = reference;
@@ -224,7 +282,7 @@ public class AugmentGrammar implements ExportFormat {
 					counter++;
 					if (sourceIndices != null)
 						throw new RuntimeException(reference + " already has source index!");
-					return next.visitGrammarInformation(strongsPrefixes, strongs, rmac, new int[] { counter });
+					return next.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, new int[] { counter }, attributeKeys, attributeValues);
 				}
 			});
 			Module<ExportFormat> exportModule = Main.exportFormats.get(exportArgs[1]);
@@ -235,7 +293,7 @@ public class AugmentGrammar implements ExportFormat {
 		}
 	}
 
-	private static String[] buildFullStrongs(Versification.Reference reference, char[] strongsPrefixes, int[] strongs) {
+	private static String[] buildFullStrongs(Versification.Reference reference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes) {
 		if (strongs == null)
 			return null;
 		if (strongsPrefixes == null) {
@@ -244,9 +302,52 @@ public class AugmentGrammar implements ExportFormat {
 		}
 		String[] result = new String[strongs.length];
 		for (int i = 0; i < strongs.length; i++) {
-			result[i] = strongsPrefixes[i] + "" + strongs[i];
+			result[i] = strongsPrefixes[i] + "" + strongs[i] + "" + (strongsSuffixes == null || strongsSuffixes[i] == ' ' ? "" : "" + strongsSuffixes[i]);
 		}
 		return result;
+	}
+
+	private static String[] buildFullAttributes(boolean matchLength, String[] arrayToMatch, String[] attributeKeys, String[] attributeValues) {
+		if (attributeKeys != null && (!matchLength || arrayToMatch != null)) {
+			Map<String, List<String>> attributes = new HashMap<>();
+			for (int i = 0; i < attributeKeys.length; i++) {
+				List<String> values = attributes.computeIfAbsent(attributeKeys[i], x -> new ArrayList<>());
+				values.add(attributeValues[i]);
+			}
+			List<String> keys = attributes.keySet().stream().sorted().filter(k -> !matchLength || attributes.get(k).size() == arrayToMatch.length).collect(Collectors.toList());
+			int max = keys.stream().map(k -> attributes.get(k).size()).max(Comparator.naturalOrder()).orElse(0);
+			if (max == 0)
+				return null;
+			String[] result = new String[max];
+			for (int i = 0; i < result.length; i++) {
+				StringBuilder sb = new StringBuilder();
+				for (String key : keys) {
+					List<String> vals = attributes.get(key);
+					if (i < vals.size()) {
+						sb.append(key).append("=").append(vals.get(i)).append(" ");
+					}
+				}
+				result[i] = sb.toString().trim();
+			}
+			return result;
+		}
+		return null;
+	}
+	private static int parseAttrPairs(String[] attrPairs, String[] attributeKeys, String[] attributeValues) {
+		int count = 0;
+		for(String attrPair : attrPairs) {
+			for(String part: attrPair.split(" ")) {
+				if (part.isEmpty())
+					continue;
+				String[] kv = part.split("=", 2);
+				if (attributeKeys != null) {
+					attributeKeys[count] = kv[0];
+					attributeKeys[count] = kv[1];
+				}
+				count++;
+			}
+		}
+		return count;
 	}
 
 	protected <T extends Throwable> void runOperation(Bible bible, GrammarOperation operation) throws T {
@@ -267,7 +368,7 @@ public class AugmentGrammar implements ExportFormat {
 	}
 
 	private static enum Mode {
-		STRONGS2MORPH("S"), INDEX2MORPH("I"), STRONGS2INDEX("SI"), INDEX2STRONGS("IS");
+		STRONGS2MORPH("S"), INDEX2MORPH("I"), STRONGS2INDEX("SI"), INDEX2STRONGS("IS"), STRONGS2ATTR("SA"), INDEX2ATTR("IA");
 
 		private final String code;
 
@@ -285,7 +386,7 @@ public class AugmentGrammar implements ExportFormat {
 	}
 
 	private static interface GrammarOperation {
-		public abstract Visitor<RuntimeException> handleGrammar(Versification.Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices);
+		public abstract Visitor<RuntimeException> handleGrammar(Versification.Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues);
 	}
 
 	private static class GrammarOperationVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
@@ -305,8 +406,8 @@ public class AugmentGrammar implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
-			return wrapChildVisitor(operation.handleGrammar(reference, getVisitor(), strongsPrefixes, strongs, rmac, sourceIndices));
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+			return wrapChildVisitor(operation.handleGrammar(reference, getVisitor(), strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues));
 		}
 	}
 }

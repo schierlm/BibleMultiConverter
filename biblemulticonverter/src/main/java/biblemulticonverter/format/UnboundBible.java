@@ -22,14 +22,15 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
-import biblemulticonverter.data.FormattedText.LineBreakKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.MetadataBook;
-import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.MetadataBook.MetadataBookKey;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 
 /**
@@ -285,24 +286,26 @@ public class UnboundBible implements RoundtripFormat {
 				if (useParsedFormat) {
 					String[] words = text.split(" ");
 					char[] strongsPrefixes = new char[10];
+					char[] strongsSuffixes = new char[10];
 					int[] strongs = new int[10];
 					String[] rmacs = new String[10];
 					int strongCount = 0, rmacCount = 0;
 					String word = words[0];
-					char[] prefixHolder = new char[1];
+					char[] prefixSuffixHolder = new char[2];
 					for (int i = 1; i < words.length; i++) {
 						int number = -1;
 						if (words[i].matches("[GH]0*[1-9][0-9]*[a-zA-Z]?")) {
-							number = Utils.parseStrongs(words[i], '\0', prefixHolder);
+							number = Utils.parseStrongs(words[i], '\0', prefixSuffixHolder);
 						}
 						if (number != -1) {
-							strongsPrefixes[strongCount] = prefixHolder[0];
+							strongsPrefixes[strongCount] = prefixSuffixHolder[0];
+							strongsSuffixes[strongCount] = prefixSuffixHolder[1];
 							strongs[strongCount++] = number;
 						} else if (words[i].matches(Utils.RMAC_REGEX)) {
 							rmacs[rmacCount++] = words[i];
 						} else {
 							if (strongCount > 0 || rmacCount > 0) {
-								vvv.visitGrammarInformation(strongCount > 0 ? Arrays.copyOf(strongsPrefixes, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongs, strongCount) : null, rmacCount > 0 ? Arrays.copyOf(rmacs, rmacCount) : null, null).visitText(word);
+								vvv.visitGrammarInformation(strongCount > 0 ? Arrays.copyOf(strongsPrefixes, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongs, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongsSuffixes, strongCount) : null, rmacCount > 0 ? Arrays.copyOf(rmacs, rmacCount) : null, null, null, null).visitText(word);
 								strongCount = rmacCount = 0;
 							} else {
 								vvv.visitText(word);
@@ -312,7 +315,7 @@ public class UnboundBible implements RoundtripFormat {
 						}
 					}
 					if (strongCount > 0 || rmacCount > 0) {
-						vvv.visitGrammarInformation(strongCount > 0 ? Arrays.copyOf(strongsPrefixes, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongs, strongCount) : null, rmacCount > 0 ? Arrays.copyOf(rmacs, rmacCount) : null, null).visitText(word);
+						vvv.visitGrammarInformation(strongCount > 0 ? Arrays.copyOf(strongsPrefixes, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongs, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongsSuffixes, strongCount) : null, rmacCount > 0 ? Arrays.copyOf(rmacs, rmacCount) : null, null, null, null).visitText(word);
 						strongCount = rmacCount = 0;
 					} else {
 						vvv.visitText(word);
@@ -592,7 +595,7 @@ public class UnboundBible implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) {
 			sb.append(" ");
 		}
 
@@ -615,9 +618,19 @@ public class UnboundBible implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 			System.out.println("WARNING: Footnotes are not supported");
 			return null;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 		}
 
 		@Override
@@ -646,12 +659,12 @@ public class UnboundBible implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			if (useParsedFormat) {
 				StringBuilder suffix = new StringBuilder();
 				if (strongs != null) {
 					for (int i = 0; i < strongs.length; i++) {
-						suffix.append(" " + Utils.formatStrongs(nt, i, strongsPrefixes, strongs));
+						suffix.append(" " + Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, ""));
 					}
 				}
 				if (rmac != null) {
@@ -668,7 +681,7 @@ public class UnboundBible implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) {
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
 			System.out.println("WARNING: Cross references are not supported");
 			suffixStack.add("");
 			return this;

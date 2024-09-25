@@ -24,8 +24,10 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -185,15 +187,21 @@ public class MySword implements RoundtripFormat {
 				}
 				char[] spfx = new char[stags.size()];
 				int[] snum = new int[stags.size()];
-				char[] prefixHolder = new char[1];
+				char[] ssfx = new char[stags.size()];
+				char[] prefixSuffixHolder = new char[2];
 				for (int i = 0; i < stags.size(); i++) {
-					snum[i] = Utils.parseStrongs(stags.get(i), '\0', prefixHolder);
-					spfx[i] = prefixHolder[0];
+					snum[i] = Utils.parseStrongs(stags.get(i), '\0', prefixSuffixHolder);
+					spfx[i] = prefixSuffixHolder[0];
+					ssfx[i] = prefixSuffixHolder[1];
 					if (snum[i] == -1) {
 						System.out.println("WARNING: Invalid Strong number: " + stags.get(i));
 						snum[i] = 99999;
 						spfx[i] = stags.get(i).charAt(0);
+						ssfx[i] = ' ';
 					}
+				}
+				if (new String(ssfx).trim().isEmpty()) {
+					ssfx = new char[0];
 				}
 				String[] rmacs = mtags.isEmpty() ? null : new String[mtags.size()];
 				for (int i = 0; i < mtags.size(); i++) {
@@ -207,11 +215,11 @@ public class MySword implements RoundtripFormat {
 				if (snum.length == 0 && rmacs == null)
 					decodeEntities(vv, strongsWord);
 				else
-					decodeEntities(vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, rmacs, null), strongsWord);
+					decodeEntities(vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, ssfx.length == 0 ? null: ssfx, rmacs, null, null, null), strongsWord);
 			} else if (text.startsWith("<Fi>") || text.startsWith("<Fo>") || text.startsWith("<Fr>") || text.startsWith("<Fu>") || text.startsWith("<Rf>") || text.startsWith("<Ts>")) {
 				return text;
 			} else if (text.startsWith("<CM>")) {
-				vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+				vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 				text = text.substring(4);
 			} else if (text.startsWith("<FI>")) {
 				text = convertFromVerse(text.substring(4), vv.visitFormattingInstruction(FormattingInstructionKind.ITALIC), inFootnote);
@@ -243,7 +251,7 @@ public class MySword implements RoundtripFormat {
 				}
 			} else if (text.startsWith("<RF>") || text.startsWith("<RF q=")) {
 				pos = text.indexOf(">");
-				text = convertFromVerse(text.substring(pos + 1), vv.visitFootnote(), true);
+				text = convertFromVerse(text.substring(pos + 1), vv.visitFootnote(false), true);
 				if (!text.startsWith("<Rf>"))
 					System.out.println("WARNING: Unclosed <RF> tag at: " + text);
 				else {
@@ -277,10 +285,11 @@ public class MySword implements RoundtripFormat {
 					if (inFootnote) {
 						vvv = vv;
 					} else {
-						vvv = vv.visitFootnote();
+						vvv = vv.visitFootnote(false);
 						vvv.visitText(FormattedText.XREF_MARKER);
 					}
-					vvv.visitCrossReference(rbook.getOsisID(), rbook, rch, rvs[0], rch, rvs[1]).visitText(rbook.getOsisID() + " " + rch + ":" + range[2]);
+					String bookAbbr = rbook.getOsisID();
+					vvv.visitCrossReference(bookAbbr, rbook, rch, rvs[0], bookAbbr, rbook, rch, rvs[1]).visitText(rbook.getOsisID() + " " + rch + ":" + range[2]);
 				} else {
 					System.out.println("WARNING: Unsupported <RX> tag format: " + rangeText);
 				}
@@ -470,18 +479,18 @@ public class MySword implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws RuntimeException {
-			builder.append("<RF>");
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
+			builder.append("<RF>" + (ofCrossReferences ? FormattedText.XREF_MARKER : ""));
 			suffixStack.add("<Rf>");
 			return this;
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-			if (firstChapter != lastChapter || book.getZefID() < 1 || book.getZefID() > 66) {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
+			if (firstBook != lastBook || firstChapter != lastChapter || lastVerse.equals("*") || firstBook.getZefID() < 1 || firstBook.getZefID() > 66) {
 				suffixStack.add("");
 			} else {
-				String ref = book.getZefID() + "." + firstChapter + "." + firstVerse + (lastVerse.equals(firstVerse) ? "" : "-" + lastVerse);
+				String ref = firstBook.getZefID() + "." + firstChapter + "." + firstVerse + (lastVerse.equals(firstVerse) ? "" : "-" + lastVerse);
 				builder.append("<a href=\"b" + ref + "\">");
 				suffixStack.add("</a><RX" + ref + ">");
 			}
@@ -497,6 +506,9 @@ public class MySword implements RoundtripFormat {
 				suffix = "<Fu>";
 				break;
 			case ITALIC:
+			case ADDITION:
+			case PSALM_DESCRIPTIVE_TITLE:
+				// newintfmt
 				prefix = "<FI>";
 				suffix = "<Fi>";
 				break;
@@ -527,12 +539,12 @@ public class MySword implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
 			builder.append("<CM>");
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			int cnt = 0;
 			String suffix = "";
 			if (strongs != null)
@@ -541,7 +553,7 @@ public class MySword implements RoundtripFormat {
 				cnt = Math.max(cnt, rmac.length);
 			for (int i = 0; i < cnt; i++) {
 				if (strongs != null && i < strongs.length) {
-					suffix += "<W" + Utils.formatStrongs(nt, i, strongsPrefixes, strongs) + ">";
+					suffix += "<W" + Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, "") + ">";
 				}
 				if (rmac != null && i < rmac.length) {
 					suffix += "<WT" + rmac[i] + ">";
@@ -567,6 +579,16 @@ public class MySword implements RoundtripFormat {
 		@Override
 		public Visitor<IOException> visitVariationText(String[] variations) throws RuntimeException {
 			throw new RuntimeException("Variations not supported!");
+		}
+
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 		}
 
 		@Override

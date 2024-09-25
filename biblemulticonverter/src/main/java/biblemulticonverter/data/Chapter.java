@@ -25,24 +25,24 @@ public class Chapter {
 		this.verses = new ArrayList<Verse>();
 	}
 
-	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String,Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories) {
+	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String,Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories, Set<String> internalAnchors, Set<String> internalLinks) {
 		// chapters may have no verses, if not yet translated but a later
 		// chapter is.
 		if (prolog != null)
-			prolog.validate(bible, book, bookAbbr + " " + cnumber + ":Prolog", danglingReferences, dictionaryEntries, validationCategories);
+			prolog.validate(bible, book, bookAbbr + " " + cnumber + ":Prolog", danglingReferences, dictionaryEntries, validationCategories, internalAnchors, internalLinks);
 		Set<String> verseNumbers = new HashSet<String>();
 		for (Verse verse : verses) {
 			String location = bookAbbr + " " + cnumber + ":" + verse.getNumber();
 			if (!verseNumbers.add(verse.getNumber()))
 				FormattedText.ValidationCategory.DUPLICATE_VERSE.throwOrRecord(location, validationCategories, location);
-			verse.validate(bible, book, location, danglingReferences, dictionaryEntries, validationCategories);
+			verse.validate(bible, book, location, danglingReferences, dictionaryEntries, validationCategories, internalAnchors, internalLinks);
 		}
 		int lastVerse = 0;
 		for (VirtualVerse vv : createVirtualVerses()) {
 			if (vv.getNumber() <= lastVerse)
 				FormattedText.ValidationCategory.INVALID_VIRTUAL_VERSE_ORDER.throwOrRecord(bookAbbr + " " + cnumber, validationCategories, vv.getNumber() + " after " + lastVerse);
 			lastVerse = vv.getNumber();
-			vv.validate(bible, book, bookAbbr, cnumber, danglingReferences, dictionaryEntries, validationCategories);
+			vv.validate(bible, book, bookAbbr, cnumber, danglingReferences, dictionaryEntries, validationCategories, new HashSet<String>(), internalLinks);
 		}
 		List<VerseRange> ranges = createVerseRanges(false);
 		for (VerseRange vr : ranges) {
@@ -50,7 +50,7 @@ public class Chapter {
 				if (vr != vr2 && vr.overlaps(vr2, false))
 					FormattedText.ValidationCategory.OVERLAPPING_VERSE_RANGES.throwOrRecord(bookAbbr + " " + cnumber, validationCategories, vr.getMinVerse() + "-" + vr.getMaxVerse() + " and " + vr2.getMinVerse() + "-" + vr2.getMaxVerse());
 			}
-			vr.validate(bible, book, bookAbbr, cnumber, danglingReferences, dictionaryEntries, validationCategories);
+			vr.validate(bible, book, bookAbbr, cnumber, danglingReferences, dictionaryEntries, validationCategories, new HashSet<String>(), internalLinks);
 		}
 	}
 

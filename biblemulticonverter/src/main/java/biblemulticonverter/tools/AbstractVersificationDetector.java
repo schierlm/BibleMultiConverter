@@ -271,11 +271,12 @@ public abstract class AbstractVersificationDetector implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-			usedBooks.add(book);
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
+			usedBooks.add(firstBook);
+			usedBooks.add(lastBook);
 			try {
-				countVerse(schemes, totalVerses, bookAbbr, book, firstChapter, Integer.parseInt(firstVerse));
-				countVerse(schemes, totalVerses, bookAbbr, book, lastChapter, Integer.parseInt(lastVerse));
+				countVerse(schemes, totalVerses, firstBookAbbr, firstBook, firstChapter, Integer.parseInt(firstVerse));
+				countVerse(schemes, totalVerses, lastBookAbbr, lastBook, lastChapter, Integer.parseInt(lastVerse));
 			} catch (NumberFormatException ex) {
 			}
 			return this;

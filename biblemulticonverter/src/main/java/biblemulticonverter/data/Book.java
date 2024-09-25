@@ -23,7 +23,7 @@ public class Book {
 		this.chapters = new ArrayList<Chapter>();
 	}
 
-	public void validate(Bible bible, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories) {
+	public void validate(Bible bible, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories, Set<String> internalAnchors, Set<String> internalLinks) {
 		if (chapters.size() == 0)
 			FormattedText.ValidationCategory.BOOK_WITHOUT_CHAPTERS.throwOrRecord(getAbbr(), validationCategories, getAbbr());
 		Chapter lastChapter = chapters.get(chapters.size() - 1);
@@ -32,7 +32,7 @@ public class Book {
 		int cnumber = 0;
 		for (Chapter chapter : chapters) {
 			cnumber++;
-			chapter.validate(bible, getId(), getAbbr(), cnumber, danglingReferences, dictionaryEntries, validationCategories);
+			chapter.validate(bible, getId(), getAbbr(), cnumber, danglingReferences, dictionaryEntries, validationCategories, internalAnchors, internalLinks);
 		}
 	}
 

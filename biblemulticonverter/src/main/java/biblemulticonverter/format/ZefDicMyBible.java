@@ -1,6 +1,7 @@
 package biblemulticonverter.format;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,6 +27,8 @@ import org.w3c.dom.Text;
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
+import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
@@ -222,21 +225,29 @@ public class ZefDicMyBible implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 			System.out.println("WARNING: footnotes are not supported");
 			return null;
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
+			if (firstBook == lastBook  && !lastVerse.equals("*")) {
+				return visitCrossReference0(firstBookAbbr, firstBook, firstChapter, firstVerse, lastChapter, lastVerse);
+			} else {
+				return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "cross", "reference");
+			}
+		}
+
+		public Visitor<RuntimeException> visitCrossReference0(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
 			if (firstChapter != lastChapter) {
-				Visitor<RuntimeException> firstVisitor = visitCrossReference(bookAbbr, book, firstChapter, firstVerse, firstChapter, "999");
+				Visitor<RuntimeException> firstVisitor = visitCrossReference(bookAbbr, book, firstChapter, firstVerse, bookAbbr, book, firstChapter, "999");
 				visitText(" ");
 				for (int i = firstChapter + 1; i < lastChapter; i++) {
-					visitCrossReference(bookAbbr, book, i, "1", i, "999").visitText("[" + i + "]");
+					visitCrossReference(bookAbbr, book, i, "1", bookAbbr, book, i, "999").visitText("[" + i + "]");
 					visitText(" ");
 				}
-				visitCrossReference(bookAbbr, book, lastChapter, "1", lastChapter, lastVerse).visitText("[" + lastChapter + "]");
+				visitCrossReference(bookAbbr, book, lastChapter, "1", bookAbbr, book, lastChapter, lastVerse).visitText("[" + lastChapter + "]");
 				return firstVisitor;
 			}
 			MyAnyType link = of.createMyAnyType();
@@ -268,15 +279,27 @@ public class ZefDicMyBible implements ExportFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) {
+			LineBreakKind kind = lbk.toLineBreakKind(indent);
 			target.add(of.createTParagraphBr(""));
 			if (kind == LineBreakKind.PARAGRAPH)
 				target.add(of.createTParagraphBr(""));
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			System.out.println("WARNING: Grammar information is not supported");
+			return this;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) throws RuntimeException {
+			System.out.println("WARNING: Speaker information is not supported");
+			return this;
+		}
+
+		public FormattedText.Visitor<RuntimeException> visitHyperlink(biblemulticonverter.data.FormattedText.HyperlinkType type, String target) throws RuntimeException {
+			System.out.println("WARNING: Hyperlinks are not supported");
 			return this;
 		}
 
@@ -306,6 +329,7 @@ public class ZefDicMyBible implements ExportFormat {
 		public Visitor<RuntimeException> visitVariationText(String[] variations) throws RuntimeException {
 			throw new IllegalStateException("Variations not supported");
 		}
+
 
 		@Override
 		public Visitor<RuntimeException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws RuntimeException {

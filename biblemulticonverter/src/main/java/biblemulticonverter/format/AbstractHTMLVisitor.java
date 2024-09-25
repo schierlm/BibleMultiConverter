@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -101,6 +103,17 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 	}
 
 	@Override
+	public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+		if (type == HyperlinkType.ANCHOR) {
+			writer.write("<a name=\"" + target + "\">");
+		} else {
+			writer.write("<a href=\"" + target + "\">");
+		}
+		pushSuffix("</a>");
+		return this;
+	}
+
+	@Override
 	public Visitor<IOException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws IOException {
 		Visitor<IOException> next = prio.handleVisitor(category, this);
 		if (next != null)
@@ -144,8 +157,8 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 			String cleanedTag = tag.replaceAll(" +class=('[^']*'|\"[^\"]*\")", "");
 			if (cleanedTag.endsWith("/>") || cleanedTag.endsWith(" >"))
 				cleanedTag = cleanedTag.substring(0, cleanedTag.length() - 2).trim() + ">";
-			if (hp != null && ((cleanedTag.toLowerCase().startsWith("<a href=\"") && cleanedTag.endsWith("\">"))
-					|| (cleanedTag.toLowerCase().startsWith("<a href='") && cleanedTag.endsWith("'>")))) {
+			if ((cleanedTag.toLowerCase().startsWith("<a href=\"") && cleanedTag.endsWith("\">"))
+					|| (cleanedTag.toLowerCase().startsWith("<a href='") && cleanedTag.endsWith("'>"))) {
 				int endPos = html.indexOf("</" + cleanedTag.substring(1, 2) + ">");
 				int copyFromSuffix = 0;
 				if (endPos == -1) {
@@ -156,7 +169,10 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 					}
 				}
 				if (endPos != -1) {
-					Visitor<T> nextVisitor = hp.parseHyperlink(vv, cleanedTag.substring(9, cleanedTag.length() - 2));
+					Visitor<T> nextVisitor = hp == null ? null : hp.parseHyperlink(vv, cleanedTag.substring(9, cleanedTag.length() - 2));
+					if (nextVisitor == null) {
+						nextVisitor = vv.visitHyperlink(HyperlinkType.EXTERNAL_LINK	, cleanedTag.substring(9, cleanedTag.length() - 2));
+					}
 					if (nextVisitor != null) {
 						if (copyFromSuffix > 0) {
 							html = html + suffix.substring(0, copyFromSuffix);
@@ -164,18 +180,16 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 						}
 						parseHTML(nextVisitor, hp, html.substring(0, endPos), "");
 						html = html.substring(endPos + 4);
-					} else {
-						cleanedTag = null;
 					}
 				} else {
 					cleanedTag = null;
 				}
 			} else if (cleanedTag.toLowerCase().equals("<p>")) {
-				vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+				vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 			} else if (cleanedTag.toLowerCase().equals("</p>")) {
 				// ignore
 			} else if (cleanedTag.toLowerCase().equals("<br>")) {
-				vv.visitLineBreak(LineBreakKind.NEWLINE);
+				vv.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 			} else if (cleanedTag.toLowerCase().matches("<(b|i|u|strong|em|sub|sup|h[1-6]|font +color=['\"]?red['\"]?)>")) {
 				String endTag = "</" + cleanedTag.substring(1).replaceAll(" .*>", ">");
 				int endPos = html.indexOf(endTag);

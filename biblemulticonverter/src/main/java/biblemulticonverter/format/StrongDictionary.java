@@ -19,8 +19,8 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
-import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.MetadataBook.MetadataBookKey;
@@ -65,7 +65,7 @@ public class StrongDictionary implements ImportFormat {
 				if (childNode instanceof Text) {
 					if (childNode.getTextContent().replaceAll("[ \r\n\t]+", " ").equals(" or ") && childNode.getNextSibling().getNodeName().equals("greek")) {
 						v.visitFormattingInstruction(FormattingInstructionKind.ITALIC).visitText("-or-");
-						v.visitLineBreak(LineBreakKind.PARAGRAPH);
+						v.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					} else if (childNode.getTextContent().trim().length() > 0) {
 						visitAttribute(v, "Remark", childNode.getTextContent());
 					}
@@ -206,7 +206,7 @@ public class StrongDictionary implements ImportFormat {
 		StringBuffer tmp = new StringBuffer();
 		m.appendTail(tmp);
 		v.visitText(tmp.toString());
-		v.visitLineBreak(LineBreakKind.PARAGRAPH);
+		v.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 	}
 
 	private String parseGreekContent(Element elem) throws IOException {

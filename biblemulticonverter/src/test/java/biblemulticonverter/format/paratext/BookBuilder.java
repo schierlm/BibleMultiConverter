@@ -50,7 +50,8 @@ public class BookBuilder {
 		}
 
 		public VerseBuilder addCrossReference(BookID bookID, int firstChapter, String firstVerse, int lastChapter, String lastVerse) {
-			currentVerse.getAppendVisitor().visitCrossReference(bookID.getThreeLetterCode(), bookID, firstChapter, firstVerse, lastChapter, lastVerse);
+			String bookAbbr = bookID.getThreeLetterCode();
+			currentVerse.getAppendVisitor().visitCrossReference(bookAbbr, bookID, firstChapter, firstVerse, bookAbbr, bookID, lastChapter, lastVerse);
 			return this;
 		}
 

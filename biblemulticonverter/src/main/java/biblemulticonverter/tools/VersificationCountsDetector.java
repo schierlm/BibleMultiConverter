@@ -125,6 +125,8 @@ public class VersificationCountsDetector implements ExportFormat {
 	}
 
 	protected void countVerse(Map<BookID, int[]> bibleCounts, Set<String> totalVerses, String bookAbbr, BookID bookID, int cnum, String vnum) {
+		if (vnum.equals("*"))
+			return;
 		if (!totalVerses.add(bookAbbr + " " + cnum + ":" + vnum))
 			return;
 		int[] bookCounts = bibleCounts.computeIfAbsent(bookID, x -> new int[2]);
@@ -248,16 +250,18 @@ public class VersificationCountsDetector implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-			countVerse(bibleCounts, totalVerses, bookAbbr, book, firstChapter, firstVerse);
-			countVerse(bibleCounts, totalVerses, bookAbbr, book, lastChapter, lastVerse);
-			try {
-				int fv = Integer.parseInt(firstVerse);
-				int lv = Integer.parseInt(lastVerse);
-				for (int v = fv + 1; v < lv; v++) {
-					countVerse(bibleCounts, totalVerses, bookAbbr, book, lastChapter, "" + v);
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
+			countVerse(bibleCounts, totalVerses, firstBookAbbr, firstBook, firstChapter, firstVerse);
+			countVerse(bibleCounts, totalVerses, lastBookAbbr, lastBook, lastChapter, lastVerse);
+			if (firstBook == lastBook && firstChapter == lastChapter) {
+				try {
+					int fv = Integer.parseInt(firstVerse);
+					int lv = Integer.parseInt(lastVerse);
+					for (int v = fv + 1; v < lv; v++) {
+						countVerse(bibleCounts, totalVerses, firstBookAbbr, firstBook, lastChapter, "" + v);
+					}
+				} catch (NumberFormatException ex) {
 				}
-			} catch (NumberFormatException ex) {
 			}
 			return this;
 		}

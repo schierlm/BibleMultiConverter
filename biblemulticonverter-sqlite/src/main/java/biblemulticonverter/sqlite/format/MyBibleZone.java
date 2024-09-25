@@ -29,9 +29,11 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -441,7 +443,7 @@ public class MyBibleZone implements RoundtripFormat {
 		pos = html.indexOf('\n');
 		while (pos != -1) {
 			AbstractHTMLVisitor.parseHTML(vv, hp, html.substring(0, pos).trim(), "");
-			vv.visitLineBreak(LineBreakKind.NEWLINE);
+			vv.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 			html = html.substring(pos + 1).trim();
 			pos = html.indexOf('\n');
 		}
@@ -473,15 +475,18 @@ public class MyBibleZone implements RoundtripFormat {
 				pos = text.indexOf("</S>");
 				String[] txt = cleanText(text.substring(3, pos)).split(",");
 				char[] spfx = new char[txt.length];
+				char[] ssfx = new char[txt.length];
 				int[] snum = new int[txt.length];
-				char[] prefixHolder = new char[1];
+				char[] prefixSuffixHolder = new char[2];
 				for (int i = 0; i < txt.length; i++) {
-					snum[i] = Utils.parseStrongs(txt[i], strongsPrefix, prefixHolder);
-					spfx[i] = prefixHolder[0];
+					snum[i] = Utils.parseStrongs(txt[i], strongsPrefix, prefixSuffixHolder);
+					spfx[i] = prefixSuffixHolder[0];
+					ssfx[i] = prefixSuffixHolder[1];
 					if (snum[i] == -1) {
 						System.out.println("WARNING: Invalid Strong number: " + txt[i]);
 						spfx[i] = nt ? 'G' : 'H';
 						snum[i] = 99999;
+						ssfx[i] = ' ';
 					}
 				}
 				if (spfx.length > 0) {
@@ -494,6 +499,9 @@ public class MyBibleZone implements RoundtripFormat {
 					}
 					if (allStandard)
 						spfx = new char[0];
+				}
+				if (ssfx.length > 0 && new String(ssfx).trim().isEmpty()) {
+					ssfx = new char[0];
 				}
 				String rmac = null;
 				text = text.substring(pos + 4).replaceFirst("^ +<m>", "<m>");
@@ -509,9 +517,9 @@ public class MyBibleZone implements RoundtripFormat {
 				if (snum.length == 0 && rmac == null)
 					vv.visitText(cleanText(strongsWord));
 				else
-					vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, rmac == null ? null : new String[] { rmac }, null).visitText(cleanText(strongsWord));
+					vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, ssfx.length == 0 ? null : ssfx, rmac == null ? null : new String[] { rmac }, null, null, null).visitText(cleanText(strongsWord));
 			} else if (text.startsWith("<n>")) {
-				Visitor<RuntimeException> vvv = noteAsFootnote ? vv.visitFootnote() :  vv.visitCSSFormatting("font-style: italic; myBibleType=note");
+				Visitor<RuntimeException> vvv = noteAsFootnote ? vv.visitFootnote(false) :  vv.visitFormattingInstruction(FormattingInstructionKind.ADDITION);
 				text = convertFromVerse(text.substring(3), vvv, hp, footnoteDB, vnums, nt, strongsPrefix);
 				if (!text.startsWith("</n>"))
 					System.out.println("WARNING: Unclosed <n> tag at: " + text);
@@ -519,18 +527,18 @@ public class MyBibleZone implements RoundtripFormat {
 					text = text.substring(4);
 				}
 			} else if (text.startsWith("<t>")) {
-				vv.visitLineBreak(LineBreakKind.NEWLINE_WITH_INDENT);
+				vv.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 1);
 				text = text.substring(3);
 			} else if (text.startsWith("</t>")) {
-				vv.visitLineBreak(LineBreakKind.NEWLINE);
+				vv.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 				text = text.substring(4);
 			} else if (text.startsWith("</")) {
 				return text;
 			} else if (text.startsWith("<pb/>")) {
-				vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+				vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 				text = text.substring(5);
 			} else if (text.startsWith("<br/>")) {
-				vv.visitLineBreak(LineBreakKind.NEWLINE);
+				vv.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 				text = text.substring(5);
 			} else if ((text.startsWith("<m>") && rawMorphology) || (text.startsWith("<f>") && rawFootnotes)) {
 				String tag = text.substring(1, 2);
@@ -592,7 +600,7 @@ public class MyBibleZone implements RoundtripFormat {
 					if (html == null)
 						System.out.println("WARNING: Footnote text " + fn + " not found in " + vnums[0] + " " + vnums[1] + ":" + vnums[2]);
 					else
-						convertFromHTML(html, hp, vv.visitFootnote());
+						convertFromHTML(html, hp, vv.visitFootnote(false));
 				} catch (SqlJetException ex) {
 					throw new RuntimeException(text, ex);
 				}
@@ -770,16 +778,22 @@ public class MyBibleZone implements RoundtripFormat {
 							}
 
 							@Override
-							public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-								if (BOOK_NUMBERS.containsKey(book)) {
-									String endVerse = firstChapter != lastChapter ? "-" + lastChapter + ":" + lastVerse : !firstVerse.equals(lastVerse) ? "-" + lastVerse : "";
-									sb.append("<x>" + BOOK_NUMBERS.get(book) + " " + firstChapter + ":" + firstVerse + endVerse + "</x>");
+							public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
+								if (BOOK_NUMBERS.containsKey(firstBook) && firstBook == lastBook && lastChapter != -1) {
+									String ref = BOOK_NUMBERS.get(firstBook) + " " + firstChapter;
+									if (lastVerse.equals("*")) {
+										ref += firstChapter != lastChapter ? "-" + lastChapter : "";
+									} else {
+										ref += ":" + firstVerse;
+										ref += firstChapter != lastChapter ? "-" + lastChapter + ":" + lastVerse : !firstVerse.equals(lastVerse) ? "-" + lastVerse : "";
+									}
+									sb.append("<x>" + ref + "</x>");
 								}
 								return this;
 							}
 
 							@Override
-							public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+							public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 								// handle this separately; we do not like
 								// footnote text inside the headline!
 								unsupportedFeatures.add("footnote in headline");
@@ -790,12 +804,18 @@ public class MyBibleZone implements RoundtripFormat {
 									}
 
 									@Override
-									public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-										if (!BOOK_NUMBERS.containsKey(book))
+									public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
+										if (!BOOK_NUMBERS.containsKey(firstBook) || firstBook != lastBook || lastChapter == -1)
 											return null;
 										final StringBuilder innerBuilder = new StringBuilder();
-										String endVerse = firstChapter != lastChapter ? "-" + lastChapter + ":" + lastVerse : !firstVerse.equals(lastVerse) ? "-" + lastVerse : "";
-										xrefTags.put(innerBuilder, "<x>" + BOOK_NUMBERS.get(book) + " " + firstChapter + ":" + firstVerse + endVerse + "</x>");
+										String ref = BOOK_NUMBERS.get(firstBook) + " " + firstChapter;
+										if (lastVerse.equals("*")) {
+											ref += firstChapter != lastChapter ? "-" + lastChapter : "";
+										} else {
+											ref += ":" + firstVerse;
+											ref += firstChapter != lastChapter ? "-" + lastChapter + ":" + lastVerse : !firstVerse.equals(lastVerse) ? "-" + lastVerse : "";
+										}
+										xrefTags.put(innerBuilder, "<x>" + ref + "</x>");
 										return new VisitorAdapter<RuntimeException>(null) {
 											@Override
 											protected void beforeVisit() throws RuntimeException {
@@ -950,26 +970,36 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
 			unsupportedFeatures.add("footnote " + locationText);
 			return null;
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
-			if (!BOOK_NUMBERS.containsKey(book)) {
-				System.out.println("WARNING: cross reference to unknown book " + book);
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
+			if (!BOOK_NUMBERS.containsKey(firstBook)) {
+				System.out.println("WARNING: cross reference to unknown book " + firstBook);
+				pushSuffix("");
+			} else if (firstBook != lastBook || lastChapter == -1) {
+				System.out.println("WARNING: unsupported cross reference to multiple books or a whole book");
 				pushSuffix("");
 			} else {
-				String endVerse = firstChapter != lastChapter ? "-" + lastChapter + ":" + lastVerse : !firstVerse.equals(lastVerse) ? "-" + lastVerse : "";
-				writer.write("<a href=\"B:" + BOOK_NUMBERS.get(book) + " " + firstChapter + ":" + firstVerse + endVerse + "\">");
+				String ref = BOOK_NUMBERS.get(firstBook) + " " + firstChapter;
+				if (lastVerse.equals("*")) {
+					ref += firstChapter != lastChapter ? "-" + lastChapter : "";
+				} else {
+					ref += ":" + firstVerse;
+					ref += firstChapter != lastChapter ? "-" + lastChapter + ":" + lastVerse : !firstVerse.equals(lastVerse) ? "-" + lastVerse : "";
+				}
+				writer.write("<a href=\"B:" + ref + "\">");
 				pushSuffix("</a>");
 			}
 			return this;
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind elbk, int indent) throws IOException {
+			LineBreakKind kind = elbk.toLineBreakKind(indent);
 			if (kind == LineBreakKind.NEWLINE_WITH_INDENT)
 				unsupportedFeatures.add("indentation " + locationText);
 			if (kind == LineBreakKind.PARAGRAPH)
@@ -977,9 +1007,8 @@ public class MyBibleZone implements RoundtripFormat {
 			else
 				writer.write("<br>");
 		}
-
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			unsupportedFeatures.add("grammar information " + locationText);
 			pushSuffix("");
 			return this;
@@ -989,6 +1018,13 @@ public class MyBibleZone implements RoundtripFormat {
 		public Visitor<IOException> visitDictionaryEntry(String dictionary, String entry) throws IOException {
 			writer.write("<a href=\"S:[" + dictionary + "]" + entry + "\">");
 			pushSuffix("</a>");
+			return this;
+		}
+
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			unsupportedFeatures.add("speaker " + locationText);
+			pushSuffix("");
 			return this;
 		}
 	}
@@ -1051,16 +1087,19 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws RuntimeException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
 			lastFootnote++;
 			MyBibleHTMLVisitor fnv = new MyBibleHTMLVisitor(unsupportedFeatures, "in footnote");
+			if (ofCrossReferences) {
+				fnv.visitText(FormattedText.XREF_MARKER);
+			}
 			footnotes.put("[" + lastFootnote + "]", fnv);
 			builder.append("<f>[" + lastFootnote + "]</f>");
 			return fnv;
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
 			unsupportedFeatures.add("xref in verse");
 			return null;
 		}
@@ -1074,6 +1113,9 @@ public class MyBibleZone implements RoundtripFormat {
 				suffix = "</e>";
 				break;
 			case ITALIC:
+			case ADDITION:
+			case PSALM_DESCRIPTIVE_TITLE:
+				// newintfmt
 				prefix = "<i>";
 				suffix = "</i>";
 				break;
@@ -1117,7 +1159,8 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind elbk, int indent) throws RuntimeException {
+			LineBreakKind kind = elbk.toLineBreakKind(indent);
 			String lastSuffix = suffixStack.get(suffixStack.size() - 1);
 			boolean indentClosed = false;
 			if (lastSuffix.startsWith("</t>")) {
@@ -1137,7 +1180,7 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			int cnt = 0;
 			String suffix = "";
 			if (strongs != null)
@@ -1146,7 +1189,7 @@ public class MyBibleZone implements RoundtripFormat {
 				cnt = Math.max(cnt, rmac.length);
 			for (int i = 0; i < cnt; i++) {
 				if (strongs != null && i < strongs.length) {
-					String formatted = Utils.formatStrongs(nt, i, strongsPrefixes, strongs);
+					String formatted = Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, "");
 					suffix += "<S>" + (formatted.startsWith(nt ? "G" : "H") ? formatted.substring(1) : formatted) + "</S>";
 				}
 				if (rmac != null && i < rmac.length) {
@@ -1178,6 +1221,20 @@ public class MyBibleZone implements RoundtripFormat {
 		@Override
 		public Visitor<IOException> visitVariationText(String[] variations) throws RuntimeException {
 			throw new RuntimeException("Variations not supported!");
+		}
+
+		@Override
+		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			unsupportedFeatures.add("hyperlink in verse");
+			suffixStack.add("");
+			return this;
+		}
+
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			unsupportedFeatures.add("speaker in verse");
+			suffixStack.add("");
+			return this;
 		}
 
 		@Override
@@ -1234,7 +1291,27 @@ public class MyBibleZone implements RoundtripFormat {
 						} else {
 							babbr = bk.getOsisID().replaceAll("[^A-Z0-9a-zäöü]++", "");
 						}
-						return base.visitCrossReference(babbr, bk, cs, vs, ce, ve);
+						return base.visitCrossReference(babbr, bk, cs, vs, babbr, bk, ce, ve);
+					}
+				}
+				Matcher cm = Utils.compilePattern("B:([0-9]+) ([0-9]+)(-[0-9]+)?").matcher(link);
+				if (cm.matches()) {
+					int bn = Integer.parseInt(cm.group(1));
+					final BookID bk = BOOK_IDS.get(bn);
+					final int cs = Integer.parseInt(cm.group(2)), ce;
+					if (cm.group(3) != null) {
+						ce = Integer.parseInt(cm.group(3).replace("-", ""));
+					} else {
+						ce = cs;
+					}
+					if (bk != null && cs >= 1 && ce >= cs) {
+						String babbr;
+						if (bookIDMap.containsKey(bn)) {
+							babbr = bookIDMap.get(bn).getAbbr();
+						} else {
+							babbr = bk.getOsisID().replaceAll("[^A-Z0-9a-zäöü]++", "");
+						}
+						return base.visitCrossReference(babbr, bk, cs, "1", babbr, bk, ce, "*");
 					}
 				}
 			} else if (link.startsWith("S:")) {

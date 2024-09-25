@@ -20,6 +20,7 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
@@ -139,15 +140,14 @@ public class MyBibleZoneCrossreferences implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
-			return new XrefFootnoteVisitor(thisRef, bible, crossReferencesTable);
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
+			return new XrefFootnoteVisitor(thisRef, bible, crossReferencesTable, ofCrossReferences);
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
-			Visitor<IOException> fnv = new XrefFootnoteVisitor(thisRef, bible, crossReferencesTable);
-			fnv.visitText(FormattedText.XREF_MARKER);
-			return fnv.visitCrossReference(bookAbbr, book, firstChapter, firstVerse, lastChapter, lastVerse);
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
+			Visitor<IOException> fnv = new XrefFootnoteVisitor(thisRef, bible, crossReferencesTable, true);
+			return fnv.visitCrossReference(firstBookAbbr, firstBook, firstChapter, firstVerse, lastBookAbbr, lastBook, lastChapter, lastVerse);
 		}
 	}
 
@@ -159,11 +159,12 @@ public class MyBibleZoneCrossreferences implements ExportFormat {
 		private final List<int[]> currRefs = new ArrayList<>();
 		private VisitorMode mode = VisitorMode.UNKNOWN;
 
-		public XrefFootnoteVisitor(int[] thisRef, Bible bible, ISqlJetTable crossReferencesTable) throws IOException {
+		public XrefFootnoteVisitor(int[] thisRef, Bible bible, ISqlJetTable crossReferencesTable, boolean ofCrossReferences) throws IOException {
 			super(null);
 			this.thisRef = thisRef;
 			this.bible = bible;
 			this.crossReferencesTable = crossReferencesTable;
+			this.mode = ofCrossReferences ? VisitorMode.XREF_FOOTNOTE : VisitorMode.UNKNOWN;
 		}
 
 		@Override
@@ -206,7 +207,15 @@ public class MyBibleZoneCrossreferences implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
+			if (firstBook == lastBook  && !lastVerse.equals("*")) {
+				return visitCrossReference0(firstBookAbbr, firstBook, firstChapter, firstVerse, lastChapter, lastVerse);
+			} else {
+				return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "cross", "reference");
+			}
+		}
+
+		public Visitor<IOException> visitCrossReference0(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
 			List<int[]> ranges = new ArrayList<>();
 			if (!MyBibleZone.BOOK_NUMBERS.containsKey(book)) {
 				System.out.println("WARNING: Cross reference to unsupported book " + book);

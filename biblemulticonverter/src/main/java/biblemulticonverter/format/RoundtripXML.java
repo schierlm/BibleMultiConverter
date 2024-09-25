@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import javax.xml.XMLConstants;
@@ -23,8 +24,10 @@ import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.Utils;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -39,6 +42,7 @@ import biblemulticonverter.schema.roundtripxml.FormattedTextType.RawHTML;
 import biblemulticonverter.schema.roundtripxml.FormattedTextType.Variation;
 import biblemulticonverter.tools.ValidateXML;
 import biblemulticonverter.schema.roundtripxml.FormattingInstructionKindType;
+import biblemulticonverter.schema.roundtripxml.HyperlinkTypeType;
 import biblemulticonverter.schema.roundtripxml.LineBreakKindType;
 import biblemulticonverter.schema.roundtripxml.ObjectFactory;
 import biblemulticonverter.schema.roundtripxml.RawHTMLModeType;
@@ -97,12 +101,42 @@ public class RoundtripXML implements RoundtripFormat {
 				if (value instanceof FormattedTextType.Headline) {
 					next = visitor.visitHeadline(((FormattedTextType.Headline) value).getDepth());
 				} else if (value instanceof FormattedTextType.Footnote) {
-					next = visitor.visitFootnote();
+					FormattedTextType.Footnote fn = (FormattedTextType.Footnote) value;
+					boolean ofCrossReferences = fn.isOfCrossReferences() == Boolean.TRUE;
+					if (fn.isOfCrossReferences() == null && Diffable.parseXrefMarkers) {
+						if (!fn.getContent().isEmpty() && fn.getContent().get(0) instanceof String) {
+							String contentPrefix = (String) fn.getContent().get(0);
+							if (contentPrefix.startsWith(FormattedText.XREF_MARKER)) {
+								ofCrossReferences = true;
+								fn.getContent().set(0, contentPrefix.substring(FormattedText.XREF_MARKER.length()));
+							}
+						}
+					}
+					next = visitor.visitFootnote(ofCrossReferences);
 				} else if (value instanceof FormattedTextType.CrossReference) {
 					FormattedTextType.CrossReference xr = (FormattedTextType.CrossReference) value;
-					next = visitor.visitCrossReference(xr.getBookAbbr(), BookID.fromOsisId(xr.getBook()), xr.getFirstChapter(), xr.getFirstVerse(), xr.getLastChapter(), xr.getLastVerse());
+					if (xr.getLastBook() == null) xr.setLastBook(xr.getBook());
+					if (xr.getLastBookAbbr() == null) xr.setLastBookAbbr(xr.getBookAbbr());
+					if (xr.getFirstChapter() == null) {
+						xr.setFirstChapter(1);
+						xr.setLastChapter(-1);
+					} else if (xr.getLastChapter() == null) {
+						xr.setLastChapter(xr.getFirstChapter());
+					}
+					if (xr.getFirstVerse() == null) {
+						xr.setFirstVerse("1");
+						xr.setLastVerse("*");
+					} else if (xr.getLastVerse() == null) {
+						xr.setLastVerse(xr.getFirstVerse());
+					}
+					next = visitor.visitCrossReference(xr.getBookAbbr(), BookID.fromOsisId(xr.getBook()), xr.getFirstChapter(), xr.getFirstVerse(), xr.getLastBookAbbr(), BookID.fromOsisId(xr.getLastBook()), xr.getLastChapter(), xr.getLastVerse());
 				} else if (value instanceof FormattedTextType.LineBreak) {
-					visitor.visitLineBreak(LineBreakKind.valueOf(((FormattedTextType.LineBreak) value).getKind().name()));
+					LineBreak lb = (FormattedTextType.LineBreak) value;
+					if (lb.getKind().name().equals(LineBreakKind.NEWLINE_WITH_INDENT.name())) {
+						visitor.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 1);
+					} else {
+						visitor.visitLineBreak(ExtendedLineBreakKind.valueOf(lb.getKind().name()), lb.getIndent() == null ? 0 : lb.getIndent());
+					}
 					continue;
 				} else if (value instanceof FormattedTextType.DictionaryEntry) {
 					FormattedTextType.DictionaryEntry de = (FormattedTextType.DictionaryEntry) value;
@@ -110,26 +144,47 @@ public class RoundtripXML implements RoundtripFormat {
 				} else if (value instanceof FormattedTextType.GrammarInformation) {
 					FormattedTextType.GrammarInformation gi = (FormattedTextType.GrammarInformation) value;
 					int[] strongs = null;
-					char[] strongsPrefixes = null;
+					char[] strongsPrefixes = null, strongsSuffixes = null;
 					if (!gi.getStrongs().isEmpty()) {
 						strongsPrefixes = new char[gi.getStrongs().size()];
 						strongs = new int[gi.getStrongs().size()];
+						if (gi.isEmptyStrongsSuffixesPresent() == Boolean.TRUE) {
+							strongsSuffixes = new char[gi.getStrongs().size()];
+							Arrays.fill(strongsSuffixes, ' ');
+						}
 						for (int i = 0; i < strongs.length; i++) {
 							String s = gi.getStrongs().get(i);
 							if (Diffable.parseStrongsSuffix) {
-								char[] prefixHolder = new char[1];
-								strongs[i] = Utils.parseStrongs(s, '?', prefixHolder);
-								if (prefixHolder[0] != '?') {
-									strongsPrefixes[i] = prefixHolder[0];
+								char[] prefixSuffixHolder = new char[2];
+								strongs[i] = Utils.parseStrongs(s, '?', prefixSuffixHolder);
+								if (prefixSuffixHolder[0] != '?') {
+									strongsPrefixes[i] = prefixSuffixHolder[0];
 								} else {
 									strongsPrefixes = null;
 								}
-							} else if (s.matches("[A-Z][0-9]+")) {
-								strongsPrefixes[i] = s.charAt(0);
-								strongs[i] = Integer.parseInt(s.substring(1));
+								if (prefixSuffixHolder[1] != ' ') {
+									if (strongsSuffixes == null) {
+										strongsSuffixes = new char[gi.getStrongs().size()];
+										Arrays.fill(strongsSuffixes, ' ');
+									}
+									strongsSuffixes[i] = prefixSuffixHolder[1];
+								}
 							} else {
-								strongsPrefixes = null;
-								strongs[i] = Integer.parseInt(s);
+								if (s.matches("[A-Z]?[0-9]+[A-Za-z]")) {
+									if (strongsSuffixes == null) {
+										strongsSuffixes = new char[gi.getStrongs().size()];
+										Arrays.fill(strongsSuffixes, ' ');
+									}
+									strongsSuffixes[i] = s.charAt(s.length() - 1);
+									s = s.substring(0, s.length() - 1);
+								}
+								if (s.matches("[A-Z][0-9]+")) {
+									strongsPrefixes[i] = s.charAt(0);
+									strongs[i] = Integer.parseInt(s.substring(1));
+								} else {
+									strongsPrefixes = null;
+									strongs[i] = Integer.parseInt(s);
+								}
 							}
 						}
 					}
@@ -144,7 +199,23 @@ public class RoundtripXML implements RoundtripFormat {
 							sidxs[i] = gi.getSourceIndices().get(i);
 						}
 					}
-					next = visitor.visitGrammarInformation(strongsPrefixes, strongs, rmacs, sidxs);
+					String[] attributeKeys = null, attributeValues = null;
+					if (!gi.getAttr().isEmpty()) {
+						attributeKeys = new String[gi.getAttr().size()];
+						attributeValues = new String[gi.getAttr().size()];
+						for (int i = 0; i < attributeKeys.length; i++) {
+							String[] parts = gi.getAttr().get(i).split("=", 2);
+							attributeKeys[i] = parts[0];
+							attributeValues[i] = parts[1];
+						}
+					}
+					next = visitor.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmacs, sidxs, attributeKeys, attributeValues);
+				} else if (value instanceof FormattedTextType.Speaker) {
+					FormattedTextType.Speaker sp = (FormattedTextType.Speaker) value;
+					next = visitor.visitSpeaker(sp.getWho());
+				} else if (value instanceof FormattedTextType.Hyperlink) {
+					FormattedTextType.Hyperlink hl = (FormattedTextType.Hyperlink) value;
+					next = visitor.visitHyperlink(HyperlinkType.valueOf(hl.getType().name()), hl.getTarget());
 				} else if (value instanceof FormattedTextType.FormattingInstruction) {
 					next = visitor.visitFormattingInstruction(FormattingInstructionKind.valueOf(((FormattedTextType.FormattingInstruction) value).getKind().name()));
 				} else if (value instanceof FormattedTextType.CssFormatting) {
@@ -266,9 +337,16 @@ public class RoundtripXML implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws IOException {
 			LineBreak lb = of.createFormattedTextTypeLineBreak();
-			lb.setKind(LineBreakKindType.valueOf(kind.name()));
+			if (kind == ExtendedLineBreakKind.NEWLINE && indent == 1) {
+				lb.setKind(LineBreakKindType.NEWLINE_WITH_INDENT);
+			} else {
+				lb.setKind(LineBreakKindType.valueOf(kind.name()));
+				if (indent != 0) {
+					lb.setIndent(indent);
+				}
+			}
 			result.add(of.createFormattedTextTypeLineBreak(lb));
 		}
 
@@ -289,8 +367,10 @@ public class RoundtripXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
 			FormattedTextType.Footnote fn = of.createFormattedTextTypeFootnote();
+			if (ofCrossReferences)
+				fn.setOfCrossReferences(true);
 			result.add(of.createFormattedTextTypeFootnote(fn));
 			return new CreateContentVisitor(of, fn.getContent());
 		}
@@ -316,15 +396,21 @@ public class RoundtripXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			FormattedTextType.GrammarInformation gi = of.createFormattedTextTypeGrammarInformation();
 			if (strongs != null) {
+				boolean hasSuffix = false;
 				for (int i = 0; i < strongs.length; i++) {
 					if (Diffable.writeStrongsSuffix && strongsPrefixes != null && strongs != null) {
-						gi.getStrongs().add(Utils.formatStrongs(false, i, strongsPrefixes, strongs));
+						gi.getStrongs().add(Utils.formatStrongs(false, i, strongsPrefixes, strongs, strongsSuffixes, ""));
 					} else {
-						gi.getStrongs().add((strongsPrefixes == null ? "" : "" + strongsPrefixes[i]) + strongs[i]);
+						gi.getStrongs().add((strongsPrefixes == null ? "" : "" + strongsPrefixes[i]) + strongs[i] + (strongsSuffixes == null || strongsSuffixes[i] == ' ' ? "" : "" + strongsSuffixes[i]));
 					}
+					if (strongsSuffixes != null && strongsSuffixes[i] != ' ')
+						hasSuffix = true;
+				}
+				if (strongsSuffixes != null && !hasSuffix) {
+					gi.setEmptyStrongsSuffixesPresent(true);
 				}
 			}
 			if (rmac != null)
@@ -332,19 +418,34 @@ public class RoundtripXML implements RoundtripFormat {
 			if (sourceIndices != null)
 				for (int sidx : sourceIndices)
 					gi.getSourceIndices().add(sidx);
+			if (attributeKeys != null) {
+				for (int i = 0; i < attributeKeys.length; i++) {
+					gi.getAttr().add(attributeKeys[i]+"="+attributeValues[i]);
+				}
+			}
 			result.add(of.createFormattedTextTypeGrammarInformation(gi));
 			return new CreateContentVisitor(of, gi.getContent());
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
 			CrossReference xr = of.createFormattedTextTypeCrossReference();
-			xr.setBookAbbr(bookAbbr);
-			xr.setBook(book.getOsisID());
-			xr.setFirstChapter(firstChapter);
-			xr.setFirstVerse(firstVerse);
-			xr.setLastChapter(lastChapter);
-			xr.setLastVerse(lastVerse);
+			xr.setBookAbbr(firstBookAbbr);
+			xr.setBook(firstBook.getOsisID());
+			if (!firstBookAbbr.equals(lastBookAbbr)) {
+				xr.setLastBookAbbr(lastBookAbbr);
+			}
+			if (firstBook != lastBook) {
+				xr.setLastBook(lastBook.getOsisID());
+			}
+			if (lastChapter != -1) {
+				xr.setFirstChapter(firstChapter);
+				xr.setLastChapter(lastChapter);
+				if (lastVerse != "*") {
+					xr.setFirstVerse(firstVerse);
+					xr.setLastVerse(lastVerse);
+				}
+			}
 			result.add(of.createFormattedTextTypeCrossReference(xr));
 			return new CreateContentVisitor(of, xr.getContent());
 		}
@@ -363,6 +464,23 @@ public class RoundtripXML implements RoundtripFormat {
 			rh.setMode(RawHTMLModeType.valueOf(mode.name()));
 			rh.setValue(raw);
 			result.add(of.createFormattedTextTypeRawHTML(rh));
+		}
+
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			FormattedTextType.Speaker sp = of.createFormattedTextTypeSpeaker();
+			sp.setWho(labelOrStrongs);
+			result.add(of.createFormattedTextTypeSpeaker(sp));
+			return new CreateContentVisitor(of, sp.getContent());
+		}
+
+		@Override
+		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			FormattedTextType.Hyperlink hl = of.createFormattedTextTypeHyperlink();
+			hl.setType(HyperlinkTypeType.valueOf(type.name()));
+			hl.setTarget(target);
+			result.add(of.createFormattedTextTypeHyperlink(hl));
+			return new CreateContentVisitor(of, hl.getContent());
 		}
 
 		@Override

@@ -13,8 +13,8 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
-import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.Verse;
@@ -98,11 +98,13 @@ public class StrongConcordance implements ExportFormat {
 						i++;
 					}
 					Book book = bible.getBooks().get(curr.bookIndex);
-					v.visitCrossReference(book.getAbbr(), book.getId(), curr.chapter, curr.verse, curr.chapter, curr.verse).visitText(book.getAbbr() + " " + curr.chapter + ":" + curr.verse);
+					String bookAbbr = book.getAbbr();
+					BookID book1 = book.getId();
+					v.visitCrossReference(bookAbbr, book1, curr.chapter, curr.verse, bookAbbr, book1, curr.chapter, curr.verse).visitText(book.getAbbr() + " " + curr.chapter + ":" + curr.verse);
 					if (cnt > 1)
 						v.visitText(" (" + cnt + ")");
 				}
-				v.visitLineBreak(LineBreakKind.PARAGRAPH);
+				v.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 				part.clear();
 			}
 			changed.finished();
@@ -193,14 +195,14 @@ public class StrongConcordance implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			if (strongs == null)
 				return this;
 			StringBuilder key = new StringBuilder();
 			for (int i = 0; i < strongs.length; i++) {
 				if (key.length() > 0)
 					key.append('+');
-				key.append(strongsPrefixes != null ? strongsPrefixes[i] : prefix).append(strongs[i]);
+				key.append(strongsPrefixes != null ? strongsPrefixes[i] : prefix).append(strongs[i]).append(strongsSuffixes != null && strongsSuffixes[i] != ' ' ? "" + strongsSuffixes[i] : "");
 			}
 			StringBuilder value = new StringBuilder();
 			List<StringBuilder> values = strongInfo.get(key.toString());

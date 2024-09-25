@@ -1,5 +1,7 @@
 package biblemulticonverter.data;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -13,9 +15,10 @@ import java.util.Set;
 public class FormattedText {
 
 	/**
-	 * Text used at the beginning of a footnote that should be actually a list
-	 * of cross references.
+	 * Text used to be used at the beginning of a footnote that should actually
+	 * be a list of cross references.
 	 */
+	@Deprecated
 	public static String XREF_MARKER = "\u2118 ";
 
 	private List<Headline> headlines = new ArrayList<Headline>(0);
@@ -78,11 +81,11 @@ public class FormattedText {
 		return result;
 	}
 
-	public void validate(Bible bible, BookID book, String location, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories) {
+	public void validate(Bible bible, BookID book, String location, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories, Set<String> internalAnchors, Set<String> internalLinks) {
 		if (!finished)
 			ValidationCategory.NOT_FINISHED.throwOrRecord(location, validationCategories, location);
 		try {
-			accept(new ValidatingVisitor(bible, book, danglingReferences, dictionaryEntries, location, validationCategories, this instanceof Verse ? ValidationContext.VERSE : ValidationContext.NORMAL_TEXT));
+			accept(new ValidatingVisitor(bible, book, danglingReferences, dictionaryEntries, location, validationCategories, internalAnchors, internalLinks, this instanceof Verse ? ValidationContext.VERSE : ValidationContext.NORMAL_TEXT));
 		} catch (RuntimeException ex) {
 			throw new RuntimeException("Validation error at " + location, ex);
 		}
@@ -230,30 +233,49 @@ public class FormattedText {
 	}
 
 	private static class Footnote extends FormattedTextElement {
+
+		private boolean ofCrossReferences;
+
+		public Footnote(boolean ofCrossReferences) {
+			this.ofCrossReferences = ofCrossReferences;
+		}
+
 		public <T extends Throwable> void acceptThis(Visitor<T> visitor) throws T {
-			accept(visitor.visitFootnote());
+			accept(visitor.visitFootnote(ofCrossReferences));
 		}
 	}
 
 	private static class CrossReference extends FormattedTextElement {
-		private String bookAbbr;
-		private BookID book;
+		private String firstBookAbbr;
+		private BookID firstBook;
 		private int firstChapter;
 		private String firstVerse;
+		private String lastBookAbbr;
+		private BookID lastBook;
 		private int lastChapter;
 		private String lastVerse;
 
-		private CrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) {
-			this.bookAbbr = Utils.validateString("bookAbbr", bookAbbr, Utils.BOOK_ABBR_REGEX);
-			this.book = Utils.validateNonNull("book", book);
+		private CrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
+			this.firstBookAbbr = Utils.validateString("firstBookAbbr", firstBookAbbr, Utils.BOOK_ABBR_REGEX);
+			this.firstBook = Utils.validateNonNull("firstBook", firstBook);
 			this.firstChapter = Utils.validateNumber("firstChapter", firstChapter, 1, Integer.MAX_VALUE);
 			this.firstVerse = Utils.validateString("firstVerse", firstVerse, Utils.VERSE_REGEX);
-			this.lastChapter = Utils.validateNumber("lastChapter", lastChapter, firstChapter, Integer.MAX_VALUE);
-			this.lastVerse = Utils.validateString("lastVerse", lastVerse, Utils.VERSE_REGEX);
+			this.lastBookAbbr = Utils.validateString("lastBookAbbr", lastBookAbbr, Utils.BOOK_ABBR_REGEX);
+			this.lastBook = Utils.validateNonNull("lastBook",        lastBook);
+			if (firstChapter == 1 && lastChapter == -1 && lastVerse.equals("*")) {
+				this.lastChapter = -1;
+			} else {
+				this.lastChapter = Utils.validateNumber("lastChapter", lastChapter, firstChapter, Integer.MAX_VALUE);
+			}
+			if (firstVerse.equals("1") && lastVerse.equals("*")) {
+				this.lastVerse = "*";
+			} else {
+				this.lastVerse = Utils.validateString("lastVerse", lastVerse, Utils.VERSE_REGEX);
+			}
 		}
 
 		public <T extends Throwable> void acceptThis(Visitor<T> visitor) throws T {
-			accept(visitor.visitCrossReference(bookAbbr, book, firstChapter, firstVerse, lastChapter, lastVerse));
+			accept(visitor.visitCrossReference(firstBookAbbr, firstBook, firstChapter, firstVerse, lastBookAbbr, lastBook, lastChapter, lastVerse));
 		}
 	}
 
@@ -289,29 +311,38 @@ public class FormattedText {
 	}
 
 	private static class LineBreak implements FormattedElement {
-		private final LineBreakKind kind;
+		private final ExtendedLineBreakKind kind;
+		private final int indent;
 
-		private LineBreak(LineBreakKind kind) {
+		private LineBreak(ExtendedLineBreakKind kind, int indent) {
 			this.kind = Utils.validateNonNull("kind", kind);
+			this.indent = Utils.validateNumber("indent", indent, -2, 9);
 		}
 
 		@Override
 		public <T extends Throwable> void acceptThis(Visitor<T> v) throws T {
-			v.visitLineBreak(kind);
+			v.visitLineBreak(kind, indent);
 		}
 	}
 
 	private static class GrammarInformation extends FormattedTextElement {
 		private final char[] strongsPrefixes;
 		private final int[] strongs;
+		private final char[] strongsSuffixes;
 		private final String[] rmac;
 		private final int[] sourceIndices;
+		private final String[] attributeKeys;
+		private final String[] attributeValues;
 
-		private GrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+		private GrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			this.strongsPrefixes = strongsPrefixes;
 			this.strongs = strongs;
+			this.strongsSuffixes = strongsSuffixes;
 			this.rmac = rmac;
 			this.sourceIndices = sourceIndices;
+			this.attributeKeys = attributeKeys;
+			this.attributeValues = attributeValues;
+
 			if (strongs == null && rmac == null && sourceIndices == null) {
 				throw new IllegalArgumentException("At least one grammar information type is required!");
 			}
@@ -321,7 +352,7 @@ public class FormattedText {
 				if (strongsPrefixes.length != strongs.length)
 					throw new IllegalArgumentException("Prefixes need to be same length as Strongs numbers");
 				for(char prefix : strongsPrefixes) {
-					if (prefix < 'A' || prefix >'Z')
+					if (prefix < 'A' || prefix > 'Z')
 						throw new IllegalArgumentException("Invalid Strongs prefix letter: "+prefix);
 				}
 			}
@@ -332,6 +363,16 @@ public class FormattedText {
 				for (int strong : strongs) {
 					if (strong <= 0)
 						throw new IllegalArgumentException("Strongs must be positive: " + strong);
+				}
+			}
+			if (strongsSuffixes != null) {
+				if (strongs == null)
+					throw new IllegalArgumentException("Suffixes without Strongs numbers are not supported!");
+				if (strongsSuffixes.length != strongs.length)
+					throw new IllegalArgumentException("Suffixes need to be same length as Strongs numbers");
+				for(char suffix : strongsSuffixes) {
+					if ((suffix != ' ') && (suffix < 'A' || suffix > 'Z') && (suffix < 'a' || suffix > 'z'))
+						throw new IllegalArgumentException("Invalid Strongs suffix letter: " + suffix);
 				}
 			}
 			if (rmac != null) {
@@ -349,10 +390,22 @@ public class FormattedText {
 						throw new IllegalArgumentException("Source index out of range: " + idx);
 				}
 			}
+			if (attributeKeys != null || attributeValues != null) {
+				if (attributeKeys == null || attributeValues == null)
+					throw new IllegalArgumentException("Attribute keys and values must both be present");
+				if (attributeKeys.length != attributeValues.length)
+					throw new IllegalArgumentException("Attribute keys and values must have same length");
+				if (attributeKeys.length == 0)
+					throw new IllegalArgumentException("Attributes may not be empty");
+				for (int i = 0; i < attributeKeys.length; i++) {
+					Utils.validateString("attributeKey", attributeKeys[i], "[a-z0-9_:-]++");
+					Utils.validateString("attributeValue", attributeValues[i], "[^ \r\n\t]*+");
+				}
+			}
 		}
 
 		public <T extends Throwable> void acceptThis(Visitor<T> visitor) throws T {
-			accept(visitor.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices));
+			accept(visitor.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues));
 		}
 	}
 
@@ -369,6 +422,32 @@ public class FormattedText {
 
 		public <T extends Throwable> void acceptThis(Visitor<T> visitor) throws T {
 			accept(visitor.visitDictionaryEntry(dictionary, entry));
+		}
+	}
+
+	private static class Speaker extends FormattedTextElement {
+		private final String labelOrStrongs;
+
+		private Speaker(String labelOrStrongs) {
+			this.labelOrStrongs = Utils.validateString("labelOrStrongs", labelOrStrongs, "[A-Za-z0-9_:-]+");
+		}
+
+		public <T extends Throwable> void acceptThis(Visitor<T> visitor) throws T {
+			accept(visitor.visitSpeaker(labelOrStrongs));
+		}
+	}
+
+	private static class Hyperlink extends FormattedTextElement {
+		private final HyperlinkType type;
+		private final String target;
+
+		private Hyperlink(HyperlinkType type, String target) {
+			this.type = Utils.validateNonNull("type", type);
+			this.target = Utils.validateString("target", target, "[^\r\n\t\"<>&]*+");
+		}
+
+		public <T extends Throwable> void acceptThis(Visitor<T> visitor) throws T {
+			accept(visitor.visitHyperlink(type, target));
 		}
 	}
 
@@ -422,7 +501,6 @@ public class FormattedText {
 		}
 	}
 
-	// TODO add Psalm Title and Added Text here!
 	public static enum FormattingInstructionKind {
 		BOLD('b', "b", "font-weight: bold;"),
 		ITALIC('i', "i", "font-style: italic;"),
@@ -435,6 +513,8 @@ public class FormattedText {
 		SUPERSCRIPT('p', "sup", "font-size: .83em; vertical-align: super;"),
 		DIVINE_NAME('d', null, "font-variant: small-caps;"),
 		STRIKE_THROUGH('t', null, "text-decoration: line-through;"),
+		ADDITION('a', null, "font-style: italic; -bmc-usfm-tag: add;"),
+		PSALM_DESCRIPTIVE_TITLE('m', null, "font-style: italic; -bmc-usfm-tag: d;"),
 		WORDS_OF_JESUS('w', null, "color: red;");
 
 		private final char code;
@@ -470,19 +550,24 @@ public class FormattedText {
 		}
 	}
 
-	// TODO: Use this instead of LineBreakKind
 	public static enum ExtendedLineBreakKind {
 
-		PARAGRAPH(false), NO_FIRST_LINE_INDENT(false), HANGING_INDENT(false), PAGE_BREAK(false), BLANK_LINE(false), SEMANTIC_DIVISION(false),
-		TABLE_ROW_FIRST_CELL(false), TABLE_ROW_NEXT_CELL(false),
-		NEWLINE(true), POETIC_LINE(true), SAME_LINE_IF_POSSIBLE(true);
+		PARAGRAPH('P', false), NO_FIRST_LINE_INDENT('M', false), HANGING_INDENT('H', false), PAGE_BREAK('G', false), BLANK_LINE('B', false), SEMANTIC_DIVISION('D', false),
+		TABLE_ROW_FIRST_CELL('R', false), TABLE_ROW_NEXT_CELL('C', false),
+		NEWLINE('N', true), POETIC_LINE('L', true), SAME_LINE_IF_POSSIBLE('S', true);
 
 		public static int INDENT_CENTER = -1;
 		public static int INDENT_RIGHT_JUSTIFIED = -2;
+		private char code;
 		private boolean sameParagraph;
 
-		private ExtendedLineBreakKind(boolean sameParagraph) {
+		private ExtendedLineBreakKind(char code, boolean sameParagraph) {
+			this.code = code;
 			this.sameParagraph = sameParagraph;
+		}
+
+		public char getCode() {
+			return code;
 		}
 
 		public boolean isSameParagraph() {
@@ -493,6 +578,7 @@ public class FormattedText {
 			return this != NEWLINE && this != TABLE_ROW_FIRST_CELL && this != TABLE_ROW_NEXT_CELL;
 		}
 
+		@Deprecated
 		public LineBreakKind toLineBreakKind(int indent) {
 			if (this == TABLE_ROW_NEXT_CELL)
 				return LineBreakKind.NEWLINE_WITH_INDENT;
@@ -500,14 +586,27 @@ public class FormattedText {
 				return LineBreakKind.PARAGRAPH;
 			return indent == 0 ? LineBreakKind.NEWLINE : LineBreakKind.NEWLINE_WITH_INDENT;
 		}
+
+		public static ExtendedLineBreakKind fromChar(char c) {
+			for (ExtendedLineBreakKind k : values()) {
+				if (k.code == c)
+					return k;
+			}
+			throw new IllegalArgumentException("Char: " + c);
+		}
 	}
 
+	@Deprecated
 	public static enum LineBreakKind {
 		PARAGRAPH, NEWLINE, NEWLINE_WITH_INDENT;
 	}
 
 	public static enum RawHTMLMode {
 		ONLINE, OFFLINE, BOTH;
+	}
+
+	public static enum HyperlinkType {
+		ANCHOR, INTERNAL_LINK, EXTERNAL_LINK, IMAGE;
 	}
 
 	public static enum ExtraAttributePriority {
@@ -542,9 +641,9 @@ public class FormattedText {
 
 		public void visitText(String text) throws T;
 
-		public Visitor<T> visitFootnote() throws T;
+		public Visitor<T> visitFootnote(boolean ofCrossReferences) throws T;
 
-		public Visitor<T> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws T;
+		public Visitor<T> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws T;
 
 		public Visitor<T> visitFormattingInstruction(FormattingInstructionKind kind) throws T;
 
@@ -552,13 +651,17 @@ public class FormattedText {
 
 		public void visitVerseSeparator() throws T;
 
-		public void visitLineBreak(LineBreakKind kind) throws T;
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws T;
 
-		public Visitor<T> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws T;
+		public Visitor<T> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws T;
 
 		public Visitor<T> visitDictionaryEntry(String dictionary, String entry) throws T;
 
 		public void visitRawHTML(RawHTMLMode mode, String raw) throws T;
+
+		public Visitor<T> visitSpeaker(String labelOrStrongs) throws T;
+
+		public Visitor<T> visitHyperlink(HyperlinkType type, String target) throws T;
 
 		public Visitor<T> visitVariationText(String[] variations) throws T;
 
@@ -614,15 +717,15 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<T> visitFootnote() throws T {
+		public Visitor<T> visitFootnote(boolean ofCrossReferences) throws T {
 			beforeVisit();
-			return wrapChildVisitor(getVisitor() == null ? null : getVisitor().visitFootnote());
+			return wrapChildVisitor(getVisitor() == null ? null : getVisitor().visitFootnote(ofCrossReferences));
 		}
 
 		@Override
-		public Visitor<T> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws T {
+		public Visitor<T> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws T {
 			beforeVisit();
-			return wrapChildVisitor(getVisitor() == null ? null : getVisitor().visitCrossReference(bookAbbr, book, firstChapter, firstVerse, lastChapter, lastVerse));
+			return wrapChildVisitor(getVisitor() == null ? null : getVisitor().visitCrossReference(firstBookAbbr, firstBook, firstChapter, firstVerse, lastBookAbbr, lastBook, lastChapter, lastVerse));
 		}
 
 		@Override
@@ -645,16 +748,16 @@ public class FormattedText {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws T {
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws T {
 			beforeVisit();
 			if (getVisitor() != null)
-				getVisitor().visitLineBreak(kind);
+				getVisitor().visitLineBreak(kind, indent);
 		}
 
 		@Override
-		public Visitor<T> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws T {
+		public Visitor<T> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws T {
 			beforeVisit();
-			return wrapChildVisitor(getVisitor() == null ? null : getVisitor().visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices));
+			return wrapChildVisitor(getVisitor() == null ? null : getVisitor().visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues));
 		}
 
 		@Override
@@ -668,6 +771,18 @@ public class FormattedText {
 			beforeVisit();
 			if (getVisitor() != null)
 				getVisitor().visitRawHTML(mode, raw);
+		}
+
+		@Override
+		public Visitor<T> visitSpeaker(String labelOrStrongs) throws T {
+			beforeVisit();
+			return wrapChildVisitor(getVisitor() == null ? null : getVisitor().visitSpeaker(labelOrStrongs));
+		}
+
+		@Override
+		public Visitor<T> visitHyperlink(HyperlinkType type, String target) throws T {
+			beforeVisit();
+			return wrapChildVisitor(getVisitor() == null ? null : getVisitor().visitHyperlink(type, target));
 		}
 
 		@Override
@@ -728,13 +843,13 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
-			return addAndVisit(new Footnote());
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
+			return addAndVisit(new Footnote(ofCrossReferences));
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-			return addAndVisit(new CrossReference(bookAbbr, book, firstChapter, firstVerse, lastChapter, lastVerse));
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
+			return addAndVisit(new CrossReference(firstBookAbbr, firstBook, firstChapter, firstVerse, lastBookAbbr, lastBook, lastChapter, lastVerse));
 		}
 
 		@Override
@@ -753,13 +868,13 @@ public class FormattedText {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
-			target.elements.add(new LineBreak(kind));
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws RuntimeException {
+			target.elements.add(new LineBreak(kind, indent));
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
-			return addAndVisit(new GrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices));
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+			return addAndVisit(new GrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues));
 		}
 
 		@Override
@@ -770,6 +885,16 @@ public class FormattedText {
 		@Override
 		public void visitRawHTML(RawHTMLMode mode, String raw) throws RuntimeException {
 			target.elements.add(new RawHTML(mode, raw));
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) throws RuntimeException {
+			return addAndVisit(new Speaker(labelOrStrongs));
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) throws RuntimeException {
+			return addAndVisit(new Hyperlink(type, target));
 		}
 
 		@Override
@@ -804,6 +929,8 @@ public class FormattedText {
 		private final Map<String, Set<String>> dictionaryEntries;
 		private final String location;
 		private final Map<String, Set<ValidationCategory>> validationCategories;
+		private final Set<String> internalAnchors;
+		private final Set<String> internalLinks;
 		private final ValidationContext context;
 
 		private int lastHeadlineDepth = 0;
@@ -811,18 +938,20 @@ public class FormattedText {
 		private boolean trailingWhitespaceFound = false;
 		private boolean isEmpty = true;
 
-		private ValidatingVisitor(Bible bible, BookID book, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, String location, Map<String, Set<FormattedText.ValidationCategory>> validationCategories, ValidationContext context) {
+		private ValidatingVisitor(Bible bible, BookID book, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, String location, Map<String, Set<FormattedText.ValidationCategory>> validationCategories, Set<String> internalAnchors, Set<String> internalLinks, ValidationContext context) {
 			this.bible = bible;
 			this.book = book;
 			this.danglingReferences = danglingReferences;
 			this.dictionaryEntries = dictionaryEntries;
 			this.location = location;
 			this.validationCategories = validationCategories;
+			this.internalAnchors = internalAnchors;
+			this.internalLinks = internalLinks;
 			this.context = context;
 		}
 
 		private ValidatingVisitor createValidatingVisitor(ValidationContext context) {
-			return new ValidatingVisitor(bible, book, danglingReferences, dictionaryEntries, location, validationCategories, context);
+			return new ValidatingVisitor(bible, book, danglingReferences, dictionaryEntries, location, validationCategories, internalAnchors, internalLinks, context);
 		}
 
 		@Override
@@ -855,7 +984,7 @@ public class FormattedText {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws RuntimeException {
 			if (trailingWhitespaceFound && !IGNORE_WHITESPACE_ISSUES)
 				violation(ValidationCategory.WHITESPACE_BEFORE_BREAK, "");
 			if (context.ordinal() >= ValidationContext.HEADLINE.ordinal() && context != ValidationContext.FOOTNOTE)
@@ -892,7 +1021,7 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 			if (context.ordinal() >= ValidationContext.FOOTNOTE.ordinal())
 				violation(ValidationCategory.NESTED_FOOTNOTE, "");
 			visitInlineElement();
@@ -920,19 +1049,59 @@ public class FormattedText {
 		}
 
 		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) throws RuntimeException {
+			visitInlineElement();
+			return createValidatingVisitor(context);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) throws RuntimeException {
+			visitInlineElement();
+			switch(type) {
+			case ANCHOR:
+				if (!internalAnchors.add(target)) {
+					violation(ValidationCategory.DUPLICATE_ANCHOR, target);
+				}
+				break;
+			case IMAGE:
+				if (target.matches("[A-Za-z0-9.-]+"))
+					break;
+				// fall-through
+			case EXTERNAL_LINK:
+				try {
+					new URL(target);
+				} catch (MalformedURLException ex) {
+					violation(ValidationCategory.MALFORMED_HYPERLINK, target);
+				}
+				break;
+			case INTERNAL_LINK:
+				if (!target.startsWith("#"))
+					violation(ValidationCategory.MALFORMED_HYPERLINK, target);
+				internalLinks.add(target.substring(1));
+				break;
+			default:
+				break;
+			}
+			ValidatingVisitor vvv =  createValidatingVisitor(context);
+			if (type == HyperlinkType.ANCHOR)
+				vvv.isEmpty = false;
+			return vvv;
+		}
+
+		@Override
 		public Visitor<RuntimeException> visitVariationText(String[] variations) throws RuntimeException {
 			visitInlineElement();
 			return createValidatingVisitor(context);
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			if (context.ordinal() >= ValidationContext.LINK.ordinal())
 				violation(ValidationCategory.NESTED_LINK, "");
 			visitInlineElement();
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
-					validateDictionaryEntry("strongs", (strongsPrefixes != null ? "" + strongsPrefixes[i]: book.isNT() ? "G" : "H") + strongs[i]);
+					validateDictionaryEntry("strongs", (strongsPrefixes != null ? "" + strongsPrefixes[i] : book.isNT() ? "G" : "H") + strongs[i] + (strongsSuffixes != null && strongsSuffixes[i] != ' ' ? "" + strongsSuffixes[i] : ""));
 				}
 			}
 			return createValidatingVisitor(ValidationContext.LINK);
@@ -960,22 +1129,23 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID bookID, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBookID, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBookID, int lastChapter, String lastVerse) throws RuntimeException {
 			if (context.ordinal() >= ValidationContext.XREF.ordinal())
 				violation(ValidationCategory.NESTED_XREF, "");
 			if (context == ValidationContext.VERSE)
 				violation(ValidationCategory.INVALID_XREF_LOCATION, "");
 			visitInlineElement();
-			Book book = bible.getBook(bookAbbr, bookID);
-			int firstIndex = book == null || book.getChapters().size() < firstChapter ? -1 : book.getChapters().get(firstChapter - 1).getVerseIndex(firstVerse);
-			int lastIndex = book == null || book.getChapters().size() < lastChapter ? -1 : book.getChapters().get(lastChapter - 1).getVerseIndex(lastVerse);
+			Book firstBook = bible.getBook(firstBookAbbr, firstBookID);
+			Book lastBook = bible.getBook(lastBookAbbr, lastBookID);
+			int firstIndex = firstBook == null || firstBook.getChapters().size() < firstChapter ? -1 : firstBook.getChapters().get(firstChapter - 1).getVerseIndex(firstVerse);
+			int lastIndex = lastBook == null || lastBook.getChapters().size() < lastChapter ? -1 : lastVerse.equals("*") ? 999 : lastBook.getChapters().get(lastChapter - 1).getVerseIndex(lastVerse);
 			if (firstIndex == -1 && danglingReferences != null) {
-				danglingReferences.add(bookAbbr + "(" + bookID.getOsisID() + ") " + firstChapter + ":" + firstVerse);
+				danglingReferences.add(firstBookAbbr + "(" + firstBookID.getOsisID() + ") " + firstChapter + ":" + firstVerse);
 			}
 			if (lastIndex == -1 && danglingReferences != null) {
-				danglingReferences.add(bookAbbr + "(" + bookID.getOsisID() + ") " + lastChapter + ":" + lastVerse);
+				danglingReferences.add(lastBookAbbr + "(" + lastBookID.getOsisID() + ") " + lastChapter + ":" + lastVerse);
 			}
-			if (firstIndex != -1 && lastIndex != -1 && firstChapter == lastChapter) {
+			if (firstIndex != -1 && lastIndex != -1 && firstChapter == lastChapter && firstBookID == lastBookID) {
 				if (firstIndex > lastIndex)
 					violation(ValidationCategory.MALFORMED_XREF, "");
 			}
@@ -1035,12 +1205,12 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 			return visitNestedType('f');
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
 			return visitNestedType('x');
 		}
 
@@ -1060,12 +1230,12 @@ public class FormattedText {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws RuntimeException {
 			sb.append('b');
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			return visitNestedType('g');
 		}
 
@@ -1077,6 +1247,16 @@ public class FormattedText {
 		@Override
 		public void visitRawHTML(RawHTMLMode mode, String raw) throws RuntimeException {
 			sb.append('H');
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) throws RuntimeException {
+			return visitNestedType('s');
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) throws RuntimeException {
+			return visitNestedType('l');
 		}
 
 		@Override
@@ -1119,8 +1299,10 @@ public class FormattedText {
 		BIBLE_WITHOUT_BOOKS("Bible does not have books"),
 		ONLY_METADATA_BOOK("Bible has only metadata book"),
 		MALFORMED_DICTIONARY_ENTRY("Malformed dictionary entry: "),
+		MALFORMED_HYPERLINK("Malformed hyperlink: "),
 		AMBIGUOUS_BOOK_ID("Ambiguous book id "),
 		DUPLICATE_BOOK_REFERENCE("Duplicate book reference in "),
+		DUPLICATE_ANCHOR("Duplicate link anchor: "),
 		PROLOG_VALIDATION_FAILED(""),
 		BOOK_WITHOUT_CHAPTERS("Book has no chapters: "),
 		LAST_CHAPTER_WITHOUT_CONTENT("Last chapter has neither prolog nor verses: "),
@@ -1129,6 +1311,7 @@ public class FormattedText {
 		NOT_FINISHED("Formatted text not marked as finished (this may dramatically increase memory usage): "),
 		EMPTY_ELEMENT("Element is empty"),
 		MALFORMED_XREF("First xref verse is after last xref verse"),
+		MISSING_INTERNAL_ANCHOR("Anchor missing for internal link: "),
 
 		INVALID_VIRTUAL_VERSE_ORDER("Invalid order of virtual verses: "),
 		INVALID_HEADLINE_DEPTH_ORDER("Invalid headline depth order: "),

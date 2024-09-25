@@ -56,7 +56,7 @@ public class VerseRange {
 		return chapter == other.chapter && (ascending || maxVerse >= other.minVerse) && other.maxVerse >= minVerse;
 	}
 
-	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories) {
+	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories, Set<String> internalAnchors, Set<String> internalLinks) {
 		String locationBase = bookAbbr + " " + cnumber + ":";
 		String location = locationBase + "[" + (chapter == 0 ? "" : chapter + ",") + minVerse + "-" + maxVerse + "]";
 		Set<String> verseNumbers = new HashSet<String>();
@@ -65,7 +65,7 @@ public class VerseRange {
 				continue;
 			if (!verseNumbers.add(verse.getNumber()))
 				FormattedText.ValidationCategory.DUPLICATE_VERSE.throwOrRecord(location, validationCategories, bookAbbr + " " + cnumber + ":" + verse.getNumber());
-			verse.validate(bible, book, location + verse.getNumber(), danglingReferences, dictionaryEntries, validationCategories);
+			verse.validate(bible, book, location + verse.getNumber(), danglingReferences, dictionaryEntries, validationCategories, internalAnchors, internalLinks);
 		}
 	}
 

@@ -1,6 +1,7 @@
 package biblemulticonverter.format;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
@@ -28,8 +29,10 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -112,7 +115,7 @@ public class ZefDic implements RoundtripFormat {
 				Visitor<RuntimeException> vvvv = vv.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "zefdic", "itemfield", "strongid");
 				vvvv.visitFormattingInstruction(FormattingInstructionKind.BOLD).visitText("Strong-ID: ");
 				vvvv.visitText(strongId);
-				vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+				vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 			}
 			for (Object s : item.getContent()) {
 				if (s instanceof String) {
@@ -141,7 +144,7 @@ public class ZefDic implements RoundtripFormat {
 								if (nnn.equals("br") && ovv instanceof String) {
 									if (((String) ovv).trim().length() > 0)
 										throw new RuntimeException((String) ovv);
-									vvv.visitLineBreak(LineBreakKind.NEWLINE);
+									vvv.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 								} else if (nnn.equals("title") && ovv instanceof String) {
 									vvv.visitHeadline(2).visitText(((String) ovv).trim().replaceAll("  +", " "));
 								} else if (nnn.equals("sub") && ovv instanceof String) {
@@ -160,11 +163,12 @@ public class ZefDic implements RoundtripFormat {
 									vv.visitDictionaryEntry("dict", see.getContent());
 								} else if (nnn.equals("bib_link") && ovv instanceof BibLinkType) {
 									BibLinkType bl = (BibLinkType) ovv;
-									Visitor<RuntimeException> fn = vv.visitFootnote();
+									Visitor<RuntimeException> fn = vv.visitFootnote(false);
 									fn.visitText(FormattedText.XREF_MARKER);
 									BookID bid = BookID.fromZefId(Integer.parseInt(bl.getBn()));
 									int chapter = Integer.parseInt(bl.getCn1());
-									fn.visitCrossReference(bid.getOsisID(), bid, chapter, bl.getVn1(), chapter, bl.getVn1()).visitText(bid.getOsisID() + " " + chapter + ":" + bl.getVn1());
+									String bookAbbr = bid.getOsisID();
+									fn.visitCrossReference(bookAbbr, bid, chapter, bl.getVn1(), bookAbbr, bid, chapter, bl.getVn1()).visitText(bid.getOsisID() + " " + chapter + ":" + bl.getVn1());
 								} else if (nnn.equals("greek") && ovv instanceof String) {
 									vv.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "zefdic", "tag", "greek").visitText(normalize((String) ovv, false));
 								} else if (nnn.equals("em") && ovv instanceof String) {
@@ -180,7 +184,7 @@ public class ZefDic implements RoundtripFormat {
 								throw new RuntimeException(oo.getClass().getName());
 							}
 						}
-						vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+						vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					} else if (v instanceof String || v instanceof MyAnyType) {
 						Visitor<RuntimeException> vvvv;
 						boolean addParagraph = false;
@@ -208,7 +212,7 @@ public class ZefDic implements RoundtripFormat {
 							vvvv.visitText(normalize((String) v, false));
 						}
 						if (addParagraph) {
-							vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+							vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 						}
 					} else {
 						throw new RuntimeException(nn + "/" + v.getClass().getName());
@@ -381,17 +385,17 @@ public class ZefDic implements RoundtripFormat {
 				}
 
 				@Override
-				public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+				public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 					System.out.println("WARNING: footnotes are not supported");
 					return null;
 				}
 
 				@Override
-				public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-					if (firstChapter != lastChapter || !firstVerse.equals(lastVerse))
+				public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
+					if (firstBook != lastBook || firstChapter != lastChapter || !firstVerse.equals(lastVerse))
 						System.out.println("WARNING: Cross references to verse ranges are not supported");
 					BibLinkType b = of.createBibLinkType();
-					b.setBn("" + book.getZefID());
+					b.setBn("" + firstBook.getZefID());
 					b.setCn1("" + firstChapter);
 					b.setVn1(firstVerse);
 					target.add(new JAXBElement<BibLinkType>(new QName("bib_link"), BibLinkType.class, b));
@@ -436,14 +440,26 @@ public class ZefDic implements RoundtripFormat {
 				}
 
 				@Override
-				public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+				public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws RuntimeException {
 					System.out.println("WARNING: Nested line breaks are not supported");
 				}
 
 				@Override
-				public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+				public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 					System.out.println("WARNING: Grammar information is not supported");
-					return null;
+					return this;
+				}
+
+				@Override
+				public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) throws RuntimeException {
+					System.out.println("WARNING: Speaker information is not supported");
+					return this;
+				}
+
+				@Override
+				public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) throws RuntimeException {
+					System.out.println("WARNING: Hyperlinks are not supported");
+					return this;
 				}
 
 				@Override
@@ -512,14 +528,14 @@ public class ZefDic implements RoundtripFormat {
 				}
 
 				@Override
-				public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+				public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 					System.out.println("WARNING: footnotes are not supported");
 					return null;
 				}
 
 				@Override
-				public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-					return new LevelVisitor(state).visitCrossReference(bookAbbr, book, firstChapter, firstVerse, lastChapter, lastVerse);
+				public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
+					return new LevelVisitor(state).visitCrossReference(firstBookAbbr, firstBook, firstChapter, firstVerse, lastBookAbbr, lastBook, lastChapter, lastVerse);
 				}
 
 				@Override
@@ -538,7 +554,7 @@ public class ZefDic implements RoundtripFormat {
 				}
 
 				@Override
-				public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+				public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) {
 					if (state.eatParagraph) {
 						state.eatParagraph = false;
 					} else {
@@ -548,7 +564,7 @@ public class ZefDic implements RoundtripFormat {
 				}
 
 				@Override
-				public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+				public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 					System.out.println("WARNING: Grammar information is not supported");
 					return null;
 				}
@@ -556,6 +572,16 @@ public class ZefDic implements RoundtripFormat {
 				@Override
 				public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) throws RuntimeException {
 					return new LevelVisitor(state).visitDictionaryEntry(dictionary, entry);
+				}
+
+				@Override
+				public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) throws RuntimeException {
+					return new LevelVisitor(state).visitSpeaker(labelOrStrongs);
+				}
+
+				@Override
+				public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) throws RuntimeException {
+					return new LevelVisitor(state).visitHyperlink(type, target);
 				}
 
 				@Override

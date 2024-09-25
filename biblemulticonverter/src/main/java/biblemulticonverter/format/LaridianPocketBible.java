@@ -18,8 +18,11 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -36,13 +39,13 @@ public class LaridianPocketBible implements ExportFormat {
 			"",
 			"Export: LaridianPocketBible <moduleName>.html <Versification>[,<VersificationNT>] <HeadingTypes> [-inline | <interlinearTypes>]",
 			"",
-			"THe resulting HTML file can be used with Laridian Book Builder (tested version 2.1.0.624) to a LBK file.", 
+			"THe resulting HTML file can be used with Laridian Book Builder (tested version 2.1.0.624) to a LBK file.",
 			"",
 			"When two versifications are given, one is used for OT and one for NT.",
 			"Versifications can be overridden per book in the meta tags after conversion.",
 			"",
 			"<HeadingTypes> can be any subset of 'Bible,Book,Chapter', or 'None'",
-			"<InterlinearTypes> can be a comma-separated list of 'SG', 'SH', 'RMAC', 'WIVU', 'IDX'."
+			"<InterlinearTypes> can be a comma-separated list of 'SG', 'SH', 'RMAC', 'WIVU', 'IDX', or 'GrammarAttribute:<key>'."
 	};
 
 	private static final Map<BookID, String> BOOK_MAP = new EnumMap<>(BookID.class);
@@ -224,17 +227,17 @@ public class LaridianPocketBible implements ExportFormat {
 								}
 
 								@Override
-								public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+								public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 									if (strongs != null) {
 										for (int i = 0; i < strongs.length; i++) {
-											String formatted = Utils.formatStrongs(nt, i, strongsPrefixes, strongs);
+											String formatted = Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, "");
 											if (formatted.startsWith("G"))
 												strongsFlags[0] = true;
 											else if (formatted.startsWith("H"))
 												strongsFlags[1] = true;
 										}
 									}
-									return super.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices);
+									return super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
 								}
 							});
 							hasStrongsGreek |= strongsFlags[0];
@@ -340,6 +343,9 @@ public class LaridianPocketBible implements ExportFormat {
 	}
 
 	protected InterlinearType<?> parseInterlinearType(int index, String type) {
+		if (type.startsWith("Attribute:")) {
+			return new GrammarAttributeInterlinearType(index, type.substring(10));
+		}
 		try {
 			return BuiltinInterlinearType.valueOf(type).it;
 		} catch (IllegalArgumentException ex) {
@@ -355,7 +361,7 @@ public class LaridianPocketBible implements ExportFormat {
 
 		public static InterlinearTypePrecalculator<Void> NO_PRECALCULATOR = new InterlinearTypePrecalculator<Void>() {
 			@Override
-			public Void precalculate(boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+			public Void precalculate(boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 				return null;
 			}
 		};
@@ -369,21 +375,21 @@ public class LaridianPocketBible implements ExportFormat {
 			this.metaValue = metaValue;
 		}
 
-		protected abstract List<String> determineValues(C precalculatedValue, boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices);
+		protected abstract List<String> determineValues(C precalculatedValue, boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues);
 	}
 
 	protected static interface InterlinearTypePrecalculator<C> {
-		public abstract C precalculate(boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices);
+		public abstract C precalculate(boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues);
 	}
 
 	private static class StrongsInterlinearType extends InterlinearType<List<String>> {
 
 		private static final InterlinearTypePrecalculator<List<String>> STRONGS_PRECALCULATOR = new InterlinearTypePrecalculator<List<String>>() {
-			public List<String> precalculate(boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+			public List<String> precalculate(boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 				List<String> result = new ArrayList<>();
 				if (strongs != null) {
 					for (int i = 0; i < strongs.length; i++) {
-						result.add(Utils.formatStrongs(nt, i, strongsPrefixes, strongs));
+						result.add(Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, ""));
 					}
 				}
 				return result;
@@ -399,7 +405,7 @@ public class LaridianPocketBible implements ExportFormat {
 		}
 
 		@Override
-		protected List<String> determineValues(List<String> formattedStrongs, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+		protected List<String> determineValues(List<String> formattedStrongs, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			return formattedStrongs.stream().filter(s -> s.startsWith(greek ? "G" : "H")).map(s -> s.substring(1)).collect(Collectors.toList());
 		}
 	}
@@ -414,7 +420,7 @@ public class LaridianPocketBible implements ExportFormat {
 		}
 
 		@Override
-		protected List<String> determineValues(Void unused, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+		protected List<String> determineValues(Void precalculatedValue, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			List<String> result = new ArrayList<>();
 			if (rmac != null) {
 				for (int i = 0; i < rmac.length; i++) {
@@ -432,11 +438,32 @@ public class LaridianPocketBible implements ExportFormat {
 		}
 
 		@Override
-		protected List<String> determineValues(Void unused, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+		protected List<String> determineValues(Void precalculatedValue, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			List<String> result = new ArrayList<>();
 			if (sourceIndices != null) {
 				for (int i = 0; i < sourceIndices.length; i++) {
 					result.add("" + sourceIndices[i]);
+				}
+			}
+			return result;
+		}
+	}
+
+	private static class GrammarAttributeInterlinearType extends InterlinearType<Void> {
+		private final String key;
+
+		public GrammarAttributeInterlinearType(int index, String key) {
+			super(NO_PRECALCULATOR, "extra" + (index + 1), "Name for GrammarAttribute:" + key + " (edit me), , , , , , sync:\\\\, yes");
+			this.key = key;
+		}
+
+		@Override
+		protected List<String> determineValues(Void precalculatedValue, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+			List<String> result = new ArrayList<>();
+			if (attributeKeys != null) {
+				for (int i = 0; i < attributeKeys.length; i++) {
+					if (attributeKeys[i].equals(key))
+					result.add(attributeValues[i]);
 				}
 			}
 			return result;
@@ -571,19 +598,21 @@ public class LaridianPocketBible implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 			ensureInParagraph();
 			sb.append("<pb_note>");
+			if (ofCrossReferences)
+				sb.append(FormattedText.XREF_MARKER);
 			suffixStack.add("</pb_note>");
 			return this;
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
 			ensureInParagraph();
-			String abbr = BOOK_MAP.get(book);
+			String abbr = BOOK_MAP.get(firstBook);
 			if (abbr == null) {
-				System.out.println("WARNING: Skipping cross reference to unsupported book " + book.getOsisID());
+				System.out.println("WARNING: Skipping cross reference to unsupported book " + firstBook.getOsisID());
 				suffixStack.add("");
 			} else {
 				sb.append("<a href=\"bible:" + abbr + " " + firstChapter + ":" + firstVerse + "\">");
@@ -596,6 +625,9 @@ public class LaridianPocketBible implements ExportFormat {
 		public Visitor<RuntimeException> visitFormattingInstruction(FormattingInstructionKind kind) throws RuntimeException {
 			ensureInParagraph();
 			String startTag, endTag;
+
+			if (kind == FormattingInstructionKind.ADDITION || kind == FormattingInstructionKind.PSALM_DESCRIPTIVE_TITLE)
+				kind = FormattingInstructionKind.ITALIC;
 
 			switch (kind) {
 			case BOLD:
@@ -652,30 +684,30 @@ public class LaridianPocketBible implements ExportFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws RuntimeException {
 			ensureInParagraph();
-			if (kind == LineBreakKind.PARAGRAPH)
+			if (!kind.isSameParagraph() && kind != ExtendedLineBreakKind.TABLE_ROW_NEXT_CELL)
 				sb.append("</p>\n<p>");
 			else
 				sb.append("<br />");
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			ensureInParagraph();
 			StringBuilder suffixBuilder = new StringBuilder();
 			if (interlinearTypes != null) {
-				Map<InterlinearTypePrecalculator, Object> precalculatedCache = new IdentityHashMap<>();
+				Map<InterlinearTypePrecalculator<?>, Object> precalculatedCache = new IdentityHashMap<>();
 				for (InterlinearType<?> it : interlinearTypes) {
 					if (!precalculatedCache.containsKey(it.precalculator))
-						precalculatedCache.put(it.precalculator, it.precalculator.precalculate(reference.getBook().isNT(), reference, strongsPrefixes, strongs, rmac, sourceIndices));
-					for (String value : ((InterlinearType<Object>) it).determineValues(precalculatedCache.get(it.precalculator), reference.getBook().isNT(), reference, strongsPrefixes, strongs, rmac, sourceIndices)) {
+						precalculatedCache.put(it.precalculator, it.precalculator.precalculate(reference.getBook().isNT(), reference, strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues));
+					for (String value : ((InterlinearType<Object>) it).determineValues(precalculatedCache.get(it.precalculator), reference.getBook().isNT(), reference, strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues)) {
 						suffixBuilder.append("<pb_attr name=\"" + it.name + "\" value=\"" + value + "\" />");
 					}
 				}
 			} else if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
-					String formatted = Utils.formatStrongs(reference.getBook().isNT(), i, strongsPrefixes, strongs);
+					String formatted = Utils.formatStrongs(reference.getBook().isNT(), i, strongsPrefixes, strongs, strongsSuffixes, "");
 					String name = null;
 					if (formatted.startsWith("G"))
 						name = "strongsgreek";
@@ -693,6 +725,22 @@ public class LaridianPocketBible implements ExportFormat {
 		public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) throws RuntimeException {
 			ensureInParagraph();
 			System.out.println("WARNING: Skipping unsupported dictionary entry");
+			suffixStack.add("");
+			return this;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) throws RuntimeException {
+			ensureInParagraph();
+			System.out.println("WARNING: Skipping unsupported hyperlink");
+			suffixStack.add("");
+			return this;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) throws RuntimeException {
+			ensureInParagraph();
+			System.out.println("WARNING: Skipping unsupported speaker");
 			suffixStack.add("");
 			return this;
 		}
