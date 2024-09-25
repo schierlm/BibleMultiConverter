@@ -70,6 +70,8 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			"toc1", "toc2", "toc3", "toca1", "toca2", "toca3")
 	);
 
+	private static final String[] srclocPrefixes = System.getProperty("biblemulticonverter.paratext.srclocprefixes", "src").split(",");
+
 	protected static String getBibleName(List<ParatextBook> books) {
 		String bibleName = null;
 		for (ParatextBook book : books) {
@@ -804,11 +806,38 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 						}
 					}
 				}
+				List<Integer> srclocs = new ArrayList<>();
+				String srclocAttribute = attributes.get("srcloc");
+				if (srclocAttribute != null) {
+					Pattern srclocPattern = null;
+					if (ctx.currentVerse != null && ctx.bk != null && srclocPrefixes.length > 0) {
+						StringBuilder prefixes = new StringBuilder("(");
+						for(String pfx : srclocPrefixes) {
+							if (prefixes.length() > 1)
+								prefixes.append('|');
+							prefixes.append(Pattern.quote(pfx));
+						}
+						prefixes.append(")");
+						srclocPattern = Pattern.compile(prefixes.toString() + Pattern.quote(
+							 ":" + ParatextID.fromBookID(ctx.bk.getId()).getNumber() + "." +
+									ctx.cnum + "." + ctx.currentVerse.getNumber() + ".") + "[0-9]+");
+					}
+					for (String srcloc : srclocAttribute.split("[, ]")) {
+						if (srcloc.matches("[0-9]+")) {
+							srclocs.add(Integer.parseInt(srcloc));
+						} else if (srclocPattern != null && srclocPattern.matcher(srcloc).matches()) {
+							srclocs.add(Integer.parseInt(srcloc.replaceFirst(".*\\.", "")));
+						} else {
+							System.out.println("Skipping unsupported srcloc: " + srcloc);
+						}
+					}
+				}
 				int[] strongsArray = strongs.isEmpty() ? null : strongs.stream().mapToInt(s -> s).toArray();
+				int[] srclocArray = srclocs.isEmpty() ? null : srclocs.stream().mapToInt(s -> s).toArray();
 				if (rmacs.isEmpty() && strongsArray == null) {
 					newVisitor = getCurrentVisitor().visitCSSFormatting(kind.getCss());
 				} else {
-					newVisitor = getCurrentVisitor().visitGrammarInformation(strongsPrefixes.toString().toCharArray(), strongsArray, rmacs.isEmpty() ? null : rmacs.toArray(new String[rmacs.size()]), null);
+					newVisitor = getCurrentVisitor().visitGrammarInformation(strongsPrefixes.toString().isEmpty() ? null : strongsPrefixes.toString().toCharArray(), strongsArray, rmacs.isEmpty() ? null : rmacs.toArray(new String[rmacs.size()]), srclocArray);
 					if (exportAllTags) {
 						newVisitor = newVisitor.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag());
 					}
@@ -897,6 +926,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		private ParatextBook book;
 		private ParagraphKind currentParagraph;
 		private ParatextCharacterContent charContent;
+		private VerseIdentifier currentVerse;
 
 		public ParatextExportContext(ParatextBook book) {
 			this.book = book;
@@ -914,6 +944,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		public void startVerse(VerseIdentifier verse) {
 			book.getContent().add(new ParatextBook.VerseStart(verse, verse.verse()));
+			currentVerse = verse;
 			charContent = null;
 		}
 
@@ -1192,6 +1223,18 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				else
 					throw new IllegalStateException("Invalid morph format: "+rmac[0]);
 				formatting.getAttributes().put("x-morph", prefix + String.join(",", Arrays.asList(rmac)));
+			}
+			if (sourceIndices != null) {
+				String srclocLongPrefix = ctx.currentVerse == null ? null :
+					srclocPrefixes[0] + ":" + ctx.book.getId().getNumber() + "." +
+						ctx.currentVerse.chapter + "." + ctx.currentVerse.verse() + ".";
+				StringBuilder sb = new StringBuilder();
+				for (int i = 0; i < sourceIndices.length; i++) {
+					if (sb.length() != 0)
+						sb.append(",");
+					sb.append(srclocLongPrefix + sourceIndices[i]);
+				}
+				formatting.getAttributes().put("srcloc", sb.toString());
 			}
 			getCharContent().getContent().add(formatting);
 			return new ParatextExportVisitor("in formatting", nt, null, formatting, null);

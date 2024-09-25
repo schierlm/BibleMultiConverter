@@ -94,6 +94,7 @@ In addition, the following other formats are supported, with varying accuracy:
   - **[USFM 2](https://markups.paratext.org/usfm/)**: import and export
   - **[USX 2/USX 3](https://markups.paratext.org/usx/)**: import and export
 - **[USFX](https://ebible.org/usfx/)**: import and export
+- **[UBXF](https://resource-container.readthedocs.io/en/latest/ubxf.html)**: import (and conversion to "normal" USFM)
 - **[SwordSearcher](https://www.swordsearcher.com/) ([Forge](https://www.swordsearcher.com/forge/))**: export only
 - **[MySword](https://www.mysword.info/)**: import and export
 - **[Obsidian](https://obsidian.md/)**: export only
@@ -309,6 +310,30 @@ when these occur):
     - 10/12G becomes 10
     - 1-4.7 becomes 1-4
     - 1.4-7 becomes 1
+
+UBXF Support
+------------
+
+UBXF bibles are based on USFM 3 but contain extra alignment milestones that can be used to
+align the text to another UBXF bible. In general, the `\w` tags in UBXF bibles only contain
+lemma and morphology information if the bible is in a source language - other bibles contain
+alignment information to another Bible instead. BibleMulticonverter can perform the following
+operations on UBXF files:
+
+- Add `srcloc` attributes to `\w` tags of source bibles, simply by counting them within a verse
+- Create a database file that contains word information from a (source language) bible and maps
+  it to Lemma/Strongs/Morphology
+- Use this database file to augment alignment milestones in a translated bible with those data
+- Create new `\w` tags for parts between aligment milestones, if your bible does not have them
+  and/or you want them grouped by source word not by translated word.
+- Fill `\w` tag attributes based on the augmentations in the alignment milestones (to convert to
+  a format that does not support aligment milestones, i.e. most formats)
+- Convert grammar tags (strongs,morphology) from the format used by
+  [unfoldingWord][https://unfoldingword.us/] to normal Strongs/RMAC/WIVU tagging used by other formats
+
+Depending on which UBXF translations you have and what format you ultimately want to convert them
+to, you will have to find out which of the steps above you want to perform and which ones not.
+
 
 E-Sword export
 --------------
