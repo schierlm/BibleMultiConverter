@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,8 @@ import biblemulticonverter.data.Versification.Reference;
 /** Generator for Logos links. */
 public class LogosLinksGenerator {
 
+	private boolean orderPerGroup = false;
+	private List<String> prefixOrder = null;
 	private Map<String, List<ExtraLinkRule>> extraLinkRules;
 
 	public LogosLinksGenerator() throws IOException {
@@ -76,10 +79,19 @@ public class LogosLinksGenerator {
 				}
 			}
 		}
+		String linkPrefixOrder = System.getProperty("biblemulticonverter.logos.linkprefixorder", "");
+		if (!linkPrefixOrder.isEmpty()) {
+			if (linkPrefixOrder.startsWith("global:")) {
+				linkPrefixOrder = linkPrefixOrder.substring(7);
+			} else {
+				orderPerGroup = true;
+			}
+			prefixOrder = Arrays.asList(linkPrefixOrder.split(","));
+		}
 	}
 
 	public List<String> generateLinks(boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
-		List<String> links = new ArrayList<String>();
+		List<String> allLinks = new ArrayList<String>();
 		String[] expandedStrongs = strongs == null ? null : new String[strongs.length];
 		if (strongs != null) {
 			for (int i = 0; i < strongs.length; i++) {
@@ -98,6 +110,7 @@ public class LogosLinksGenerator {
 			}
 		}
 		for (int i = 0; i < max; i++) {
+			List<String> links = orderPerGroup ? new ArrayList<>() : allLinks;
 			if (strongs != null && i < strongs.length) {
 				boolean skipStrongs = false;
 				for (ExtraLinkRule r : extraLinkRules.getOrDefault(expandedStrongs[i], Collections.emptyList())) {
@@ -143,8 +156,25 @@ public class LogosLinksGenerator {
 					links.add(logosAttr.getKey() + ":" + logosAttr.getValue().get(i));
 				}
 			}
+			if (orderPerGroup) {
+				sortLinks(links);
+				allLinks.addAll(links);
+			}
 		}
-		return links;
+		if (!orderPerGroup) {
+			sortLinks(allLinks);
+		}
+		return allLinks;
+	}
+
+	private void sortLinks(List<String> links) {
+		if (prefixOrder == null || prefixOrder.isEmpty())
+			return;
+		links.sort(Comparator.comparing(link -> {
+			int colonPos = link.indexOf(':');
+			int pos = colonPos == -1 ? -1 : prefixOrder.indexOf(link.substring(0, colonPos));
+			return pos == -1 ? Integer.MAX_VALUE : pos;
+		}));
 	}
 
 	private static class ExtraLinkRule {
