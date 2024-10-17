@@ -842,23 +842,21 @@ public class OSIS implements RoundtripFormat {
 					idx[i] = Integer.parseInt(strs[i]);
 				}
 			}
-			if (strong == null && rmac.isEmpty() && idx == null) {
-				printWarning("INFO: Skipped <w> tag without any usable information");
-			} else {
-				boolean grammarXattr = Boolean.getBoolean("biblemulticonverter.osis.grammar.xattr");
-				String[] attributeKeys = null, attributeValues = null;
-				if (!grammarXattr) {
-					List<String[]> attrPairs = new ArrayList<>();
-					for(String[] grammarTag : grammarTags) {
-						String[] parts = grammarTag[1].split(":", 2);
-						if (parts.length == 2 && parts[0].matches("[a-z0-9-]+")) {
-							String key = "osisgrammar:"+grammarTag[0]+":"+parts[0];
-							if (key.equals("osisgrammar:lemma:lemma")) {
-								key = "lemma";
-							}
-							attrPairs.add(new String[] {key, parts[1]});
+			boolean grammarXattr = Boolean.getBoolean("biblemulticonverter.osis.grammar.xattr");
+			String[] attributeKeys = null, attributeValues = null;
+			if (!grammarXattr) {
+				List<String[]> attrPairs = new ArrayList<>();
+				for(String[] grammarTag : grammarTags) {
+					String[] parts = grammarTag[1].split(":", 2);
+					if (parts.length == 2 && parts[0].matches("[a-z0-9-]+")) {
+						String key = "osisgrammar:"+grammarTag[0]+":"+parts[0];
+						if (key.equals("osisgrammar:lemma:lemma")) {
+							key = "lemma";
 						}
+						attrPairs.add(new String[] {key, parts[1]});
 					}
+				}
+				if (!attrPairs.isEmpty()) {
 					attributeKeys = new String[attrPairs.size()];
 					attributeValues = new String[attrPairs.size()];
 					for (int i = 0; i < attributeKeys.length; i++) {
@@ -866,6 +864,10 @@ public class OSIS implements RoundtripFormat {
 						attributeValues[i] = attrPairs.get(i)[0];
 					}
 				}
+			}
+			if (strong == null && rmac.isEmpty() && idx == null && attributeKeys == null) {
+				printWarning("INFO: Skipped <w> tag without any usable information");
+			} else {
 				v = v.visitGrammarInformation(strongPfx, strong, strongSfx, rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), idx, attributeKeys, attributeValues);
 				if (grammarXattr) {
 					for(String[] grammarTag : grammarTags) {
