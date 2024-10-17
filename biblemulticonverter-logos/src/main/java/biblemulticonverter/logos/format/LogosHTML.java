@@ -380,7 +380,7 @@ public class LogosHTML implements ExportFormat {
 				writeChapterNumber = true;
 			} else {
 				usedHeadlines++;
-				bw.write("<h" + usedHeadlines + ">[[" + chapterRef + "]]" + searchField("x-heading", true, 3, new Reference(book.getId(), cnumber, "1")) + "{{~ " + book.getAbbr() + " " + cname + " }}" + searchField("x-heading", false, 3, new Reference(book.getId(), cnumber, "1")) + "</h" + usedHeadlines + ">\n");
+				bw.write("<h" + usedHeadlines + ">[[" + chapterRef + "]]" + searchField("x-heading", true, 3, new Reference(book.getId(), cnumber, "1")) + "{{~ " + System.getProperty("biblemulticonverter.logos.chaptername", book.getAbbr()) + " " + cname + " }}" + searchField("x-heading", false, 3, new Reference(book.getId(), cnumber, "1")) + "</h" + usedHeadlines + ">\n");
 			}
 		}
 		footnoteNumber = 0;
