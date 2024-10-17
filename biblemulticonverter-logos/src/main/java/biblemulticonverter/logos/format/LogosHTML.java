@@ -12,12 +12,10 @@ import java.io.OutputStreamWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -197,6 +195,7 @@ public class LogosHTML implements ExportFormat {
 
 	private int footnoteCounter = 0;
 	private int footnoteNumber = 0;
+	private char footnoteLetter = 'a' - 1;
 	private int grammarCounter = 0;
 	private String lineSeparator;
 	private LogosLinksGenerator linksGenerator;
@@ -338,6 +337,7 @@ public class LogosHTML implements ExportFormat {
 						}
 						bw.write(book.getLongName() + searchField("x-heading", false, 2, new Reference(book.getId(), 999, "1/-/p")) + "</h" + bookHeadlineLevel + ">\n");
 						footnoteNumber = 0;
+						footnoteLetter = 'a' - 1;
 						chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, false, new Reference(book.getId(), 999, "1/-/p"), versemap, schemes, null, null, null, 2, null));
 						bw.write("\n<br/>\n");
 						continue;
@@ -386,6 +386,7 @@ public class LogosHTML implements ExportFormat {
 			}
 		}
 		footnoteNumber = 0;
+		footnoteLetter = 'a' - 1;
 		String[] verseNumbersToSkip = System.getProperty("biblemulticonverter.logos.skipversenumbers", "").split(",");
 		if (chapter.getProlog() != null) {
 			chapter.getProlog().accept(new LogosVisitor(bw, "", footnotes, book.getId().isNT(), new Reference(book.getId(), 999, "1/-/p"), versemap, schemes, null, null, null, usedHeadlines, null));
@@ -739,16 +740,23 @@ public class LogosHTML implements ExportFormat {
 			if (footnoteWriter == null)
 				throw new IllegalStateException("Footnote inside footnote not supported");
 			footnoteCounter++;
-			footnoteNumber++;
+			String footnoteLabel = xref ? System.getProperty("biblemulticonverter.logos.xrefsymbol", "1") :System.getProperty("biblemulticonverter.logos.footnotesymbol", "1");
+			if (footnoteLabel.equals("1")) {
+				footnoteNumber++;
+				footnoteLabel = "" + footnoteNumber;
+			} else if (footnoteLabel.equals("a")) {
+				footnoteLetter++;
+				footnoteLabel = "" + footnoteLetter;
+			}
 
 			if (word2024) {
-				footnoteWriter.write("<div style='mso-element:footnote' id=ftn" + footnoteCounter + "><a style='mso-footnote-id:ftn" + footnoteCounter + "' href=\"#_ftnref" + footnoteCounter + "\" name=\"_ftn" + footnoteCounter + "\" title=\"\"><span class=MsoFootnoteReference>" + footnoteNumber + "</span></a> ");
-				writer.write("<a style='mso-footnote-id:ftn" + footnoteCounter + "' href=\"#_ftn" + footnoteCounter + "\" name=\"_ftnref" + footnoteCounter + "\" title=\"\"><span class=MsoFootnoteReference>" + footnoteNumber + "</span></a>");
+				footnoteWriter.write("<div style='mso-element:footnote' id=ftn" + footnoteCounter + "><a style='mso-footnote-id:ftn" + footnoteCounter + "' href=\"#_ftnref" + footnoteCounter + "\" name=\"_ftn" + footnoteCounter + "\" title=\"\"><span class=MsoFootnoteReference>" + footnoteLabel + "</span></a> ");
+				writer.write("<a style='mso-footnote-id:ftn" + footnoteCounter + "' href=\"#_ftn" + footnoteCounter + "\" name=\"_ftnref" + footnoteCounter + "\" title=\"\"><span class=MsoFootnoteReference>" + footnoteLabel + "</span></a>");
 				return new LogosVisitor(footnoteWriter, "</div>\n", null, nt, verseReference, versemap, schemes, null, null, null, usedHeadlines, null);
 			}
 
 			footnoteWriter.write("<DIV ID=\"sdfootnote" + footnoteCounter + "\">");
-			writer.write("<A CLASS=\"sdfootnoteanc\" HREF=\"#sdfootnote" + footnoteCounter + "sym\" sdfixed><sup>" + footnoteNumber + "</sup></A>");
+			writer.write("<A CLASS=\"sdfootnoteanc\" HREF=\"#sdfootnote" + footnoteCounter + "sym\" sdfixed><sup>" + footnoteLabel + "</sup></A>");
 			if (xref) {
 				footnoteWriter.write(System.getProperty("biblemulticonverter.logos.xrefmarker", FormattedText.XREF_MARKER));
 			}
