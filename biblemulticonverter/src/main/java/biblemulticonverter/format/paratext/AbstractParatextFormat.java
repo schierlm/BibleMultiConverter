@@ -178,6 +178,8 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				}
 				ctx.currentVisitor = null;
 				ctx.currentVisitorExtraCSS = null;
+				ctx.outsideCellVisitor = null;
+				ctx.insideTableHead = false;
 				ctx.currentVerse = null;
 				ctx.currentParagraph = ParatextImportContext.CurrentParagraph.NONE;
 				ctx.currentParagraphExtraCSS = null;
@@ -199,6 +201,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					ctx.currentVisitor.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag()).visitText("\uFEFF");
 				}
 				ctx.outsideCellVisitor = null;
+				ctx.insideTableHead = false;
 				ExtendedLineBreakKind elbk = kind.getLineBreakKind();
 				if (ctx.currentParagraph != ParatextImportContext.CurrentParagraph.NONE) {
 					if (ctx.currentParagraph == ParatextImportContext.CurrentParagraph.PROLOG ||
@@ -309,7 +312,8 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					}
 					ctx.currentVisitor.visitLineBreak(lbk, indent);
 					ctx.outsideCellVisitor = ctx.currentVisitor;
-					if (tag.startsWith("th")) {
+					ctx.insideTableHead = tag.startsWith("th");
+					if (ctx.insideTableHead) {
 						ctx.currentVisitor = ctx.currentVisitor.visitFormattingInstruction(FormattingInstructionKind.BOLD);
 					}
 				}
@@ -372,6 +376,12 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				ctx.currentChapter.getVerses().add(ctx.currentVerse);
 				ctx.currentVisitor = ctx.currentVerse.getAppendVisitor();
 				ctx.flushHeadlines();
+				if (ctx.outsideCellVisitor != null) {
+					ctx.outsideCellVisitor = ctx.currentVisitor;
+					if (ctx.insideTableHead) {
+						ctx.currentVisitor = ctx.currentVisitor.visitFormattingInstruction(FormattingInstructionKind.BOLD);
+					}
+				}
 				ctx.currentVisitorExtraCSS = ctx.currentParagraphExtraCSS;
 				if (ctx.currentParagraphExtraCSS != null) {
 					ctx.currentVisitor = ctx.currentVisitor.visitCSSFormatting(ctx.currentParagraphExtraCSS);
@@ -627,6 +637,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		private Verse currentVerse = null;
 		private List<Headline> headlines = new ArrayList<>();
 		private Visitor<RuntimeException> currentVisitor, outsideCellVisitor;
+		private boolean insideTableHead = false;
 		private String currentVisitorExtraCSS;
 		private CurrentParagraph currentParagraph = CurrentParagraph.NONE;
 		private String currentParagraphExtraCSS;
@@ -679,6 +690,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			List<Headline> h = this.headlines; this.headlines = other.headlines; other.headlines = h;
 			Visitor<RuntimeException> vv = this.currentVisitor; this.currentVisitor = other.currentVisitor; other.currentVisitor = vv;
 			vv = this.outsideCellVisitor; this.outsideCellVisitor = other.outsideCellVisitor; other.outsideCellVisitor = vv;
+			boolean f = this.insideTableHead; this.insideTableHead = other.insideTableHead; other.insideTableHead = f;
 			String s = this.currentVisitorExtraCSS; this.currentVisitorExtraCSS = other.currentVisitorExtraCSS; other.currentVisitorExtraCSS = s;
 			CurrentParagraph p = this.currentParagraph; this.currentParagraph = other.currentParagraph; other.currentParagraph =p;
 			s = this.currentParagraphExtraCSS; this.currentParagraphExtraCSS = other.currentParagraphExtraCSS; other.currentParagraphExtraCSS = s;
