@@ -528,7 +528,7 @@ public class Diffable implements RoundtripFormat {
 			} else if (indent == 0) {
 				w.write("<br kind=\"" + kind.name() + "\"/>");
 			} else {
-				w.write("<br kind=\"" + kind.name() + "\"indent=\"" + indent + "\"/>");
+				w.write("<br kind=\"" + kind.name() + "\" indent=\"" + indent + "\"/>");
 			}
 			if (linePrefix != null)
 				startNewLine = true;
