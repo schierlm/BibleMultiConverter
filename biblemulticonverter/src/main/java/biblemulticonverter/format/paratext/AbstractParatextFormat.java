@@ -200,6 +200,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				if (exportAllTags && kind.getCategory() == ParagraphKindCategory.SKIP && ctx.currentVisitor != null) {
 					ctx.currentVisitor.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag()).visitText("\uFEFF");
 				}
+				boolean subsequentTableRow = kind.getCategory() == ParagraphKindCategory.TABLE_ROW && ctx.outsideCellVisitor != null;
 				ctx.outsideCellVisitor = null;
 				ctx.insideTableHead = false;
 				ExtendedLineBreakKind elbk = kind.getLineBreakKind();
@@ -209,7 +210,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 						if (elbk != null) {
 							ctx.currentVisitor.visitLineBreak(elbk, kind.getLineBreakIndent());
 							elbk = null;
-						} else {
+						} else if (!subsequentTableRow) {
 							ctx.currentVisitor.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 						}
 					}
