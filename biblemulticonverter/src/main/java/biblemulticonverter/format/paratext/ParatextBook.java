@@ -154,7 +154,7 @@ public class ParatextBook {
 				if (!suffix.isEmpty()) {
 					cc.getContent().add(i + 1, Text.from(suffix));
 				}
-				if (((AutoClosingFormatting) cc.getContent().get(i)).getKind().getLineBreakKind() == ExtendedLineBreakKind.SAME_LINE_IF_POSSIBLE) {
+				if (i > 0 && ((AutoClosingFormatting) cc.getContent().get(i)).getKind().getLineBreakKind() == ExtendedLineBreakKind.SAME_LINE_IF_POSSIBLE) {
 					ParatextCharacterContentPart last = cc.getContent().get(i-1);
 					if (last instanceof AutoClosingFormatting) {
 						extractTrailingWhitespace((AutoClosingFormatting) last);
