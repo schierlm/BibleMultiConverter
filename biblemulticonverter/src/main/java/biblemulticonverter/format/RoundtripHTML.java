@@ -148,29 +148,7 @@ public class RoundtripHTML implements RoundtripFormat {
 					bw.write("</div><hr>\n");
 					bw.write("<h1>" + bk.getAbbr() + (bk.getChapters().size() == 1 ? "" : " " + cnumber) + "</h1>\n");
 					bw.write("<!-- PARSED BELOW; EDITING MAY BREAK PARSER -->\n");
-					List<StringWriter> footnotes = new ArrayList<StringWriter>();
-					if (ch.getProlog() != null) {
-						bw.write("<div class=\"biblehtmlcontent prolog\">\n");
-						ch.getProlog().accept(new RoundtripHTMLVisitor(bw, footnotes, "", "", xrefMap));
-						bw.write("\n");
-						bw.write("</div>\n");
-					}
-					if (ch.getVerses().size() > 0) {
-						bw.write("<div class=\"biblehtmlcontent verses\" id=\"verses\">\n");
-						for (Verse v : ch.getVerses()) {
-							bw.write("<div class=\"v\" id=\"v" + v.getNumber() + "\">");
-							v.accept(new RoundtripHTMLVisitor(bw, footnotes, "<span class=\"vn\">" + v.getNumber() + "</span> ", "", xrefMap));
-							bw.write("</div>\n");
-						}
-						bw.write("</div>\n");
-					}
-					if (footnotes.size() > 0) {
-						bw.write("<div class=\"biblehtmlcontent footnotes\">\n");
-						for (StringWriter footnote : footnotes) {
-							bw.write(footnote.toString() + "\n");
-						}
-						bw.write("</div>\n");
-					}
+					exportChapter(ch, bw, xrefMap);
 					bw.write("<!-- PARSED ABOVE; EDITING MAY BREAK PARSER -->\n");
 					bw.write("</body></html>");
 				}
@@ -227,6 +205,32 @@ public class RoundtripHTML implements RoundtripFormat {
 			bw.write("</body></html>");
 		}
 
+	}
+
+	protected void exportChapter(Chapter ch, BufferedWriter bw, Properties xrefMap) throws IOException {
+		List<StringWriter> footnotes = new ArrayList<StringWriter>();
+		if (ch.getProlog() != null) {
+			bw.write("<div class=\"biblehtmlcontent prolog\">\n");
+			ch.getProlog().accept(new RoundtripHTMLVisitor(bw, footnotes, "", "", xrefMap));
+			bw.write("\n");
+			bw.write("</div>\n");
+		}
+		if (ch.getVerses().size() > 0) {
+			bw.write("<div class=\"biblehtmlcontent verses\" id=\"verses\">\n");
+			for (Verse v : ch.getVerses()) {
+				bw.write("<div class=\"v\" id=\"v" + v.getNumber() + "\">");
+				v.accept(new RoundtripHTMLVisitor(bw, footnotes, "<span class=\"vn\">" + v.getNumber() + "</span> ", "", xrefMap));
+				bw.write("</div>\n");
+			}
+			bw.write("</div>\n");
+		}
+		if (footnotes.size() > 0) {
+			bw.write("<div class=\"biblehtmlcontent footnotes\">\n");
+			for (StringWriter footnote : footnotes) {
+				bw.write(footnote.toString() + "\n");
+			}
+			bw.write("</div>\n");
+		}
 	}
 
 	private static String getTypeDir(BookID id) {
@@ -286,51 +290,8 @@ public class RoundtripHTML implements RoundtripFormat {
 			for (Chapter ch : bk.getChapters()) {
 				cnumber++;
 				try (BufferedReader br = createReader(inputDir, getTypeDir(bk.getId()) + "/" + bk.getAbbr() + "_" + cnumber + ".html")) {
-					String line;
 					List<FormattedText.Visitor<RuntimeException>> footnotes = new ArrayList<>();
-					while ((line = br.readLine()) != null) {
-						if (line.equals("<div class=\"biblehtmlcontent prolog\">")) {
-							line = br.readLine();
-							FormattedText prolog = new FormattedText();
-							int end = parseLine(prolog.getAppendVisitor(), line, 0, footnotes);
-							ch.setProlog(prolog);
-							if (end != line.length())
-								throw new IOException(line.substring(end));
-							line = br.readLine();
-							if (!line.equals("</div>"))
-								throw new IOException(line);
-						} else if (line.equals("<div class=\"biblehtmlcontent verses\" id=\"verses\">")) {
-							while ((line = br.readLine()) != null) {
-								if (line.equals("</div>"))
-									break;
-								if (!line.startsWith("<div class=\"v\" id=\"v") || !line.endsWith("</div>"))
-									throw new IOException(line);
-								line = line.substring(20, line.length() - 6);
-								int pos = line.indexOf("\">");
-								Verse v = new Verse(line.substring(0, pos));
-								int end = parseLine(v.getAppendVisitor(), line, pos + 2, footnotes);
-								if (end != line.length())
-									throw new IOException(line.substring(end));
-								ch.getVerses().add(v);
-							}
-							if (!line.equals("</div>"))
-								throw new IOException(line);
-						} else if (line.equals("<div class=\"biblehtmlcontent footnotes\">")) {
-							for (int i = 0; i < footnotes.size(); i++) {
-								line = br.readLine();
-								String prefix = "<div class=\"fn\"><sup class=\"fnt\"><a name=\"fn" + (i + 1) + "\" href=\"#fnm" + (i + 1) + "\">" + (i + 1) + "</a></sup> ";
-								if (!line.startsWith(prefix) || !line.endsWith("</div>"))
-									throw new IOException(line);
-								line = line.substring(prefix.length(), line.length() - 6);
-								int end = parseLine(footnotes.get(i), line, 0, null);
-								if (end != line.length())
-									throw new IOException(line.substring(end));
-							}
-							line = br.readLine();
-							if (!line.equals("</div>"))
-								throw new IOException(line);
-						}
-					}
+					parseChapter(ch, br, footnotes);
 					if (ch.getProlog() != null)
 						ch.getProlog().finished();
 					for (Verse v : ch.getVerses())
@@ -341,11 +302,58 @@ public class RoundtripHTML implements RoundtripFormat {
 		return bible;
 	}
 
+	protected void parseChapter(Chapter ch, BufferedReader br, List<FormattedText.Visitor<RuntimeException>> footnotes) throws IOException {
+		String line;
+		while ((line = br.readLine()) != null) {
+			if (line.equals("<div class=\"biblehtmlcontent prolog\">")) {
+				line = br.readLine();
+				FormattedText prolog = new FormattedText();
+				int end = parseLine(prolog.getAppendVisitor(), line, 0, footnotes);
+				ch.setProlog(prolog);
+				if (end != line.length())
+					throw new IOException(line.substring(end));
+				line = br.readLine();
+				if (!line.equals("</div>"))
+					throw new IOException(line);
+			} else if (line.equals("<div class=\"biblehtmlcontent verses\" id=\"verses\">")) {
+				while ((line = br.readLine()) != null) {
+					if (line.equals("</div>"))
+						break;
+					if (!line.startsWith("<div class=\"v\" id=\"v") || !line.endsWith("</div>"))
+						throw new IOException(line);
+					line = line.substring(20, line.length() - 6);
+					int pos = line.indexOf("\">");
+					Verse v = new Verse(line.substring(0, pos));
+					int end = parseLine(v.getAppendVisitor(), line, pos + 2, footnotes);
+					if (end != line.length())
+						throw new IOException(line.substring(end));
+					ch.getVerses().add(v);
+				}
+				if (!line.equals("</div>"))
+					throw new IOException(line);
+			} else if (line.equals("<div class=\"biblehtmlcontent footnotes\">")) {
+				for (int i = 0; i < footnotes.size(); i++) {
+					line = br.readLine();
+					String prefix = "<div class=\"fn\"><sup class=\"fnt\"><a name=\"fn" + (i + 1) + "\" href=\"#fnm" + (i + 1) + "\">" + (i + 1) + "</a></sup> ";
+					if (!line.startsWith(prefix) || !line.endsWith("</div>"))
+						throw new IOException(line);
+					line = line.substring(prefix.length(), line.length() - 6);
+					int end = parseLine(footnotes.get(i), line, 0, null);
+					if (end != line.length())
+						throw new IOException(line.substring(end));
+				}
+				line = br.readLine();
+				if (!line.equals("</div>"))
+					throw new IOException(line);
+			}
+		}
+	}
+
 	private static BufferedReader createReader(File directory, String name) throws IOException {
 		return new BufferedReader(new InputStreamReader(new FileInputStream(new File(directory, name)), StandardCharsets.UTF_8));
 	}
 
-	private int parseLine(Visitor<RuntimeException> visitor, String line, int pos, List<Visitor<RuntimeException>> footnotes) throws IOException {
+	protected int parseLine(Visitor<RuntimeException> visitor, String line, int pos, List<Visitor<RuntimeException>> footnotes) throws IOException {
 		while (pos < line.length()) {
 			if (line.charAt(pos) != '<') {
 				int endPos = line.indexOf('<', pos);
@@ -641,32 +649,19 @@ public class RoundtripHTML implements RoundtripFormat {
 		return true;
 	}
 
-	private static class RoundtripHTMLVisitor extends AbstractHTMLVisitor {
+	protected static abstract class AbstractRoundtripHTMLVisitor extends AbstractHTMLVisitor {
 
-		private final String prefix;
-		private final List<StringWriter> footnotes;
-		private final Properties xrefMap;
+		protected final Properties xrefMap;
 
-		private RoundtripHTMLVisitor(Writer writer, List<StringWriter> footnotes, String prefix, String suffix, Properties xrefMap) {
+		protected AbstractRoundtripHTMLVisitor(Writer writer, String suffix, Properties xrefMap) {
 			super(writer, suffix);
-			this.footnotes = footnotes;
-			this.prefix = prefix;
 			this.xrefMap = xrefMap;
-		}
-
-		protected String getNextFootnoteTarget() {
-			return "#fn" + (footnotes.size() + 1);
 		}
 
 		@Override
 		public void visitVerseSeparator() throws IOException {
+			prepareForInlineOutput(false);
 			writer.write("<span class=\"vsep\">/</span>");
-		}
-
-		@Override
-		public void visitStart() throws IOException {
-			if (suffixStack.size() == 1)
-				writer.write(prefix);
 		}
 
 		protected String createFormattingInstructionStartTag(FormattingInstructionKind kind) {
@@ -679,6 +674,7 @@ public class RoundtripHTML implements RoundtripFormat {
 			while (raw.contains("endraw " + marker + "-->")) {
 				marker = (int) (Math.random() * 1000000);
 			}
+			prepareForInlineOutput(false);
 			writer.write("<!--raw " + marker + " " + mode.name().substring(0, 2).toLowerCase() + " ");
 			if (mode == RawHTMLMode.OFFLINE) {
 				writer.write(">" + raw.replace("-", "-d") + "<!");
@@ -690,6 +686,7 @@ public class RoundtripHTML implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitVariationText(String[] variations) throws IOException {
+			prepareForInlineOutput(false);
 			writer.write("<span class=\"var");
 			for (String var : variations) {
 				writer.write(" var-" + var);
@@ -701,6 +698,7 @@ public class RoundtripHTML implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			prepareForInlineOutput(false);
 			writer.write("<span class=\"sp sp-" + labelOrStrongs + "\">");
 			pushSuffix("</span>");
 			return this;
@@ -708,6 +706,7 @@ public class RoundtripHTML implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			prepareForInlineOutput(false);
 			writer.write("<a class=\"hl hl-" + type.ordinal() + "\" " + (type == HyperlinkType.ANCHOR ? "name" : "href") + "=\"" + target + "\">");
 			if (type == HyperlinkType.IMAGE) {
 				writer.write("<img src=\"" + target + "\">");
@@ -718,6 +717,7 @@ public class RoundtripHTML implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws IOException {
+			prepareForInlineOutput(false);
 			writer.write("<span class=\"xa xa-" + prio.toString().substring(0, 1).toLowerCase() + "\" style=\"-bmc-xa-" + category + "-" + key + ": " + value + ";\">");
 			pushSuffix("</span>");
 			return this;
@@ -736,23 +736,13 @@ public class RoundtripHTML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
-			StringWriter fnw = new StringWriter();
-			footnotes.add(fnw);
-			int cnt = footnotes.size();
-			writer.write(ofCrossReferences ? "<sup class=\"fxm\">" : "<sup class=\"fnm\">");
-			writer.write("<a name=\"fnm" + cnt + "\" href=\"#fn" + cnt + "\">" + cnt + "</a></sup>");
-			fnw.write("<div class=\"fn\"><sup class=\"fnt\"><a name=\"fn" + cnt + "\" href=\"#fnm" + cnt + "\">" + cnt + "</a></sup> ");
-			return new RoundtripHTMLVisitor(fnw, null, "", "</div>", xrefMap);
-		}
-
-		@Override
 		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
 			String xrefLink = xrefMap.getProperty(firstBook.getOsisID() + "," + firstChapter);
 			if (xrefLink == null) {
 				System.out.println("WARNING: Unsatisfiable reference to " + firstBookAbbr + " " + firstChapter);
 				xrefLink = "../index.html";
 			}
+			prepareForInlineOutput(false);
 			writer.write("<a class=\"xr\" href=\"" + xrefLink + "#v" + firstVerse + "\" style=\"-bmc-xr: " + (firstBook == lastBook ? firstBookAbbr + " " + firstBook.getOsisID() : firstBookAbbr + ":" + lastBookAbbr + " " + firstBook.getOsisID() + ":" + lastBook.getOsisID()) + " " + firstChapter + " " + firstVerse + " " + lastChapter + " " + lastVerse + "\">");
 			pushSuffix("</a>");
 			return this;
@@ -760,6 +750,7 @@ public class RoundtripHTML implements RoundtripFormat {
 
 		@Override
 		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws IOException {
+			prepareForInlineOutput(false);
 			if  (kind == ExtendedLineBreakKind.NEWLINE && indent == 0) {
 				writer.write("<br>");
 			} else if (kind == ExtendedLineBreakKind.NEWLINE && indent == 1) {
@@ -790,6 +781,7 @@ public class RoundtripHTML implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+			prepareForInlineOutput(false);
 			writer.write("<span class=\"g");
 			if (Diffable.writeStrongsSuffix && strongsPrefixes != null && strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
@@ -833,9 +825,45 @@ public class RoundtripHTML implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitDictionaryEntry(String dictionary, String entry) throws IOException {
+			prepareForInlineOutput(false);
 			writer.write("<a class=\"dict\" href=\"../../" + dictionary + "/dict/" + entry + "_1.html\">");
 			pushSuffix("</a>");
 			return this;
+		}
+	}
+
+	private static class RoundtripHTMLVisitor extends AbstractRoundtripHTMLVisitor {
+
+		private final String prefix;
+		private final List<StringWriter> footnotes;
+
+		private RoundtripHTMLVisitor(Writer writer, List<StringWriter> footnotes, String prefix, String suffix, Properties xrefMap) {
+			super(writer, suffix, xrefMap);
+			this.prefix = prefix;
+			this.footnotes = footnotes;
+		}
+
+		@Override
+		public void visitStart() throws IOException {
+			if (suffixStack.size() == 1)
+				writer.write(prefix);
+		}
+
+		@Override
+		protected String getNextFootnoteTarget() {
+			return "#fn" + (footnotes.size() + 1);
+		}
+
+		@Override
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
+			StringWriter fnw = new StringWriter();
+			footnotes.add(fnw);
+			int cnt = footnotes.size();
+			prepareForInlineOutput(false);
+			writer.write(ofCrossReferences ? "<sup class=\"fxm\">" : "<sup class=\"fnm\">");
+			writer.write("<a name=\"fnm" + cnt + "\" href=\"#fn" + cnt + "\">" + cnt + "</a></sup>");
+			fnw.write("<div class=\"fn\"><sup class=\"fnt\"><a name=\"fn" + cnt + "\" href=\"#fnm" + cnt + "\">" + cnt + "</a></sup> ");
+			return new RoundtripHTMLVisitor(fnw, null, "", "</div>", xrefMap);
 		}
 	}
 }

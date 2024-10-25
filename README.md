@@ -55,6 +55,9 @@ modules without loss of data:
 - **RoundtripHTML**: HTML format that can be read back if desired (originally
   intended for publishing on free website hosters, but with the advent of free
   file hosters this feature is pretty much obsolete).
+- **RoundtripStructuredHTML**: Similar to above, but converts the structure (i. e.
+  paragraphs, headlines, tables) as toplevel elements, and not the verses. Often results
+  in better HTML when converting from Paratext formats.
 - **RoundtripODT**: Export as an editable .odt (OpenOffice/LibreOffice Document
   Text), which can be edited in LibreOffice (tested with LibreOffice 6.0) and later
   imported again. Large bibles can take a minute or so to open in LibreOffice 6, which
@@ -187,7 +190,8 @@ limited to the old intermediate format.
 | `RoundtripTaggedText`                | complete                                 | unit tests     |
 | `RoundtripXML`                       | complete                                 | unit tests     |
 | `AbstractParatextFormat`             | partial *(maybe complete?)*              | unit tests     |
-| `RoundtripHTML`                      | partial *(Show `ga-` attributes)*        | unit tests     |
+| `RoundtripHTML`                      | partial *(Show `ga-` attributes)*        | partial        |
+| `RoundtripStructuredHTML`            | partial *(Show `ga-` attributes)*        | partial        |
 | `RoundtripODT`                       | partial *(Handling of hyperlinks)*       | unit tests     |
 | `AbstractVersificationDetector`      | complete                                 | none           |
 | `AugmentGrammar`                     | complete                                 | none           |

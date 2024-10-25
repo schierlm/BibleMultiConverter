@@ -37,8 +37,12 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 		return null;
 	}
 
+	protected void prepareForInlineOutput(boolean endTag) throws IOException {
+	}
+
 	@Override
 	public void visitVerseSeparator() throws IOException {
+		prepareForInlineOutput(false);
 		writer.write("<font color=\"#808080\">/</font>");
 	}
 
@@ -53,6 +57,7 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 
 	@Override
 	public void visitText(String text) throws IOException {
+		prepareForInlineOutput(false);
 		writer.write(text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"));
 	}
 
@@ -74,6 +79,7 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 				endTag = "</a>";
 			}
 		}
+		prepareForInlineOutput(false);
 		writer.write(startTag);
 		pushSuffix(endTag);
 		return this;
@@ -85,6 +91,7 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 
 	@Override
 	public Visitor<IOException> visitCSSFormatting(String css) throws IOException {
+		prepareForInlineOutput(false);
 		writer.write("<span class=\"css\" style=\"" + css + "\">");
 		pushSuffix("</span>");
 		return this;
@@ -93,6 +100,7 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 	@Override
 	public void visitRawHTML(RawHTMLMode mode, String raw) throws IOException {
 		if (!mode.equals(Boolean.getBoolean("rawhtml.online") ? RawHTMLMode.OFFLINE : RawHTMLMode.ONLINE)) {
+			prepareForInlineOutput(false);
 			writer.write(raw);
 		}
 	}
@@ -104,6 +112,7 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 
 	@Override
 	public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+		prepareForInlineOutput(false);
 		if (type == HyperlinkType.ANCHOR) {
 			writer.write("<a name=\"" + target + "\">");
 		} else {
@@ -123,6 +132,7 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 
 	@Override
 	public boolean visitEnd() throws IOException {
+		prepareForInlineOutput(true);
 		writer.write(suffixStack.remove(suffixStack.size() - 1));
 		return false;
 	}
