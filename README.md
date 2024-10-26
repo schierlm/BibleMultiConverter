@@ -208,7 +208,7 @@ limited to the old intermediate format.
 | `VersificationMappedDiffable`        | complete                                 | none           |
 | `Accordance`                         | partial                                  | none           |
 | `LaridianPocketBible`    (2x)        | partial                                  | none           |
-| `LogosHTML`                          | partial                                  | none           |
+| `LogosHTML`                          | partial                                  | partial        |
 | `MobiPocket`                         | partial                                  | none           |
 | `MyBibleZone`                        | partial                                  | none           |
 | `OSIS` + `SWORD`                     | partial                                  | none           |
