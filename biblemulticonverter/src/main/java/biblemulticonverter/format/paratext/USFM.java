@@ -64,7 +64,8 @@ public class USFM extends AbstractParatextFormat {
 			"Point the importer to a directory that contains the .usfm files.",
 			"",
 			"When exporting, you need to give a file name pattern. You can use # for ",
-			"the book number and * for the book name."
+			"the book number and * for the book name. Use ? to split by chapters, for ",
+			"the chapter number; ?? or ??? to force leading zeroes."
 	};
 
 	public static final Set<String> KNOWN_CHARACTER_TAGS = new HashSet<>(Arrays.asList("f", "fe", "x", "ef"));

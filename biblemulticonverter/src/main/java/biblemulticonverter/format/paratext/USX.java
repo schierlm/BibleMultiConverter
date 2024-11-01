@@ -89,7 +89,8 @@ public class USX extends AbstractUSXFormat<ParaStyle, CharStyle> {
 			"Point the importer to a directory that contains the .usx version 2 files.",
 			"",
 			"When exporting, you need to give a file name pattern. You can use # for ",
-			"the book number and * for the book name."
+			"the book number and * for the book name. Use ? to split by chapters, for ",
+			"the chapter number; ?? or ??? to force leading zeroes."
 	};
 
 	private static final Set<AutoClosingFormattingKind> USX_2_AUTO_CLOSING_FORMATTING_KINDS = AutoClosingFormattingKind.allForVersion(Version.V2_2);
