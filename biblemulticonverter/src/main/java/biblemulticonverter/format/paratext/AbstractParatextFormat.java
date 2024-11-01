@@ -8,7 +8,10 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -16,6 +19,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
@@ -496,15 +500,33 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					System.setProperty(name, props.getProperty(name));
 			}
 		}
+		Map<ParatextID, List<ParatextBook>> seenBooks = new EnumMap<>(ParatextID.class);
 		for (File file : inputFile.listFiles()) {
 			if (file.getName().equals("biblemulticonverter.properties"))
 				continue;
 			try {
 				ParatextBook book = doImportBook(file);
-				if (book != null)
+				if (book != null) {
+					seenBooks.computeIfAbsent(book.getId(), x -> new ArrayList<>()).add(book);
 					result.add(book);
+				}
 			} catch (Exception ex) {
 				throw new RuntimeException("Failed parsing " + file.getName(), ex);
+			}
+		}
+		for (List<ParatextBook> booksPerID : seenBooks.values()) {
+			if (booksPerID.size() > 1) {
+				Map<ParatextBook, Integer> firstChap = new HashMap<>();
+				for (ParatextBook book : booksPerID) {
+					firstChap.put(book, book.getContent().stream().filter(x -> x instanceof ChapterStart).mapToInt(x -> ((ChapterStart) x).getChapter()).min().orElse(0));
+				}
+				booksPerID.sort(Comparator.comparing(bk -> firstChap.get(bk)));
+				ParatextBook firstBook = booksPerID.remove(0);
+				for (ParatextBook nextBook : booksPerID) {
+					result.remove(nextBook);
+					firstBook.getContent().addAll(nextBook.getContent());
+					firstBook.getAttributes().putAll(nextBook.getAttributes());
+				}
 			}
 		}
 		Map<ParatextID, Integer> bookOrder = new EnumMap<>(ParatextID.class);
@@ -524,6 +546,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		result.sort(Comparator.<ParatextBook, Integer> comparing(b -> bookOrder.getOrDefault(b.getId(), Integer.MAX_VALUE)).thenComparing(ParatextBook::getId));
 		return result;
 	}
+
 
 	protected abstract ParatextBook doImportBook(File inputFile) throws Exception;
 
@@ -613,8 +636,54 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		String namePattern = exportArgs[1];
 		for (ParatextBook book : books) {
 			String name = namePattern.replace("#", book.getId().getNumber()).replace("*", book.getId().getIdentifier());
-			doExportBook(book, new File(baseDir, name));
+			if (name.contains("?")) {
+				List<ParatextBookContentPart> remainingContent = new ArrayList<>();
+				for (int i = 1; i < book.getContent().size(); i++) {
+					if (book.getContent().get(i) instanceof ChapterStart) {
+						List<ParatextBookContentPart> rest = book.getContent().subList(i, book.getContent().size());
+						remainingContent.addAll(rest);
+						rest.clear();
+						break;
+					}
+				}
+				exportChapterBook(book, baseDir, name);
+				while (!remainingContent.isEmpty()) {
+					ParatextBook restBook = new ParatextBook(book.getId(), book.getBibleName());
+					for (int i = 1; i < remainingContent.size(); i++) {
+						if (remainingContent.get(i) instanceof ChapterStart) {
+							List<ParatextBookContentPart> start = remainingContent.subList(0, i);
+							restBook.getContent().addAll(start);
+							start.clear();
+							break;
+						}
+					}
+					if (restBook.getContent().isEmpty()) {
+						restBook.getContent().addAll(remainingContent);
+						remainingContent.clear();
+					}
+					exportChapterBook(restBook, baseDir, name);
+				}
+			} else {
+				doExportBook(book, new File(baseDir, name));
+			}
 		}
+	}
+
+	private void exportChapterBook(ParatextBook book, File baseDir, String name) throws Exception {
+		int pos = name.indexOf("?"), endPos = pos + 1;
+		String prefix = "0";
+		while (endPos < name.length() && name.charAt(endPos) == '?') {
+			prefix += "0";
+			endPos++;
+		}
+		int chapnum = 0;
+		if (!book.getContent().isEmpty() && book.getContent().get(0) instanceof ChapterStart) {
+			chapnum = ((ChapterStart) book.getContent().get(0)).getChapter();
+		}
+		String chapter = "" + chapnum;
+		if (chapter.length() < prefix.length())
+			chapter = prefix.substring(chapter.length()) + chapter;
+		doExportBook(book, new File(baseDir, name.substring(0, pos) + chapter + name.substring(endPos)));
 	}
 
 	protected abstract void doExportBook(ParatextBook book, File outFile) throws Exception;

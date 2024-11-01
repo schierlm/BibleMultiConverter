@@ -76,7 +76,8 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 			"Point the importer to a directory that contains the .usx version 3 files.",
 			"",
 			"When exporting, you need to give a file name pattern. You can use # for ",
-			"the book number and * for the book name."
+			"the book number and * for the book name. Use ? to split by chapters, for ",
+			"the chapter number; ?? or ??? to force leading zeroes."
 	};
 
 	private Map<NoteStyle, ParatextCharacterContent.FootnoteXrefKind> NOTE_STYLE_MAP = new EnumMap<>(NoteStyle.class);
