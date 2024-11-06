@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -255,6 +256,7 @@ public class TranslatorsAmalgamated implements ImportFormat {
 						wi.attributes.add(new String[] { "tahot", "english", "gloss", lemmaGloss[1] });
 						wi.strongs = strong;
 						wi.rmac = morph;
+						wi.order = Integer.parseInt(fields[0].split("[#=]")[1]);
 
 						String[] editions = fields[5].split("\\+");
 						wi.editions = EnumSet.noneOf(Edition.class);
@@ -264,17 +266,15 @@ public class TranslatorsAmalgamated implements ImportFormat {
 								String[] parts = edition.split("»");
 								Edition edi = getEdition(parts[0]);
 								WordItem wii = new WordItem(wi, edi);
-								wii.shift = parts[1].contains(".") ? 0 : Integer.parseInt(parts[1]);
-								int index = items.size();
-								while (wii.shift < 0 && index > 0) {
-									if (items.get(index - 1).editions.contains(edi)) {
-										wii.shift++;
-									}
-									index--;
+								int shift = parts[1].contains(".") ? 0 : Integer.parseInt(parts[1]);
+								if (shift != 0) {
+									wii.unshiftedOrder = wi.order;
+									wii.order = wi.order + shift;
 								}
-								if (wii.shift < 0) {
+								int index = items.size();
+								if (wii.order < 1) {
 									System.out.println("WARNING: Shifted word left out of verse: " + currVersePrefix);
-									wii.shift = 0;
+									wii.order = 1;
 								}
 								items.add(index, wii);
 							} else {
@@ -302,26 +302,20 @@ public class TranslatorsAmalgamated implements ImportFormat {
 
 	private void writeGreek(Verse verse, List<WordItem> items, String currVersePrefix) {
 		Visitor<RuntimeException> vv = verse.getAppendVisitor();
-		boolean first = true;
-		for (int i = 0; i < items.size(); i++) {
-			WordItem wi = items.get(i);
-			if (wi.shift > 0) {
-				int j = i;
-				while (wi.shift > 0 && j < items.size() - 1) {
-					WordItem next = items.get(j + 1);
-					items.set(j, next);
-					j++;
-					if (next.editions.containsAll(wi.editions))
-						wi.shift--;
-				}
-				if (wi.shift > 0) {
+		boolean needSort = false;
+		for (WordItem wi : items) {
+			if (wi.unshiftedOrder != 0) {
+				needSort = true;
+				if (wi.order > items.size()) {
 					System.out.println("WARNING: Shifted word right out of verse: " + currVersePrefix);
-					wi.shift = 0;
+					wi.order = items.size();
 				}
-				items.set(j, wi);
-				i--;
 			}
 		}
+		if (needSort) {
+			items.sort(Comparator.<WordItem, Integer> comparing(wi -> wi.order).thenComparing(wi -> wi.unshiftedOrder));
+		}
+		boolean first = true;
 		for (WordItem wi : items) {
 			if (!first)
 				vv.visitText(" ");
@@ -383,7 +377,7 @@ public class TranslatorsAmalgamated implements ImportFormat {
 		EnumSet<Edition> editions;
 		String[] strongs;
 		String[] rmac;
-		int shift = 0;
+		int order, unshiftedOrder = 0;
 
 		public WordItem() {
 		}
