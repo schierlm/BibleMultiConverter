@@ -18,6 +18,10 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.DeflaterInputStream;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
+import java.util.zip.InflaterOutputStream;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -102,7 +106,7 @@ public class LogosVerseMapDownloader {
 		if (versemap.exists())
 			return;
 		System.out.println("Downloading Logos verse map...");
-		try (InputStream in = new URL("https://wiki.logos.com/Bible_Verse_Maps").openStream();
+		try (InputStream in = new URL("https://web.archive.org/web/20240226003157id_/https://wiki.logos.com/Bible_Verse_Maps").openStream();
 				Writer w = new OutputStreamWriter(new FileOutputStream(versemap), StandardCharsets.ISO_8859_1)) {
 			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
 			builder.setEntityResolver(new EntityResolver() {
@@ -117,6 +121,12 @@ public class LogosVerseMapDownloader {
 			int len;
 			while ((len = in.read(buf)) != -1)
 				baos.write(buf, 0, len);
+			if (baos.toByteArray()[0] == 0x1f && (baos.toByteArray()[1] & 0xFF) == 0x8b) {
+				GZIPInputStream zin = new GZIPInputStream(new ByteArrayInputStream(baos.toByteArray()));
+				baos = new ByteArrayOutputStream();
+				while ((len = zin.read(buf)) != -1)
+					baos.write(buf, 0, len);
+			}
 			String xml = new String(baos.toByteArray(), StandardCharsets.UTF_8);
 			xml = xml.replaceAll("<script type=\"text/javascript\">\\(?window.*?</script>", "").replace("createCookie&authorizationHeader=", "").replaceAll("<script async charset=\"utf-8\"", "<script charset=\"utf-8\"");
 			parseVerseMap(builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8))), w);
