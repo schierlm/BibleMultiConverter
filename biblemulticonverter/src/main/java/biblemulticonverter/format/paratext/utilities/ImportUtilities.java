@@ -73,6 +73,9 @@ public class ImportUtilities {
 						if (verseStartFound) {
 							lastSuitableContentContainer = null;
 						}
+					} else if (content.getContent().isEmpty() && bookPartsIterator.hasPrevious() && bookParts.get(bookPartsIterator.previousIndex()) == openVerse) {
+						// Empty containers are okay if they are just behind the verse start (i.e. an empty verse)
+						lastSuitableContentContainer = content;
 					}
 				} else if (bookPart == openVerse) {
 					verseStartFound = true;
@@ -82,7 +85,7 @@ public class ImportUtilities {
 				}
 			}
 			if (!didAddVerseEndMilestone) {
-				throw new IOException("Could not insert verse end, because no suitable location could be found.");
+				throw new IOException("Could not insert verse end of " + openVerse.getVerseNumber() + " [" + openVerse.getLocation() + "], because no suitable location could be found.");
 			}
 		}
 	}
