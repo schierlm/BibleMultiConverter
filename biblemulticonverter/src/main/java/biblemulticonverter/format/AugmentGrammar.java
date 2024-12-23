@@ -19,6 +19,8 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.FormattedText.Visitor;
+import biblemulticonverter.data.FormattedText.VisitorAdapter;
+import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.Versification.Reference;
@@ -28,7 +30,8 @@ public class AugmentGrammar implements ExportFormat {
 	public static final String[] HELP_TEXT = {
 			"Analyze used Grammar information in one bible and augment another one from that data.",
 			"",
-			"Usage: AugmentGrammar dump <csvfile>",
+			"Usage: AugmentGrammar dump <csvfile> [humanStrongs]",
+			"Usage: AugmentGrammar dumpwords <csvfile> [humanStrongs]",
 			"Usage: AugmentGrammar analyze[:<modes>] <dbfile>",
 			"Usage: AugmentGrammar augment[:<modes>] <dbfile> <ExportFormat> [<ExportArgs>...]",
 			"Usage: AugmentGrammar addsourceindex <ExportFormat> [<ExportArgs>...]",
@@ -55,6 +58,7 @@ public class AugmentGrammar implements ExportFormat {
 			}
 		}
 		if (exportArgs[0].equals("dump")) {
+			boolean humanStrongs = exportArgs.length > 2 && exportArgs[2].equals("humanStrongs");
 			try (BufferedWriter bw = new BufferedWriter(new FileWriter(exportArgs[1]))) {
 				runOperation(bible, new GrammarOperation() {
 
@@ -68,7 +72,7 @@ public class AugmentGrammar implements ExportFormat {
 							lastReference = reference;
 						}
 						counter++;
-						String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs);
+						String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs, humanStrongs);
 						int max = Math.max(Math.max(fullStrongs == null ? 0 : fullStrongs.length, rmac == null ? 0 : rmac.length), sourceIndices == null ? 0 : sourceIndices.length);
 						try {
 							for (int i = 0; i < max; i++) {
@@ -79,6 +83,41 @@ public class AugmentGrammar implements ExportFormat {
 							throw new RuntimeException(ex);
 						}
 						return next.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices);
+					}
+				});
+			}
+		} else if (exportArgs[0].equals("dumpwords")) {
+			boolean humanStrongs = exportArgs.length > 2 && exportArgs[2].equals("humanStrongs");
+			try (BufferedWriter bw = new BufferedWriter(new FileWriter(exportArgs[1]))) {
+				runOperation(bible, new GrammarOperation() {
+
+					private int counter = 0;
+					private Reference lastReference = null;
+
+					@Override
+					public Visitor<RuntimeException> handleGrammar(Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+						if (!reference.equals(lastReference)) {
+							counter = 0;
+							lastReference = reference;
+						}
+						counter++;
+						String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs, humanStrongs);
+						final StringBuilder sb = new StringBuilder(reference.toString() + "\t" + counter + "\t" + (fullStrongs != null ? String.join("+", fullStrongs) : "") + "\t" + (rmac != null ? String.join("+", rmac) : "") + "\t" + (sourceIndices != null ? Arrays.toString(sourceIndices).replace(", ", "+").replace("]", "").substring(1) : "") + "\t");
+						return new VisitorAdapter<RuntimeException>(next.visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices)) {
+							@Override
+							public void visitText(String text) throws RuntimeException {
+								sb.append(text);
+							}
+							public boolean visitEnd() {
+								try {
+									bw.write(sb.toString());
+									bw.newLine();
+								} catch (IOException ex) {
+									throw new RuntimeException(ex);
+								}
+								return super.visitEnd();
+							}
+						};
 					}
 				});
 			}
@@ -106,7 +145,7 @@ public class AugmentGrammar implements ExportFormat {
 
 				@Override
 				public Visitor<RuntimeException> handleGrammar(Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
-					String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs);
+					String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs, false);
 					String[] idxStrings = null;
 					if (sourceIndices != null) {
 						idxStrings = new String[sourceIndices.length];
@@ -144,7 +183,7 @@ public class AugmentGrammar implements ExportFormat {
 			runOperation(bible, new GrammarOperation() {
 				@Override
 				public Visitor<RuntimeException> handleGrammar(Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
-					String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs);
+					String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs, false);
 					String keyPrefix = reference.getBook().getOsisID() + "." + reference.getChapter() + "." + reference.getVerse();
 					for (Mode mode : modes) {
 						switch (mode) {
@@ -231,11 +270,11 @@ public class AugmentGrammar implements ExportFormat {
 			ExportFormat exportFormat = exportModule.getImplementationClass().newInstance();
 			exportFormat.doExport(bible, Arrays.copyOfRange(exportArgs, 2, exportArgs.length));
 		} else {
-			System.out.println("Supported operations: dump, analyze, augment, addsourceindex");
+			System.out.println("Supported operations: dump, dumpwords, analyze, augment, addsourceindex");
 		}
 	}
 
-	private static String[] buildFullStrongs(Versification.Reference reference, char[] strongsPrefixes, int[] strongs) {
+	private static String[] buildFullStrongs(Versification.Reference reference, char[] strongsPrefixes, int[] strongs, boolean humanFormat) {
 		if (strongs == null)
 			return null;
 		if (strongsPrefixes == null) {
@@ -244,7 +283,7 @@ public class AugmentGrammar implements ExportFormat {
 		}
 		String[] result = new String[strongs.length];
 		for (int i = 0; i < strongs.length; i++) {
-			result[i] = strongsPrefixes[i] + "" + strongs[i];
+			result[i] = humanFormat ? Utils.formatStrongs(reference.getBook().isNT(), strongsPrefixes[i], strongs[i]): strongsPrefixes[i] + "" + strongs[i];
 		}
 		return result;
 	}

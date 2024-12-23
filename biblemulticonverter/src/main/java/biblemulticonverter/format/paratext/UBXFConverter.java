@@ -406,7 +406,7 @@ public class UBXFConverter extends AbstractParatextFormat {
 										if (!rmac.matches(Utils.RMAC_REGEX)) {
 											throw new IllegalStateException("Built invalid RMAC: " + rmac);
 										}
-										morph[i] = rmac;
+										morph[i] = "robinson:"+ rmac;
 									}
 								} else {
 									System.out.println("WARNING: Unsupported Morph entry " + morph[i] + " in " + where);
