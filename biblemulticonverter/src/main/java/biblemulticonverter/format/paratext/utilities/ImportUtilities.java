@@ -8,11 +8,9 @@ import biblemulticonverter.format.paratext.ParatextBook;
 import biblemulticonverter.format.paratext.ParatextBook.Figure;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphKind;
 import biblemulticonverter.format.paratext.ParatextBook.ParagraphKindCategory;
-import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContentContainer;
 import biblemulticonverter.format.paratext.ParatextBook.VerseEnd;
 import biblemulticonverter.format.paratext.ParatextBook.VerseStart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent;
-import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
 
 public class ImportUtilities {
 
@@ -73,9 +71,16 @@ public class ImportUtilities {
 						if (verseStartFound) {
 							lastSuitableContentContainer = null;
 						}
-					} else if (content.getContent().isEmpty() && bookPartsIterator.hasPrevious() && bookParts.get(bookPartsIterator.previousIndex()) == openVerse) {
-						// Empty containers are okay if they are just behind the verse start (i.e. an empty verse)
-						lastSuitableContentContainer = content;
+					} else if (content.getContent().isEmpty() && bookPartsIterator.hasPrevious()) {
+						int prevIdx = bookPartsIterator.previousIndex();
+						ParatextBook.ParatextBookContentPart prevPart = bookParts.get(prevIdx);
+						if (prevPart == openVerse) {
+							// Empty containers are okay if they are just behind the verse start (i.e. an empty verse)
+							lastSuitableContentContainer = content;
+						} else if (prevIdx > 0 && bookParts.get(prevIdx-1) == openVerse && prevPart instanceof ParatextBook.ParagraphStart) {
+							// Empty containers are also okay if they are after a paragraph start behind the verse start (i.e. a verse only consisting of a paragraph break)
+							lastSuitableContentContainer = content;
+						}
 					}
 				} else if (bookPart == openVerse) {
 					verseStartFound = true;
