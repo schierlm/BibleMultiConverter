@@ -987,7 +987,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			} else if (lastChapter == -1) {
 				lastChapter = firstChapter;
 			}
-			if (firstVerse == null) {
+			if (firstVerse == null || !Utils.VERSE_REGEX.matches(firstVerse)) {
 				firstVerse = "1"; lastVerse = "*";
 			} else if (lastVerse == null) {
 				lastVerse = firstVerse;

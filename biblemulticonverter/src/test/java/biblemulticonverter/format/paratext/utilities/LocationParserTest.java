@@ -11,7 +11,7 @@ import static org.junit.Assert.assertTrue;
 
 public class LocationParserTest {
 
-	private final LocationParser parser = new LocationParser(false);
+	private final LocationParser parser = new LocationParser();
 
 	@Test
 	public void test_book_format() {
@@ -86,14 +86,14 @@ public class LocationParserTest {
 	}
 
 	@Test
-	public void test_invalid_verse_range_format() {
-		assertFalse(parser.parse("MAT 10:2-11"));
-		assertNull(parser.getFormat());
-		assertNull(parser.getStartBook());
+	public void test_verse_mix_format() {
+		assertTrue(parser.parse("MAT 10:2-3,9-12"));
+		assertEquals(LocationParser.Format.VERSE_MIX, parser.getFormat());
+		assertEquals(ParatextBook.ParatextID.ID_MAT, parser.getStartBook());
 		assertNull(parser.getEndBook());
-		assertEquals(-1, parser.getStartChapter());
+		assertEquals(10, parser.getStartChapter());
 		assertEquals(-1, parser.getEndChapter());
-		assertNull(parser.getStartVerse());
+		assertEquals("2-3,9-12", parser.getStartVerse());
 		assertNull(parser.getEndVerse());
 	}
 

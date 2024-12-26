@@ -535,7 +535,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		 *                                  {@link LocationParser.Format#BOOK_RANGE} format.
 		 */
 		public static Reference parse(String location, String content) {
-			LocationParser parser = new LocationParser(true);
+			LocationParser parser = new LocationParser();
 			if (!parser.parse(location)) {
 				throw new IllegalArgumentException("Found invalid reference location: " + location);
 			}
@@ -547,6 +547,8 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 				case CHAPTER_RANGE:
 					return Reference.chapterRange(parser.getStartBook(), parser.getStartChapter(), parser.getEndChapter(), content);
 				case VERSE:
+					return Reference.verse(parser.getStartBook(), parser.getStartChapter(), parser.getStartVerse(), content);
+				case VERSE_MIX:
 					return Reference.verse(parser.getStartBook(), parser.getStartChapter(), parser.getStartVerse(), content);
 				case VERSE_RANGE:
 					return Reference.verseRange(parser.getStartBook(), parser.getStartChapter(), parser.getStartVerse(), parser.getEndChapter(), parser.getEndVerse(), content);
