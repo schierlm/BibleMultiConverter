@@ -19,11 +19,18 @@ public class VerseIdentifier extends ChapterIdentifier {
 	}
 
 	/**
-	 * @throws IllegalArgumentException if the provided verse or endVerse String is not a valid verse ID.
+	 * @see #VerseIdentifier(ParatextBook.ParatextID, int, String, String, boolean)
 	 */
 	public VerseIdentifier(ParatextBook.ParatextID book, int chapter, String verse, String endVerse) throws IllegalArgumentException {
+		this(book, chapter, verse, endVerse, false);
+	}
+
+	/**
+	 * @throws IllegalArgumentException if the provided verse or endVerse String is not a valid verse ID.
+	 */
+	public VerseIdentifier(ParatextBook.ParatextID book, int chapter, String verse, String endVerse, boolean mixed) throws IllegalArgumentException {
 		super(book, chapter);
-		boolean startVerseValid = LocationParser.isValidVerseId(verse, false);
+		boolean startVerseValid = mixed || LocationParser.isValidVerseId(verse, false);
 		if (!startVerseValid && endVerse == null && LocationParser.isValidVerseId(verse, true)) {
 			String[] parts = verse.split("-", 2);
 			verse = parts[0];
@@ -51,10 +58,12 @@ public class VerseIdentifier extends ChapterIdentifier {
 	 * @throws IllegalArgumentException if the given location is not a valid verse location identifier.
 	 */
 	public static VerseIdentifier fromStringOrThrow(String location) throws IllegalArgumentException {
-		LocationParser parser = new LocationParser(true);
+		LocationParser parser = new LocationParser();
 		if (parser.parse(location)) {
 			if (parser.getFormat() == LocationParser.Format.VERSE) {
 				return new VerseIdentifier(parser.getStartBook(), parser.getStartChapter(), parser.getStartVerse());
+			} else if (parser.getFormat() == LocationParser.Format.VERSE_MIX) {
+				return new VerseIdentifier(parser.getStartBook(), parser.getStartChapter(), parser.getStartVerse(), null, true);
 			} else if (parser.getFormat() == LocationParser.Format.VERSE_RANGE && parser.getStartChapter() == parser.getEndChapter()) {
 				// Only allow verse ranges that do not span multiple chapters
 				return new VerseIdentifier(parser.getStartBook(), parser.getStartChapter(), parser.getStartVerse(), parser.getEndVerse());

@@ -11,11 +11,10 @@ import biblemulticonverter.format.paratext.ParatextBook;
 public class LocationParser {
 
 	private static final Pattern LOCATION_PATTERN = Pattern.compile("^([A-Z1-4]{3})(?:-([A-Z1-4]{3})|(?: ([0-9]+)(?:(?:-([0-9]+))|(?::([a-z0-9]+)(?:-([a-z0-9]+)(?::([a-z0-9]+))?)?))?))?$");
+	private static final Pattern LOCATION_VERSE_MIX_PATTERN = Pattern.compile("^([A-Z1-4]{3}) ([0-9]+):([a-z0-9,-]+)$");
 
 	private static final Pattern CHAPTER_ID_PATTERN = Pattern.compile("^[0-9]+$");
 	private static final Pattern VERSE_ID_PATTERN = Pattern.compile("^[a-z0-9]+(-[a-z0-9]+)?$");
-
-	private final boolean allowAbbreviatedVerseRanges;
 
 	private ParatextBook.ParatextID startBook = null;
 	private ParatextBook.ParatextID endBook = null;
@@ -25,16 +24,6 @@ public class LocationParser {
 	private String endVerse = null;
 
 	private Format format = null;
-
-	/**
-	 * @param allowAbbreviatedVerseRanges if true this parser also parses abbreviated verse ranges with formats like:
-	 *                                    MAT 3:5-6 instead of only accepting MAT 3:5-3:6. In the USX ref element
-	 *                                    abbreviated verse ranges are not allowed, however they are allowed in verse
-	 *                                    SID and EID identifiers.
-	 */
-	public LocationParser(boolean allowAbbreviatedVerseRanges) {
-		this.allowAbbreviatedVerseRanges = allowAbbreviatedVerseRanges;
-	}
 
 	private void reset() {
 		startBook = null;
@@ -51,8 +40,23 @@ public class LocationParser {
 		Matcher matcher = LOCATION_PATTERN.matcher(rawLocation);
 		boolean isValid = matcher.matches();
 		if (!isValid) {
-			// Quickly return is matcher is unable to match
-			return false;
+			// try parsing verse mix
+			matcher = LOCATION_VERSE_MIX_PATTERN.matcher(rawLocation);
+			if (!matcher.matches()) {
+				// Quickly return is matcher is unable to match
+				return false;
+			}
+			String startBookIdentifier = matcher.group(1);
+			startBook = ParatextBook.ParatextID.fromIdentifier(startBookIdentifier);
+			if (startBook == null) {
+				// Unable to parse start book, return.
+				reset();
+				return false;
+			}
+			startChapter = Integer.parseInt(matcher.group(2));
+			startVerse = matcher.group(3);
+			format = Format.VERSE_MIX;
+			return true;
 		}
 
 		String startBookIdentifier = matcher.group(1);
@@ -98,15 +102,10 @@ public class LocationParser {
 					// Nothing found after startVerse
 					format = Format.VERSE;
 				} else if (matcher.group(7) == null) {
-					if (allowAbbreviatedVerseRanges) {
-						// Only one number found after the dash and startVerse
-						endChapter = startChapter;
-						endVerse = matcher.group(6);
-						format = Format.VERSE_RANGE;
-					} else {
-						reset();
-						return false;
-					}
+					// Only one number found after the dash and startVerse
+					endChapter = startChapter;
+					endVerse = matcher.group(6);
+					format = Format.VERSE_RANGE;
 				} else {
 					// Two numbers found after the dash and startVerse
 					endChapter = Integer.parseInt(matcher.group(6));
@@ -190,6 +189,10 @@ public class LocationParser {
 		 * E.g. MAT 3:5
 		 */
 		VERSE,
+		/**
+		 * E.g. MAT 3:5-6,9-12
+		 */
+		VERSE_MIX,
 		/**
 		 * E.g. MAT 3:5-4:6
 		 * <p>

@@ -23,7 +23,7 @@ public class ChapterIdentifier {
 		// Should not really matter if true or false is used for `allowAbbreviatedVerseRanges`, since only
 		// Format.CHAPTER is allowed in this method, but to stay consistent with VerseLocation true seems to most
 		// appropriate.
-		LocationParser parser = new LocationParser(true);
+		LocationParser parser = new LocationParser();
 		if (parser.parse(rawLocation) && parser.getFormat() == LocationParser.Format.CHAPTER) {
 			return new ChapterIdentifier(parser.getStartBook(), parser.getStartChapter());
 		} else {

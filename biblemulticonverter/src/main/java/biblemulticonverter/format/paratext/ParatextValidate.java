@@ -216,7 +216,7 @@ public class ParatextValidate extends AbstractParatextFormat {
 			if (!expectContent) {
 				violation("Paragraph expected before end of verse " + verseLocation);
 			}
-			if (openVerse != verseLocation) {
+			if (openVerse != verseLocation && (openVerse == null || verseLocation == null || !openVerse.toString().matches(verseLocation.toString()))) {
 				violation("Other verse open: " + openVerse + ", when closing verse " + verseLocation);
 			}
 			if (openChapter == null) {
