@@ -841,6 +841,7 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 	private static class ParaStyleWrapper extends StyleWrapper<ParaStyle> {
 
 		private static Set<ParaStyle> PARA_STYLE_UNSUPPORTED = Collections.unmodifiableSet(EnumSet.of(
+				ParaStyle.USFM, // gets synthesized again anyway
 				ParaStyle.RESTORE,
 				ParaStyle.K_1,
 				ParaStyle.K_2,
