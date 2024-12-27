@@ -36,6 +36,11 @@ public class ImportUtilities {
 			//   belongs to a header.
 			// - Not before the corresponding openVerse
 			List<ParatextBook.ParatextBookContentPart> bookParts = result.getContent();
+			if (!bookParts.isEmpty() && bookParts.get(bookParts.size() - 1) == openVerse) {
+				// the open verse is an empty verse at the end of a
+				// chapter/book. Provide a place to put the verse end.
+				bookParts.add(new ParatextCharacterContent());
+			}
 			ListIterator<ParatextBook.ParatextBookContentPart> bookPartsIterator = bookParts.listIterator(bookParts.size());
 			boolean didAddVerseEndMilestone = false, verseStartFound = false, paraSwitchFound = false;
 			ParatextCharacterContent lastSuitableContentContainer = null;
