@@ -751,16 +751,20 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 		@Override
 		public ParatextCharacterContent.ParatextCharacterContentVisitor<IOException> visitAutoClosingFormatting(ParatextCharacterContent.AutoClosingFormattingKind kind, Map<String, String> attributes) throws IOException {
 				Char chr = new Char();
-				chr.setLemma(attributes.get("lemma"));
-				chr.setStrong(attributes.get("strong"));
-				chr.setSrcloc(attributes.get("srcloc"));
-				chr.setLinkHref(attributes.get("link-href"));
-				chr.setLinkId(attributes.get("link-id"));
+				chr.setLemma(nullIfEmpty(attributes.get("lemma")));
+				chr.setStrong(nullIfEmpty(attributes.get("strong")));
+				chr.setSrcloc(nullIfEmpty(attributes.get("srcloc")));
+				chr.setLinkHref(nullIfEmpty(attributes.get("link-href")));
+				chr.setLinkId(nullIfEmpty(attributes.get("link-id")));
 				chr.setLinkTitle(attributes.get("link-title"));
-				chr.setGloss(attributes.get("gloss"));
+				chr.setGloss(nullIfEmpty(attributes.get("gloss")));
 				chr.setStyle(CHAR_KIND_MAP.get(kind));
 				target.add(chr);
 				return new USX3.USXCharacterContentVisitor(chr.getContent());
+		}
+
+		private String nullIfEmpty(String s) {
+			return s == null || s.isEmpty() ? null : s;
 		}
 
 		@Override
