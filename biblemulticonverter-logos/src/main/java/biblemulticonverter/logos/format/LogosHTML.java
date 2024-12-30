@@ -31,6 +31,7 @@ import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.MetadataBook;
@@ -994,6 +995,16 @@ public class LogosHTML implements ExportFormat {
 		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
 			pushSuffix("");
 			return this;
+		}
+
+		@Override
+		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			if (type == HyperlinkType.IMAGE) {
+				prepareForInlineOutput(false);
+				pushSuffix("<br /><img src=\"" + target + "\">");
+				return this;
+			}
+			return super.visitHyperlink(type, target);
 		}
 
 		@Override
