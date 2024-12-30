@@ -293,7 +293,7 @@ public class NeUeParser implements ImportFormat {
 					List<Visitor<RuntimeException>> newFootnotes = new ArrayList<>();
 					while (line.matches("<[a-z0-9]+ (class=\"[^\"]+\" )?id=\"[a-z0-9]+\"[> ].*"))
 						line = line.replaceFirst(" id=\"[a-z0-9]+\"", "");
-					line = line.replaceAll("<span class=\"vers\" id=\"[0-9]+_[0-9]+\">", "<span class=\"vers\">");
+					line = line.replaceAll("<span class=\"vers\" ?id=\"[0-9]+_[0-9]+\">", "<span class=\"vers\">");
 					if (line.startsWith("<p class=\"poet\">") || line.startsWith("<p class=\"einl\">")) {
 						line = "<p>" + line.substring(16);
 					}
@@ -398,7 +398,7 @@ public class NeUeParser implements ImportFormat {
 							prolog = null;
 						}
 					} else if (!inParagraph && line.startsWith("<div class=\"fn\">")) {
-						String content = cutAffix(line, "<div class=\"fn\">", "</div>");
+						String content = cutAffix(line, "<div class=\"fn\">", "</div>").replaceAll("^([0-9]+,([0-9]+))([.-][.0-9]+): ", "$1: (V. $2$3) ");
 						if (footnoteVerses.size() == 0)
 							throw new IOException(line);
 						String prefix = footnoteVerses.remove(0) + ":";

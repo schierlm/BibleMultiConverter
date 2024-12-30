@@ -1,3 +1,7 @@
+index.html
+2mo\.html#3_18
+2mo.html#13_18
+
 3mo.html
 ihr entblößen\. ¶
 ihr entblößen.</p>¶
@@ -13,8 +17,8 @@ erwiderte: „Ich
 erwiderte: "Ich
 
 ri.html
-(<p><span class="vers" id="13_8">8</span>.*?)¶(<div class="fn">13,6: <em>.*?</div>)
-$2¶$1
+Mann\* folgten
+Mann folgten
 
 1sam.html
 sagte Abischai\.¶
@@ -25,32 +29,78 @@ sagte Abischai.</p>¶
 2sam.html
 <a href="#11_4">Kapitel 11,3
 <a href="#11_3">Kapitel 11,3
+"1Chr\.html
+"1chr.html
+22\.000 Mann\.
+22.000 Mann*.
 
-2koe.html
-ein Talent Silber\* und
-ein Talent Silber und
+1koe.html
+Zwangsarbeiter einziehen
+Zwangsarbeiter* einziehen
+Aufseher,\* die
+Aufseher, die
 
 1chr.html
 Jafet.¶</p>
 Jafet.</p>
-<span class="vers"id="22_1">
-<span class="vers" id="22_1">
 </br>
 <br />
+22\.600 Mann\.
+22.600 Mann*.
+87\.000 Mann\.\*
+87.000 Mann.
+Mann eingetragen
+Mann* eingetragen
+Heer\.\*
+Heer.
+Wehrtüchtige,\* Männer
+Wehrtüchtige, Männer
+Bewaffnete,
+Bewaffnete*,
+Männer, die namentlich
+Männer*, die namentlich
+Kriegsbewaffnung\.\*
+Kriegsbewaffnung.
+<p>¶(<div class="fn">.*?</div>)
+$1¶<p>
+38\.000 Männer\.
+38.000 Männer*.
+4000,\*
+4000,
 
 2chr.html
-"fn">2,1.16-17:
-"fn">2,1: (V. 1.16-17)
-<div class="fn">25,5-6
-<div class="fn">25,6: (V. 5-6)
+"2Chr\.html
+"2chr.html
+Soldaten zusammen
+Soldaten* zusammen
+(<div class="fn">12,3: n_N.*?</div>)¶(<div class="fn">12,1: (.|¶)*?<div class="fn">12,3: <em>Nubien.*?</div>)
+$2¶$1
+(<div class="fn">14,7: .*?</div>)¶(<div class="fn">14,2: .*?</div>)
+$2¶$1
+wehrtüchtige Männer,
+wehrtüchtige Männer*,
+Bewaffneten\.\*
+Bewaffneten.
+100\.000 Männer\* für 100 Talente Silber anwerben\.\*
+100.000 Männer für 100 Talente Silber anwerben.
+10\.000 Männer von
+10.000 Männer* von
+3000 Männer\* und
+3000 Männer und
+war 2600\.
+war 2600*.
+307\.500 Mann,\* stark
+307.500 Mann, stark
 
 esra.html
 <a href="#8,1">
 <a href="#8_1">
 
-neh.html
-<p><a href="#top"><span class="kap">8</span></a>¶\Q<span class="vers">(7,72)</span> \E([^¶]*)
-<p>$1 </p>¶<p><a href="#top"><span class="kap">8</span></a>&nbsp;
+hiob.html
+<h3 id="vo">(1-2: .*)</h3>
+<h2 id="vo">$1</h2>
+<h3 id="3">(.*)</h3>
+<h4 id="3">$1</h4>
 
 ps.html
 ¶»»  <a href="
@@ -69,8 +119,8 @@ $2$1
 $2$1
 Wort<a href="#psalm">\*</a></h4>
 Wort</h4>
-\Q"kap">/119\</span></a> <span class="u2"> I Álef*</span></p>\E¶<p class="poet">¶<span class="vers" id="119_1">1</span> Wie
-"kap">/119\\</span></a> ¶   <span class="vers">1</span>*<span class="u2"> I Álef*</span></p>¶<p class="poet">¶   Wie
+\Q"kap">/119\</span></a> <span class="u2"> I Álef*</span></p>\E¶<p class="poet">¶<span class="vers" id="119_1">1</span> Glücklich
+"kap">/119\\</span></a> ¶   <span class="vers">1</span>*<span class="u2"> I Álef*</span></p>¶<p class="poet">¶   Glücklich
 <div class="fn">Psalm 119:
 <div class="fn">119,1: <em>Psalm 119</em>:
 
@@ -95,6 +145,10 @@ zu ihnen: ‚So
 zu ihnen: 'So
 Israel“,
 Israel",
+Efraïms!‘\*
+Efraïms!'*
+‚Seht
+'Seht
 
 kla.html
 „Ist
@@ -107,14 +161,12 @@ hes.html
 <a href="jer.html#39_4">
 vernichten. Dann wirst du erkennen, dass ich Jahwe bin."
 vernichten. Dann wirst du erkennen, dass ich Jahwe bin.'"
-Liter Feinmehl und
-Liter Feinmehl* und
 \*</h4>
 </h4>
 <span class="vers" id="40_1">1</span> Es geschah im
 <span class="vers" id="40_1">1</span>* Es geschah im
-<div class="fn">Hesekiel 40-48: (.*?) <a href="Hesekiels Tempel\.gif" target="_blank">(.*?)</a>\.
-<div class="fn">40,1: Hesekiel 40-48: $1 $2 im Anhang.
+<div class="fn">Hesekiel 40: (.*?) <a href="Hesekiels Tempel\.gif" target="_blank">(.*?)</a>\.
+<div class="fn">40,1: Hesekiel 40: $1 $2 im Anhang.
 
 dan.html
 <a href="jer.html#31_18">31,18ff</a>
@@ -123,34 +175,32 @@ dan.html
 <a href="#7_25">Daniel 7,25</a>
 (Chaldäer war, getötet\.)¶
 $1</p>¶
-<span class="kap" id="11">
-<span class="kap">
 (<div class="fn">12,7: .*?</div>¶)(<div class="fn">12,5: .*?</div>¶)
 $2$1
+
+hos.html
+<p id="7"class="poet">
+<p id="7" class="poet">
 
 mi.html
 <a href="1koe.html#2_25">21,25-26</a>
 <a href="1koe.html#21_25">21,25-26</a>
 
-mal.html
-<a href="Lukas.html#1_17">
-<a href="lk.html#1_17">
-<p></p>So wird
-<p>So wird
-Jerusalem gebracht wird.¶
-Jerusalem gebracht wird.</p>¶
-
 mt.html
-"fn">20,6.9:
-"fn">20,6:
 sagte: „Geh
 sagte: "Geh
+Nachmittag\* angefangen
+Nachmittag angefangen
 
 mk.html
 5,20</a>\)\.¶</div>
 5,20</a>).</div>
 Stand ",
 Stand",
+
+lk.html
+größer als er\.¶
+größer als er."¶
 
 jo.html
 „Herr,
@@ -203,12 +253,10 @@ off.html
 <a href="lk.html#16_23">Lukas 16,23</a>
 <a href="Offenbarung.html#12_3">
 <a href="off.html#12_3">
-<span class="vers">\(12,18\)</span>
-<span class="vers">12,18</span>
+id "12_18">
+id="12_18">
 
 bibel.html
-<br />
-<br />
 <br/>
 <br />
 <br\\>
@@ -225,12 +273,6 @@ aber sagt: "Ich
 aber sagt: »Ich
 werden!",
 werden!«,
-
-4mo.html
-	### 5:20 whitespace missing after closing single quote
-	###
-geschlafen hat'-
-geschlafen hat' -
 
 jos.html
 	### 22:22 move comma
