@@ -6,6 +6,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -59,7 +61,7 @@ public class AugmentGrammar implements ExportFormat {
 		}
 		if (exportArgs[0].equals("dump")) {
 			boolean humanStrongs = exportArgs.length > 2 && exportArgs[2].equals("humanStrongs");
-			try (BufferedWriter bw = new BufferedWriter(new FileWriter(exportArgs[1]))) {
+			try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(exportArgs[1]), StandardCharsets.UTF_8))) {
 				runOperation(bible, new GrammarOperation() {
 
 					private int counter = 0;
@@ -88,7 +90,7 @@ public class AugmentGrammar implements ExportFormat {
 			}
 		} else if (exportArgs[0].equals("dumpwords")) {
 			boolean humanStrongs = exportArgs.length > 2 && exportArgs[2].equals("humanStrongs");
-			try (BufferedWriter bw = new BufferedWriter(new FileWriter(exportArgs[1]))) {
+			try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(exportArgs[1]), StandardCharsets.UTF_8))) {
 				runOperation(bible, new GrammarOperation() {
 
 					private int counter = 0;

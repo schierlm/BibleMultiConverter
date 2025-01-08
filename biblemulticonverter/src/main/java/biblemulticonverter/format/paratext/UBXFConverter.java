@@ -20,6 +20,7 @@ import biblemulticonverter.format.paratext.ParatextBook.ParatextCharacterContent
 import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormatting;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.AutoClosingFormattingKind;
+import biblemulticonverter.format.paratext.ParatextCharacterContent.FootnoteXref;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Milestone;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.ParatextCharacterContentPart;
 import biblemulticonverter.format.paratext.ParatextCharacterContent.Reference;
@@ -74,7 +75,7 @@ public class UBXFConverter extends AbstractParatextFormat {
 		if (exportArgs[0].equals("createsrcloc") && exportArgs[2].equals("--")) {
 			final String prefix = exportArgs[1];
 			for (ParatextBook book : books) {
-				book.accept(new UBXFBookVisitor(book.getId(), new UBXFGrammarHandlerVisitor() {
+				book.accept(new UBXFBookVisitor(book.getId(), false, new UBXFGrammarHandlerVisitor() {
 					int index;
 
 					@Override
@@ -96,7 +97,7 @@ public class UBXFConverter extends AbstractParatextFormat {
 			Map<String, Integer> occurrences = new HashMap<>();
 			Map<String, String> words = new HashMap<>();
 			for (ParatextBook book : books) {
-				book.accept(new UBXFBookVisitor(book.getId(), new UBXFGrammarHandlerVisitor() {
+				book.accept(new UBXFBookVisitor(book.getId(), false, new UBXFGrammarHandlerVisitor() {
 					private void extractContent(StringBuilder sb, ParatextCharacterContentContainer pccc) {
 						for (ParatextCharacterContentPart part : pccc.getContent()) {
 							if (part instanceof ParatextCharacterContentContainer) {
@@ -156,7 +157,7 @@ public class UBXFConverter extends AbstractParatextFormat {
 				props.load(fis);
 			}
 			for (ParatextBook book : books) {
-				book.accept(new UBXFBookVisitor(book.getId(), new UBXFGrammarHandlerVisitor() {
+				book.accept(new UBXFBookVisitor(book.getId(), true, new UBXFGrammarHandlerVisitor() {
 					@Override
 					protected void handleAlignMilestone(boolean start, Milestone milestone, Reference where) {
 						if (!start)
@@ -187,7 +188,7 @@ public class UBXFConverter extends AbstractParatextFormat {
 		} else if ((exportArgs[0].equals("fillwordattr") || exportArgs[0].equals("createwordattr")) && exportArgs[1].equals("--")) {
 			final boolean restructure = exportArgs[0].equals("createwordattr");
 			for (ParatextBook book : books) {
-				book.accept(new UBXFBookVisitor(book.getId(), new UBXFGrammarHandlerVisitor() {
+				book.accept(new UBXFBookVisitor(book.getId(), true, new UBXFGrammarHandlerVisitor() {
 					private void restructure(ParatextCharacterContentContainer pccc, boolean inWordlist, boolean inNewWordlist) {
 						for (int i = 0; i < pccc.getContent().size(); i++) {
 							ParatextCharacterContentPart part = pccc.getContent().get(i);
@@ -243,11 +244,11 @@ public class UBXFConverter extends AbstractParatextFormat {
 					}
 
 					@Override
-					protected void handleContent(ParatextCharacterContentContainer pccc) {
+					protected void handleContent(ParatextCharacterContentContainer pccc, boolean enterFootnotes) {
 						if (restructure) {
 							restructure(pccc, false, false);
 						}
-						super.handleContent(pccc);
+						super.handleContent(pccc, enterFootnotes);
 					}
 
 					List<Milestone> openMilestones = new ArrayList<>();
@@ -289,7 +290,7 @@ public class UBXFConverter extends AbstractParatextFormat {
 			formatArg = 2;
 		} else if (exportArgs[0].equals("convertgrammar") && exportArgs[1].equals("--")) {
 			for (ParatextBook book : books) {
-				book.accept(new UBXFBookVisitor(book.getId(), new UBXFGrammarHandlerVisitor() {
+				book.accept(new UBXFBookVisitor(book.getId(), true, new UBXFGrammarHandlerVisitor() {
 
 					private String getHebPrefixStrong(char ch) {
 						switch (ch) {
@@ -435,10 +436,12 @@ public class UBXFConverter extends AbstractParatextFormat {
 
 		private final ParatextID bookID;
 		private final UBXFGrammarHandlerVisitor ghv;
+		private final boolean enterFootnotes;
 		private int chapterNumber = -1;
 
-		public UBXFBookVisitor(ParatextID bookID, UBXFGrammarHandlerVisitor ghv) {
+		public UBXFBookVisitor(ParatextID bookID, boolean enterFootnotes, UBXFGrammarHandlerVisitor ghv) {
 			this.bookID = bookID;
+			this.enterFootnotes = enterFootnotes;
 			this.ghv = ghv;
 		}
 
@@ -490,7 +493,7 @@ public class UBXFConverter extends AbstractParatextFormat {
 
 		@Override
 		public void visitParatextCharacterContent(ParatextCharacterContent content) throws RuntimeException {
-			ghv.handleContent(content);
+			ghv.handleContent(content, enterFootnotes);
 		}
 	}
 
@@ -507,7 +510,7 @@ public class UBXFConverter extends AbstractParatextFormat {
 		protected void handleAlignMilestone(boolean start, Milestone milestone, Reference where) {
 		}
 
-		protected void handleContent(ParatextCharacterContentContainer pccc) {
+		protected void handleContent(ParatextCharacterContentContainer pccc, boolean enterFootnotes) {
 			for (ParatextCharacterContentPart part : pccc.getContent()) {
 				if (part instanceof AutoClosingFormatting && ((AutoClosingFormatting) part).getKind() == AutoClosingFormattingKind.WORDLIST) {
 					handleWordlist((AutoClosingFormatting) part, where);
@@ -519,8 +522,8 @@ public class UBXFConverter extends AbstractParatextFormat {
 						handleAlignMilestone(false, milestone, where);
 					}
 				}
-				if (part instanceof ParatextCharacterContentContainer) {
-					handleContent((ParatextCharacterContentContainer) part);
+				if (part instanceof ParatextCharacterContentContainer && (enterFootnotes || !(part instanceof FootnoteXref))) {
+					handleContent((ParatextCharacterContentContainer) part, enterFootnotes);
 				}
 			}
 		}
