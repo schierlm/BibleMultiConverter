@@ -61,6 +61,9 @@ public class LogosVerseMapDownloader {
 			"BibleNETS", "BibleNETSA", "BibleORTHSB",
 			"BibleBT4E","BibleCCB","BibleEHV","BibleESVCE","BibleNJBCT","BibleRHG",
 			"BibleAM", "BibleBB", "BibleBH", "BibleBTX", "BibleDHH", "BibleHERDER", "BibleHSV", "BibleJJ", "BibleLJJ", "BibleLPD", "BibleNRSVUE", "BiblePESHES", "BibleSIHGAO", "BibleWEB", "BibleWEBME",
+			"BibleAPC", "BibleARND", "BibleAS", "BibleBENGEL", "BibleBSNZ", "BibleCJB2", "BibleDCBOT", "BibleDPB", "BibleFILLION", "BibleJSHRZSIR",
+			"BibleLEXOTAPOC", "BibleLH", "BibleLU1545CRED", "BibleLU1545DC", "BibleLUTHER21", "BibleLXXGAT", "BibleLXXGIGUET", "BibleMENGE20",
+			"BibleNAVARRA", "BibleNBV2021", "BibleNVT", "BiblePATTLOCH", "BibleSACY", "BibleSB", "BibleTXT", "BibleVGRX", "BibleZB",
 	};
 
 	public static String[] ALL_BOOK_NAMES = {
@@ -93,7 +96,7 @@ public class LogosVerseMapDownloader {
 			return;
 		System.out.println("Downloading Logos verse map...");
 		final String PREFIX = "<a href=\"https://community.logos.com/home/leaving?allowTrusted=1&amp;target=https%3A%2F%2Fhtmlpreview.github.io%2F%3F";
-		String url = "https://us.v-cdn.net/6038263/uploads/EGW5N5DP6AZJ/bible-verse-maps-html.txt";
+		String url = "https://us.v-cdn.net/6038263/uploads/RKBF44XS827B/bible-verse-maps-html.txt";
 		HttpURLConnection uc;
 		try {
 			uc = (HttpURLConnection) new URL("https://community.logos.com/kb/articles/549-bible-verse-maps").openConnection();
@@ -290,7 +293,8 @@ public class LogosVerseMapDownloader {
 							if (!range.matches("[0-9-]+")) {
 								Integer idx = namedVerseMap.get(range);
 								if (idx == null) {
-									System.out.println("SKIPPING VERSE " + range);
+									if (!range.matches("3[a-c][a-z]"))
+										System.out.println("SKIPPING VERSE " + range);
 									continue;
 								}
 								range = String.valueOf(idx + 1000);
