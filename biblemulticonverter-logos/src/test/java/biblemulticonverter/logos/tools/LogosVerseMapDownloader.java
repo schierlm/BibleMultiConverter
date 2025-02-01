@@ -1,40 +1,26 @@
 package biblemulticonverter.logos.tools;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.io.StringReader;
 import java.io.Writer;
+import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.DeflaterInputStream;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
-import java.util.zip.InflaterOutputStream;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.w3c.dom.Text;
-import org.xml.sax.EntityResolver;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
 
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.logos.format.LogosHTML;
@@ -94,7 +80,7 @@ public class LogosVerseMapDownloader {
 			"1 Thessalonians=1Thess", "2 Thessalonians=2Thess", "1 Timothy=1Tim", "2 Timothy=2Tim", "Titus=Titus",
 			"Philemon=Phlm", "Hebrews=Heb", "James=Jas", "1 Peter=1Pet", "2 Peter=2Pet", "1 John=1John", "2 John=2John",
 			"3 John=3John", "Jude=Jude", "Revelation=Rev", "Additions to Daniel=AddDan", "Plea for Deliverance=-",
-			"Apostrophe to Zion=-", "Hymn to the Creator=-", "Apostrophe to Judah=-", "David’s Compositions=-",
+			"Apostrophe to Zion=-", "Hymn to the Creator=-", "Apostrophe to Judah=-", "David's Compositions=-",
 			"Apocryphal Psalms=5ApocSyrPss", "Psalm 151A=-", "Psalm 151B=-",
 			"Epistle of Baruch=EpBar", "Apocalypse of Baruch=2Bar", "Catena=-",
 			"Eschatological Hymn=-", "1 Enoch=1En", "4 Ezra=4Ezra", "2 Baruch=4Bar", "Odes=Odes",
@@ -106,30 +92,140 @@ public class LogosVerseMapDownloader {
 		if (versemap.exists())
 			return;
 		System.out.println("Downloading Logos verse map...");
-		try (InputStream in = new URL("https://web.archive.org/web/20240226003157id_/https://wiki.logos.com/Bible_Verse_Maps").openStream();
-				Writer w = new OutputStreamWriter(new FileOutputStream(versemap), StandardCharsets.ISO_8859_1)) {
-			DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-			builder.setEntityResolver(new EntityResolver() {
-				@Override
-				public InputSource resolveEntity(String publicId, String systemId)
-						throws SAXException, IOException {
-					return new InputSource(new StringReader(""));
+		final String PREFIX = "<a href=\"https://community.logos.com/home/leaving?allowTrusted=1&amp;target=https%3A%2F%2Fhtmlpreview.github.io%2F%3F";
+		String url = "https://us.v-cdn.net/6038263/uploads/EGW5N5DP6AZJ/bible-verse-maps-html.txt";
+		HttpURLConnection uc;
+		try {
+			uc = (HttpURLConnection) new URL("https://community.logos.com/kb/articles/549-bible-verse-maps").openConnection();
+			uc.setRequestProperty("User-Agent", "BibleMultiConverter/1.0");
+			try (BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream(), StandardCharsets.UTF_8))) {
+				String line;
+				while ((line = br.readLine()) != null) {
+					if (line.contains(PREFIX)) {
+						line = line.substring(line.indexOf(PREFIX) + PREFIX.length());
+						line = line.substring(0, line.indexOf('"'));
+						url = URLDecoder.decode(line, "UTF-8");
+						break;
+					}
 				}
-			});
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			byte[] buf = new byte[4096];
-			int len;
-			while ((len = in.read(buf)) != -1)
-				baos.write(buf, 0, len);
-			if (baos.toByteArray()[0] == 0x1f && (baos.toByteArray()[1] & 0xFF) == 0x8b) {
-				GZIPInputStream zin = new GZIPInputStream(new ByteArrayInputStream(baos.toByteArray()));
-				baos = new ByteArrayOutputStream();
-				while ((len = zin.read(buf)) != -1)
-					baos.write(buf, 0, len);
 			}
-			String xml = new String(baos.toByteArray(), StandardCharsets.UTF_8);
-			xml = xml.replaceAll("<script type=\"text/javascript\">\\(?window.*?</script>", "").replace("createCookie&authorizationHeader=", "").replaceAll("<script async charset=\"utf-8\"", "<script charset=\"utf-8\"");
-			parseVerseMap(builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8))), w);
+		} catch (IOException ex) {
+			System.err.println("Determining dynamic URL failed, using static one");
+			ex.printStackTrace();
+		}
+		System.out.println("Using URL: " + url);
+		uc = (HttpURLConnection) new URL(url).openConnection();
+		uc.setRequestProperty("User-Agent", "BibleMultiConverter/1.0");
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream(), StandardCharsets.UTF_8));
+				Writer w = new OutputStreamWriter(new FileOutputStream(versemap), StandardCharsets.ISO_8859_1)) {
+			String line;
+			while ((line = br.readLine()) != null) {
+				if (line.startsWith("<script type=\"text/plain\""))
+					break;
+			}
+			Map<String, List<List<String>>> books = new LinkedHashMap<>();
+			String letters = line.substring(line.indexOf('>') + 1);
+			List<String> versemaps = Arrays.asList(br.readLine().split(","));
+			line = br.readLine();
+			if (!line.isEmpty())
+				throw new IOException("Line should be empty: " + line);
+			line = br.readLine();
+			while (!line.startsWith("</script>")) {
+				String name = line;
+				List<List<String>> headers = new ArrayList<>();
+				String cols = br.readLine();
+				int vmap = 0, lastCol = -1;
+				while (!cols.isEmpty()) {
+					int col = letters.indexOf(cols.charAt(0));
+					if (col != -1) {
+						lastCol = col;
+						while (col >= headers.size())
+							headers.add(new ArrayList<>());
+						headers.get(col).add(versemaps.get(vmap));
+						vmap++;
+						cols = cols.substring(1);
+					} else if (cols.charAt(0) == '-') {
+						lastCol = -2;
+						vmap++;
+						cols = cols.substring(1);
+					} else if (lastCol != -1 && cols.charAt(0) >= '0' && cols.charAt(0) <= '9') {
+						int len = 1;
+						while (len < cols.length() && cols.charAt(len) >= '0' && cols.charAt(len) <= '9')
+							len++;
+						int cnt = Integer.parseInt(cols.substring(0, len));
+						if (lastCol != -2) {
+							headers.get(lastCol).addAll(versemaps.subList(vmap, vmap + cnt - 1));
+						}
+						vmap += cnt - 1;
+						cols = cols.substring(len);
+					} else {
+						throw new IOException("Unsupported column specification: " + cols);
+					}
+				}
+				List<List<String>> cells = new ArrayList<>();
+				cells.add(new ArrayList<>(headers.size() + 1));
+				cells.get(0).add("");
+				for (List<String> header : headers) {
+					cells.get(0).add(String.join(", ", header));
+				}
+				if (vmap != versemaps.size())
+					throw new IOException("Incomplete columns specification");
+				int lastRow = 0;
+				line = br.readLine();
+				while (!line.isEmpty() && !line.startsWith("</script>")) {
+					String[] row = new String[headers.size() + 1];
+					int epos = line.indexOf("=");
+					Arrays.fill(row, "");
+					row[0] = "" + (++lastRow);
+					if (epos != -1) {
+						row[0] = line.substring(0, epos);
+						line = line.substring(epos + 1);
+						if (row[0].matches("[1-9][0-9]*")) {
+							lastRow = Integer.parseInt(row[0]);
+						} else {
+							lastRow = 0;
+						}
+					}
+					while (!line.isEmpty()) {
+						List<Integer> affectedCols = new ArrayList<>();
+						String affectedVal = "";
+						while (!line.isEmpty()) {
+							int pos = letters.indexOf(line.charAt(0));
+							if (pos == -1)
+								break;
+							affectedCols.add(pos);
+							line = line.substring(1);
+						}
+						if (affectedCols.isEmpty())
+							throw new IOException("Rule without cols");
+						if (line.isEmpty())
+							throw new IOException("Col without value");
+						if (line.charAt(0) == '[') {
+							int pos = line.indexOf(']');
+							affectedVal = line.substring(1, pos);
+							line = line.substring(pos + 1);
+						} else {
+							int len = 0;
+							while (len < line.length() && letters.indexOf(line.charAt(len)) == -1)
+								len++;
+							affectedVal = line.substring(0, len);
+							line = line.substring(len);
+							if (affectedVal.matches("[0-9]+")) {
+								affectedVal = "1-" + affectedVal;
+							}
+						}
+						for (int affectedCol : affectedCols) {
+							row[affectedCol + 1] = affectedVal;
+						}
+					}
+					cells.add(Arrays.asList(row));
+					line = br.readLine();
+				}
+				if (line.isEmpty())
+					line = br.readLine();
+				books.put(name, cells);
+			}
+			parseVerseMap(books, w);
 		}
 		System.out.println("Downloading Logos verse map done.");
 		if (new File(basedir, "target/classes").exists()) {
@@ -139,7 +235,7 @@ public class LogosVerseMapDownloader {
 		}
 	}
 
-	private static void parseVerseMap(Document doc, Writer w) throws Exception {
+	private static void parseVerseMap(Map<String, List<List<String>>> books, Writer w) throws Exception {
 		Map<String, BookID> bookMap = new HashMap<String, BookID>();
 		for (String bookName : ALL_BOOK_NAMES) {
 			String[] parts = bookName.split("=");
@@ -160,37 +256,15 @@ public class LogosVerseMapDownloader {
 			namedVerseMap.put(LogosHTML.NAMED_VERSES[i], i);
 		}
 
-		XPath xp = javax.xml.xpath.XPathFactory.newInstance().newXPath();
-		NodeList nl = (NodeList) xp.evaluate("//div[@class='Level2']/table", doc, XPathConstants.NODESET);
-		for (int i = 0; i < nl.getLength(); i++) {
-			Node n = nl.item(i);
-			String book = xp.evaluate("../h2/text()", n).trim();
+		for (Map.Entry<String, List<List<String>>> entry : books.entrySet()) {
+			String book = entry.getKey().trim();
 			BookID bookID = bookMap.get(book);
 			if (bookID == null)
 				throw new IOException("Unknown book name: " + book);
 			if (bookID == BookID.DICTIONARY_ENTRY) // skip this book
 				continue;
 			w.write(bookID.getOsisID() + " ");
-			List<List<String>> table = new ArrayList<List<String>>();
-			Node tr = n.getFirstChild();
-			while (true) {
-				while (tr instanceof Text && tr.getTextContent().trim().length() == 0)
-					tr = tr.getNextSibling();
-				if (tr == null)
-					break;
-				List<String> row = new ArrayList<String>();
-				table.add(row);
-				Node td = tr.getFirstChild();
-				while (true) {
-					while (td instanceof Text && td.getTextContent().trim().length() == 0)
-						td = td.getNextSibling();
-					if (td == null)
-						break;
-					row.add(td.getTextContent());
-					td = td.getNextSibling();
-				}
-				tr = tr.getNextSibling();
-			}
+			List<List<String>> table = entry.getValue();
 			for (int j = 1; j < table.get(0).size(); j++) {
 				BitSet v11ns = new BitSet();
 				for (String v11n : table.get(0).get(j).split(", ")) {
