@@ -25,6 +25,7 @@ public class LogosLinksGenerator {
 	private boolean orderPerGroup = false;
 	private List<String> prefixOrder = null;
 	private Map<String, List<ExtraLinkRule>> extraLinkRules;
+	private Map<Reference, String[]> wordNumbers;
 
 	public LogosLinksGenerator() throws IOException {
 		extraLinkRules = new HashMap<>();
@@ -74,6 +75,23 @@ public class LogosLinksGenerator {
 						continue;
 					}
 					extraLinkRules.computeIfAbsent(fields[0], x -> new ArrayList<>()).add(new ExtraLinkRule(conditions, links, skipStrongs));
+				}
+			}
+		}
+		wordNumbers = new HashMap<>();
+		for (String wordNumberFile : System.getProperty("biblemulticonverter.logos.wordnumberfiles", "").split(File.pathSeparator)) {
+			if (wordNumberFile.isEmpty())
+				continue;
+			try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(wordNumberFile), StandardCharsets.UTF_8))) {
+				String line;
+				while ((line = br.readLine()) != null) {
+					String[] fields = line.split("[=]", -1);
+					String[] bcv = fields[0].split("[ :]");
+					if (fields.length != 2 || bcv.length != 3) {
+						throw new IOException("WordNumberFile " + wordNumberFile + " incomplete line: " + line);
+					}
+					Reference ref = new Reference(BookID.fromOsisId(bcv[0]), Integer.parseInt(bcv[1]), bcv[2]);
+					wordNumbers.put(ref, fields[1].split(","));
 				}
 			}
 		}
@@ -137,6 +155,11 @@ public class LogosLinksGenerator {
 						links.add(prefix + morph);
 					}
 				}
+			}
+			if (sourceIndices != null && i < sourceIndices.length) {
+				String[] wordNums = wordNumbers.get(verseReference);
+				if (wordNums != null && sourceIndices[i] <= wordNums.length)
+					links.add("WordNumber:" + wordNums[sourceIndices[i] - 1]);
 			}
 			if (orderPerGroup) {
 				sortLinks(links);
