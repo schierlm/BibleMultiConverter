@@ -459,6 +459,46 @@ information will look broken in Logos.
 [In case anybody wants to contribute a Logos exporter that directly writes .docx files,
 it will be very much appreciated.]
 
+### Logos Word Numbers
+
+An integral part of Logos' native resources are word numbers. These are used to link
+individual words in a Bible text to their greek/hebrew/aramaic sources and power features
+like word-for-word-highlighting and most advanced search and Factbook options. If your Bible
+includes source indices / source locations that follow any of the editions covered by
+[Aligned Bible Corpus Data](https://github.com/schierlm/aligned-bible-corpus-data) (for example
+TAHOT, OSHB, LHB, UHB, TAGNT, SBLGNT, RP05, RP18, NA28 or UBS4), you can use this resource alongside with word
+numbers lists available on the [Logos Wiki](https://community.logos.com/kb/articles/2793-word-numbers),
+to add word numbers to your converted Logos Bible. (In case your Bible does not have source locations, but it has
+Strong's numbers and another Bible that uses the same Strong's number scheme has source locations
+to a supported edition, you can use the **AugmentGrammar** module to transfer the word numbers
+from one resource to the other one). Note that the word number files on the Logos wiki do not include word counts
+for verses, so even if you want to use exactly the same edition as covered by the file (e.g. LHB), you still
+need to convert the text file to a database and then back to a word map file which includes this information.
+
+First you need to use **LogosWordNumberTool** to build a database that covers your edition.
+
+At the time of writing, this example imports all available word number files into two databases for OT and NT:
+
+    LogosWordNumberTool ot.db import abcd/hebrew_mini.csv LHB wiki/wordnumber-lhb.txt
+    LogosWordNumberTool nt.db import abcd/greek_mini.csv SBLGNT wiki/wordnumber-sblgnt.txt
+    LogosWordNumberTool nt.db importapparatus abcd/sblgnt_apparatus.csv wiki/wordnumber-sblgnt-apparatus.txt SBL NA28 RP05
+    LogosWordNumberTool nt.db import abcd/na28+ubs4.csv NA28 wiki/wordnumber-na28-additions.txt
+    LogosWordNumberTool nt.db import abcd/greek_mini.csv RP05 wiki/wordnumber-rp05-additions.txt
+
+Then, convert your db to a word map for the desired target edition using the **exportmappeddb** subcommand.
+
+When you have an edition covered by the corpus data but without individual word number data (like UBS4, RP18, OSHB),
+some word number assignments may be ambiguous: When your edition, compared to one with word number data available,
+replaces a single word with a single other word, that new word may get assigned the same word number or a different one.
+In the alignment data, it is usually mapped to the same line, so by default, it will get assigned the same word number
+in the converted Bible. If you want to avoid that, use the **updatewordlock** subcommand to create a wordlock file for
+your source edition(s); the target edition will then only use the word if it matches one of your source editions (after
+normalizing Unicode and stripping non-letters and modifier letters).
+
+Finally, use the `-Dbiblemulticonverter.logos.wordnumberfiles` option to point to your word maps (one for OT and one for NT)
+while using the **LogosHTML** export module.
+
+
 Accordance export
 -----------------
 
