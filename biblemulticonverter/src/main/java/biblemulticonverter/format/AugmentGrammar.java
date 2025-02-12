@@ -4,7 +4,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
@@ -14,8 +13,10 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import biblemulticonverter.Main;
@@ -46,6 +47,7 @@ public class AugmentGrammar implements ExportFormat {
 			"   S:  Read Strongs and augment Morphology",
 			"   I:  Read Indices and augment Morphology",
 			"   SI: Read Strongs and augment Indices",
+			"   SLI: Read Strongs that exist more than once as list and augment Indices",
 			"   IS: Read Indices and augment Strongs",
 			"   SA:  Read Strongs and augment Attributes",
 			"   IA:  Read Indices and augment Attributes",
@@ -68,7 +70,7 @@ public class AugmentGrammar implements ExportFormat {
 		if (exportArgs[0].equals("dump")) {
 			boolean humanStrongs = exportArgs.length > 2 && exportArgs[2].equals("humanStrongs");
 			try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(exportArgs[1]), StandardCharsets.UTF_8))) {
-				runOperation(bible, new GrammarOperation() {
+				runOperation(bible, null, new GrammarOperation() {
 
 					private int counter = 0;
 					private Reference lastReference = null;
@@ -98,7 +100,7 @@ public class AugmentGrammar implements ExportFormat {
 		} else if (exportArgs[0].equals("dumpwords")) {
 			boolean humanStrongs = exportArgs.length > 2 && exportArgs[2].equals("humanStrongs");
 			try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(exportArgs[1]), StandardCharsets.UTF_8))) {
-				runOperation(bible, new GrammarOperation() {
+				runOperation(bible, null, new GrammarOperation() {
 
 					private int counter = 0;
 					private Reference lastReference = null;
@@ -138,7 +140,8 @@ public class AugmentGrammar implements ExportFormat {
 					props.load(in);
 				}
 			}
-			runOperation(bible, new GrammarOperation() {
+			Map<String,List<String>> strongsLists = new HashMap<>();
+			runOperation(bible, null, new GrammarOperation() {
 
 				private void analyze(Reference reference, char separator, String[] srcVals, String suffix, String[] dstVals) {
 					if (srcVals != null && dstVals != null && srcVals.length == dstVals.length) {
@@ -172,10 +175,18 @@ public class AugmentGrammar implements ExportFormat {
 							analyze(reference, '@', idxStrings, "", rmac);
 							break;
 						case INDEX2STRONGS:
-							analyze(reference, '*', fullStrongs, "@", idxStrings);
+							analyze(reference, '@', idxStrings, "@", fullStrongs);
+							break;
+						case STRONGSLIST2INDEX:
+							if (idxStrings != null && fullStrongs != null && idxStrings.length == fullStrongs.length) {
+								for (int i = 0; i < idxStrings.length; i++) {
+									String key = reference.getBook().getOsisID() + "." + reference.getChapter() + "." + reference.getVerse() + '*' + fullStrongs[i] + "@L";
+									strongsLists.computeIfAbsent(key, x -> new ArrayList<>()).add(idxStrings[i]);
+								}
+							}
 							break;
 						case STRONGS2INDEX:
-							analyze(reference, '@', idxStrings, "@", fullStrongs);
+							analyze(reference, '*', fullStrongs, "@", idxStrings);
 							break;
 						case STRONGS2ATTR:
 							analyze(reference, '*', fullStrongs, "+", buildFullAttributes(true, fullStrongs, attributeKeys, attributeValues));
@@ -188,6 +199,17 @@ public class AugmentGrammar implements ExportFormat {
 					return next.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
 				}
 			});
+			for (Entry<String, List<String>> entry : strongsLists.entrySet()) {
+				if (entry.getValue().size() == 1)
+					continue;
+				String key = entry.getKey();
+				String value = String.join(",", entry.getValue());
+				String oldVal = props.getProperty(key);
+				if (oldVal == null)
+					props.setProperty(key, value);
+				else if (!oldVal.equals(value))
+					props.setProperty(key, "*");
+			}
 			try (FileOutputStream out = new FileOutputStream(exportArgs[1])) {
 				props.store(out, "AugmentGrammar database");
 			}
@@ -196,7 +218,28 @@ public class AugmentGrammar implements ExportFormat {
 			try (FileInputStream in = new FileInputStream(exportArgs[1])) {
 				props.load(in);
 			}
-			runOperation(bible, new GrammarOperation() {
+			final Map<String,int[]> strongsCounters = new HashMap<>();
+			GrammarOperation prepare = null;
+			if (modes.contains(Mode.STRONGSLIST2INDEX)) {
+				prepare = new GrammarOperation() {
+					@Override
+					public void reset() {
+						strongsCounters.clear();
+					}
+
+					@Override
+					public Visitor<RuntimeException> handleGrammar(Versification.Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+						String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs, strongsSuffixes, false);
+						if (fullStrongs != null) {
+							for (String entry : fullStrongs) {
+								strongsCounters.computeIfAbsent(entry, x -> new int[2])[0]++;
+							}
+						}
+						return next.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
+					}
+				};
+			}
+			runOperation(bible, prepare, new GrammarOperation() {
 				@Override
 				public Visitor<RuntimeException> handleGrammar(Versification.Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 					String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs, strongsSuffixes, false);
@@ -254,12 +297,28 @@ public class AugmentGrammar implements ExportFormat {
 								}
 							}
 							break;
+						case STRONGSLIST2INDEX:
+							if (fullStrongs != null && sourceIndices == null) {
+								sourceIndices = new int[fullStrongs.length];
+								for (int i = 0; i < fullStrongs.length; i++) {
+									String value = props.getProperty(keyPrefix + "*" + fullStrongs[i] + "@L", "*");
+									String[] parts = value.equals("*") ? null : value.split(",");
+									int[] cnt = strongsCounters.get(fullStrongs[i]);
+									if (value.equals("*") || parts.length != cnt[0]) {
+										sourceIndices = null;
+										break;
+									}
+									sourceIndices[i] = Integer.parseInt(parts[cnt[1]]);
+									cnt[1]++;
+								}
+							}
+							break;
 						case STRONGS2INDEX:
 							if (fullStrongs != null && sourceIndices == null) {
 								sourceIndices = new int[fullStrongs.length];
 								for (int i = 0; i < fullStrongs.length; i++) {
 									String value = props.getProperty(keyPrefix + "*" + fullStrongs[i] + "@", "*");
-									if (rmac[i].equals("*")) {
+									if (value.equals("*")) {
 										sourceIndices = null;
 										break;
 									}
@@ -311,7 +370,7 @@ public class AugmentGrammar implements ExportFormat {
 			exportFormat.doExport(bible, Arrays.copyOfRange(exportArgs, 3, exportArgs.length));
 
 		} else if (exportArgs[0].equals("addsourceindex")) {
-			runOperation(bible, new GrammarOperation() {
+			runOperation(bible, null, new GrammarOperation() {
 				private int counter = 0;
 				private Reference lastReference = null;
 
@@ -392,7 +451,7 @@ public class AugmentGrammar implements ExportFormat {
 		return count;
 	}
 
-	protected <T extends Throwable> void runOperation(Bible bible, GrammarOperation operation) throws T {
+	protected <T extends Throwable> void runOperation(Bible bible, GrammarOperation prepare, GrammarOperation operation) throws T {
 		for (Book book : bible.getBooks()) {
 			int cnum = 0;
 			for (Chapter chapter : book.getChapters()) {
@@ -400,7 +459,12 @@ public class AugmentGrammar implements ExportFormat {
 				List<Verse> verses = chapter.getVerses();
 				for (int i = 0; i < verses.size(); i++) {
 					Verse v1 = verses.get(i);
+					if (prepare != null) {
+						prepare.reset();
+						v1.accept(new GrammarOperationVisitor(new FormattedText().getAppendVisitor(), new Versification.Reference(book.getId(), cnum, v1.getNumber()), prepare));
+					}
 					Verse v2 = new Verse(v1.getNumber());
+					operation.reset();
 					v1.accept(new GrammarOperationVisitor(v2.getAppendVisitor(), new Versification.Reference(book.getId(), cnum, v1.getNumber()), operation));
 					v2.finished();
 					verses.set(i, v2);
@@ -410,7 +474,7 @@ public class AugmentGrammar implements ExportFormat {
 	}
 
 	private static enum Mode {
-		STRONGS2MORPH("S"), INDEX2MORPH("I"), STRONGS2INDEX("SI"), INDEX2STRONGS("IS"), STRONGS2ATTR("SA"), INDEX2ATTR("IA");
+		STRONGS2MORPH("S"), INDEX2MORPH("I"), STRONGS2INDEX("SI"), STRONGSLIST2INDEX("SLI"), INDEX2STRONGS("IS"), STRONGS2ATTR("SA"), INDEX2ATTR("IA");
 
 		private final String code;
 
@@ -428,6 +492,7 @@ public class AugmentGrammar implements ExportFormat {
 	}
 
 	private static interface GrammarOperation {
+		public default void reset() {}
 		public abstract Visitor<RuntimeException> handleGrammar(Versification.Reference reference, Visitor<RuntimeException> next, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues);
 	}
 
