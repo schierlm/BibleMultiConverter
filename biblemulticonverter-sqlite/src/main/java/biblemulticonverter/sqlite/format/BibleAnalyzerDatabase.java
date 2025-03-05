@@ -89,7 +89,7 @@ public class BibleAnalyzerDatabase extends BibleAnalyzerFormattedText {
 		db.createTable("CREATE TABLE wordlist (word, freq)");
 		db.createIndex("CREATE INDEX wordlistidx ON wordlist (word)");
 		db.getTable("option").insert(hasStrongs ? 1 : 0, hasRMAC ? 1 : 0, 0, 0);
-		db.getTable("title").insert(basename, bible.getName(), bible.getName());
+		db.getTable("title").insert(basename, System.getProperty("bibleanalyzer.desc", bible.getName()),  System.getProperty("bibleanalyzer.info", bible.getName()));
 		bibleTable = db.getTable("bible");
 		footnoteTable = db.getTable("footnote");
 		headingTable = db.getTable("heading");
