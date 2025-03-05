@@ -105,7 +105,7 @@ public class MySword implements RoundtripFormat {
 			String scripture = cursor.getString("Scripture");
 			if (scripture == null)
 				scripture = "";
-			scripture = scripture.replaceAll("\\p{Cntrl}+", " ").replaceAll("  +", "").trim();
+			scripture = scripture.replaceAll("\\p{Cntrl}+", " ").replaceAll("  +", " ").trim();
 			if (!scripture.isEmpty()) {
 				Book bk = bookIDMap.get(b);
 				if (bk == null && b >= 1 && b <= 66) {
