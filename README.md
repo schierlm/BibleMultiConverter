@@ -194,6 +194,7 @@ limited to the old intermediate format.
 | `RoundtripHTML`                      | partial *(Show `ga-` attributes)*        | partial        |
 | `RoundtripStructuredHTML`            | partial *(Show `ga-` attributes)*        | partial        |
 | `RoundtripODT`                       | partial *(Handling of hyperlinks)*       | unit tests     |
+| `LaridianPocketBible`    (2x)        | complete                                 | partial        |
 | `AbstractVersificationDetector`      | complete                                 | none           |
 | `AugmentGrammar`                     | complete                                 | none           |
 | `AugmentLogosLinks`                  | complete                                 | none           |
@@ -208,7 +209,6 @@ limited to the old intermediate format.
 | `VersificationCountsDetector`        | complete                                 | none           |
 | `VersificationMappedDiffable`        | complete                                 | none           |
 | `Accordance`                         | partial                                  | none           |
-| `LaridianPocketBible`    (2x)        | partial                                  | none           |
 | `LogosHTML`                          | partial                                  | partial        |
 | `MobiPocket`                         | partial                                  | none           |
 | `MyBibleZone`                        | partial                                  | none           |
