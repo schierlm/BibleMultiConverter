@@ -1,0 +1,559 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--========================================================================-->
+<!--========================================================================-->
+<!--========================================================================-->
+<!-- Copyright C.V.Kimball 2004                                             -->
+<!--
+           XML Schema describing the XML Unicode Tanach
+                with DH markings.
+           
+           Defines the XML format for:
+           
+           /Tanach
+                        Index file, Tanach.xml.
+                        Book files, both unmarked and DH marked.
+                                 i.e. Genesis.xml or Genesis.DH.xml
+                        Multibook files, i.e. Torah.xml
+           /Marking     DHSpecification files, 
+                                 i.e. DHSpecification.Genesis.xml
+ 
+ 
+           30 May 2010
+           
+           15 Sep 2023 - To allow TranscriptionNotes length to be zero.
+           
+-->
+<!--========================================================================-->
+<!--========================================================================-->
+<!--========================================================================-->
+<!--========================================================================-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="" elementFormDefault="qualified">
+	<!--========================================================================-->
+	<xs:element name="Tanach">
+		<xs:complexType>
+			<xs:sequence minOccurs="0">
+				<xs:element ref="teiHeader"/>
+				<xs:choice>
+					<xs:group ref="indexfile"/>
+					<xs:element ref="tanach"/>
+				</xs:choice>
+				<xs:element ref="notes" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!--========================================================================-->
+	<!--========================================================================-->
+	<!--========================================================================-->
+	<!--
+           XML Schema describing the teiHeader inside the Tanach files.
+           
+           
+           This is very crude, very short schema designed to make the Tanach
+           teiHeaders pass validation.  Serious users should use the teilite.xsd
+           schema to truly validate compliance with TEI Lite.
+           
+           11 Nov 2005
+           
+-->
+	<!--========================================================================-->
+	<!--========================================================================-->
+	<!--========================================================================-->
+	<xs:element name="teiHeader">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="fileDesc"/>
+				<xs:element ref="encodingDesc" minOccurs="0"/>
+				<xs:element ref="profileDesc"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!--========================================================================-->
+	<!--========================================================================-->
+	<xs:element name="fileDesc">
+		  <xs:complexType>
+				<xs:sequence>
+					<xs:element ref="titleStmt"/>
+					<xs:element ref="editionStmt"/>
+					<xs:element name="extent" type="NonBlank" minOccurs="0"/>
+					<xs:element ref="publicationStmt"  minOccurs="0"/>
+					<xs:element ref="notesStmt"/>
+					<xs:element ref="sourceDesc"  minOccurs="0"/>
+				</xs:sequence>
+		  </xs:complexType>			
+	</xs:element>
+	<!--========================================================================-->
+	<xs:element name="titleStmt">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="title" maxOccurs="unbounded"/>
+				<xs:element name="editor" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="respStmt" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="title">
+		<xs:complexType mixed="true">
+			<xs:attribute name="level" type="NonBlank" use="optional"/>
+			<xs:attribute name="type" type="NonBlank" use="optional"/>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="name">
+		<xs:complexType mixed="true">
+			<xs:attribute name="type" type="NonBlank" use="optional"/>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="respStmt">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="resp" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element ref="name" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="editionStmt">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="edition"/>
+				<xs:element ref="respStmt" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="edition">
+		<xs:complexType mixed="true">
+			<xs:sequence>
+				<xs:element name="version" type="NonBlank" minOccurs="0"/>
+				<xs:element name="date" type="NonBlank" minOccurs="0"/>
+				<xs:element name="build" type="NonBlank" minOccurs="0"/>
+				<xs:element name="buildDateTime" type="NonBlank" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="publicationStmt">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="distributor"/>
+				<xs:element ref="availability"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="authority">
+		<xs:complexType mixed="true">
+			<xs:sequence>
+				<xs:element ref="name" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="date" type="NonBlank" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="distributor">
+		<xs:complexType mixed="true">
+			<xs:sequence>
+				<xs:element ref="name" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="availability">
+		<xs:complexType mixed="true">
+			<xs:attribute name="status" type="NonBlank" use="optional"/>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="notesStmt">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="note" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element ref="correction"  minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="correction">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="citation" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="description" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="author" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="filedate" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="date" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="n" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="sourceDesc">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="biblItem" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="biblItem">
+		<xs:complexType>
+		<xs:sequence>
+				<xs:element ref="title" maxOccurs="unbounded"/>
+				<xs:element name="editor" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="author" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element ref="respStmt" minOccurs="0"/>
+				<xs:element ref="edition" minOccurs="0"/>
+				<xs:element ref="imprint" minOccurs="0"/>
+				<xs:element ref="idno"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="imprint">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="publisher" type="NonBlank"/>
+				<xs:element name="pubPlace" type="NonBlank" minOccurs="1" maxOccurs="unbounded"/>
+				<xs:element name="date" type="NonBlank"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="idno">
+		<xs:complexType mixed="true">
+			<xs:attribute name="type" type="NonBlank" use="optional"/>
+		</xs:complexType>
+	</xs:element>
+	<!-- ========================================================================-->
+	<!-- ======================================================================= -->
+	<xs:element name="encodingDesc"/>
+	<!-- ========================================================================-->
+	<!-- ======================================================================= -->
+	<xs:element name="profileDesc">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="creation" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="date" type="NonBlank" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element ref="langUsage" minOccurs="0"></xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="langUsage">
+		<xs:complexType mixed="true">
+			<xs:sequence>
+				<xs:element ref="language"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="language">
+		<xs:complexType mixed="true">
+			<xs:attribute name="ident" type="NonBlank" use="optional"/>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+	<!--========================================================================-->
+	<xs:group name="indexfile">
+		<xs:sequence>
+			<xs:element ref="index"/>
+			<xs:element ref="coding" minOccurs="0"/>
+		</xs:sequence>
+	</xs:group>
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+	<xs:element name="index">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="n" type="xs:nonNegativeInteger" minOccurs="0"/>
+				<xs:element name="books"/>
+				<xs:element name="vs" type="xs:nonNegativeInteger" minOccurs="0"/>
+				<xs:element name="cs" type="xs:nonNegativeInteger" minOccurs="0"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="books">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="names"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+	<xs:element name="tanach">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="book" maxOccurs="39"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="book">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="names"/>
+				<xs:element ref="marking" minOccurs="0"/>
+				<xs:element ref="c" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="vs"  minOccurs="0" type="xs:nonNegativeInteger" />
+				<xs:element name="cs"  minOccurs="0" type="xs:nonNegativeInteger"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="names">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="name" type="NonBlank"/>
+				<xs:element name="abbrev" type="NonBlank"/>
+				<xs:element name="number" type="xs:nonNegativeInteger"/>
+				<xs:element name="filename" type="NonBlank"/>
+				<xs:element name="hebrewname" type="NonBlank"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="c">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="v" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="vs"  minOccurs="0" type="xs:nonNegativeInteger"/>
+			</xs:sequence>
+			<xs:attribute name="n" type="xs:nonNegativeInteger" use="required"/>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="v">
+		<xs:complexType>
+			<xs:choice maxOccurs="unbounded">
+				<xs:element ref="w"/>
+				<xs:element ref="pe"/>
+				<xs:element ref="samekh"/>
+				<xs:element ref="reversednun"/>
+				<xs:element ref="k"/>
+				<xs:element ref="q"/>
+				<xs:element ref="x"/>
+				<!--18 July 2005 -->
+			</xs:choice>
+			<xs:attribute name="n" type="xs:nonNegativeInteger" use="required"/>
+			<xs:attribute name="s" type="NonBlank" use="optional"/>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="w">
+		<xs:complexType mixed="true">
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="x"/>
+				<xs:element ref="s"/>
+			</xs:choice>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="k">
+		<xs:complexType mixed="true">
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="x"/>
+				<xs:element ref="s"/>
+			</xs:choice>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="q">
+		<xs:complexType mixed="true">
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="x"/>
+				<xs:element ref="s"/>
+			</xs:choice>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="pe">
+		<xs:complexType/>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="samekh">
+		<xs:complexType/>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="reversednun">
+		<xs:complexType/>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="x" type="TranscriptionNotes"/>
+    <!-- ======================================================================= -->
+    <xs:simpleType name="TranscriptionNotes">
+	    <xs:restriction base="xs:string">
+		   <xs:minLength value="0"/>  <!-- 15 Sep 2023 -->
+		   <xs:maxLength value="2"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<!-- ======================================================================= -->
+	<xs:element name="s">
+		<xs:complexType mixed="true">
+			<xs:attribute name="t" type="TextDecorations" use="required"/>
+		</xs:complexType>
+	</xs:element>
+    <!-- ======================================================================= -->
+    <xs:simpleType name="TextDecorations">
+	    <xs:restriction base="xs:string">
+		   <xs:enumeration value="large"/>
+		   <xs:enumeration value="small"/>
+		   <xs:enumeration value="suspended"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<!-- ======================================================================= -->
+	<xs:element name="coding">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="char" type="chartype" maxOccurs="unbounded"/>
+				<xs:element name="specialchar" type="chartype" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+	<xs:element name="notes">
+		<xs:complexType mixed="true">
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element ref="note"/>
+			</xs:choice>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="note">
+		<xs:complexType mixed="true">
+			<xs:choice minOccurs="0" maxOccurs="unbounded">
+				<xs:element name="code" type="NonBlank"/>
+				<xs:element name="gccode" type="NonBlank"/>
+				<xs:element name="note" type="NonBlank"/>
+			</xs:choice>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="marking">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="title" type="NonBlank"/>
+				<xs:element name="shorttitle" type="NonBlank"/>
+				<xs:element name="description" type="NonBlank"/>
+				<xs:element name="date" type="NonBlank"/>
+				<xs:element ref="marks"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="marks">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="mark" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="mark">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="code" type="NonBlank"/>
+				<xs:element name="label" type="NonBlank"/>
+				<xs:element name="description" type="NonBlank"/>
+				<xs:element name="color" type="NonBlank"/>
+				<xs:element name="style" type="NonBlank"/>
+				<xs:element name="relativesize" type="NonBlank"/>
+				<xs:element name="backgroundcolor" type="NonBlank"/>
+				<xs:element name="textdecoration" type="NonBlank"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+	<!-- Special types                                                            -->
+	<xs:complexType name="chartype">
+		<xs:sequence>
+			<xs:element name="value" type="NonBlank"/>
+			<xs:element name="hexvalue" type="NonBlank"/>
+			<xs:element name="name" type="NonBlank"/>
+			<xs:element name="mccode" type="xs:string"/>
+			<xs:element name="type" type="NonBlank"/>
+			<xs:element name="equivalents" type="xs:string"/>
+			<xs:element name="notes" type="xs:string"/>
+			<xs:element name="group" type="xs:string"/>
+		</xs:sequence>
+	</xs:complexType>
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+	<!--
+                            XML Schema DH markings.
+                            
+     -->
+	<!-- Copyright C.V.Kimball 2004 -->
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+	<xs:element name="Marking">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="DHheader"/>
+				<xs:element ref="DHbook"/>
+				<xs:element ref="excerpts"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="DHheader">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="name" type="NonBlank"/>
+				<xs:element name="hebrewname" type="NonBlank"/>
+				<xs:element name="title" type="NonBlank"/>
+				<xs:element name="shortdescription" type="NonBlank"/>
+				<xs:element name="description" type="NonBlank" maxOccurs="unbounded"/>
+				<xs:element name="date" type="NonBlank"/>
+				<xs:element name="copyright" type="NonBlank"/>
+				<xs:element name="filename" type="NonBlank"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="DHbook">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="names"/>
+				<xs:element ref="marking"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="excerpts">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="excerpt" maxOccurs="unbounded"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<xs:element name="excerpt">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="range" type="NonBlank"/>
+				<xs:element name="source" type="xs:string"/>
+				<xs:element name="note" type="xs:string"/>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+	<!--  NonBlank string type  -->
+	<xs:simpleType name="NonBlank">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<!-- ======================================================================= -->
+	<!-- ======================================================================= -->
+</xs:schema>

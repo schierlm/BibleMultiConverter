@@ -343,7 +343,7 @@ public class FormattedText {
 			this.attributeKeys = attributeKeys;
 			this.attributeValues = attributeValues;
 
-			if (strongs == null && rmac == null && sourceIndices == null) {
+			if (strongs == null && rmac == null && sourceIndices == null && attributeKeys == null) {
 				throw new IllegalArgumentException("At least one grammar information type is required!");
 			}
 			if (strongsPrefixes != null) {

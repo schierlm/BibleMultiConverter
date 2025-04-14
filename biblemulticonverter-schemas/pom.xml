@@ -167,6 +167,22 @@
 							<packageName>biblemulticonverter.schema.beblia</packageName>
 						</configuration>
 					</execution>
+					<execution>
+						<id>xjc-uxlc</id>
+						<goals>
+							<goal>xjc</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>target/generated-sources/xjc11</outputDirectory>
+							<sources>
+								<source>src/main/resources/uxlc.xsd</source>
+							</sources>
+							<xjbSources>
+								<xjbSource>src/main/resources/uxlc.xjb</xjbSource>
+							</xjbSources>
+							<packageName>biblemulticonverter.schema.uxlc</packageName>
+						</configuration>
+					</execution>
 				</executions>
 				<configuration>
 					<locale>en</locale>
