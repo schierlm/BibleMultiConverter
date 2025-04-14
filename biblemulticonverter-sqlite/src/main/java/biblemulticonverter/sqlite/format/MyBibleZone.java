@@ -301,6 +301,7 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 
 		cursor = db.getTable("verses").order("verses_index");
+		List<int[]> paraBeforeVerses = new ArrayList<>();
 		while (!cursor.eof()) {
 			int b = (int) cursor.getInteger("book_number");
 			int c = (int) cursor.getInteger("chapter");
@@ -320,6 +321,13 @@ public class MyBibleZone implements RoundtripFormat {
 					Verse vv = new Verse(v == 0 ? "1/t" : "" + v);
 					try {
 						char strongsPrefix = defaultStrongsPrefix != '\0' ? defaultStrongsPrefix : bk.getId().isNT() ? 'G' : 'H';
+						if (text.startsWith("<pb/>")) {
+							text = text.substring(5).trim();
+							paraBeforeVerses.add(new int[] {b, c, v});
+						} else if (text.startsWith("<p>")) {
+							text = text.substring(3).trim();
+							paraBeforeVerses.add(new int[] {b, c, v});
+						}
 						String rest = convertFromVerse(text, vv.getAppendVisitor(), hp, footnoteDB, new int[] { b, c, v }, bk.getId().isNT(), strongsPrefix);
 						if (!rest.isEmpty()) {
 							System.out.println("WARNING: Treating tags as plaintext: " + rest);
@@ -398,6 +406,24 @@ public class MyBibleZone implements RoundtripFormat {
 				vnew.finished();
 				int pos = cc.getVerses().indexOf(vv);
 				cc.getVerses().set(pos, vnew);
+			}
+		}
+		for (int[] bcv : paraBeforeVerses) {
+			Chapter ch = bookIDMap.get(bcv[0]).getChapters().get(bcv[1] - 1);
+			String vn = bcv[2] == 0 ? "1/t" : "" + bcv[2];
+			for (int i = 0; i < ch.getVerses().size(); i++) {
+				Verse v = ch.getVerses().get(i);
+				if (v.getNumber().equals(vn)) {
+					if (i > 0 && !v.getElementTypes(0).startsWith("h")) {
+						Verse vOld = ch.getVerses().get(i - 1);
+						Verse vNew = new Verse(vOld.getNumber());
+						Visitor<RuntimeException> vv = vNew.getAppendVisitor();
+						vOld.accept(vv);
+						vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+						vNew.finished();
+						ch.getVerses().set(i - 1, vNew);
+					}
+				}
 			}
 		}
 		if (footnoteDB != null) {
