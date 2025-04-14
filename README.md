@@ -82,6 +82,7 @@ In addition, the following other formats are supported, with varying accuracy:
 - **Original Languages with tagging**: import only
   - [MorphGNT](https://github.com/morphgnt/sblgnt)
   - [OpenScriptures Hebrew Bible (OSHB) MorphBB](https://github.com/openscriptures/morphhb)
+  - [Unicode/XML Leningrad Codex](https://www.tanach.us/Pages/XMLFiles.html)
   - [Translators Amalgamated Hebrew Old Testament / Greek New Testament](https://github.com/schierlm/STEPBible-Data) (basic features only)
 - **[MyBible.Zone](https://mybible.zone/index-eng.php)** ([more bibles](http://www.ph4.org/b4_index.php)): import and export (in a special SQLite edition)
 - **[Bible Analyzer](http://www.bibleanalyzer.com/)**: export only (text export for

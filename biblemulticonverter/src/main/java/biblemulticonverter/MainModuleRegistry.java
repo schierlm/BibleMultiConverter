@@ -15,6 +15,7 @@ public class MainModuleRegistry extends ModuleRegistry {
 		result.add(new Module<ImportFormat>("StrongDictionary", "Importer for creating a Strong's dictionary from public domain resources.", StrongDictionary.HELP_TEXT, StrongDictionary.class));
 		result.add(new Module<ImportFormat>("MorphGNT", "Importer for MorphGNT", MorphGNT.HELP_TEXT, MorphGNT.class));
 		result.add(new Module<ImportFormat>("OSHB", "Importer for OpenScriptures Hebrew Bible MorphBB", OSHB.HELP_TEXT, OSHB.class));
+		result.add(new Module<ImportFormat>("UXLC", "Importer for the Unicode/XML Leningrad Codex with Documentary Hypothesis tagging", UXLC.HELP_TEXT, UXLC.class));
 		result.add(new Module<ImportFormat>("TranslatorsAmalgamated", "Importer for Translators Amalgamated Hebrew OT / Greek NT", TranslatorsAmalgamated.HELP_TEXT, TranslatorsAmalgamated.class));
 		return result;
 	}
