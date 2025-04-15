@@ -654,7 +654,7 @@ public class LaridianPocketBible implements ExportFormat {
 		@Override
 		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
 			ensureInParagraph();
-			if (kind == LineBreakKind.PARAGRAPH)
+			if (interlinearTypes != null || kind == LineBreakKind.PARAGRAPH)
 				sb.append("</p>\n<p>");
 			else
 				sb.append("<br />");
@@ -692,8 +692,14 @@ public class LaridianPocketBible implements ExportFormat {
 		@Override
 		public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) throws RuntimeException {
 			ensureInParagraph();
-			System.out.println("WARNING: Skipping unsupported dictionary entry");
-			suffixStack.add("");
+			String target = System.getProperty("biblemulticonverter.dictionarytarget." + dictionary);
+			if (target != null) {
+				sb.append("<a href=\"" + target + entry + "\">");
+				suffixStack.add("</a>");
+			} else {
+				System.out.println("WARNING: Skipping unsupported dictionary entry for " + dictionary);
+				suffixStack.add("");
+			}
 			return this;
 		}
 
