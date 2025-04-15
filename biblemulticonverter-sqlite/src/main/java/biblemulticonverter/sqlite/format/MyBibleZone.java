@@ -1021,6 +1021,8 @@ public class MyBibleZone implements RoundtripFormat {
 
 	private static class MyBibleVerseVisitor extends AbstractNoCSSVisitor<IOException> {
 
+		private final boolean noteAsFootnote = Boolean.getBoolean("mybiblezone.note.asfootnote");
+
 		private final StringBuilder builder;
 		private final List<String> suffixStack = new ArrayList<>();
 		private final Set<String> unsupportedFeatures;
@@ -1078,6 +1080,11 @@ public class MyBibleZone implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitFootnote() throws RuntimeException {
+			if (noteAsFootnote) {
+				builder.append("<n>");
+				suffixStack.add("</n>");
+				return this;
+			}
 			lastFootnote++;
 			MyBibleHTMLVisitor fnv = new MyBibleHTMLVisitor(unsupportedFeatures, "in footnote");
 			footnotes.put("[" + lastFootnote + "]", fnv);
