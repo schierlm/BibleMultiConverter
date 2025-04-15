@@ -755,7 +755,10 @@ public class LaridianPocketBible implements ExportFormat {
 		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws RuntimeException {
 			if (htmlState == null) {
 				ensureInParagraph();
-				if (!kind.isSameParagraph() && kind != ExtendedLineBreakKind.TABLE_ROW_NEXT_CELL) {
+				if (interlinearTypes != null) {
+					// enforce not using line breaks
+					sb.append("</p>\n<p>");
+				} else if (!kind.isSameParagraph() && kind != ExtendedLineBreakKind.TABLE_ROW_NEXT_CELL) {
 					String align = "";
 					if (indent == ExtendedLineBreakKind.INDENT_CENTER)
 						align = " align=\"center\"";
@@ -850,6 +853,7 @@ public class LaridianPocketBible implements ExportFormat {
 		@Override
 		public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) throws RuntimeException {
 			ensureInParagraph();
+			// backport?
 			String target = System.getProperty("biblemulticonverter.dictionarytarget." + dictionary);
 			if (target != null) {
 				sb.append("<a href=\"" + target + entry + "\">");
