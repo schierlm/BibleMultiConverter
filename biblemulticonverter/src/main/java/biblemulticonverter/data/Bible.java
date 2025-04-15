@@ -16,7 +16,7 @@ public class Bible {
 	private final List<Book> books;
 
 	public Bible(String name) {
-		this.name = Utils.validateString("name", name, Utils.NORMALIZED_WHITESPACE_REGEX);
+		this.name = Utils.validateString("name", System.getProperty("biblemulticonverter.bible.name", name), Utils.NORMALIZED_WHITESPACE_REGEX);
 		this.books = new ArrayList<Book>();
 	}
 
