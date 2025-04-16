@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.stream.Stream;
 
 import biblemulticonverter.data.Bible;
@@ -61,6 +62,7 @@ public class StrippedDiffable implements ExportFormat {
 			"- ChangeVerseStructure {Raw|Virtual|Virtual_ignoring_Headlines|Range|Range_Ascending} [<VersificationFile> <VersificationName>]",
 			"- RenameBook <OldAbbr> <NewAbbr>",
 			"- RenameAllBooks [OSIS|Zefania|3LC|Paratext]",
+			"- RenameGrammarAttributes <oldPattern>[=<newPattern>] [...]",
 			"- SortBooks",
 			"- CopyToFootnote {Strongs|Morph|SourceIndex|Headline|CrossReference|Dict:<dictname>|ExtraAttribute:<category>:<key>[:<value>]|GrammarAttribute:{<key>|<category>:<key>:<value>}}[@[<prefixFormat>:]<format>][+<prefix>] [...]",
 			"- OptimizeFormatting [SplitCSS|FromCSS|ToCSS|RemoveCSS|JoinCSS|<OldFormatting>-><NewFormatting>[&<NewFormatting>[...]] [...]"
@@ -141,6 +143,32 @@ public class StrippedDiffable implements ExportFormat {
 					out.println("Book " + oldBook.getAbbr() + " renamed to " + newAbbr);
 				}
 			}
+		} else if (exportArgs.length >= 2 && exportArgs[1].equals("RenameGrammarAttributes")) {
+			final List<String[]> mappings = new ArrayList<>();
+			for (int i = 2; i < exportArgs.length; i++) {
+				String[] mapping = exportArgs[i].split("=", 2);
+				if (mapping.length == 1)
+					mapping = new String[] { "(" + mapping[0] + ")", "$1" };
+				mappings.add(mapping);
+			}
+			final Map<String, String> performedChanges = new HashMap<>();
+			for (Book book : bible.getBooks()) {
+				for (Chapter chapter : book.getChapters()) {
+					List<Verse> verses = chapter.getVerses();
+					for (int i = 0; i < verses.size(); i++) {
+						Verse v1 = verses.get(i);
+						Verse v2 = new Verse(v1.getNumber());
+						v1.accept(new RenameGrammarAttributesVisitor(v2.getAppendVisitor(), mappings, performedChanges));
+						v2.finished();
+						verses.set(i, v2);
+					}
+				}
+			}
+			out.println("Performed changes:");
+			for (Map.Entry<String, String> change : performedChanges.entrySet()) {
+				out.println("\t" + change.getKey() + " -> " + change.getValue());
+			}
+			out.println();
 		} else if (exportArgs.length == 2 && exportArgs[1].equals("SortBooks")) {
 			bible.getBooks().sort(Comparator.comparingInt((Book b) -> b.getId().ordinal()).thenComparing(Book::getAbbr));
 			out.println("Books sorted.");
@@ -1561,6 +1589,63 @@ public class StrippedDiffable implements ExportFormat {
 					super.visitText(text);
 				}
 			};
+		}
+	}
+
+	private static class RenameGrammarAttributesVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
+
+		private final List<String[]> mappings;
+		private final Map<String, String> performedChanges;
+
+		private RenameGrammarAttributesVisitor(Visitor<RuntimeException> next, List<String[]> mappings, Map<String, String> performedChanges) throws RuntimeException {
+			super(next);
+			this.mappings = mappings;
+			this.performedChanges = performedChanges;
+		}
+
+		@Override
+		protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
+			return new RenameGrammarAttributesVisitor(childVisitor, mappings, performedChanges);
+		}
+
+		private String getAttributeChange(String oldKey) {
+			for (String[] mapping : mappings) {
+				Matcher m = Utils.compilePattern(mapping[0]).matcher(oldKey);
+				if (m.matches()) {
+					return m.replaceFirst(mapping[1]);
+				}
+			}
+			return oldKey;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+			if (attributeKeys != null) {
+				boolean removeSome = false;
+				for (int i = 0; i < attributeKeys.length; i++) {
+					String newKey = performedChanges.computeIfAbsent(attributeKeys[i], this::getAttributeChange);
+					attributeKeys[i] = newKey;
+					if (newKey.isEmpty()) {
+						removeSome = true;
+					}
+				}
+				if (removeSome) {
+					List<String> newKeys = new ArrayList<>(), newVals = new ArrayList<>();
+					for (int i = 0; i < attributeKeys.length; i++) {
+						if (!attributeKeys[i].isEmpty()) {
+							newKeys.add(attributeKeys[i]);
+							newVals.add(attributeValues[i]);
+						}
+					}
+					if (newKeys.isEmpty()) {
+						attributeKeys = attributeValues = null;
+					} else {
+						attributeKeys = (String[]) newKeys.toArray(new String[newKeys.size()]);
+						attributeValues = (String[]) newVals.toArray(new String[newVals.size()]);
+					}
+				}
+			}
+			return super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
 		}
 	}
 }

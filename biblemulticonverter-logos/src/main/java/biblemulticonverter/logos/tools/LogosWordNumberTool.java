@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,7 +41,8 @@ public class LogosWordNumberTool implements Tool {
 			"- import <csvfile> <name> <txtfile>",
 			"- importapparatus <csvfile> <txtfile> <editionAbbr> [...]",
 			"- updatewordlock <wordlockfile> <csvfile> <name> [...]",
-			"- exportmappeddb <mappeddbfile> <csvfile> <name> [<wordlockfile>]"
+			"- exportmappeddb <mappeddbfile> <csvfile> <name> [<wordlockfile>]",
+			"- mapaugmentidxdb <srcaugmentdbfile> <destaugmentdbfile> <srccsvfile> <srcname> <destcsvfile> <destname> [LockWords]"
 	};
 
 	public void run(String... args) throws Exception {
@@ -354,6 +356,50 @@ public class LogosWordNumberTool implements Tool {
 			db.putAll(mappedDb);
 			break;
 		}
+		case "mapaugmentidxdb": {
+			boolean useWordLock = false;
+			if (args.length > 8) {
+				if (!args[8].equals("LockWords"))
+					throw new RuntimeException("Unsupported LockWords argument");
+				useWordLock = true;
+			}
+			Map<BookID, List<List<List<String[]>>>> sourceMapping = loadMapping(args[4], args[5], useWordLock);
+			Map<String, String> destMapping = loadReverseMapping(args[6], args[7], useWordLock);
+			Properties oldDB = new Properties();
+			try (FileInputStream in = new FileInputStream(args[2])) {
+				oldDB.load(in);
+			}
+			Properties newDB = new Properties();
+			for (Map.Entry<String, String> entry : ((Map<String, String>) (Map) oldDB).entrySet()) {
+				String oldKey = entry.getKey(), suffix = "";
+				if (oldKey.endsWith("+") || oldKey.endsWith("@")) {
+					suffix = oldKey.substring(oldKey.length() - 1);
+					oldKey = oldKey.substring(0, oldKey.length() - 1);
+					Matcher m = Utils.compilePattern("([A-Za-z0-9-]+)\\.([0-9]+)\\.([0-9]+)@([0-9]+)").matcher(oldKey);
+					if (!m.matches()) {
+						System.out.println("WARNING: Skipping unsupported database key: " + oldKey);
+						continue;
+					}
+					String[] mapping;
+					try {
+						mapping = sourceMapping.get(BookID.fromOsisId(m.group(1))).get(Integer.parseInt(m.group(2)) - 1).get(Integer.parseInt(m.group(3)) - 1).get(Integer.parseInt(m.group(4)) - 1);
+					} catch (IndexOutOfBoundsException | NullPointerException ex) {
+						System.out.println("WARNING: Skipping database key that is not in source mapping: " + oldKey);
+						continue;
+					}
+					String newKey = destMapping.get(mapping[0] + "#" + mapping[1] + "#" + mapping[2]);
+					if (newKey == null) {
+						System.out.println("Skipping " + oldKey);
+						continue;
+					}
+					newDB.setProperty(newKey + suffix, entry.getValue());
+				}
+			}
+			try (FileOutputStream out = new FileOutputStream(args[3])) {
+				newDB.store(out, "AugmentGrammar database");
+			}
+			break;
+		}
 		default:
 			System.out.println("Unsupported command: " + args[1]);
 		}
@@ -453,6 +499,51 @@ public class LogosWordNumberTool implements Tool {
 					hebgk = normalize(hebgk);
 				}
 				words.set(num - 1, new String[] { ref, mm.group(4), hebgk });
+			}
+		}
+		return result;
+	}
+
+	private Map<String, String> loadReverseMapping(String csvfile, String name, boolean includeWords) throws IOException {
+		Map<String, String> result = new HashMap<>();
+		Pattern cellPattern = Utils.compilePattern("([A-Za-z0-9]{3})\\.([0-9]+\\.[0-9]+)#([0-9]+)");
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(csvfile), StandardCharsets.UTF_8))) {
+			String line = br.readLine();
+			int colidx = Arrays.asList(line.split("\t")).indexOf(name + ":Idx");
+			if (colidx == -1)
+				throw new IOException("Edition " + name + " not found in file " + csvfile);
+			if (includeWords && !Arrays.asList(name + ":Hebrew", name + ":Greek").contains(line.split("\t")[colidx + 1])) {
+				throw new IOException("Edition " + name + " has no Greek/Hebrew words, which are required for wordlock");
+			}
+			while ((line = br.readLine()) != null) {
+				String[] fields = line.split("\t");
+				String col = fields[colidx];
+				if (col.isEmpty())
+					continue;
+				if (col.startsWith("@")) {
+					col = fields[0] + "#" + col.substring(1);
+				}
+				Matcher m = cellPattern.matcher(col);
+				if (!m.matches())
+					throw new IOException("Unsupported mapping value: " + col);
+				BookID bid = ParatextID.fromIdentifier(m.group(1).toUpperCase()).getId();
+				String target = bid.getOsisID() + "." + m.group(2) + "@" + m.group(3);
+				String value = fields[1];
+				if (value.startsWith("@")) {
+					value = fields[0] + "#" + fields[1].substring(1);
+				}
+				Matcher mm = cellPattern.matcher(value);
+				if (!mm.matches())
+					throw new IOException("Unsupported mapping value: " + col);
+				BookID mbid = ParatextID.fromIdentifier(mm.group(1).toUpperCase()).getId();
+				String hebgk = null;
+				if (includeWords) {
+					hebgk = fields[colidx + 1];
+					if (hebgk.isEmpty())
+						hebgk = fields[2];
+					hebgk = normalize(hebgk);
+				}
+				result.put(mbid.getOsisID() + " " + mm.group(2).replace(".", ":") + "#" + mm.group(3) + "#" + hebgk, target);
 			}
 		}
 		return result;
