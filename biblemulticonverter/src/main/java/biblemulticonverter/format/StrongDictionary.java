@@ -20,6 +20,7 @@ import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
+import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.MetadataBook;
@@ -79,7 +80,7 @@ public class StrongDictionary implements ImportFormat {
 						throw new IOException(compNumber + " != " + number);
 					break;
 				case "greek":
-					v.visitHeadline(1).visitText(elem.getAttribute("unicode"));
+					v.visitHeadline(1).visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "strongdic", "attribute", "lemma").visitText(elem.getAttribute("unicode"));
 					visitAttribute(v, "Transliteration", elem.getAttribute("translit"));
 					break;
 				case "pronunciation":
@@ -185,10 +186,11 @@ public class StrongDictionary implements ImportFormat {
 		return result;
 	}
 
-	private static void visitAttribute(Visitor<RuntimeException> v, String key, String value) {
+	private static void visitAttribute(Visitor<RuntimeException> vv, String key, String value) {
 		if (value.trim().length() == 0)
 			return;
-		v.visitFormattingInstruction(FormattingInstructionKind.BOLD).visitText(key + ":");
+		vv.visitFormattingInstruction(FormattingInstructionKind.BOLD).visitText(key + ":");
+		Visitor<RuntimeException> v = vv.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "strongdic", "attribute", key.replace(" ", "-"));
 		value = " " + value.replaceAll("[ \r\n\t]+", " ").trim();
 		Matcher m = Utils.compilePattern("\\[([GH][1-9][0-9]+)\\]|<<<([^>]+)>>>").matcher(value);
 		while (m.find()) {
