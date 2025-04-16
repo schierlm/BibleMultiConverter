@@ -27,21 +27,22 @@ import biblemulticonverter.data.Verse;
 public class OldDiffable implements ExportFormat {
 
 	public static final String[] HELP_TEXT = {
-			"Export bibles to Diffable format of v0.0.8 or v0.0.7 or v0.0.2.",
+			"Export bibles to Diffable format of v0.0.9 or v0.0.8 or v0.0.7 or v0.0.2.",
 			"",
-			"Usage: OldDiffable [-older|-oldest] <OutputFile>",
+			"Usage: OldDiffable [-older|-oldest | -newest] <OutputFile>",
 			"",
 			"When -oldest switch is given, export to v0.0.2 format;",
 			"When -older switch is given, export to v0.0.7 format;",
-			"When neither switch is given, export to v0.0.8 format."
+			"When neither switch is given, export to v0.0.8 format;",
+			"when -newest switch is given, export to v0.0.9 format."
 	};
 
 	private static final String MAGIC = "BibleMultiConverter-1.0 Title: ";
 
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
-		int format = exportArgs[0].equals("-oldest") ? 2 : exportArgs[0].equals("-older") ? 7 : 8;
-		File exportFile = new File(exportArgs[format < 8 ? 1 : 0]);
+		int format = exportArgs[0].equals("-oldest") ? 2 : exportArgs[0].equals("-older") ? 7 : exportArgs[0].equals("-newest") ? 9 : 8;
+		File exportFile = new File(exportArgs[format != 8 ? 1 : 0]);
 		try (Writer w = new OutputStreamWriter(new FileOutputStream(exportFile), StandardCharsets.UTF_8)) {
 			doExport(bible, w, format);
 		}
@@ -186,7 +187,7 @@ public class OldDiffable implements ExportFormat {
 
 		@Override
 		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKey, String[] attributeValues) throws IOException {
-			if (rmac != null) {
+			if (format < 9 && rmac != null) {
 				boolean changed = false;
 				for (int i = 0; i < rmac.length; i++) {
 					if (rmac[i].matches(Utils.WIVU_REGEX)) {
