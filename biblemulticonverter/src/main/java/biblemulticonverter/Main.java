@@ -63,6 +63,12 @@ public class Main {
 			Module<ImportFormat> importModule = importFormats.get(args[0]);
 			Module<ExportFormat> exportModule = exportFormats.get(args[2]);
 			if (importModule != null && exportModule != null) {
+				// Add file extension validation
+				String inputFile = args[1];
+				if (!isValidInputFile(inputFile)) {
+					System.err.println("Error: Input file must have a valid extension (.usfm, .xml, .bblx, .bbl, .txt)");
+					System.exit(1);
+				}
 				Bible bible = importModule.getImplementationClass().newInstance().doImport(new File(args[1]));
 				exportModule.getImplementationClass().newInstance().doExport(bible, Arrays.copyOfRange(args, 3, args.length));
 				return;
@@ -78,6 +84,17 @@ public class Main {
 		printModules("export formats", exportFormats);
 		printModules("versification formats", versificationFormats);
 		printModules("tools", tools);
+	}
+
+	// Add new method for validation
+	private static boolean isValidInputFile(String fileName) {
+		String[] validExtensions = {".usfm", ".xml", ".bblx", ".bbl", ".txt"};
+		for (String ext : validExtensions) {
+			if (fileName.toLowerCase().endsWith(ext)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static <T> void printModules(String types, Map<String, Module<T>> moduleMap) {
