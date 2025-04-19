@@ -75,7 +75,7 @@ public class OSHB implements ImportFormat {
 						vv.visitText(w.getTextContent().trim());
 						continue;
 					} else if (w.getNodeName().equals("note")) {
-						vv.visitFootnote().visitText(w.getTextContent().replaceAll("[\r\n\t ]+", " ").trim());
+						vv.visitFootnote(false).visitText(w.getTextContent().replaceAll("[\r\n\t ]+", " ").trim());
 						continue;
 					}
 					if (!w.getNodeName().equals("w"))
@@ -86,7 +86,7 @@ public class OSHB implements ImportFormat {
 					for (int j = 0; j < strong.length; j++) {
 						strong[j] = Integer.parseInt(snums.get(j));
 					}
-					vv.visitGrammarInformation(null, strong.length == 0 ? null : strong, new String[] { w.getAttribute("morph") }, null).visitText(w.getTextContent());
+					vv.visitGrammarInformation((char[]) null, strong.length == 0 ? null : strong, null, new String[] { w.getAttribute("morph") }, (int[]) null, null, null).visitText(w.getTextContent());
 				}
 				v.finished();
 			}

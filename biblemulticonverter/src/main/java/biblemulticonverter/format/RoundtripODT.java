@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,8 +36,10 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -317,7 +320,7 @@ public class RoundtripODT implements RoundtripFormat {
 				} else if (pStyle.equals(PARA_STYLE_CONTENT)) {
 					Span[] spans = parseParagraph(p);
 					if (lastWasParagraph && !(spans.length != 0 && spans[0].getStyleName().equals(TEXT_STYLE_VERSE)))
-						ic.getVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
+						ic.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					for (int i = 0; i < spans.length; i++) {
 						if (spans[i].getStyleName().equals(TEXT_STYLE_VERSE)) {
 							ic.finished();
@@ -366,6 +369,12 @@ public class RoundtripODT implements RoundtripFormat {
 					return index;
 				} else if (content.startsWith("<", endPos)) {
 					endPos = Diffable.parseSingleTag(content, endPos, ic.getVisitorStack());
+				} else if (content.startsWith("#<", endPos)) {
+					endPos = Diffable.parseSingleTag(content, endPos+1, ic.getVisitorStack());
+					ic.skipLineBreak = true;
+				} else if (content.startsWith("X", endPos)) {
+					ic.xrefNote = true;
+					endPos++;
 				} else {
 					throw new RuntimeException("Invalid special style value: " + content.substring(endPos));
 				}
@@ -396,22 +405,42 @@ public class RoundtripODT implements RoundtripFormat {
 				if (endContent == null)
 					throw new IOException("Grammar tag not closed");
 				StringBuilder strongPfx = new StringBuilder();
+				StringBuilder strongSfx = new StringBuilder();
+				boolean emptySuffixes = false;
 				List<Integer> strongs = new ArrayList<>(), sourceIndices = new ArrayList<>();
-				List<String> rmac = new ArrayList<>();
+				List<String> rmac = new ArrayList<>(), attrKeys = new ArrayList<>(), attrVals = new ArrayList<>();
 				for (String part : endContent.substring(1).split("'")) {
+					if (part.equals("@")) {
+						emptySuffixes = true;
+						continue;
+					} else if (part.startsWith("+")) {
+						String[] parts = part.substring(1).split("=", 2);
+						attrKeys.add(parts[0]);
+						attrVals.add(parts[1].replace("&p", "'").replace("&a", "&"));
+						continue;
+					}
 					String[] subparts = part.split(":");
 					if (subparts.length > 0 && !subparts[0].isEmpty()) {
 						if (Diffable.parseStrongsSuffix) {
-							char[] prefixHolder = new char[1];
-							strongs.add(Utils.parseStrongs(subparts[0], '?', prefixHolder));
-							if (prefixHolder[0] != '?') {
-								strongPfx.append(prefixHolder[0]);
+							char[] prefixSuffixHolder = new char[2];
+							strongs.add(Utils.parseStrongs(subparts[0], '?', prefixSuffixHolder));
+							if (prefixSuffixHolder[0] != '?') {
+								strongPfx.append(prefixSuffixHolder[0]);
 							}
-						} else if (subparts[0].matches("[A-Z][0-9]+")) {
-							strongPfx.append(subparts[0].charAt(0));
-							strongs.add(Integer.parseInt(subparts[0].substring(1)));
+							strongSfx.append(prefixSuffixHolder[1]);
 						} else {
-							strongs.add(Integer.parseInt(subparts[0]));
+							if (subparts[0].matches("[A-Z]?[0-9]+[A-Za-z]")) {
+								strongSfx.append(part.charAt(subparts[0].length()-1));
+								subparts[0] = subparts[0].substring(0, subparts[0].length()-1);
+							} else {
+								strongSfx.append(' ');
+							}
+							if (subparts[0].matches("[A-Z][0-9]+")) {
+								strongPfx.append(subparts[0].charAt(0));
+								strongs.add(Integer.parseInt(subparts[0].substring(1)));
+							} else {
+								strongs.add(Integer.parseInt(subparts[0]));
+							}
 						}
 					}
 					if (subparts.length > 1 && !subparts[1].isEmpty()) {
@@ -421,7 +450,7 @@ public class RoundtripODT implements RoundtripFormat {
 						sourceIndices.add(Integer.parseInt(subparts[2]));
 					}
 				}
-				ic.pushVisitor(ic.getVisitor().visitGrammarInformation(strongPfx.length() == 0 ? null : strongPfx.toString().toCharArray(), strongs.isEmpty() ? null : strongs.stream().mapToInt(s -> s).toArray(), rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), sourceIndices.isEmpty() ? null : sourceIndices.stream().mapToInt(s -> s).toArray()));
+				ic.pushVisitor(ic.getVisitor().visitGrammarInformation(strongPfx.length() == 0 ? null : strongPfx.toString().toCharArray(), strongs.isEmpty() ? null : strongs.stream().mapToInt(s -> s).toArray(), strongSfx.toString().trim().isEmpty() && !emptySuffixes ? null : strongSfx.toString().toCharArray(), rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), sourceIndices.isEmpty() ? null : sourceIndices.stream().mapToInt(s -> s).toArray(), attrKeys.isEmpty() ? null : attrKeys.toArray(new String[attrKeys.size()]), attrVals.isEmpty() ? null : attrVals.toArray(new String[attrKeys.size()])));
 			} else if (!content.isEmpty()) {
 				throw new IOException("Invalid grammar value or nesting: " + content);
 			}
@@ -446,7 +475,12 @@ public class RoundtripODT implements RoundtripFormat {
 				ic.pushVisitor(ic.getVisitor().visitDictionaryEntry(parts[0], parts[1]));
 			} else if (href.startsWith("#")) {
 				String[] parts = href.substring(1).split("-");
-				ic.pushVisitor(ic.getVisitor().visitCrossReference(parts[0].replace('_', '.'), BookID.fromOsisId(parts[1].replace('_', '-')), Integer.parseInt(parts[2]), parts[3], Integer.parseInt(parts[4]), parts[5]));
+				String lastBookAbbr = parts[0], lastBookId = parts[1];
+				if (parts.length == 8) {
+					lastBookAbbr = parts[6];
+					lastBookId = parts[7];
+				}
+				ic.pushVisitor(ic.getVisitor().visitCrossReference(parts[0].replace('_', '.'), BookID.fromOsisId(parts[1].replace('_', '-')), Integer.parseInt(parts[2]), parts[3], lastBookAbbr.replace('_', '.'), BookID.fromOsisId(lastBookId.replace('_', '-')), Integer.parseInt(parts[4].replace('_', '-')), parts[5]));
 			} else {
 				throw new IOException("Unsupported link: " + href);
 			}
@@ -461,12 +495,13 @@ public class RoundtripODT implements RoundtripFormat {
 			if (span.getElementContent().getLocalName().equals("line-break")) {
 				if (index + 1 < spans.length && spans[index + 1].getElementContent() != null && spans[index + 1].getElementContent().getLocalName().equals("tab")) {
 					index++;
-					ic.getVisitor().visitLineBreak(LineBreakKind.NEWLINE_WITH_INDENT);
+					ic.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 1);
 				} else {
-					ic.getVisitor().visitLineBreak(LineBreakKind.NEWLINE);
+					ic.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 				}
 			} else if (span.getElementContent().getLocalName().equals("note")) {
-				ic.pushVisitor(ic.getVisitor().visitFootnote());
+				ic.pushVisitor(ic.getVisitor().visitFootnote(ic.xrefNote));
+				ic.xrefNote = false;
 				Span[] subSpans = parseParagraph((Element) span.getElementContent().getLastChild().getFirstChild());
 				for (int i = 0; i < subSpans.length; i++) {
 					i = appendSpan(subSpans, i, ic);
@@ -643,8 +678,11 @@ public class RoundtripODT implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 			makeParagraph();
+			if (ofCrossReferences) {
+				appendSpan(p, TEXT_STYLE_SPECIAL, "X");
+			}
 			Element note = p.getOwnerDocument().createElementNS(TEXT, "text:note");
 			appendSpan(p, textStyle, "").appendChild(note);
 			note.setAttributeNS(TEXT, "text:note-class", "footnote");
@@ -654,8 +692,12 @@ public class RoundtripODT implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-			return new RoundtripODTVisitor(appendLink(makeParagraph(), "#" + bookAbbr.replace('.', '_') + "-" + book.getOsisID().replace('-', '_') + "-" + firstChapter + "-" + firstVerse + "-" + lastChapter + "-" + lastVerse), true);
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
+			String lastBookPart = "";
+			if (firstBook != lastBook) {
+				lastBookPart = "-" + lastBookAbbr.replace('.', '_') + "-" + lastBook.getOsisID().replace('-', '_');
+			}
+			return new RoundtripODTVisitor(appendLink(makeParagraph(), "#" + firstBookAbbr.replace('.', '_') + "-" + firstBook.getOsisID().replace('-', '_') + "-" + firstChapter + "-" + firstVerse + "-" + ("" + lastChapter).replace('-', '_') + "-" + lastVerse + lastBookPart), true);
 		}
 
 		@Override
@@ -693,40 +735,48 @@ public class RoundtripODT implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws RuntimeException {
 			makeParagraph();
-			switch (kind) {
-			case NEWLINE:
+			if (kind == ExtendedLineBreakKind.NEWLINE && indent == 0) {
 				appendSpan(p, textStyle, "").appendChild(p.getOwnerDocument().createElementNS(TEXT, "text:line-break"));
-				break;
-			case NEWLINE_WITH_INDENT:
+			} else if (kind == ExtendedLineBreakKind.NEWLINE && indent == 1) {
 				Element span = appendSpan(p, textStyle, "");
 				span.appendChild(p.getOwnerDocument().createElementNS(TEXT, "text:line-break"));
 				span.appendChild(p.getOwnerDocument().createElementNS(TEXT, "text:tab"));
-				break;
-			case PARAGRAPH:
+			} else if (kind == ExtendedLineBreakKind.PARAGRAPH && indent == 0) {
 				p = null;
 				makeParagraph();
-				break;
-			default:
-				throw new IllegalArgumentException("Unsupported line break kind");
+			} else {
+				appendSpan(makeParagraph(), TEXT_STYLE_SPECIAL, "#");
+				withDiffableVisitor(v -> v.visitLineBreak(kind, indent), false);
+				if (kind.isSameParagraph()) {
+					appendSpan(p, textStyle, "").appendChild(p.getOwnerDocument().createElementNS(TEXT, "text:line-break"));
+				} else {
+					p = null;
+					makeParagraph();
+				}
 			}
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			appendSpan(makeParagraph(), TEXT_STYLE_GRAMMAR, "[");
 			StringBuilder suffixBuilder = new StringBuilder("]");
 			int max = Math.max(Math.max(strongs == null ? 0 : strongs.length, rmac == null ? 0 : rmac.length), sourceIndices == null ? 0 : sourceIndices.length);
+			boolean hasSuffix = false;
 			for (int i = 0; i < max; i++) {
 				if (Diffable.writeStrongsSuffix && strongsPrefixes != null && strongs != null && i < strongsPrefixes.length && i < strongs.length) {
-					suffixBuilder.append(Utils.formatStrongs(false, i, strongsPrefixes, strongs));
+					suffixBuilder.append(Utils.formatStrongs(false, i, strongsPrefixes, strongs, strongsSuffixes, ""));
 				} else {
 					if (strongsPrefixes != null && i < strongsPrefixes.length) {
 						suffixBuilder.append(strongsPrefixes[i]);
 					}
 					if (strongs != null && i < strongs.length) {
 						suffixBuilder.append(strongs[i]);
+					}
+					if (strongsSuffixes != null && i < strongsSuffixes.length && strongsSuffixes[i] != ' ') {
+						hasSuffix = true;
+						suffixBuilder.append(strongsSuffixes[i]);
 					}
 				}
 				if ((rmac != null && i < rmac.length) || (sourceIndices != null && i < sourceIndices.length)) {
@@ -737,6 +787,14 @@ public class RoundtripODT implements RoundtripFormat {
 						suffixBuilder.append(":" + sourceIndices[i]);
 				}
 				suffixBuilder.append('\'');
+			}
+			if (strongsSuffixes != null && !hasSuffix) {
+				suffixBuilder.append("@'");
+			}
+			if (attributeKeys != null) {
+				for(int i=0; i<attributeKeys.length; i++) {
+					suffixBuilder.append("+" + attributeKeys[i] + "=" + attributeValues[i].replace("&", "&a").replace("'", "&p") + "'");
+				}
 			}
 			suffixStack.add(suffixBuilder.toString());
 			return this;
@@ -755,6 +813,19 @@ public class RoundtripODT implements RoundtripFormat {
 		@Override
 		public Visitor<RuntimeException> visitVariationText(String[] variations) throws RuntimeException {
 			withDiffableVisitor(v -> v.visitVariationText(variations), true);
+			return this;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) throws RuntimeException {
+			withDiffableVisitor(v -> v.visitSpeaker(labelOrStrongs), true);
+			return this;
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) throws RuntimeException {
+			// make these real hyperlinks?
+			withDiffableVisitor(v -> v.visitHyperlink(type, target), true);
 			return this;
 		}
 
@@ -795,9 +866,12 @@ public class RoundtripODT implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-			String prefix = bookAbbr.replace('.', '_') + "-" + firstChapter + "-" + firstVerse;
-			String full = bookAbbr.replace('.', '_') + "-" + book.getOsisID().replace('-', '_') + "-" + firstChapter + "-" + firstVerse + "-" + lastChapter + "-" + lastVerse;
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
+			String prefix = firstBookAbbr.replace('.', '_') + "-" + firstChapter + "-" + firstVerse;
+			String full = firstBookAbbr.replace('.', '_') + "-" + firstBook.getOsisID().replace('-', '_') + "-" + firstChapter + "-" + firstVerse + "-" + lastChapter + "-" + lastVerse;
+			if (firstBook != lastBook) {
+				full += "-" + lastBookAbbr.replace('.', '_') + "-" + lastBook.getOsisID().replace('-', '_');
+			}
 			Set<String> targets = xrefTargets.get(prefix);
 			if (targets == null) {
 				targets = new HashSet<String>();
@@ -847,6 +921,7 @@ public class RoundtripODT implements RoundtripFormat {
 		private final List<Visitor<RuntimeException>> visitorStack = new ArrayList<>();
 		private FormattedText target = null;
 		private final Chapter chapter;
+		private boolean skipLineBreak, xrefNote;
 
 		private ImportContext(Chapter chapter) {
 			this.chapter = chapter;
@@ -878,6 +953,14 @@ public class RoundtripODT implements RoundtripFormat {
 
 		private void popVisitor() {
 			visitorStack.remove(visitorStack.size() - 1);
+		}
+
+		private void visitLineBreak(ExtendedLineBreakKind kind, int indent) {
+			if (skipLineBreak) {
+				skipLineBreak = false;
+			} else {
+				getVisitor().visitLineBreak(kind, indent);
+			}
 		}
 
 		private void finished() {

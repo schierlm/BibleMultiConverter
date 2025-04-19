@@ -17,13 +17,15 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
-import biblemulticonverter.data.FormattedText.LineBreakKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
-import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.StandardVersification;
+import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VirtualVerse;
 
 public class OnLineBible implements ExportFormat {
@@ -314,7 +316,7 @@ public class OnLineBible implements ExportFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws RuntimeException {
 			content.append("\n\\&");
 			inFootnoteFirstLineRef[0] = false;
 		}
@@ -331,13 +333,28 @@ public class OnLineBible implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
+			Visitor<RuntimeException> result = visitFootnote0();
+			if (ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<RuntimeException> visitFootnote0() throws RuntimeException {
 			content.append(inFootnote ? " ((" : " \3{");
 			return new OnLineBibleVisitor(content, includeStrongs, true, inFootnote ? inFootnoteFirstLineRef : new boolean[] { true }, lastVerses, inFootnote ? ")) " : "}\3 ");
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
+			if (firstBook == lastBook  && !lastVerse.equals("*")) {
+				return visitCrossReference0(firstBookAbbr, firstBook, firstChapter, firstVerse, lastChapter, lastVerse);
+			} else {
+				return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "cross", "reference");
+			}
+		}
+
+		public Visitor<RuntimeException> visitCrossReference0(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
 			if (!BOOK_TO_ABBR.containsKey(book)) {
 				System.out.println("WARNING: Cross reference to book outside versification: " + bookAbbr + " " + firstChapter + ":" + firstVerse + "-" + lastChapter + ":" + lastVerse + " - replacing by plain text");
 				return new OnLineBibleVisitor(content, includeStrongs, inFootnote, inFootnoteFirstLineRef, lastVerses, "");
@@ -372,6 +389,9 @@ public class OnLineBible implements ExportFormat {
 				tag = "\\\\";
 				break;
 			case ITALIC:
+			case ADDITION:
+			case PSALM_DESCRIPTIVE_TITLE:
+				// newintfmt
 				tag = inFootnoteFirstLineRef[0] ? "" : "\\@";
 				break;
 			case UNDERLINE:
@@ -411,7 +431,7 @@ public class OnLineBible implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			StringBuilder suffix = new StringBuilder();
 			if (strongs != null && includeStrongs) {
 				suffix.append(" ");
@@ -434,6 +454,16 @@ public class OnLineBible implements ExportFormat {
 		@Override
 		public Visitor<RuntimeException> visitVariationText(String[] variations) throws RuntimeException {
 			throw new RuntimeException("Variations not supported");
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 		}
 
 		@Override

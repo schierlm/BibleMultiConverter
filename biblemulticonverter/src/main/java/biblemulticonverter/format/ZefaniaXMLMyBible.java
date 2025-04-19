@@ -27,9 +27,11 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -171,13 +173,13 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 						}
 
 						@Override
-						public Visitor<IOException> visitFootnote() throws IOException {
+						public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
 							System.out.println("WARNING: Footnotes in prolog are not supported");
 							return null;
 						}
 
 						@Override
-						public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+						public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
 							System.out.println("WARNING: Cross references in prologs are not supported");
 							STYLE s = f.createSTYLE();
 							s.setCss("-zef-dummy: true");
@@ -192,7 +194,8 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 						}
 
 						@Override
-						public void visitLineBreak(LineBreakKind kind) throws IOException {
+						public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
+							LineBreakKind kind = lbk.toLineBreakKind(indent);
 							BR br = f.createBR();
 							br.setArt(kind == LineBreakKind.PARAGRAPH ? EnumBreak.X_P : EnumBreak.X_NL);
 							targetStack.get(0).add(" ");
@@ -201,9 +204,8 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 						}
 
 						@Override
-						public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+						public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 							throw new RuntimeException("Grammar tags in prologs not supported");
-
 						}
 
 						@Override
@@ -231,6 +233,16 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 						@Override
 						public int visitElementTypes(String elementTypes) throws IOException {
 							return 0;
+						}
+
+						@Override
+						public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+							return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+						}
+
+						@Override
+						public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+							return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 						}
 
 						@Override
@@ -278,7 +290,7 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 							}
 
 							@Override
-							public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+							public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
 								System.out.println("WARNING: Cross references in captions are not supported (stripped)");
 								return this;
 							}
@@ -290,7 +302,7 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 							}
 
 							@Override
-							public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+							public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 								System.out.println("WARNING: Footnotes in captions are not supported (stripped)");
 								return null;
 							}
@@ -300,6 +312,7 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 								System.out.println("WARNING: CSS Formatting in captions are not supported (stripped)");
 								return this;
 							}
+
 
 							@Override
 							public Visitor<RuntimeException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws RuntimeException {
@@ -358,7 +371,14 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 							}
 
 							@Override
-							public Visitor<IOException> visitFootnote() throws IOException {
+							public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
+								Visitor<IOException> result = visitFootnote0();
+								if (result != null && ofCrossReferences)
+									result.visitText(FormattedText.XREF_MARKER);
+								return result;
+							}
+
+							public Visitor<IOException> visitFootnote0() throws IOException {
 								DIV x = f.createDIV();
 								targetStack.get(0).add(x);
 								NOTE n = f.createNOTE();
@@ -386,7 +406,8 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 									}
 
 									@Override
-									public void visitLineBreak(LineBreakKind kind) throws IOException {
+									public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
+										LineBreakKind kind = lbk.toLineBreakKind(indent);
 										BR br = f.createBR();
 										br.setArt(kind == LineBreakKind.PARAGRAPH ? EnumBreak.X_P : EnumBreak.X_NL);
 										footnoteStack.get(0).add(" ");
@@ -413,12 +434,12 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 									}
 
 									@Override
-									public Visitor<IOException> visitFootnote() throws IOException {
+									public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
 										throw new RuntimeException("Footnotes in footnotes are not supported");
 									}
 
 									@Override
-									public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+									public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 										GRAM gram = f.createGRAM();
 										if (strongs != null) {
 											StringBuilder entryBuilder = new StringBuilder();
@@ -463,7 +484,15 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 									}
 
 									@Override
-									public FormattedText.Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+									public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
+										if (firstBook == lastBook  && !lastVerse.equals("*")) {
+											return visitCrossReference0(firstBookAbbr, firstBook, firstChapter, firstVerse, lastChapter, lastVerse);
+										} else {
+											return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "cross", "reference");
+										}
+									}
+
+									public FormattedText.Visitor<IOException> visitCrossReference0(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
 										STYLE s = f.createSTYLE();
 										s.setCss("-zef-dummy: true");
 										int bookID = book.getZefID();
@@ -523,6 +552,16 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 									}
 
 									@Override
+									public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+										return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+									}
+
+									@Override
+									public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+										return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
+									}
+
+									@Override
 									public Visitor<IOException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws IOException {
 										System.out.println("WARNING: Extra attributes not supported");
 										Visitor<IOException> result = prio.handleVisitor(category, this);
@@ -534,12 +573,13 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 							}
 
 							@Override
-							public FormattedText.Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+							public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
 								throw new RuntimeException("Xref outside of footnotes not supported!");
 							}
 
 							@Override
-							public void visitLineBreak(LineBreakKind kind) throws IOException {
+							public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
+								LineBreakKind kind = lbk.toLineBreakKind(indent);
 								BR br = f.createBR();
 								br.setArt(kind == LineBreakKind.PARAGRAPH ? EnumBreak.X_P : EnumBreak.X_NL);
 								targetStack.get(0).add(" ");
@@ -547,7 +587,7 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 							}
 
 							@Override
-							public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+							public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 								GRAM gram = f.createGRAM();
 								if (strongs != null) {
 									StringBuilder entryBuilder = new StringBuilder();
@@ -617,6 +657,16 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 								targetStack.get(0).add(new JAXBElement<STYLE>(new QName("STYLE"), STYLE.class, x));
 								targetStack.add(0, x.getContent());
 								return this;
+							}
+
+							@Override
+							public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+								return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+							}
+
+							@Override
+							public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+								return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 							}
 
 							@Override

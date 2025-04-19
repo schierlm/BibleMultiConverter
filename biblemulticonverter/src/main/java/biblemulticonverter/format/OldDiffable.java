@@ -12,9 +12,12 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.Utils;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -24,21 +27,22 @@ import biblemulticonverter.data.Verse;
 public class OldDiffable implements ExportFormat {
 
 	public static final String[] HELP_TEXT = {
-			"Export bibles to Diffable format of v0.0.8 or v0.0.7 or v0.0.2.",
+			"Export bibles to Diffable format of v0.0.9 or v0.0.8 or v0.0.7 or v0.0.2.",
 			"",
-			"Usage: OldDiffable [-older|-oldest] <OutputFile>",
+			"Usage: OldDiffable [-older|-oldest | -newest] <OutputFile>",
 			"",
 			"When -oldest switch is given, export to v0.0.2 format;",
 			"When -older switch is given, export to v0.0.7 format;",
-			"When neither switch is given, export to v0.0.8 format."
+			"When neither switch is given, export to v0.0.8 format;",
+			"when -newest switch is given, export to v0.0.9 format."
 	};
 
 	private static final String MAGIC = "BibleMultiConverter-1.0 Title: ";
 
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
-		int format = exportArgs[0].equals("-oldest") ? 2 : exportArgs[0].equals("-older") ? 7 : 8;
-		File exportFile = new File(exportArgs[format < 8 ? 1 : 0]);
+		int format = exportArgs[0].equals("-oldest") ? 2 : exportArgs[0].equals("-older") ? 7 : exportArgs[0].equals("-newest") ? 9 : 8;
+		File exportFile = new File(exportArgs[format != 8 ? 1 : 0]);
 		try (Writer w = new OutputStreamWriter(new FileOutputStream(exportFile), StandardCharsets.UTF_8)) {
 			doExport(bible, w, format);
 		}
@@ -52,10 +56,10 @@ public class OldDiffable implements ExportFormat {
 			for (Chapter ch : book.getChapters()) {
 				chapterNumber++;
 				if (ch.getProlog() != null) {
-					ch.getProlog().accept(new OldDiffableVisitor(w, book.getAbbr() + " " + chapterNumber + " ", format));
+					ch.getProlog().accept(new OldDiffableVisitor(w, book.getAbbr() + " " + chapterNumber + " ", format, false));
 				}
 				for (Verse v : ch.getVerses()) {
-					v.accept(new OldDiffableVisitor(w, book.getAbbr() + " " + chapterNumber + ":" + v.getNumber() + " ", format));
+					v.accept(new OldDiffableVisitor(w, book.getAbbr() + " " + chapterNumber + ":" + v.getNumber() + " ", format, false));
 				}
 			}
 		}
@@ -65,14 +69,16 @@ public class OldDiffable implements ExportFormat {
 		private final Writer w;
 		private final String linePrefix;
 		private final OldDiffableVisitor childVisitor;
+		private final boolean skipEnd;
 		private boolean startNewLine = false, inMainContent = false;
-		private int format;
+		private final int format;
 
-		private OldDiffableVisitor(Writer w, String linePrefix, int format) throws IOException {
+		private OldDiffableVisitor(Writer w, String linePrefix, int format, boolean skipEnd) throws IOException {
 			this.w = w;
 			this.linePrefix = linePrefix;
+			this.skipEnd = skipEnd;
 			this.format = format;
-			childVisitor = linePrefix == null ? this : new OldDiffableVisitor(w, null, format);
+			childVisitor = linePrefix == null && !skipEnd ? this : new OldDiffableVisitor(w, null, format, false);
 			if (linePrefix != null)
 				w.write(linePrefix);
 		}
@@ -106,21 +112,49 @@ public class OldDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
 			checkLine();
 			w.write("<fn>");
+			if (ofCrossReferences)
+				w.write(FormattedText.XREF_MARKER);
 			return childVisitor;
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
 			checkLine();
-			w.write("<xref abbr=\"" + bookAbbr + "\" id=\"" + book.getOsisID() + "\" chapters=\"" + firstChapter + ":" + lastChapter + "\" verses=\"" + firstVerse + ":" + lastVerse + "\">");
+			if (firstBook != lastBook) {
+				if (lastChapter == -1) {
+					System.out.println("WARNING: Replacing xref to book range with first referenced book 1:1-999:999");
+					lastChapter = 999;
+					lastVerse = "999";
+				} else if (lastVerse.equals("*")) {
+					System.out.println("WARNING: Replacing xref to chapter rance across books with first chapter verse 1-999");
+					lastChapter = firstChapter;
+					lastVerse = "999";
+				} else {
+					System.out.println("WARNING: Replacing xref to verse range across books with first referenced verse");
+					lastChapter = firstChapter;
+					lastVerse = firstVerse;
+				}
+			} else {
+				if (lastChapter == -1) {
+					System.out.println("WARNING: Replacing xref to book with verse 1:1-999:999");
+					lastChapter = 999;
+					lastVerse = "999";
+				} else if (lastVerse.equals("*")) {
+					System.out.println("WARNING: Replacing xref to chapter range with verse 1-999");
+					lastVerse = "999";
+				}
+			}
+			w.write("<xref abbr=\"" + firstBookAbbr + "\" id=\"" + firstBook.getOsisID() + "\" chapters=\"" + firstChapter + ":" + lastChapter + "\" verses=\"" + firstVerse + ":" + lastVerse + "\">");
 			return childVisitor;
 		}
 
 		@Override
 		public Visitor<IOException> visitFormattingInstruction(FormattingInstructionKind kind) throws IOException {
+			if (kind == FormattingInstructionKind.ADDITION || kind == FormattingInstructionKind.PSALM_DESCRIPTIVE_TITLE)
+				kind = FormattingInstructionKind.ITALIC;
 			checkLine();
 			w.write("<" + kind.getCode() + ">");
 			return childVisitor;
@@ -140,16 +174,20 @@ public class OldDiffable implements ExportFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws IOException {
 			checkLine();
-			w.write("<br kind=\"" + kind.name() + "\"/>");
+			if (kind != ExtendedLineBreakKind.PARAGRAPH && kind != ExtendedLineBreakKind.NEWLINE || indent < 0 || indent > 1 || (indent == 1 && kind == ExtendedLineBreakKind.PARAGRAPH)) {
+				System.out.println("WARNING: Converting extended line break");
+			}
+			LineBreakKind olbk = kind.toLineBreakKind(indent);
+			w.write("<br kind=\"" + olbk.name() + "\"/>");
 			if (linePrefix != null)
 				startNewLine = true;
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
-			if (rmac != null) {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKey, String[] attributeValues) throws IOException {
+			if (format < 9 && rmac != null) {
 				boolean changed = false;
 				for (int i = 0; i < rmac.length; i++) {
 					if (rmac[i].matches(Utils.WIVU_REGEX)) {
@@ -175,6 +213,12 @@ public class OldDiffable implements ExportFormat {
 					System.out.println("WARNING: Dropping Source Indices for oldest format as they does not match Strongs length");
 					sourceIndices = null;
 				}
+			}
+			if (attributeKey != null) {
+				System.out.println("WARNING: Dropping named attributes from grammar tag");
+			}
+			if (strongsSuffixes != null) {
+				System.out.println("WARNING: Dropping Strongs suffixes");
 			}
 			if (strongs == null && rmac == null && sourceIndices == null) {
 				System.out.println("WARNING: Dropping grammar tag without attributes");
@@ -247,6 +291,18 @@ public class OldDiffable implements ExportFormat {
 		}
 
 		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			System.out.println("WARNING: Dropping speaker information");
+			return new OldDiffableVisitor(w, null, format, true);
+		}
+
+		@Override
+		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			System.out.println("WARNING: Dropping hyperlink");
+			return new OldDiffableVisitor(w, null, format, true);
+		}
+
+		@Override
 		public Visitor<IOException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws IOException {
 			checkLine();
 			w.write("<extra prio=\"" + prio.name() + "\" category=\"" + category + "\" key=\"" + key + "\" value=\"" + value + "\">");
@@ -255,6 +311,8 @@ public class OldDiffable implements ExportFormat {
 
 		@Override
 		public boolean visitEnd() throws IOException {
+			if (skipEnd)
+				return false;
 			if (linePrefix == null)
 				w.write("</>");
 			else

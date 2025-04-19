@@ -24,7 +24,7 @@ public class VirtualVerse {
 		this.number = Utils.validateNumber("number", number, 0, Integer.MAX_VALUE);
 	}
 
-	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories) {
+	public void validate(Bible bible, BookID book, String bookAbbr, int cnumber, List<String> danglingReferences, Map<String, Set<String>> dictionaryEntries, Map<String, Set<FormattedText.ValidationCategory>> validationCategories, Set<String> internalAnchors, Set<String> internalLinks) {
 		int lastHeadlineDepth = 0;
 		String locationBase = bookAbbr + " " + cnumber + ":";
 		String location = locationBase + "v" + getNumber();
@@ -36,13 +36,13 @@ public class VirtualVerse {
 			if (headline.getDepth() <= lastHeadlineDepth)
 				FormattedText.ValidationCategory.INVALID_HEADLINE_DEPTH_ORDER.throwOrRecord(location + ":Headline", validationCategories, headline.getDepth() + " after " + lastHeadlineDepth);
 			lastHeadlineDepth = headline.getDepth() == 9 ? 8 : headline.getDepth();
-			headline.validate(bible, book, location + ":Headline", danglingReferences, dictionaryEntries, validationCategories);
+			headline.validate(bible, book, location + ":Headline", danglingReferences, dictionaryEntries, validationCategories, internalAnchors, internalLinks);
 		}
 		Set<String> verseNumbers = new HashSet<String>();
 		for (Verse verse : verses) {
 			if (!verseNumbers.add(verse.getNumber()))
 				FormattedText.ValidationCategory.DUPLICATE_VERSE.throwOrRecord(location, validationCategories, bookAbbr + " " + cnumber + ":"+verse.getNumber());
-			verse.validate(bible, book, location + ":" + verse.getNumber(), danglingReferences, dictionaryEntries, validationCategories);
+			verse.validate(bible, book, location + ":" + verse.getNumber(), danglingReferences, dictionaryEntries, validationCategories, internalAnchors, internalLinks);
 		}
 	}
 

@@ -2,6 +2,7 @@ package biblemulticonverter.format;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,8 +18,8 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
-import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.schema.uxlc.C;
@@ -30,7 +31,6 @@ import biblemulticonverter.schema.uxlc.Reversednun;
 import biblemulticonverter.schema.uxlc.S;
 import biblemulticonverter.schema.uxlc.Samekh;
 import biblemulticonverter.schema.uxlc.TanachRoot;
-import biblemulticonverter.schema.uxlc.TextDecorations;
 import biblemulticonverter.schema.uxlc.V;
 import biblemulticonverter.schema.uxlc.W;
 import biblemulticonverter.tools.ValidateXML;
@@ -130,8 +130,12 @@ public class UXLC implements ImportFormat {
 						throw new IOException(vn);
 					}
 					Visitor<RuntimeException> v = currVerse.getAppendVisitor();
+					String[] akeys = null, avals = null, kqkeys = { "kq" }, kqvals = { "" };
 					if (dataV.getS() != null) {
-						v = v.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "uxlc", "dh", dataV.getS());
+						akeys = new String[] { "dh" };
+						avals = new String[] { dataV.getS() };
+						kqkeys = new String[] { "kq", "dh" };
+						kqvals = new String[] { "", dataV.getS() };
 					}
 					for (Object o : dataV.getWOrPeOrSamekh()) {
 						if (o instanceof W || o instanceof K || o instanceof Q) {
@@ -139,12 +143,14 @@ public class UXLC implements ImportFormat {
 							Visitor<RuntimeException> vv;
 							if (o instanceof Q) {
 								content = ((Q) o).getContent();
-								Visitor<RuntimeException> vf = v.visitFootnote();
+								Visitor<RuntimeException> vf = v.visitFootnote(false);
 								vf.visitText("Q: ");
-								vv = vf.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "uxlc", "q", "q");
+								kqvals[0] = "q";
+								vv = vf.visitGrammarInformation(null, null, null, null, null, kqkeys, Arrays.copyOf(kqvals, kqvals.length));
 							} else if (o instanceof K) {
 								content = ((K) o).getContent();
-								vv = v.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "uxlc", "k", "k").visitGrammarInformation(null, null, null, new int[] { nextIdx });
+								kqvals[0] = "k";
+								vv = v.visitGrammarInformation(null, null, null, null, new int[] { nextIdx }, kqkeys, Arrays.copyOf(kqvals, kqvals.length));
 								nextIdx++;
 							} else {
 								content = ((W) o).getContent();
@@ -153,7 +159,7 @@ public class UXLC implements ImportFormat {
 										throw new IOException("Placeholder word");
 									continue;
 								}
-								vv = v.visitGrammarInformation(null, null, null, new int[] { nextIdx });
+								vv = v.visitGrammarInformation(null, null, null, null, new int[] { nextIdx }, akeys, avals);
 								nextIdx++;
 							}
 							for (Object oo : content) {
@@ -162,7 +168,7 @@ public class UXLC implements ImportFormat {
 								} else if (oo instanceof JAXBElement) {
 									JAXBElement<String> je = (JAXBElement<String>) oo;
 									if (je.getName().getLocalPart().equals("x")) {
-										vv.visitFootnote().visitText("X: " + je.getValue());
+										vv.visitFootnote(false).visitText("X: " + je.getValue());
 									} else {
 										throw new IOException(je.getName().toString());
 									}
@@ -174,11 +180,11 @@ public class UXLC implements ImportFormat {
 								}
 							}
 						} else if (o instanceof Pe) {
-							v.visitLineBreak(LineBreakKind.PARAGRAPH);
+							v.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 						} else if (o instanceof Samekh) {
-							v.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "uxlc", "samekh", "samekh").visitLineBreak(LineBreakKind.PARAGRAPH);
+							v.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "uxlc", "samekh", "samekh").visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 						} else if (o instanceof String) {
-							v.visitFootnote().visitText("X: " + (String) o);
+							v.visitFootnote(false).visitText("X: " + (String) o);
 						} else if (o instanceof Reversednun) {
 							v.visitExtraAttribute(ExtraAttributePriority.SKIP, "uxlc", "reversednun", "reversednun");
 						} else {

@@ -11,6 +11,7 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,8 +24,10 @@ import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
 import biblemulticonverter.data.Utils;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -221,7 +224,15 @@ public class RoundtripTaggedText implements RoundtripFormat {
 					vv.visitRawHTML(RawHTMLMode.valueOf(unescape(parsedContent[0])), unescape(parsedContent[1]));
 					break;
 				case "fn":
-					parseText(tagContent, vv.visitFootnote());
+					boolean ofCrossReferences = false;
+					if (Diffable.parseXrefMarkers && tagContent.startsWith(FormattedText.XREF_MARKER)) {
+						tagContent = tagContent.substring(FormattedText.XREF_MARKER.length());
+						ofCrossReferences = true;
+					}
+					parseText(tagContent, vv.visitFootnote(ofCrossReferences));
+					break;
+				case "fx":
+					parseText(tagContent, vv.visitFootnote(true));
 					break;
 				case "css":
 					parsedContent = parseTags(tagContent, "style", "");
@@ -233,35 +244,84 @@ public class RoundtripTaggedText implements RoundtripFormat {
 					vv.visitVerseSeparator();
 					break;
 				case "br":
-					parsedContent = parseTags(tagContent, "kind");
-					vv.visitLineBreak(LineBreakKind.valueOf(unescape(parsedContent[0])));
+					parsedMultiContent = parseMultiTags(tagContent, "kind", "indent");
+					if (parsedMultiContent.get(0).size() > 1)
+						throw new RuntimeException("More than one kind tag nested: " + tagContent);
+					if (parsedMultiContent.get(1).size() > 1)
+						throw new RuntimeException("More than one indent tag nested: " + tagContent);
+					if (parsedMultiContent.get(0).isEmpty())
+						throw new RuntimeException("Missing kind tag: " + tagContent);
+					String kind = unescape(parsedMultiContent.get(0).get(0));
+					if (kind.equals(LineBreakKind.NEWLINE_WITH_INDENT.name())) {
+						vv.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 1);
+					} else {
+						int indent = parsedMultiContent.get(1).isEmpty() ? 0 : Integer.parseInt(parsedMultiContent.get(1).get(0));
+						vv.visitLineBreak(ExtendedLineBreakKind.valueOf(kind), indent);
+					}
 					break;
 				case "grammar":
-					parsedMultiContent = parseMultiTags(tagContent, "strong", "rmac", "idx", "");
+					parsedMultiContent = parseMultiTags(tagContent, "strong", "rmac", "idx", "attrkey", "attrvalue", "strongsemptysuffixes", "");
 					List<String> ss = parsedMultiContent.get(0);
 					char[] strongPfx = ss.isEmpty() ? null : new char[ss.size()];
+					char[] strongSfx = null;
 					int[] strong = ss.isEmpty() ? null : new int[ss.size()];
 					for (int i = 0; i < ss.size(); i++) {
 						if (Diffable.parseStrongsSuffix) {
-							char[] prefixHolder = new char[1];
-							strong[i] = Utils.parseStrongs(ss.get(i), '?', prefixHolder);
-							if (prefixHolder[0] != '?') {
-								strongPfx[i] = prefixHolder[0];
+							char[] prefixSuffixHolder = new char[2];
+							strong[i] = Utils.parseStrongs(ss.get(i), '?', prefixSuffixHolder);
+							if (prefixSuffixHolder[0] != '?') {
+								strongPfx[i] = prefixSuffixHolder[0];
 							} else {
 								strongPfx = null;
 							}
-						} else if (ss.get(i).matches("[A-Z][0-9]+")) {
-							strongPfx[i] = ss.get(i).charAt(0);
-							strong[i] = Integer.parseInt(ss.get(i).substring(1));
+							if (prefixSuffixHolder[1] != ' ') {
+								if (strongSfx == null) {
+									strongSfx = new char[ss.size()];
+									Arrays.fill(strongSfx, ' ');
+								}
+								strongSfx[i] = prefixSuffixHolder[1];
+							}
 						} else {
-							strongPfx = null;
-							strong[i] = Integer.parseInt(ss.get(i));
+							String s= ss.get(i);
+							if (s.matches("[A-Z]?[0-9]+[A-Za-z]")) {
+								if (strongSfx == null) {
+									strongSfx = new char[ss.size()];
+									Arrays.fill(strongSfx, ' ');
+								}
+								strongSfx[i] = s.charAt(s.length() - 1);
+								s = s.substring(0, s.length() - 1);
+							}
+							if (s.matches("[A-Z][0-9]+")) {
+								strongPfx[i] = s.charAt(0);
+								strong[i] = Integer.parseInt(s.substring(1));
+							} else {
+								strongPfx = null;
+								strong[i] = Integer.parseInt(s);
+							}
 						}
 					}
 					String[] rmac = parsedMultiContent.get(1).isEmpty() ? null : parsedMultiContent.get(1).toArray(new String[0]);
 					int[] idx = parsedMultiContent.get(2).isEmpty() ? null : parsedMultiContent.get(2).stream().mapToInt(Integer::parseInt).toArray();
-					parseText(parsedMultiContent.get(3).isEmpty() ? null : parsedMultiContent.get(3).get(0),
-							vv.visitGrammarInformation(strongPfx, strong, rmac, idx));
+					String[] attrKey = null, attrVal = null;
+					List<String> attrkey = parsedMultiContent.get(3);
+					List<String> attrval = parsedMultiContent.get(4);
+					if (attrkey.size() != attrval.size()) {
+						throw new RuntimeException("Unable to assign "+attrval.size()+" values to "+attrkey.size()+" keys.");
+					}
+					if (!attrkey.isEmpty()) {
+						attrKey = new String[attrkey.size()];
+						attrVal = new String[attrkey.size()];
+						for (int i = 0; i < attrKey.length; i++) {
+							attrKey[i] = unescape(attrkey.get(i));
+							attrVal[i] = unescape(attrval.get(i));
+						}
+					}
+					if (!parsedMultiContent.get(5).isEmpty() && strongSfx == null) {
+						strongSfx = new char[ss.size()];
+						Arrays.fill(strongSfx, ' ');
+					}
+					parseText(parsedMultiContent.get(6).isEmpty() ? null : parsedMultiContent.get(6).get(0),
+							vv.visitGrammarInformation(strongPfx, strong, strongSfx, rmac, idx, attrKey, attrVal));
 					break;
 				case "dictentry":
 					parsedContent = parseTags(tagContent, "dictionaryname", "entry", "");
@@ -272,13 +332,26 @@ public class RoundtripTaggedText implements RoundtripFormat {
 					parseText(parsedMultiContent.get(1).isEmpty() ? null : parsedMultiContent.get(1).get(0),
 							vv.visitVariationText(parsedMultiContent.get(0).toArray(new String[0])));
 					break;
+				case "speaker":
+					parsedContent = parseTags(tagContent, "who", "");
+					parseText(parsedContent[1], vv.visitSpeaker(unescape(parsedContent[0])));
+					break;
+				case "hyperlink":
+					parsedContent = parseTags(tagContent, "type", "target", "");
+					parseText(parsedContent[2], vv.visitHyperlink(HyperlinkType.valueOf(unescape(parsedContent[0])), unescape(parsedContent[1])));
+					break;
 				case "extra":
 					parsedContent = parseTags(tagContent, "prio", "category", "key", "value", "");
 					parseText(parsedContent[4], vv.visitExtraAttribute(ExtraAttributePriority.valueOf(unescape(parsedContent[0])), unescape(parsedContent[1]), unescape(parsedContent[2]), unescape(parsedContent[3])));
 					break;
 				case "xref":
-					parsedContent = parseTags(tagContent, "abbr", "id", "fch", "lch", "fv", "lv", "");
-					parseText(parsedContent[6], vv.visitCrossReference(unescape(parsedContent[0]), BookID.fromOsisId(unescape(parsedContent[1])), Integer.parseInt(unescape(parsedContent[2])), unescape(parsedContent[4]), Integer.parseInt(unescape(parsedContent[3])), unescape(parsedContent[5])));
+					if(parseMultiTags(tagContent, "abbr", "id", "labbr", "lid", "").get(2).isEmpty()) {
+						parsedContent = parseTags(tagContent, "abbr", "id", "fch", "lch", "fv", "lv", "");
+						parseText(parsedContent[6], vv.visitCrossReference(unescape(parsedContent[0]), BookID.fromOsisId(unescape(parsedContent[1])), Integer.parseInt(unescape(parsedContent[2])), unescape(parsedContent[4]), unescape(parsedContent[0]), BookID.fromOsisId(unescape(parsedContent[1])), Integer.parseInt(unescape(parsedContent[3])), unescape(parsedContent[5])));
+					} else {
+						parsedContent = parseTags(tagContent, "abbr", "id", "fch", "lch", "fv", "lv", "labbr", "lid", "");
+						parseText(parsedContent[8], vv.visitCrossReference(unescape(parsedContent[0]), BookID.fromOsisId(unescape(parsedContent[1])), Integer.parseInt(unescape(parsedContent[2])), unescape(parsedContent[4]), unescape(parsedContent[6]), BookID.fromOsisId(unescape(parsedContent[7])), Integer.parseInt(unescape(parsedContent[3])), unescape(parsedContent[5])));
+					}
 					break;
 				default:
 					throw new IOException("Unsupported tag: " + tagName);
@@ -389,14 +462,18 @@ public class RoundtripTaggedText implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
-			addTag("fn");
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
+			addTag(ofCrossReferences ? "fx" : "fn");
 			return this;
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
-			addTag("xref", "abbr", bookAbbr, "id", book.getOsisID(), "fch", "" + firstChapter, "lch", "" + lastChapter, "fv", firstVerse, "lv", lastVerse);
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
+			if (firstBook == lastBook) {
+				addTag("xref", "abbr", firstBookAbbr, "id", firstBook.getOsisID(), "fch", "" + firstChapter, "lch", "" + lastChapter, "fv", firstVerse, "lv", lastVerse);
+			} else {
+				addTag("xref", "abbr", firstBookAbbr, "id", firstBook.getOsisID(), "labbr", lastBookAbbr, "lid", lastBook.getOsisID(), "fch", "" + firstChapter, "lch", "" + lastChapter, "fv", firstVerse, "lv", lastVerse);
+			}
 			return this;
 		}
 
@@ -420,24 +497,38 @@ public class RoundtripTaggedText implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
-			addTag("br", "kind", kind.name());
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws IOException {
+			if (kind == ExtendedLineBreakKind.NEWLINE && indent == 1) {
+				addTag("br", "kind", LineBreakKind.NEWLINE_WITH_INDENT.name());
+			} else if (indent == 0) {
+				addTag("br", "kind", kind.name());
+			} else {
+				addTag("br", "kind", kind.name(), "indent", "" + indent);
+			}
 			visitEnd();
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
-			String[] attrValuePairs = new String[(strongs == null ? 0 : strongs.length * 2) + (rmac == null ? 0 : rmac.length * 2) + (sourceIndices == null ? 0 : sourceIndices.length * 2)];
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+			String[] attrValuePairs = new String[(strongs == null ? 0 : strongs.length * 2) + (rmac == null ? 0 : rmac.length * 2) + (sourceIndices == null ? 0 : sourceIndices.length * 2) + (attributeKeys == null ? 0 : attributeKeys.length * 4)];
 			int idx = 0;
 
 			if (strongs != null) {
+				boolean hasSuffix = false;
 				for (int i = 0; i < strongs.length; i++) {
 					attrValuePairs[idx++] = "strong";
 					if (Diffable.writeStrongsSuffix && strongsPrefixes != null && strongs != null) {
-						attrValuePairs[idx++] = Utils.formatStrongs(false, i, strongsPrefixes, strongs);
+						attrValuePairs[idx++] = Utils.formatStrongs(false, i, strongsPrefixes, strongs, strongsSuffixes, "");
 					} else {
-						attrValuePairs[idx++] = (strongsPrefixes == null ? "" : "" + strongsPrefixes[i]) + strongs[i];
+						attrValuePairs[idx++] = (strongsPrefixes == null ? "" : "" + strongsPrefixes[i]) + strongs[i] + (strongsSuffixes == null || strongsSuffixes[i] == ' ' ? "" : "" + strongsSuffixes[i]);
 					}
+					if (strongsSuffixes != null && strongsSuffixes[i] != ' ')
+						hasSuffix = true;
+				}
+				if (strongsSuffixes != null && !hasSuffix) {
+					attrValuePairs = Arrays.copyOf(attrValuePairs, attrValuePairs.length+2);
+					attrValuePairs[idx++] = "strongsemptysuffixes";
+					attrValuePairs[idx++] = "";
 				}
 			}
 			if (rmac != null) {
@@ -450,6 +541,14 @@ public class RoundtripTaggedText implements RoundtripFormat {
 				for (int i = 0; i < sourceIndices.length; i++) {
 					attrValuePairs[idx++] = "idx";
 					attrValuePairs[idx++] = "" + sourceIndices[i];
+				}
+			}
+			if (attributeKeys != null) {
+				for (int i = 0; i < attributeKeys.length; i++) {
+					attrValuePairs[idx++] = "attrkey";
+					attrValuePairs[idx++] = attributeKeys[i];
+					attrValuePairs[idx++] = "attrvalue";
+					attrValuePairs[idx++] = attributeValues[i];
 				}
 			}
 			if (idx != attrValuePairs.length)
@@ -479,6 +578,18 @@ public class RoundtripTaggedText implements RoundtripFormat {
 				attrValuePairs[i * 2 + 1] = variations[i];
 			}
 			addTag("variation", attrValuePairs);
+			return this;
+		}
+
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			addTag("speaker", "who", labelOrStrongs);
+			return this;
+		}
+
+		@Override
+		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			addTag("hyperlink", "type", type.name(), "target", target);
 			return this;
 		}
 

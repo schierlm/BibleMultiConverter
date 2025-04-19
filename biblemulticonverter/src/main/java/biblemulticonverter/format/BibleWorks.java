@@ -25,8 +25,10 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -261,7 +263,7 @@ public class BibleWorks implements RoundtripFormat {
 			String part = text.substring(spos, pos);
 			parseBracketsAndTags(part, vv, footnoteMap);
 			part = text.substring(pos + 1, epos).trim();
-			Visitor<RuntimeException> vvv = vv.visitFootnote();
+			Visitor<RuntimeException> vvv = vv.visitFootnote(false);
 			vvv.visitExtraAttribute(ExtraAttributePriority.SKIP, "bibleworks", "notetype", "T");
 			ppos = parseNoteTags(part, 0, vvv);
 			if (ppos != part.length())
@@ -313,17 +315,17 @@ public class BibleWorks implements RoundtripFormat {
 				String[] rmac = morph2RMAC(morph);
 				Visitor<RuntimeException> vvv = vv.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "bibleworks", "morph", safeMorph);
 				if (rmac != null)
-					vvv = vvv.visitGrammarInformation(null, null, rmac, null);
+					vvv = vvv.visitGrammarInformation(null,  null, null, rmac,  null, null, null);
 				vvv.visitText(preText.substring(wPos));
 				start = pos;
 			} else if (tag.matches("[0-9]+")) {
 				vv.visitText(preText.substring(0, wPos));
-				vv.visitGrammarInformation(null, new int[] { Integer.parseInt(tag) }, null, null).visitText(preText.substring(wPos));
+				vv.visitGrammarInformation((char[]) null, new int[] { Integer.parseInt(tag) }, null, (String[]) null, (int[]) null, null, null).visitText(preText.substring(wPos));
 			} else if (tag.matches("[NR][0-9a-z*]+")) {
 				vv.visitText(preText);
 				if (footnoteMap == null)
 					throw new IOException("No footnote supported here: " + text.substring(spos));
-				footnoteMap.put(tag, vv.visitFootnote());
+				footnoteMap.put(tag, vv.visitFootnote(false));
 			} else {
 				throw new IllegalStateException();
 			}
@@ -345,7 +347,7 @@ public class BibleWorks implements RoundtripFormat {
 				start = epos + 1;
 				Visitor<RuntimeException> nv;
 				if (tag.equals("p")) {
-					vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+					vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					nv = null;
 				} else if (tag.equals("b")) {
 					nv = vv.visitFormattingInstruction(FormattingInstructionKind.BOLD);
@@ -542,7 +544,14 @@ public class BibleWorks implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) {
+			Visitor<RuntimeException> result = visitFootnote0();
+			if (ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<RuntimeException> visitFootnote0() throws RuntimeException {
 			StringBuilder footnoteMark = new StringBuilder();
 			contentParts.add(footnoteMark);
 			contentParts.add(new StringBuilder());
@@ -550,7 +559,7 @@ public class BibleWorks implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
 			skipFeature("Cross reference");
 			suffixStack.add("");
 			return this;
@@ -558,7 +567,7 @@ public class BibleWorks implements RoundtripFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitFormattingInstruction(FormattingInstructionKind kind) throws RuntimeException {
-			if (kind == FormattingInstructionKind.ITALIC) {
+			if (kind == FormattingInstructionKind.ITALIC || kind == FormattingInstructionKind.ADDITION || kind == FormattingInstructionKind.PSALM_DESCRIPTIVE_TITLE) {
 				getCurrentPart().append("[");
 				suffixStack.add("]");
 			} else if (kind == FormattingInstructionKind.DIVINE_NAME) {
@@ -585,12 +594,12 @@ public class BibleWorks implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) {
 			skipFeature("Line break");
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			String suffix = "";
 			if (rmac != null && !suffixStack.get(suffixStack.size() - 1).startsWith("@")) {
 				for (String r : rmac) {
@@ -623,6 +632,16 @@ public class BibleWorks implements RoundtripFormat {
 		@Override
 		public Visitor<RuntimeException> visitVariationText(String[] variations) throws RuntimeException {
 			throw new RuntimeException("Variations not supported");
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 		}
 
 		@Override
@@ -691,13 +710,13 @@ public class BibleWorks implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
 			skipFeature("Footnote in footnote");
 			return null;
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
 			skipFeature("Cross reference in footnote");
 			suffixStack.add("");
 			return this;
@@ -711,6 +730,8 @@ public class BibleWorks implements RoundtripFormat {
 				tag = "b";
 				break;
 			case ITALIC:
+			case ADDITION:
+			case PSALM_DESCRIPTIVE_TITLE:
 				tag = "i";
 				break;
 			case SUBSCRIPT:
@@ -745,12 +766,12 @@ public class BibleWorks implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) {
 			currentNotes.append("<p>");
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			skipFeature("Grammar information in footnote");
 			suffixStack.add("");
 			return this;
@@ -771,6 +792,16 @@ public class BibleWorks implements RoundtripFormat {
 		@Override
 		public Visitor<RuntimeException> visitVariationText(String[] variations) throws RuntimeException {
 			throw new RuntimeException("Variations not supported");
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 		}
 
 		@Override

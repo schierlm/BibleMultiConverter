@@ -63,20 +63,6 @@ public class ReplaceStrongs implements ExportFormat {
 		exportFormat.doExport(bible, Arrays.copyOfRange(exportArgs, formatArg + 1, exportArgs.length));
 	}
 
-	private static String[] build_FullStrongs(Versification.Reference reference, char[] strongsPrefixes, int[] strongs) {
-		if (strongs == null)
-			return null;
-		if (strongsPrefixes == null) {
-			strongsPrefixes = new char[strongs.length];
-			Arrays.fill(strongsPrefixes, reference.getBook().isNT() ? 'G' : 'H');
-		}
-		String[] result = new String[strongs.length];
-		for (int i = 0; i < strongs.length; i++) {
-			result[i] = strongsPrefixes[i] + "" + strongs[i];
-		}
-		return result;
-	}
-
 	private static class PatternRule {
 		final Pattern pattern;
 		final String replacement;
@@ -140,16 +126,18 @@ public class ReplaceStrongs implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			if (strongs != null) {
 				List<String> newStrongs = new ArrayList<>();
 				char[] oneStrongsPrefix = new char[1];
 				int[] oneStrongs = new int[1];
+				char[] oneStrongsSuffix = new char[1];
 				for (int i = 0; i < strongs.length; i++) {
 					oneStrongs[0] = strongs[i];
 					oneStrongsPrefix[0] = strongsPrefixes == null ? '?' : strongsPrefixes[i];
-					List<String> links = linksGenerator.generateLinks(reference.getBook().isNT(), reference, strongsPrefixes == null ? null : oneStrongsPrefix, oneStrongs, rmac, sourceIndices);
-					links.add(Utils.formatStrongs(reference.getBook().isNT(), strongsPrefixes == null ? null : strongsPrefixes[i], strongs[i]));
+					oneStrongsSuffix[0] = strongsSuffixes == null ? '?' : strongsSuffixes[i];
+					List<String> links = linksGenerator.generateLinks(reference.getBook().isNT(), reference, strongsPrefixes == null ? null : oneStrongsPrefix, oneStrongs, strongsSuffixes == null ? null : oneStrongsSuffix, rmac, sourceIndices, attributeKeys, attributeValues);
+					links.add(Utils.formatStrongs(reference.getBook().isNT(), strongsPrefixes == null ? null : strongsPrefixes[i], strongs[i], strongsSuffixes == null ? null : strongsSuffixes[i], ""));
 					outer: for (PatternRule rule : rules) {
 						for (String link : links) {
 							Matcher m = rule.pattern.matcher(link);
@@ -168,16 +156,22 @@ public class ReplaceStrongs implements ExportFormat {
 				} else {
 					strongs = new int[newStrongs.size()];
 					strongsPrefixes = new char[newStrongs.size()];
+					strongsSuffixes = new char[newStrongs.size()];
+					char[] prefixSuffixHolder = new char[2];
 					for (int i = 0; i < strongs.length; i++) {
-						strongs[i] = Utils.parseStrongs(newStrongs.get(i), '\0', oneStrongsPrefix);
-						strongsPrefixes[i] = oneStrongsPrefix[0];
+						strongs[i] = Utils.parseStrongs(newStrongs.get(i), '\0', prefixSuffixHolder);
+						strongsPrefixes[i] = prefixSuffixHolder[0];
+						strongsSuffixes[i] = prefixSuffixHolder[1];
+					}
+					if (new String(strongsSuffixes).trim().isEmpty()) {
+						strongsSuffixes = null;
 					}
 				}
 			}
 			if (strongs == null && rmac == null && sourceIndices == null) {
 				return this;
 			}
-			return wrapChildVisitor(getVisitor().visitGrammarInformation(strongsPrefixes, strongs, rmac, sourceIndices));
+			return wrapChildVisitor(getVisitor().visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues));
 		}
 	}
 }

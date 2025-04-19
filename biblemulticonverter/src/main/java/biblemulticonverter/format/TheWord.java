@@ -23,9 +23,11 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -181,15 +183,15 @@ public class TheWord implements RoundtripFormat {
 				pos += 27;
 				continue;
 			} else if (line.startsWith("<CL>", pos)) {
-				visitor.visitLineBreak(LineBreakKind.NEWLINE);
+				visitor.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 				pos += 4;
 				continue;
 			} else if (line.startsWith("<CM>", pos)) {
-				visitor.visitLineBreak(LineBreakKind.PARAGRAPH);
+				visitor.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 				pos += 4;
 				continue;
 			} else if (line.startsWith("<CI><PI>", pos)) {
-				visitor.visitLineBreak(LineBreakKind.NEWLINE_WITH_INDENT);
+				visitor.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 1);
 				pos += 8;
 				continue;
 			} else if (line.startsWith("<TS", pos) && pos + 3 < line.length()) {
@@ -214,7 +216,7 @@ public class TheWord implements RoundtripFormat {
 			} else if (line.startsWith("<RF", pos)) {
 				int closePos = line.indexOf('>', pos);
 				if (parseLine(garbageVisitor, line, closePos + 1, "<Rf>") != -1) {
-					pos = parseLine(visitor.visitFootnote(), line, closePos + 1, "<Rf>");
+					pos = parseLine(visitor.visitFootnote(false), line, closePos + 1, "<Rf>");
 					continue;
 				}
 			} else if (line.startsWith("<FI>", pos)) {
@@ -227,19 +229,25 @@ public class TheWord implements RoundtripFormat {
 				if (parseLine(garbageVisitor, line, closePos + 1, "<s%>") != -1) {
 					String[] strongs = line.substring(pos + 3, closePos).split("%");
 					char[] strongNumberPrefixes = new char[strongs.length];
+					char[] strongNumberSuffixes = new char[strongs.length];
 					int[] strongNumbers = new int[strongs.length];
 					try {
-						char[] prefixHolder = new char[1];
+						char[] prefixSuffixHolder = new char[2];
 						for (int i = 0; i < strongs.length; i++) {
-							strongNumbers[i] = Utils.parseStrongs(strongs[i], '\0', prefixHolder);
-							strongNumberPrefixes[i] = prefixHolder[0];
+							strongNumbers[i] = Utils.parseStrongs(strongs[i], '\0', prefixSuffixHolder);
+							strongNumberPrefixes[i] = prefixSuffixHolder[0];
+							strongNumberSuffixes[i] = prefixSuffixHolder[1];
 							if (strongNumbers[i] == -1) {
 								System.out.println("WARNING: Invalid Strong number: " + strongs[i]);
 								strongNumbers[i] = 99999;
 								strongNumberPrefixes[i] = strongs[i].charAt(0);
+								strongNumberSuffixes[i] = ' ';
 							}
 						}
-						pos = parseLine(visitor.visitGrammarInformation(strongNumberPrefixes, strongNumbers, null, null), line, closePos + 1, "<s%>");
+						if (new String(strongNumberSuffixes).trim().isEmpty()) {
+							strongNumberSuffixes = null;
+						}
+						pos = parseLine(visitor.visitGrammarInformation(strongNumberPrefixes, strongNumbers, strongNumberSuffixes, null, null, null, null), line, closePos + 1, "<s%>");
 						continue;
 					} catch (NumberFormatException ex) {
 						// malformed Strongs tag
@@ -248,8 +256,13 @@ public class TheWord implements RoundtripFormat {
 			} else if (line.startsWith("<XWG", pos) || line.startsWith("<XWH", pos)) {
 				int closePos = line.indexOf('>', pos);
 				try {
-					int number = Integer.parseInt(line.substring(pos + 4, closePos));
-					visitor.visitGrammarInformation(new char[] {line.charAt(pos+3)}, new int[] { number }, null, null);
+					char[] suffix = null;
+					String number = line.substring(pos + 4, closePos);
+					if (number.matches("[0-9]+[a-zA-Z]")) {
+						suffix = new char[] { number.charAt(number.length()-1) };
+						number = number.substring(0, number.length()-1);
+					}
+					visitor.visitGrammarInformation(new char[] {line.charAt(pos+3)}, new int[] { Integer.parseInt(number) }, suffix, null, null, null, null);
 					pos = closePos + 1;
 					continue;
 				} catch (NumberFormatException ex) {
@@ -398,7 +411,8 @@ public class TheWord implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
+			LineBreakKind kind = lbk.toLineBreakKind(indent);
 			switch (kind) {
 			case NEWLINE:
 				bw.write("<CL>");
@@ -426,6 +440,8 @@ public class TheWord implements RoundtripFormat {
 
 		@Override
 		public Visitor<IOException> visitFormattingInstruction(FormattingInstructionKind kind) throws IOException {
+			if (kind == FormattingInstructionKind.ADDITION || kind == FormattingInstructionKind.PSALM_DESCRIPTIVE_TITLE)
+				kind = FormattingInstructionKind.ITALIC;
 			if (kind.getHtmlTag() != null) {
 				bw.write("<" + kind.getHtmlTag() + ">");
 				suffixStack.add("</" + kind.getHtmlTag() + ">");
@@ -455,10 +471,27 @@ public class TheWord implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
+			Visitor<IOException> result = visitFootnote0();
+			if (result != null && ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<IOException> visitFootnote0() throws IOException {
 			bw.write("<RF>");
 			suffixStack.add("<Rf>");
 			return this;
+		}
+
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 		}
 
 		@Override
@@ -487,15 +520,14 @@ public class TheWord implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
-			StringBuilder suffix = new StringBuilder();
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {			StringBuilder suffix = new StringBuilder();
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
 					String prefix = nt ? "G" : "H";
 					if (strongsPrefixes != null) {
 						prefix = ("GH".indexOf(strongsPrefixes[i]) != -1 ? "" : prefix) + strongsPrefixes[i];
 					}
-					suffix.append("<W").append(prefix).append(strongs[i]).append('>');
+					suffix.append("<W").append(prefix).append(strongs[i]).append(strongsSuffixes != null && strongsSuffixes[i] != ' ' ? "" + strongsSuffixes[i] : "").append('>');
 				}
 			}
 			if (rmac != null) {
@@ -512,7 +544,15 @@ public class TheWord implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
+			if (firstBook == lastBook  && !lastVerse.equals("*")) {
+				return visitCrossReference0(firstBookAbbr, firstBook, firstChapter, firstVerse, lastChapter, lastVerse);
+			} else {
+				return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "cross", "reference");
+			}
+		}
+
+		public Visitor<IOException> visitCrossReference0(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
 			try {
 				Integer.parseInt(firstVerse);
 				Integer.parseInt(lastVerse);

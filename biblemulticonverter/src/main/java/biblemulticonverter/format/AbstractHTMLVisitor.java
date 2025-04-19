@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -35,8 +37,12 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 		return null;
 	}
 
+	protected void prepareForInlineOutput(boolean endTag) throws IOException {
+	}
+
 	@Override
 	public void visitVerseSeparator() throws IOException {
+		prepareForInlineOutput(false);
 		writer.write("<font color=\"#808080\">/</font>");
 	}
 
@@ -51,6 +57,7 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 
 	@Override
 	public void visitText(String text) throws IOException {
+		prepareForInlineOutput(false);
 		writer.write(text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"));
 	}
 
@@ -72,6 +79,7 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 				endTag = "</a>";
 			}
 		}
+		prepareForInlineOutput(false);
 		writer.write(startTag);
 		pushSuffix(endTag);
 		return this;
@@ -83,6 +91,7 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 
 	@Override
 	public Visitor<IOException> visitCSSFormatting(String css) throws IOException {
+		prepareForInlineOutput(false);
 		writer.write("<span class=\"css\" style=\"" + css + "\">");
 		pushSuffix("</span>");
 		return this;
@@ -91,6 +100,7 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 	@Override
 	public void visitRawHTML(RawHTMLMode mode, String raw) throws IOException {
 		if (!mode.equals(Boolean.getBoolean("rawhtml.online") ? RawHTMLMode.OFFLINE : RawHTMLMode.ONLINE)) {
+			prepareForInlineOutput(false);
 			writer.write(raw);
 		}
 	}
@@ -98,6 +108,18 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 	@Override
 	public Visitor<IOException> visitVariationText(String[] variations) throws IOException {
 		throw new UnsupportedOperationException("Variation text not supported");
+	}
+
+	@Override
+	public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+		prepareForInlineOutput(false);
+		if (type == HyperlinkType.ANCHOR) {
+			writer.write("<a name=\"" + target + "\">");
+		} else {
+			writer.write("<a href=\"" + target + "\">");
+		}
+		pushSuffix("</a>");
+		return this;
 	}
 
 	@Override
@@ -110,6 +132,7 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 
 	@Override
 	public boolean visitEnd() throws IOException {
+		prepareForInlineOutput(true);
 		writer.write(suffixStack.remove(suffixStack.size() - 1));
 		return false;
 	}
@@ -144,8 +167,8 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 			String cleanedTag = tag.replaceAll(" +class=('[^']*'|\"[^\"]*\")", "");
 			if (cleanedTag.endsWith("/>") || cleanedTag.endsWith(" >"))
 				cleanedTag = cleanedTag.substring(0, cleanedTag.length() - 2).trim() + ">";
-			if (hp != null && ((cleanedTag.toLowerCase().startsWith("<a href=\"") && cleanedTag.endsWith("\">"))
-					|| (cleanedTag.toLowerCase().startsWith("<a href='") && cleanedTag.endsWith("'>")))) {
+			if ((cleanedTag.toLowerCase().startsWith("<a href=\"") && cleanedTag.endsWith("\">"))
+					|| (cleanedTag.toLowerCase().startsWith("<a href='") && cleanedTag.endsWith("'>"))) {
 				int endPos = html.indexOf("</" + cleanedTag.substring(1, 2) + ">");
 				int copyFromSuffix = 0;
 				if (endPos == -1) {
@@ -156,7 +179,10 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 					}
 				}
 				if (endPos != -1) {
-					Visitor<T> nextVisitor = hp.parseHyperlink(vv, cleanedTag.substring(9, cleanedTag.length() - 2));
+					Visitor<T> nextVisitor = hp == null ? null : hp.parseHyperlink(vv, cleanedTag.substring(9, cleanedTag.length() - 2));
+					if (nextVisitor == null) {
+						nextVisitor = vv.visitHyperlink(HyperlinkType.EXTERNAL_LINK	, cleanedTag.substring(9, cleanedTag.length() - 2));
+					}
 					if (nextVisitor != null) {
 						if (copyFromSuffix > 0) {
 							html = html + suffix.substring(0, copyFromSuffix);
@@ -164,18 +190,16 @@ public abstract class AbstractHTMLVisitor implements Visitor<IOException> {
 						}
 						parseHTML(nextVisitor, hp, html.substring(0, endPos), "");
 						html = html.substring(endPos + 4);
-					} else {
-						cleanedTag = null;
 					}
 				} else {
 					cleanedTag = null;
 				}
 			} else if (cleanedTag.toLowerCase().equals("<p>")) {
-				vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+				vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 			} else if (cleanedTag.toLowerCase().equals("</p>")) {
 				// ignore
 			} else if (cleanedTag.toLowerCase().equals("<br>")) {
-				vv.visitLineBreak(LineBreakKind.NEWLINE);
+				vv.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 			} else if (cleanedTag.toLowerCase().matches("<(b|i|u|strong|em|sub|sup|h[1-6]|font +color=['\"]?red['\"]?)>")) {
 				String endTag = "</" + cleanedTag.substring(1).replaceAll(" .*>", ">");
 				int endPos = html.indexOf(endTag);

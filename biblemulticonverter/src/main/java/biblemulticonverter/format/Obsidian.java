@@ -18,9 +18,11 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -140,7 +142,14 @@ public class Obsidian implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
+			Visitor<IOException> result = visitFootnote0();
+			if (result != null && ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<IOException> visitFootnote0() throws IOException {
 			if (footnoteWriter == null) {
 				System.out.println("WARNING: Nested footnotes are not supported");
 				return null;
@@ -152,14 +161,15 @@ public class Obsidian implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
 			System.out.println("WARNING: Cross references are not supported");
 			pushSuffix("");
 			return this;
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
+			LineBreakKind kind = lbk.toLineBreakKind(indent);
 			if (footnoteWriter == null) {
 				visitText(" ");
 			} else {
@@ -178,7 +188,7 @@ public class Obsidian implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			String suffix;
 			if (strongs == null && rmac == null) {
 				suffix = "";
@@ -189,7 +199,7 @@ public class Obsidian implements ExportFormat {
 				StringBuilder suffixBuilder = new StringBuilder();
 				if (strongs != null) {
 					for (int i = 0; i < strongs.length; i++) {
-						suffixBuilder.append(" <sup><font color=green>" + (strongsPrefixes != null ? Utils.formatStrongs(false, i, strongsPrefixes, strongs) : "" + strongs[i]) + "</font></sup>");
+						suffixBuilder.append(" <sup><font color=green>" + (strongsPrefixes != null ? Utils.formatStrongs(false, i, strongsPrefixes, strongs, strongsSuffixes, "") : "" + strongs[i]) + "</font></sup>");
 					}
 				}
 				if (rmac != null) {
@@ -217,6 +227,8 @@ public class Obsidian implements ExportFormat {
 			case BOLD:
 				marker = "**";
 				break;
+			case ADDITION:
+			case PSALM_DESCRIPTIVE_TITLE:
 			case ITALIC:
 				marker = "*";
 				break;
@@ -265,6 +277,16 @@ public class Obsidian implements ExportFormat {
 		@Override
 		public Visitor<IOException> visitVariationText(String[] variations) throws IOException {
 			throw new RuntimeException("Variations not supported");
+		}
+
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 		}
 
 		@Override

@@ -92,6 +92,8 @@ public class LogosRenumberedDiffable implements ExportFormat {
 	}
 
 	private String mapVerse(String bookAbbr, BookID book, int chapter, String verse, VersificationScheme scheme, String context) {
+		if (verse.equals("*") && context.equals("XREF "))
+			return verse;
 		Integer newVerse = verseTransforms.get(verse);
 		if (newVerse == null) {
 			if (!verse.matches("[0-9]+"))
@@ -125,10 +127,11 @@ public class LogosRenumberedDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-			return super.visitCrossReference(bookAbbr, book,
-					firstChapter, mapVerse(bookAbbr, book, firstChapter, firstVerse, scheme, "XREF "),
-					lastChapter, mapVerse(bookAbbr, book, lastChapter, lastVerse, scheme, "XREF "));
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
+			return super.visitCrossReference(firstBookAbbr, firstBook,
+					firstChapter, mapVerse(firstBookAbbr, firstBook, firstChapter, firstVerse, scheme, "XREF "),
+					lastBookAbbr, lastBook,
+					lastChapter, mapVerse(lastBookAbbr, lastBook, lastChapter, lastVerse, scheme, "XREF "));
 		}
 	}
 }

@@ -15,8 +15,11 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -294,7 +297,8 @@ public class Volksbibel2000 implements ExportFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) {
+			LineBreakKind kind = lbk.toLineBreakKind(indent);
 			if (verse == null)
 				return; // ignore linebreaks that are not toplevel
 			inVerse = false;
@@ -333,7 +337,14 @@ public class Volksbibel2000 implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
+			Visitor<RuntimeException> result = visitFootnote0();
+			if (ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<RuntimeException> visitFootnote0() throws RuntimeException {
 			ensureInVerse();
 			visitTag("FONT size=\"10\" color=\"#ff0000\"");
 			visitText("[");
@@ -341,7 +352,7 @@ public class Volksbibel2000 implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
 			ensureInVerse();
 			visitTag("a");
 			return new Vb2000Visitor(content, null, buildTag("/a"), escapeChar);
@@ -349,6 +360,8 @@ public class Volksbibel2000 implements ExportFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitFormattingInstruction(FormattingInstructionKind kind) throws RuntimeException {
+			if (kind == FormattingInstructionKind.ADDITION || kind == FormattingInstructionKind.PSALM_DESCRIPTIVE_TITLE)
+				kind = FormattingInstructionKind.ITALIC;
 			ensureInVerse();
 			String endTag = "";
 			if (kind.getHtmlTag() != null) {
@@ -399,7 +412,7 @@ public class Volksbibel2000 implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			ensureInVerse();
 			StringBuilder strongSuffix = new StringBuilder(buildTag("SUP") + buildTag("FONT color=\"#008000\""));
 			if (strongs != null) {
@@ -426,6 +439,16 @@ public class Volksbibel2000 implements ExportFormat {
 		@Override
 		public Visitor<RuntimeException> visitVariationText(String[] variations) throws RuntimeException {
 			throw new RuntimeException("Variations not supported");
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 		}
 
 		@Override

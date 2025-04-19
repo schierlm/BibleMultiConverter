@@ -20,6 +20,7 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -130,19 +131,19 @@ public class TranslatorsAmalgamated implements ImportFormat {
 							String[] strongs = fields[4].replaceAll("[{}/\\\\+]+", " ").replaceAll("  +", " ").trim().split(" ");
 							int[] strongNum = new int[strongs.length];
 							char[] strongPfx = new char[strongs.length];
+							char[] strongSfx = new char[strongs.length];
 							for (int i = 0; i < strongs.length; i++) {
-								char[] prefixHolder = new char[1];
-								int number = Utils.parseStrongs(strongs[i], 'H', prefixHolder);
-								if (number == -1 && strongs[i].matches(".*[a-zA-Z]")) {
-									System.out.println("WARNING: Stripping suffix of Strongs " + strongs[i]);
-									number = Utils.parseStrongs(strongs[i].substring(0, strongs[i].length() - 1), 'H', prefixHolder);
-								}
+								char[] prefixSuffixHolder = new char[2];
+								int number = Utils.parseStrongs(strongs[i], 'H', prefixSuffixHolder);
 								if (number == -1) {
 									throw new RuntimeException("Invalid Strongs number: " + strongs[i]);
 								}
-								strongPfx[i] = prefixHolder[0];
+								strongPfx[i] = prefixSuffixHolder[0];
+								strongSfx[i] = prefixSuffixHolder[1];
 								strongNum[i] = number;
 							}
+							if (new String(strongSfx).trim().isEmpty())
+								strongSfx = null;
 							String[] wivu = new String[] { fields[5] };
 							if (!wivu[0].matches(Utils.WIVU_REGEX)) {
 								if (wivu[0].startsWith("Hc/")) {
@@ -153,9 +154,9 @@ public class TranslatorsAmalgamated implements ImportFormat {
 								System.out.println("WARNING: Skipping WIVU: " + wivu[0]);
 								wivu = null;
 							}
-							v = v.visitGrammarInformation(strongPfx, strongNum, wivu, null);
-							v.visitExtraAttribute(ExtraAttributePriority.SKIP, "tahot", "english", "transliteration").visitText(fields[2]);
-							v.visitExtraAttribute(ExtraAttributePriority.SKIP, "tahot", "english", "translation").visitText(fields[3].replaceAll("  +", " "));
+							String[] keys = {"tahot:transliteration", "tahot:translation"};
+							String[] values = {fields[2], fields[3].replaceAll("  +", " ")};
+							v = v.visitGrammarInformation(strongPfx, strongNum, strongSfx, wivu, null, keys, values);
 						}
 						v.visitText(fields[1]);
 						v.visitEnd();
@@ -321,33 +322,40 @@ public class TranslatorsAmalgamated implements ImportFormat {
 			first = false;
 			int[] strongNum = new int[wi.strongs.length];
 			char[] strongPfx = new char[wi.strongs.length];
+			char[] strongSfx = new char[wi.strongs.length];
 			for (int i = 0; i < wi.strongs.length; i++) {
-				char[] prefixHolder = new char[1];
-				int number = Utils.parseStrongs(wi.strongs[i], 'G', prefixHolder);
-				if (number == -1 && wi.strongs[i].matches(".*[a-zA-Z]")) {
-					System.out.println("WARNING: Stripping suffix of Strongs " + wi.strongs[i]);
-					number = Utils.parseStrongs(wi.strongs[i].substring(0, wi.strongs[i].length() - 1), 'G', prefixHolder);
-				}
+				char[] prefixSuffixHolder = new char[2];
+				int number = Utils.parseStrongs(wi.strongs[i], 'G', prefixSuffixHolder);
 				if (number == -1) {
 					throw new RuntimeException("Invalid Strongs number: " + wi.strongs[i]);
 				}
-				strongPfx[i] = prefixHolder[0];
+				strongPfx[i] = prefixSuffixHolder[0];
+				strongSfx[i] = prefixSuffixHolder[1];
 				strongNum[i] = number;
 			}
-
+			if (new String(strongSfx).trim().isEmpty())
+				strongSfx = null;
 			Visitor<RuntimeException> v = vv;
 			if (wi.editions != null) {
 				v = v.visitVariationText(wi.editions.stream().map(Edition::toString).collect(Collectors.toList()).toArray(new String[0]));
 			}
-			v = v.visitGrammarInformation(strongPfx, strongNum, wi.rmac, null);
+			List<String> keys = new ArrayList<>();
+			List<String> values = new ArrayList<>();
 			for (String[] attr : wi.attributes) {
-				v.visitExtraAttribute(ExtraAttributePriority.SKIP, attr[0], attr[1], attr[2]).visitText(attr[3].replaceAll("  +", " "));
+				String key = attr[0]+":"+attr[1]+":"+attr[2];
+				if (key.equals("osisgrammar:lemma:lemma")) {
+					key = "lemma";
+				}
+				keys.add(key);
+				values.add(attr[3].replaceAll("  +", "_"));
 			}
 			if (wi.greek.matches(".* \\(.*\\)$")) {
 				int pos = wi.greek.lastIndexOf(" (");
-				v.visitExtraAttribute(ExtraAttributePriority.SKIP, "tagnt", "english", "transliteration").visitText(wi.greek.substring(pos + 2, wi.greek.length() - 1));
+				keys.add("tagnt:transliteration");
+				values.add(wi.greek.substring(pos + 2, wi.greek.length() - 1));
 				wi.greek = wi.greek.substring(0, pos);
 			}
+			v = v.visitGrammarInformation(strongPfx, strongNum, strongSfx, wi.rmac, null, keys.toArray(new String[keys.size()]), values.toArray(new String[values.size()]));
 			boolean addPara = false;
 			if (wi.greek.endsWith("¶")) {
 				addPara = true;
@@ -356,7 +364,7 @@ public class TranslatorsAmalgamated implements ImportFormat {
 			v.visitText(wi.greek);
 			v.visitEnd();
 			if (addPara) {
-				vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+				vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 				first = true;
 			}
 		}

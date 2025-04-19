@@ -17,7 +17,10 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
+import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Utils;
@@ -267,8 +270,14 @@ public class BibleAnalyzerFormattedText implements ExportFormat {
 			return this;
 		}
 
-		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
+			Visitor<IOException> result = visitFootnote0();
+			if (ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<IOException> visitFootnote0() throws IOException {
 			if (footnoteWriter != null) {
 				writer.write("<fn>" + nextFootnote[0] + "</fn>");
 				footnoteWriter.write("<fn>" + nextFootnote[0] + " ");
@@ -280,7 +289,15 @@ public class BibleAnalyzerFormattedText implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
+			if (firstBook == lastBook  && !lastVerse.equals("*")) {
+				return visitCrossReference0(firstBookAbbr, firstBook, firstChapter, firstVerse, lastChapter, lastVerse);
+			} else {
+				return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "cross", "reference");
+			}
+		}
+
+		public Visitor<IOException> visitCrossReference0(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
 			BibleAnalyzerBookInfo info = BOOK_INFO_BY_ID.get(book);
 			if (info != null && firstVerse.matches("[0-9]+")) {
 				writer.write("<a href=\"bible://" + info.abbr + " " + firstChapter + ":" + firstVerse + "\">");
@@ -292,7 +309,8 @@ public class BibleAnalyzerFormattedText implements ExportFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
+			LineBreakKind kind = lbk.toLineBreakKind(indent);
 			switch (kind) {
 			case NEWLINE:
 				writer.write("<br>");
@@ -307,11 +325,11 @@ public class BibleAnalyzerFormattedText implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			StringBuilder suffix = new StringBuilder();
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
-					suffix.append("[" + (hasStrongs ? Utils.formatStrongs(nt, i, strongsPrefixes, strongs) : "" + strongs[i]) + "]");
+					suffix.append("[" + (hasStrongs ? Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, "") : "" + strongs[i]) + "]");
 				}
 			}
 			if (rmac != null && hasRMAC) {
@@ -328,6 +346,10 @@ public class BibleAnalyzerFormattedText implements ExportFormat {
 			writer.write("<a href=\"dict/" + dictionary + "/" + entry + "\">");
 			pushSuffix("</a>");
 			return this;
+		}
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
 		}
 	}
 }

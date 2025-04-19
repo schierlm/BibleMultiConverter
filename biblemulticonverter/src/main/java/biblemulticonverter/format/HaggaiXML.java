@@ -37,10 +37,11 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
-import biblemulticonverter.data.FormattedText.LineBreakKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.MetadataBook;
@@ -267,7 +268,7 @@ public class HaggaiXML implements RoundtripFormat {
 			if (remark.getContent().size() != 1)
 				return;
 			String remarkText = normalize((String) remark.getContent().get(0), true).trim();
-			v.getAppendVisitor().visitFootnote().visitText(remarkText);
+			v.getAppendVisitor().visitFootnote(false).visitText(remarkText);
 		} else if (e3 instanceof PROLOG) {
 			PROLOG prolog = (PROLOG) e3;
 			if (chapter.getProlog() != null)
@@ -283,7 +284,8 @@ public class HaggaiXML implements RoundtripFormat {
 			for (Object ee3 : para.getCAPTIONOrPROLOGOrREMARK()) {
 				parseChapterObject(ee3, chapter, abbrMap, headlineBuffer);
 			}
-			chapter.getVerses().get(chapter.getVerses().size() - 1).getAppendVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
+			Visitor<RuntimeException> r = chapter.getVerses().get(chapter.getVerses().size() - 1).getAppendVisitor();
+			r.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 		} else if (e3 instanceof JAXBElement<?>) {
 			JAXBElement<?> je = (JAXBElement<?>) e3;
 			if (je.getName().getLocalPart().equals("VERSE") && je.getValue() instanceof VERSE) {
@@ -387,10 +389,12 @@ public class HaggaiXML implements RoundtripFormat {
 					Visitor<RuntimeException> strongVisitor = visitor;
 					int[] strongs = null;
 					char[] strongsPrefixes = null;
+					char[] strongsSuffixes = null;
 					if (gram.getStr() != null) {
 						List<String> strongList = new ArrayList<String>(Arrays.asList(gram.getStr().trim().replaceAll(" ++", " ").split(" ")));
+						char[] prefixSuffixHolder = new char[2];
 						for (int i = 0; i < strongList.size(); i++) {
-							if (Utils.parseStrongs(strongList.get(i), '?', null) == -1) {
+							if (Utils.parseStrongs(strongList.get(i), '?', prefixSuffixHolder) == -1) {
 								System.out.println("WARNING: Skipping invalid Strong number " + strongList.get(i));
 								strongList.remove(i);
 								i--;
@@ -398,14 +402,18 @@ public class HaggaiXML implements RoundtripFormat {
 						}
 						strongs = new int[strongList.size()];
 						strongsPrefixes = strongList.size() == 0 ? null : new char[strongList.size()];
-						char[] prefixHolder = new char[1];
+						strongsSuffixes = strongList.size() == 0 ? null : new char[strongList.size()];
 						for (int i = 0; i < strongs.length; i++) {
-							strongs[i] = Utils.parseStrongs(strongList.get(i), '?', prefixHolder);
-							if (prefixHolder[0] == '?') {
+							strongs[i] = Utils.parseStrongs(strongList.get(i), '?', prefixSuffixHolder);
+							if (prefixSuffixHolder[0] == '?') {
 								strongsPrefixes = null;
 							} else {
-								strongsPrefixes[i] = prefixHolder[0];
+								strongsPrefixes[i] = prefixSuffixHolder[0];
 							}
+							strongsSuffixes[i] = prefixSuffixHolder[1];
+						}
+						if (new String(strongsSuffixes).trim().isEmpty()) {
+							strongsSuffixes = null;
 						}
 					}
 					String[] rmac = null;
@@ -429,7 +437,7 @@ public class HaggaiXML implements RoundtripFormat {
 					if (rmac != null && rmac.length == 0)
 						rmac = null;
 					if (strongs != null || rmac != null)
-						strongVisitor = strongVisitor.visitGrammarInformation(strongsPrefixes, strongs, rmac, null);
+						strongVisitor = strongVisitor.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, null, null, null);
 					if (!parseContent(strongVisitor, gram.getContent(), abbrMap) && strongVisitor != visitor) {
 						visitEmptyMarker(strongVisitor);
 					}
@@ -438,13 +446,13 @@ public class HaggaiXML implements RoundtripFormat {
 					if (note.getContent().size() == 0)
 						continue;
 					Visitor<RuntimeException> v;
-					v = visitor.visitFootnote();
+					v = visitor.visitFootnote(false);
 					boolean subContentFound = parseContent(v, note.getContent(), abbrMap);
 					if (!subContentFound)
 						visitEmptyMarker(v);
 					contentFound = true;
 				} else if (name.equals("BR")) {
-					visitor.visitLineBreak(LineBreakKind.NEWLINE);
+					visitor.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 					contentFound = true;
 				} else {
 					throw new IOException(name);
@@ -615,7 +623,7 @@ public class HaggaiXML implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
 			if (brElement == null) {
 				try {
 					brElement = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument().createElement("BR");
@@ -649,7 +657,11 @@ public class HaggaiXML implements RoundtripFormat {
 				fs = TStyleFix.DIVINE_NAME;
 				break;
 			case ITALIC:
+			case PSALM_DESCRIPTIVE_TITLE:
 				fs = TStyleFix.ITALIC;
+				break;
+			case ADDITION:
+				fs = TStyleFix.EMPHASIS;
 				break;
 			case STRIKE_THROUGH:
 				fs = TStyleFix.LINE_THROUGH;
@@ -677,7 +689,14 @@ public class HaggaiXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
+			Visitor<IOException> result = visitFootnote0();
+			if (result != null && ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<IOException> visitFootnote0() throws IOException {
 			if (containingVerse == null) {
 				System.out.println("WARNING: Skipping footnote outside of verse");
 				return null;
@@ -704,6 +723,16 @@ public class HaggaiXML implements RoundtripFormat {
 		}
 
 		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
+		}
+
+		@Override
 		public Visitor<IOException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) throws IOException {
 			return prio.handleVisitor(category, this);
 		}
@@ -714,14 +743,14 @@ public class HaggaiXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			final GRAM gram = of.createGRAM();
 			result.add(new JAXBElement<GRAM>(new QName("GRAM"), GRAM.class, gram));
 			Visitor<IOException> nextVisitor = new CreateContentVisitor(of, gram.getContent(), null);
 			if (strongs != null) {
 				StringBuilder entryBuilder = new StringBuilder();
 				for (int i = 0; i < strongs.length; i++) {
-					entryBuilder.append((i > 0 ? " " : "") + (strongsPrefixes == null ? "" + strongs[i] : Utils.formatStrongs(false, i, strongsPrefixes, strongs)));
+					entryBuilder.append((i > 0 ? " " : "") + (strongsPrefixes == null ? "" + strongs[i] : Utils.formatStrongs(false, i, strongsPrefixes, strongs, strongsSuffixes, "")));
 				}
 				String entry = entryBuilder.toString();
 				gram.setStr(entry);
@@ -744,7 +773,7 @@ public class HaggaiXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
 			// skip for now
 			return null;
 		}

@@ -17,7 +17,11 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
+import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.Headline;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Utils;
@@ -255,7 +259,14 @@ public class BrowserBible implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
+			Visitor<IOException> result = visitFootnote0();
+			if (ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<IOException> visitFootnote0() throws IOException {
 			writer.write("<span class=\"note\" id=\"note-" + nextFootnote[0] + "\"><a class=\"key\" href=\"#footnote-" + nextFootnote[0] + "\">" + nextFootnote[0] + "</a></span>");
 			footnoteWriter.write("<span class=\"footnote\" id=\"footnote-" + nextFootnote[0] + "\"><span class=\"key\">" + nextFootnote[0] + "</span><a class=\"backref\" href=\"#note-" + nextFootnote[0] + "\">#</a><span class=\"text\">");
 			nextFootnote[0]++;
@@ -263,7 +274,15 @@ public class BrowserBible implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
+			if (firstBook == lastBook  && !lastVerse.equals("*")) {
+				return visitCrossReference0(firstBookAbbr, firstBook, firstChapter, firstVerse, lastChapter, lastVerse);
+			} else {
+				return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "cross", "reference");
+			}
+		}
+
+		public Visitor<IOException> visitCrossReference0(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
 			String bookName = BOOK_NAMES.get(book);
 			if (bookName != null && firstVerse.matches("[0-9]+")) {
 				writer.write("<span class=\"bibleref\" data-id=\"" + bookName + firstChapter + "_" + firstVerse + "\">");
@@ -275,7 +294,8 @@ public class BrowserBible implements ExportFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
+			LineBreakKind kind = lbk.toLineBreakKind(indent);
 			switch (kind) {
 			case NEWLINE:
 				writer.write("<br>");
@@ -293,14 +313,14 @@ public class BrowserBible implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			writer.write("<l");
 			if (strongs != null) {
 				writer.write(" s=\"");
 				for (int i = 0; i < strongs.length; i++) {
 					if (i > 0)
 						writer.write(" ");
-					writer.write(Utils.formatStrongs(nt, i, strongsPrefixes, strongs));
+					writer.write(Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, ""));
 				}
 				writer.write("\"");
 			}
@@ -323,6 +343,10 @@ public class BrowserBible implements ExportFormat {
 			// no dictionary support yet :-(
 			pushSuffix("");
 			return this;
+		}
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
 		}
 	}
 }

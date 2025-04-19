@@ -78,11 +78,7 @@ public class MorphGNT implements ImportFormat {
 					String rmac = convertToRMAC(parts[1], parts[2]);
 					if (!parts[1].equals(convertToPartOfSpeech(rmac)) || !parts[2].equals(convertToParsing(rmac)))
 						throw new RuntimeException(rmac + "/" + parts[1] + "=" + convertToPartOfSpeech(rmac) + "/" + parts[2] + "=" + convertToParsing(rmac));
-					Visitor<RuntimeException> vv = currVisitor.visitGrammarInformation(null, null, new String[] { rmac }, new int[] { idx });
-					vv.visitExtraAttribute(ExtraAttributePriority.SKIP, "osisgrammar", "lemma", "lemma").visitText(parts[6]);
-					if (!parts[5].equals(parts[4])) {
-						vv.visitExtraAttribute(ExtraAttributePriority.SKIP, "morphgnt", "word", "normalized").visitText(parts[5]);
-					}
+					Visitor<RuntimeException> vv = currVisitor.visitGrammarInformation(null, null, null, new String[] { rmac }, new int[] { idx }, new String[] {"lemma", "morphgnt:normalized-word"}, new String[] {parts[6], parts[5]});
 					vv.visitText(parts[4]);
 					currVisitor.visitText(parts[3].substring(pos + parts[4].length()));
 				}

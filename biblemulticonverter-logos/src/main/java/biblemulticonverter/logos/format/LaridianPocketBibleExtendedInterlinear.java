@@ -40,8 +40,8 @@ public class LaridianPocketBibleExtendedInterlinear extends LaridianPocketBible 
 				}
 			}
 
-			public List<String> precalculate(boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
-				return generator.generateLinks(nt, verseReference, strongsPrefixes, strongs, rmac, sourceIndices);
+			public java.util.List<String> precalculate(boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+				return generator.generateLinks(nt, verseReference, strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
 			}
 		};
 
@@ -53,7 +53,7 @@ public class LaridianPocketBibleExtendedInterlinear extends LaridianPocketBible 
 		}
 
 		@Override
-		protected List<String> determineValues(List<String> links, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) {
+		protected List<String> determineValues(List<String> links, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			return links.stream().filter(l -> l.startsWith(linkPrefix)).map(l -> l.substring(linkPrefix.length())).collect(Collectors.toList());
 		}
 	}

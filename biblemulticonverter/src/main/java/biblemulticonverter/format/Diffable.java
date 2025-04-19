@@ -11,7 +11,9 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -20,8 +22,10 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -45,6 +49,8 @@ public class Diffable implements RoundtripFormat {
 
 	public static boolean parseStrongsSuffix = Boolean.getBoolean("biblemulticonverter.roundtrip.parsestrongssuffix");
 	public static boolean writeStrongsSuffix = Boolean.getBoolean("biblemulticonverter.roundtrip.writestrongssuffix");
+	public static boolean parseXrefMarkers = Boolean.getBoolean("biblemulticonverter.roundtrip.parsexrefmarkers");
+	private static boolean separateStrongsPrefix = Boolean.getBoolean("biblemulticonverter.diffable.separateStrongsPrefix");
 
 	@Override
 	public void doExport(Bible bible, String... exportArgs) throws Exception {
@@ -224,6 +230,10 @@ public class Diffable implements RoundtripFormat {
 					tpos++;
 				int aspos = tag.indexOf("=\"", tpos);
 				int aepos = tag.indexOf("\"", aspos + 2);
+				if (tag.startsWith("grammar ") && tag.substring(tpos, aspos).equals("attr")) {
+					aepos = tag.indexOf(" \"", aspos + 2);
+					if (aepos != -1) aepos++;
+				}
 				if (aspos == -1 || aepos == -1)
 					throw new IOException("Malformed tag: <" + tag + ">");
 				tagArgs.put(tag.substring(tpos, aspos), tag.substring(aspos + 2, aepos));
@@ -251,7 +261,16 @@ public class Diffable implements RoundtripFormat {
 				break;
 			case "fn":
 				visitorStack.add(visitor);
-				visitor = visitor.visitFootnote();
+				boolean ofCrossReferences = false;
+				if (parseXrefMarkers && line.startsWith(FormattedText.XREF_MARKER, lastPos)) {
+					lastPos += FormattedText.XREF_MARKER.length();
+					ofCrossReferences = true;
+				}
+				visitor = visitor.visitFootnote(ofCrossReferences);
+				break;
+			case "fx":
+				visitorStack.add(visitor);
+				visitor = visitor.visitFootnote(true);
 				break;
 			case "css":
 				validateTagArgs(tag, tagArgs, "style");
@@ -263,30 +282,90 @@ public class Diffable implements RoundtripFormat {
 				break;
 			case "br":
 				validateTagArgs(tag, tagArgs, "kind");
-				visitor.visitLineBreak(LineBreakKind.valueOf(tagArgs.get("kind")));
+				String lbk = tagArgs.get("kind");
+				if (tagArgs.containsKey("indent")) {
+					visitor.visitLineBreak(ExtendedLineBreakKind.valueOf(lbk), Integer.parseInt(tagArgs.get("indent")));
+				} else if (lbk.equals(LineBreakKind.NEWLINE_WITH_INDENT.name())) {
+					visitor.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 1);
+				} else {
+					visitor.visitLineBreak(ExtendedLineBreakKind.valueOf(lbk), 0);
+				}
 				break;
 			case "grammar":
 				validateTagArgs(tag, tagArgs, "strong", "rmac", "idx");
 				visitorStack.add(visitor);
-				char[] pfx;
+				char[] pfx, sfx;
 				int[] strongs;
+				String[] attrKeys, attrVals;
 				if (parseStrongsSuffix && !tagArgs.get("strong").isEmpty() && !tagArgs.containsKey("strongpfx")) {
 					String[] formattedStrongs = tagArgs.get("strong").split(",");
 					pfx = new char[formattedStrongs.length];
+					sfx = new char[formattedStrongs.length];
 					strongs = new int[formattedStrongs.length];
-					char[] prefixHolder = new char[1];
+					char[] prefixSuffixHolder = new char[2];
+					boolean hasSuffix = false;
 					for (int i = 0; i < formattedStrongs.length; i++) {
-						strongs[i] = Utils.parseStrongs(formattedStrongs[i], '?', prefixHolder);
-						pfx[i] = prefixHolder[0];
+						strongs[i] = Utils.parseStrongs(formattedStrongs[i], '?', prefixSuffixHolder);
+						pfx[i] = prefixSuffixHolder[0];
+						sfx[i] = prefixSuffixHolder[1];
+						hasSuffix = sfx[i] != ' ';
 					}
 					if (pfx[0] == '?') {
 						pfx = null;
 					}
-				} else {
-					pfx = tagArgs.containsKey("strongpfx") ? tagArgs.get("strongpfx").toCharArray() : null;
+					if (!hasSuffix) {
+						sfx = null;
+					}
+				} else if (tagArgs.containsKey("strongpfx")){
+					pfx = tagArgs.get("strongpfx").toCharArray();
+					sfx = null;
 					strongs = intArray(tagArgs.get("strong"));
+				} else if (tagArgs.get("strong").isEmpty()) {
+					pfx = null;
+					sfx = null;
+					strongs = null;
+				} else {
+					pfx = null;
+					sfx = null;
+					String[] parts = tagArgs.get("strong").split(",");
+					if (tagArgs.get("strong").endsWith(",")) {
+						sfx = new char[parts.length];
+						Arrays.fill(sfx, ' ');
+					}
+					strongs = new int[parts.length];
+					for (int i = 0; i < strongs.length; i++) {
+						String p = parts[i];
+						if (p.charAt(0) >= 'A' && p.charAt(0) <= 'Z') {
+							if (pfx == null) {
+								pfx = new char[parts.length];
+							}
+							pfx[i] = p.charAt(0);
+							p = p.substring(1);
+						}
+						if (p.charAt(p.length()-1) >='A') {
+							if (sfx == null) {
+								sfx = new char[parts.length];
+								Arrays.fill(sfx, ' ');
+							}
+							sfx[i] = p.charAt(p.length()-1);
+							p = p.substring(0, p.length()-1);
+						}
+						strongs[i] = Integer.parseInt(p);
+					}
 				}
-				visitor = visitor.visitGrammarInformation(pfx, strongs, tagArgs.get("rmac").length() == 0 ? null : tagArgs.get("rmac").split(","), intArray(tagArgs.get("idx")));
+				if (tagArgs.containsKey("attr")) {
+					String[] attrs = tagArgs.get("attr").split(" ");
+					attrKeys = new String[attrs.length];
+					attrVals = new String[attrs.length];
+					for (int i = 0; i < attrs.length; i++) {
+						String[] parts = attrs[i].split("=", 2);
+						attrKeys[i] = parts[0];
+						attrVals[i] = parts[1].replace("&q", "\"").replace("&g", ">").replace("&a", "&");
+					}
+				} else {
+					attrKeys = attrVals = null;
+				}
+				visitor = visitor.visitGrammarInformation(pfx, strongs, sfx, tagArgs.get("rmac").length() == 0 ? null : tagArgs.get("rmac").split(","), intArray(tagArgs.get("idx")), attrKeys, attrVals);
 				break;
 			case "dict":
 				validateTagArgs(tag, tagArgs, "dictionary", "entry");
@@ -298,6 +377,17 @@ public class Diffable implements RoundtripFormat {
 				visitorStack.add(visitor);
 				visitor = visitor.visitVariationText(tagArgs.get("vars").split(","));
 				break;
+			case "speaker":
+				validateTagArgs(tag, tagArgs, "who");
+				visitorStack.add(visitor);
+				visitor = visitor.visitSpeaker(tagArgs.get("who"));
+				break;
+			case "hyperlink":
+				validateTagArgs(tag, tagArgs, "type", "target");
+				visitorStack.add(visitor);
+				visitor = visitor.visitHyperlink(HyperlinkType.valueOf(tagArgs.get("type")), tagArgs.get("target"));
+				break;
+
 			case "extra":
 				validateTagArgs(tag, tagArgs, "prio", "category", "key", "value");
 				visitorStack.add(visitor);
@@ -305,12 +395,20 @@ public class Diffable implements RoundtripFormat {
 				break;
 			case "xref":
 				validateTagArgs(tag, tagArgs, "abbr", "id", "chapters", "verses");
+				String[] abbrs = tagArgs.get("abbr").split(":");
+				String[] ids = tagArgs.get("id").split(":");
 				String[] chapters = tagArgs.get("chapters").split(":");
 				String[] verses = tagArgs.get("verses").split(":");
-				if (chapters.length != 2 || verses.length != 2)
-					throw new IOException("Malformed \"abbr\" tag arguments: " + tagArgs);
+				if (abbrs.length == 1) abbrs = new String[] { abbrs[0], abbrs[0] };
+				if (ids.length == 1) ids = new String[] { ids[0], ids[0] };
+				if (chapters.length == 1 && chapters[0].equals("*")) chapters = new String[] { "1", "-1" };
+				else if (chapters.length == 1) chapters = new String[] { chapters[0], chapters[0] };
+				if (verses.length == 1 && verses[0].equals("*")) verses = new String[] { "1", "*" };
+				else if (verses.length == 1) verses = new String[] { verses[0], verses[0] };
+				if (abbrs.length != 2 || ids.length != 2 || chapters.length != 2 || verses.length != 2)
+					throw new IOException("Malformed \"xref\" tag arguments: " + tagArgs);
 				visitorStack.add(visitor);
-				visitor = visitor.visitCrossReference(tagArgs.get("abbr"), BookID.fromOsisId(tagArgs.get("id")), Integer.parseInt(chapters[0]), verses[0], Integer.parseInt(chapters[1]), verses[1]);
+				visitor = visitor.visitCrossReference(abbrs[0], BookID.fromOsisId(ids[0]), Integer.parseInt(chapters[0]), verses[0], abbrs[1], BookID.fromOsisId(ids[1]), Integer.parseInt(chapters[1]), verses[1]);
 				break;
 			default:
 				throw new IOException("Unsupported tag: " + tag);
@@ -385,16 +483,20 @@ public class Diffable implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
 			checkLine();
-			w.write("<fn>");
+			w.write(ofCrossReferences ? "<fx>" : "<fn>");
 			return childVisitor;
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
 			checkLine();
-			w.write("<xref abbr=\"" + bookAbbr + "\" id=\"" + book.getOsisID() + "\" chapters=\"" + firstChapter + ":" + lastChapter + "\" verses=\"" + firstVerse + ":" + lastVerse + "\">");
+			String bookAbbr =firstBookAbbr + (firstBookAbbr.equals(lastBookAbbr) ? "" : ":"+ lastBookAbbr);
+			String book =firstBook.getOsisID() + (firstBook == lastBook ? "" : ":"+ lastBook.getOsisID());
+			String chapters = lastChapter == -1 ? "*" : firstChapter + ":" + lastChapter;
+			String verses = lastVerse.equals("*") ? "*" : firstVerse + ":" + lastVerse;
+			w.write("<xref abbr=\"" + bookAbbr + "\" id=\"" + book + "\" chapters=\"" + chapters + "\" verses=\"" + verses + "\">");
 			return childVisitor;
 		}
 
@@ -419,24 +521,30 @@ public class Diffable implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws IOException {
 			checkLine();
-			w.write("<br kind=\"" + kind.name() + "\"/>");
+			if (kind == ExtendedLineBreakKind.NEWLINE && indent == 1) {
+				w.write("<br kind=\"" + LineBreakKind.NEWLINE_WITH_INDENT.name() + "\"/>");
+			} else if (indent == 0) {
+				w.write("<br kind=\"" + kind.name() + "\"/>");
+			} else {
+				w.write("<br kind=\"" + kind.name() + "\" indent=\"" + indent + "\"/>");
+			}
 			if (linePrefix != null)
 				startNewLine = true;
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			checkLine();
 			w.write("<grammar strong=\"");
-			if (writeStrongsSuffix && strongsPrefixes != null && strongs != null) {
+			if (writeStrongsSuffix && (strongsPrefixes != null || strongsSuffixes == null) && strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
 					if (i > 0)
 						w.write(',');
-					w.write(Utils.formatStrongs(false, i, strongsPrefixes, strongs));
+					w.write(Utils.formatStrongs(false, i, strongsPrefixes, strongs, strongsSuffixes, ""));
 				}
-			} else {
+			} else if (separateStrongsPrefix && strongsSuffixes == null){
 				if (strongs != null) {
 					for (int i = 0; i < strongs.length; i++) {
 						if (i > 0)
@@ -447,6 +555,23 @@ public class Diffable implements RoundtripFormat {
 				if (strongsPrefixes != null) {
 					w.write("\" strongpfx=\"");
 					w.write(strongsPrefixes);
+				}
+			} else if (strongs != null) {
+				boolean hasSuffixes = false;
+				for (int i = 0; i < strongs.length; i++) {
+					if (i > 0)
+						w.write(',');
+					if (strongsPrefixes != null) {
+						w.write(strongsPrefixes[i]);
+					}
+					w.write("" + strongs[i]);
+					if (strongsSuffixes != null && strongsSuffixes[i] != ' ') {
+						hasSuffixes = true;
+						w.write(strongsSuffixes[i]);
+					}
+				}
+				if (strongsSuffixes != null && !hasSuffixes) {
+					w.write(","); // marker for roundtrip
 				}
 			}
 			w.write("\" rmac=\"");
@@ -463,6 +588,12 @@ public class Diffable implements RoundtripFormat {
 					if (i > 0)
 						w.write(',');
 					w.write("" + sourceIndices[i]);
+				}
+			}
+			if (attributeKeys != null) {
+				w.write("\" attr=\"");
+				for(int i=0; i<attributeKeys.length; i++) {
+					w.write(attributeKeys[i] + "=" + attributeValues[i].replace("&", "&a").replace(">", "&g").replace("\"", "&q") + " ");
 				}
 			}
 			w.write("\">");
@@ -495,6 +626,20 @@ public class Diffable implements RoundtripFormat {
 				w.write(variations[i]);
 			}
 			w.write("\">");
+			return childVisitor;
+		}
+
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			checkLine();
+			w.write("<speaker who=\"" + labelOrStrongs + "\">");
+			return childVisitor;
+		}
+
+		@Override
+		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			checkLine();
+			w.write("<hyperlink type=\"" + type.name() + "\" target=\"" + target + "\">");
 			return childVisitor;
 		}
 

@@ -55,6 +55,9 @@ modules without loss of data:
 - **RoundtripHTML**: HTML format that can be read back if desired (originally
   intended for publishing on free website hosters, but with the advent of free
   file hosters this feature is pretty much obsolete).
+- **RoundtripStructuredHTML**: Similar to above, but converts the structure (i. e.
+  paragraphs, headlines, tables) as toplevel elements, and not the verses. Often results
+  in better HTML when converting from Paratext formats.
 - **RoundtripODT**: Export as an editable .odt (OpenOffice/LibreOffice Document
   Text), which can be edited in LibreOffice (tested with LibreOffice 6.0) and later
   imported again. Large bibles can take a minute or so to open in LibreOffice 6, which
@@ -168,6 +171,71 @@ Planned formats
 EPUB export is planned (but not high priority at the moment).
 
 If you want to see any other formats, feel free to open an issue (or a pull request :-D).
+
+
+New `FormattedText` Model
+-------------------------
+
+BibleMultiConverter is currently switching to a new `FormattedText` model (intermediate format) which can
+handle USX3 and USFM3 inputs better. Some formats are **not** yet converted, and therefore are still
+limited to the old intermediate format.
+
+**Status:**
+
+| Format                               | Implementation *(missing features*)      | Testing        |
+| ------------------------------------ | ---------------------------------------- | -------------- |
+| `NeUeParser`                         | complete                                 | extensive      |
+| `Validate`                           | complete                                 | partial        |
+| `Compact`                            | complete                                 | unit tests     |
+| `Diffable`                           | complete                                 | unit tests     |
+| `RoundtripTaggedText`                | complete                                 | unit tests     |
+| `RoundtripXML`                       | complete                                 | unit tests     |
+| `AbstractParatextFormat`             | partial *(maybe complete?)*              | unit tests     |
+| `RoundtripHTML`                      | partial *(Show `ga-` attributes)*        | partial        |
+| `RoundtripStructuredHTML`            | partial *(Show `ga-` attributes)*        | partial        |
+| `RoundtripODT`                       | partial *(Handling of hyperlinks)*       | unit tests     |
+| `LaridianPocketBible`    (2x)        | complete                                 | partial        |
+| `AbstractVersificationDetector`      | complete                                 | none           |
+| `AugmentGrammar`                     | complete                                 | none           |
+| `AugmentLogosLinks`                  | complete                                 | none           |
+| `BebliaXML`                          | complete                                 | none           |
+| `LogosRenumberedDiffable`            | complete                                 | none           |
+| `MorphGNT`                           | complete                                 | none           |
+| `OldDiffable`                        | complete                                 | none           |
+| `ReplaceStrongs`                     | complete                                 | none           |
+| `SimpleJSON`                         | complete                                 | none           |
+| `StrippedDiffable`                   | complete                                 | none           |
+| `TranslatorsAmalgamated`             | complete                                 | none           |
+| `VersificationCountsDetector`        | complete                                 | none           |
+| `VersificationMappedDiffable`        | complete                                 | none           |
+| `Accordance`                         | partial                                  | none           |
+| `LogosHTML`                          | partial                                  | partial        |
+| `MobiPocket`                         | partial                                  | none           |
+| `MyBibleZone`                        | partial                                  | none           |
+| `OSIS` + `SWORD`                     | partial                                  | none           |
+| `BibleAnalyzerDatabase`              | minimal                                  | none           |
+| `BibleWorks`                         | minimal                                  | none           |
+| `BrowserBible`                       | minimal                                  | none           |
+| `ESwordHTML`                         | minimal                                  | none           |
+| `ESwordV11`                          | minimal                                  | none           |
+| `EquipdEPUB`                         | minimal                                  | none           |
+| `HaggaiXML`                          | minimal                                  | none           |
+| `MyBibleZoneCrossreferences`         | minimal                                  | none           |
+| `MySword`                            | minimal                                  | none           |
+| `OSHB`                               | minimal                                  | none           |
+| `Obsidian`                           | minimal                                  | none           |
+| `OnLineBible`                        | minimal                                  | none           |
+| `QuickBible`                         | minimal                                  | none           |
+| `SoftProjector`                      | minimal                                  | none           |
+| `StrongConcordance`                  | minimal                                  | none           |
+| `StrongDictionary`                   | minimal                                  | none           |
+| `SwordSearcher`                      | minimal                                  | none           |
+| `TheWord`                            | minimal                                  | none           |
+| `UnboundBible`                       | minimal                                  | none           |
+| `Volksbibel2000`                     | minimal                                  | none           |
+| `YCHPalmBible`                       | minimal                                  | none           |
+| `ZefDic` *(2x)*                      | minimal                                  | none           |
+| `ZefaniaXML` *(3x)*                  | minimal                                  | none           |
 
 
 Limitations

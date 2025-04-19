@@ -17,6 +17,7 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
@@ -84,7 +85,7 @@ public class YCHPalmBible implements RoundtripFormat {
 				}
 
 				@Override
-				public void visitLineBreak(LineBreakKind kind) throws IOException {
+				public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
 					bw.write(" ");
 				}
 			};

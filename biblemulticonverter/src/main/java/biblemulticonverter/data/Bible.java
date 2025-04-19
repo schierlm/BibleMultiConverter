@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import biblemulticonverter.data.FormattedText.ValidationCategory;
+
 /**
  * Represents a complete bible. A bible has a name and a list of books.
  */
@@ -45,10 +47,12 @@ public class Bible {
 		Set<String> bookAbbrs = new HashSet<String>();
 		Set<String> bookShortNames = new HashSet<String>();
 		Set<String> bookLongNames = new HashSet<String>();
+		Set<String> internalAnchors = new HashSet<String>();
+		Set<String> internalLinks = new HashSet<String>();
 		if (books.size() == 0)
 			FormattedText.ValidationCategory.BIBLE_WITHOUT_BOOKS.throwOrRecord("@", validationCategories, "");
 		for (Book book : books) {
-			book.validate(this, danglingReferences, dictionaryEntries, validationCategories);
+			book.validate(this, danglingReferences, dictionaryEntries, validationCategories, internalAnchors, internalLinks);
 			if (book.getId() == BookID.METADATA) {
 				if (books.size() == 1)
 					FormattedText.ValidationCategory.ONLY_METADATA_BOOK.throwOrRecord("@", validationCategories, "");
@@ -63,6 +67,10 @@ public class Bible {
 			}
 			if (!bookAbbrs.add(book.getAbbr()) || !bookShortNames.add(book.getShortName()) || !bookLongNames.add(book.getLongName()))
 				FormattedText.ValidationCategory.DUPLICATE_BOOK_REFERENCE.throwOrRecord(book.getAbbr(), validationCategories, "" + book.getId());
+		}
+		if (!internalAnchors.containsAll(internalLinks)) {
+			internalLinks.removeAll(internalAnchors);
+			ValidationCategory.MISSING_INTERNAL_ANCHOR.throwOrRecord("@", validationCategories, internalLinks.toString());
 		}
 	}
 

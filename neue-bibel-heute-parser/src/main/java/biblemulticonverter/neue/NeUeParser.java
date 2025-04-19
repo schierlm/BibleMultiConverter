@@ -8,7 +8,9 @@ import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -17,11 +19,11 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
-import biblemulticonverter.data.FormattedText.LineBreakKind;
-import biblemulticonverter.data.FormattedText.RawHTMLMode;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.MetadataBook.MetadataBookKey;
@@ -109,6 +111,8 @@ public class NeUeParser implements ImportFormat {
 			"03 monate", "04 woche", "05 auferst"
 	};
 
+	private Set<String> foundAnchors = new HashSet<>();
+
 	@Override
 	public Bible doImport(File inputDirectory) throws Exception {
 		Bible bible = new Bible("NeÜ bibel.heute (Neue evangelistische Übersetzung)");
@@ -185,6 +189,9 @@ public class NeUeParser implements ImportFormat {
 			bible.getBooks().add(vorwort);
 			Visitor<RuntimeException> vv = getPrologVisitor(vorwort);
 
+			foundAnchors.add("vorwort");
+			vv.visitHyperlink(HyperlinkType.ANCHOR, "vorwort");
+
 			boolean needParagraph = false;
 			if (line.endsWith("</a><br>"))
 				line = br.readLine().trim();
@@ -198,16 +205,21 @@ public class NeUeParser implements ImportFormat {
 					parseFormattedText(vv.visitHeadline(1), cutAffix(line, "<h4>", "</h4>"), null, null);
 					needParagraph = false;
 				} else if (line.startsWith("<h4 id=")) {
+					String id = line.replaceFirst("<h4 id=\"([a-z]+)\">.*", "$1");
+					if (!id.matches("[a-z]+"))
+						throw new IOException(id);
+					foundAnchors.add(id);
+					vv.visitHyperlink(HyperlinkType.ANCHOR, id);
 					parseFormattedText(vv.visitHeadline(1), cutAffix(line.replaceFirst("<h4 id=\"[a-z]+\">(</a>)?", ""), "<a href=\"#vorwort\"> /^\\</a> ", "</h4>"), null, null);
 					needParagraph = false;
 				} else if (line.startsWith("<div class=\"fn\">")) {
 					if (needParagraph)
-						vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+						vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					needParagraph = true;
 					parseFormattedText(vv.visitFormattingInstruction(FormattingInstructionKind.ITALIC), cutAffix(line, "<div class=\"fn\">", "</div>"), null, null);
 				} else if (line.startsWith("<p>")) {
 					if (needParagraph)
-						vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+						vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					needParagraph = true;
 					if (line.endsWith("<br />"))
 						line += br.readLine().trim();
@@ -250,14 +262,14 @@ public class NeUeParser implements ImportFormat {
 					if (firstProlog) {
 						firstProlog = false;
 					} else {
-						prolog.getAppendVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
+						prolog.getAppendVisitor().visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					}
 					parseFormattedText(prolog.getAppendVisitor(), cutAffix(line, "<div class=\"e\">", "</div>"), bm, null);
 					line = skipLines(br);
 				}
 				if (firstProlog)
 					throw new IOException(line);
-				prolog.getAppendVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
+				prolog.getAppendVisitor().visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 				parseFormattedText(prolog.getAppendVisitor().visitFormattingInstruction(FormattingInstructionKind.BOLD).visitFormattingInstruction(FormattingInstructionKind.ITALIC), cutAffix(line, "<p class=\"u1\">", "</p>"), bm, null);
 				prolog.finished();
 				line = skipLines(br);
@@ -328,7 +340,11 @@ public class NeUeParser implements ImportFormat {
 						Matcher m = p.matcher(replaceEntities(headline));
 						if (m.matches()) {
 							hl.getAppendVisitor().visitText(m.group(1));
-							hl.getAppendVisitor().visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "logos", "chapter-range", m.group(2)).visitText(m.group(2));
+							String[] chapParts = m.group(2).split("-", 2);
+							if (chapParts.length == 1) {
+								chapParts = new String[] {chapParts[0], chapParts[0]};
+							}
+							hl.getAppendVisitor().visitCrossReference(bk.getAbbr(), bk.getId(), Integer.parseInt(chapParts[0]), "1", bk.getAbbr(), bk.getId(), Integer.parseInt(chapParts[1]), "*").visitText(m.group(2));
 							hl.getAppendVisitor().visitText(m.group(3));
 						} else {
 							hl.getAppendVisitor().visitText(replaceEntities(headline));
@@ -365,7 +381,7 @@ public class NeUeParser implements ImportFormat {
 						headlines.clear();
 						parseFormattedText(currentVerse.getAppendVisitor(), line, bm, newFootnotes);
 						if (!inParagraph)
-							currentVerse.getAppendVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
+							currentVerse.getAppendVisitor().visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 						currentChapter.getVerses().add(currentVerse);
 					} else if (inParagraph && line.startsWith("<a href=\"#top\"><span class=\"kap\">")) {
 						String num = cutAffix(line, "<a href=\"#top\"><span class=\"kap\">", "</span></a>");
@@ -403,7 +419,7 @@ public class NeUeParser implements ImportFormat {
 						line = line.trim();
 						parseFormattedText(currentVerse.getAppendVisitor(), line, bm, newFootnotes);
 						if (!inParagraph)
-							currentVerse.getAppendVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
+							currentVerse.getAppendVisitor().visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					} else {
 						System.err.println("Next line: " + br.readLine());
 						throw new IOException(line);
@@ -464,7 +480,7 @@ public class NeUeParser implements ImportFormat {
 					String[] parts = cutAffix(line, "<td valign=\"top\"><a href=\"", "</a></td>").split(".html\">", 2);
 					line = br.readLine().trim().replaceAll("> +<", "><").replace("html#u", "html");
 					if (line.contains("<td><br /><br /><a href")) {
-						vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+						vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 						line = line.replace("<td><br /><br /><a href", "<td><a href");
 					}
 					String title = cutAffix(line, "<td><a href=\"" + parts[0] + ".html\">", "</a><br />");
@@ -476,15 +492,15 @@ public class NeUeParser implements ImportFormat {
 							break;
 						}
 					}
-					bold.visitCrossReference(m.abbr, m.id, 1, "1", 1, "1").visitText(replaceEntities(parts[1].replace("-", "")));
+					bold.visitCrossReference(m.abbr, m.id, 1, "1", m.abbr, m.id, -1, "*").visitText(replaceEntities(parts[1].replace("-", "")));
 					bold.visitText(" " + replaceEntities(title));
-					vv.visitLineBreak(LineBreakKind.NEWLINE);
+					vv.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 
 					line = br.readLine().trim();
 					while (!line.endsWith("</td>"))
 						line += " " + br.readLine().trim();
 					vv.visitText(replaceEntities(cutAffix(line, "", "</td>")));
-					vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+					vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					line = br.readLine().trim();
 					if (!line.equals("</tr>"))
 						throw new IOException(line);
@@ -500,11 +516,7 @@ public class NeUeParser implements ImportFormat {
 
 		// Hesekiels Tempel
 		vv.visitHeadline(1).visitText("Hesekiels Tempel");
-		Visitor<RuntimeException> vvv = vv.visitFormattingInstruction(FormattingInstructionKind.LINK);
-		vvv.visitRawHTML(RawHTMLMode.OFFLINE, "<a href=\"https://neue.derbibelvertrauen.de/Hesekiels%20Tempel.gif\" target=\"_blank\">");
-		vvv.visitFormattingInstruction(FormattingInstructionKind.BOLD).visitText("Rekonstruktionszeichnung");
-		vvv.visitRawHTML(RawHTMLMode.OFFLINE, "</a>");
-		vv.visitRawHTML(RawHTMLMode.ONLINE, "<br /><img src=\"https://neue.derbibelvertrauen.de/Hesekiels%20Tempel.gif\" width=\"640\" height=\"635\">");
+		vv.visitHyperlink(HyperlinkType.IMAGE, "https://neue.derbibelvertrauen.de/Hesekiels%20Tempel.gif").visitFormattingInstruction(FormattingInstructionKind.BOLD).visitText("Rekonstruktionszeichnung");
 		if (quoteDepth != 0)
 			throw new IOException(""+quoteDepth);
 
@@ -543,27 +555,27 @@ public class NeUeParser implements ImportFormat {
 					} else if (line.startsWith("<p><div class=\"rot\">")) {
 						String text = cutAffix(line, "<p><div class=\"rot\">", "<!--/DATE--></div></p>").replace("<!--DATE-->", "");
 						parseFormattedText(vv.visitFormattingInstruction(FormattingInstructionKind.ITALIC), text, null, null);
-						vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+						vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					} else if (line.startsWith("<p><b>") && line.contains("</b><br />")) {
 						int pos = line.indexOf("</b><br />");
 						parseJesusChronikText(vv.visitHeadline(3), line.substring(6, pos), footnotePrefixes, footnoteList);
 						String xref =  cutAffix(line.substring(pos),"</b><br />", "</p>");
 						if (!xref.isEmpty())
 							parseJesusChronikText(vv.visitFormattingInstruction(FormattingInstructionKind.ITALIC),xref, footnotePrefixes, footnoteList);
-						vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+						vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					} else if (line.startsWith("<p>")) {
 						parseJesusChronikText(vv, cutAffix(line, "<p>", "</p>"), footnotePrefixes, footnoteList);
-						vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+						vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					} else if (line.startsWith("&copy;")) {
 						while (!line.endsWith("</div>"))
 							line += " " + br.readLine().trim();
 						parseFormattedText(vv, cutAffix(line, "", "</div>"), null, null);
-						vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+						vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					} else if (line.startsWith("<div class=\"e\">")) {
 						while (!line.endsWith("</div>"))
 							line += " " + br.readLine().trim();
 						parseFormattedText(vv.visitFormattingInstruction(FormattingInstructionKind.ITALIC), cutAffix(line, "<div class=\"e\">", "</div>"), null, null);
-						vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+						vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					} else {
 						throw new IOException(line);
 					}
@@ -650,7 +662,9 @@ public class NeUeParser implements ImportFormat {
 					filename = null;
 					verse = chapter = toVerse = toChapter = null;
 				} else if (linkTarget.endsWith(".html")) {
-					verse = chapter = toVerse = toChapter = "1";
+					verse = chapter = "1";
+					toChapter = "-1";
+					toVerse = "*";
 					filename = linkTarget;
 				} else {
 					String matchText = text;
@@ -698,7 +712,14 @@ public class NeUeParser implements ImportFormat {
 					}
 				}
 				if (verse == null) {
-					v.visitFormattingInstruction(FormattingInstructionKind.LINK).visitText(text);
+					if (linkTarget.startsWith("https://")) {
+						v.visitHyperlink(HyperlinkType.EXTERNAL_LINK, linkTarget).visitText(text);
+					} else if (linkTarget.startsWith("index.html#") && foundAnchors.contains(linkTarget.substring(11))) {
+						v.visitHyperlink(HyperlinkType.INTERNAL_LINK, linkTarget.substring(10)).visitText(text);
+					} else {
+						throw new IOException("Unsupported link "+ text+" to "+linkTarget+" // "+foundAnchors);
+					}
+
 				} else {
 					BookMetadata m = null;
 					if (filename == null) {
@@ -716,17 +737,17 @@ public class NeUeParser implements ImportFormat {
 					if (footnoteList != null) {
 						throw new IOException("Cross reference in verse: " + html);
 					}
-					v.visitCrossReference(m.abbr, m.id, Integer.parseInt(chapter), verse, Integer.parseInt(toChapter), toVerse).visitText(text);
+					v.visitCrossReference(m.abbr, m.id, Integer.parseInt(chapter), verse, m.abbr, m.id, Integer.parseInt(toChapter), toVerse).visitText(text);
 				}
 				pos = pos2 + 4;
 			} else if (html.startsWith("<br />", tagPos)) {
-				v.visitLineBreak(LineBreakKind.NEWLINE);
+				v.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 				pos = tagPos + 6;
 			} else if (html.startsWith("<br/>", tagPos)) {
-				v.visitLineBreak(LineBreakKind.NEWLINE);
+				v.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 				pos = tagPos + 5;
 			} else if (html.startsWith("<br>", tagPos)) {
-				v.visitLineBreak(LineBreakKind.NEWLINE);
+				v.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 				pos = tagPos + 4;
 			} else if (html.startsWith("<a name=\"", tagPos)) {
 				if (!html.substring(tagPos).matches("<a name=\"[a-z0-9]+\"></a>"))
@@ -769,7 +790,7 @@ public class NeUeParser implements ImportFormat {
 				break;
 			v.visitText(text.substring(0, pos));
 			if (text.startsWith("*", pos)) {
-				footnoteList.add(v.visitFootnote());
+				footnoteList.add(v.visitFootnote(false));
 				text = text.substring(pos + 1);
 			} else if (text.startsWith(" / ", pos)) {
 				v.visitText(" ");

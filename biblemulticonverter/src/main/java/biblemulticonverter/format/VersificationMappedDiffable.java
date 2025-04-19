@@ -16,9 +16,9 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
-import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.Verse;
@@ -165,7 +165,8 @@ public class VersificationMappedDiffable implements ExportFormat {
 							FormattedText newProlog = new FormattedText();
 							if (newChapter.getProlog() != null) {
 								newChapter.getProlog().accept(newProlog.getAppendVisitor());
-								newProlog.getAppendVisitor().visitLineBreak(LineBreakKind.PARAGRAPH);
+								Visitor<RuntimeException> r = newProlog.getAppendVisitor();
+								r.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 							}
 							unmappedVerse.prolog.accept(new MapXrefVisitor(newProlog.getAppendVisitor(), vm, dropUnmapped, cloneVerses, abbrMap));
 							newProlog.finished();
@@ -288,14 +289,14 @@ public class VersificationMappedDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-			Reference ref = new Reference(book, firstChapter, firstVerse), newRef;
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws RuntimeException {
+			Reference ref = new Reference(firstBook, firstChapter, firstVerse), newRef;
 			List<Reference> newRefs = vm.getMapping(ref);
 			if ((newRefs == null || newRefs.isEmpty()) && dropUnmapped) {
 				return next;
 			}
-			if (cloneVerses) {
-				Reference endRef = new Reference(book, lastChapter, lastVerse), newEndRef;
+			if (cloneVerses && !lastVerse.equals("*")) {
+				Reference endRef = new Reference(lastBook, lastChapter, lastVerse), newEndRef;
 				List<Reference> newEndRefs = vm.getMapping(endRef);
 				if ((newEndRefs == null || newEndRefs.isEmpty()) && dropUnmapped) {
 					return next;
@@ -310,27 +311,33 @@ public class VersificationMappedDiffable implements ExportFormat {
 					newEndRef = newEndRefs.get(newEndRefs.size()-1);
 				if (newRef.getBook() != newEndRef.getBook())
 					newEndRef = newRef;
-				String newAbbr;
-				if (book == newRef.getBook())
-					newAbbr = bookAbbr;
+				String newAbbr, newEndAbbr;
+				if (firstBook == newRef.getBook())
+					newAbbr = firstBookAbbr;
 				else if (abbrMap.containsKey(newRef.getBook()))
 					newAbbr = abbrMap.get(newRef.getBook());
 				else
 					newAbbr = newRef.getBook().getOsisID();
-				return next.visitCrossReference(newAbbr, newRef.getBook(), newRef.getChapter(), newRef.getVerse(), newEndRef.getChapter(), newEndRef.getVerse());
+				if (lastBook == newEndRef.getBook())
+					newEndAbbr = lastBookAbbr;
+				else if (abbrMap.containsKey(newEndRef.getBook()))
+					newEndAbbr = abbrMap.get(newEndRef.getBook());
+				else
+					newEndAbbr = newEndRef.getBook().getOsisID();
+				return next.visitCrossReference(newAbbr, newRef.getBook(), newRef.getChapter(), newRef.getVerse(), newEndAbbr, newEndRef.getBook(), newEndRef.getChapter(), newEndRef.getVerse());
 			}
 			if (newRefs == null || newRefs.contains(ref) || newRefs.isEmpty())
 				newRef = ref;
 			else
 				newRef = newRefs.get(0);
 			String newAbbr;
-			if (book == newRef.getBook())
-				newAbbr = bookAbbr;
+			if (firstBook == newRef.getBook())
+				newAbbr = firstBookAbbr;
 			else if (abbrMap.containsKey(newRef.getBook()))
 				newAbbr = abbrMap.get(newRef.getBook());
 			else
 				newAbbr = newRef.getBook().getOsisID();
-			return next.visitCrossReference(newAbbr, newRef.getBook(), newRef.getChapter(), newRef.getVerse(), newRef.getChapter(), newRef.getVerse());
+			return next.visitCrossReference(newAbbr, newRef.getBook(), newRef.getChapter(), newRef.getVerse(), newAbbr, newRef.getBook(), newRef.getChapter(), newRef.getVerse());
 		}
 	}
 }

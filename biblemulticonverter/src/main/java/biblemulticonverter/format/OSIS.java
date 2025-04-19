@@ -34,10 +34,11 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.Headline;
-import biblemulticonverter.data.FormattedText.LineBreakKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
@@ -641,9 +642,9 @@ public class OSIS implements RoundtripFormat {
 
 	private void parseStructuredTextElement(Visitor<RuntimeException> vv, Element elem) {
 		if (elem.getNodeName().equals("lb")) {
-			vv.visitLineBreak(LineBreakKind.NEWLINE);
+			vv.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
 		} else if (elem.getNodeName().equals("brp")) {
-			vv.visitLineBreak(LineBreakKind.PARAGRAPH);
+			vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 		} else if (elem.getNodeName().equals("divineName")) {
 			parseStructuredTextChildren(vv.visitFormattingInstruction(FormattingInstructionKind.DIVINE_NAME), elem);
 		} else if (elem.getNodeName().equals("woj")) {
@@ -700,7 +701,7 @@ public class OSIS implements RoundtripFormat {
 			}
 		} else if (elem.getNodeName().equals("note")) {
 			if (elem.getAttribute("type").equals("crossReference")) {
-				Visitor<RuntimeException> fn = vv.visitFootnote();
+				Visitor<RuntimeException> fn = vv.visitFootnote(false);
 				fn.visitText(FormattedText.XREF_MARKER);
 				if (elem.getFirstChild() != null && elem.getFirstChild().getNodeName().equals("reference")) {
 					for (Node n = elem.getFirstChild(); n != null; n = n.getNextSibling()) {
@@ -718,7 +719,8 @@ public class OSIS implements RoundtripFormat {
 						BookID bookID = BookID.fromOsisId(ref[0]);
 						int ch = Integer.parseInt(ref[1]);
 						String vs = ref[2];
-						fn.visitCrossReference(ref[0], bookID, ch, vs, ch, vs).visitText(e.getTextContent());
+						String bookAbbr = ref[0];
+						fn.visitCrossReference(bookAbbr, bookID, ch, vs, bookAbbr, bookID, ch, vs).visitText(e.getTextContent());
 					}
 				} else if (elem.getTextContent().length() > 0) {
 					// OSIS converted from USFM contains a reference back to the verse itself
@@ -764,7 +766,7 @@ public class OSIS implements RoundtripFormat {
 							BookID bookID = BookID.fromOsisId(book);
 							int ch = Integer.parseInt(m.group(2));
 							String vs = m.group(3);
-							fn.visitCrossReference(book, bookID, ch, vs, ch, vs).visitText(ref);
+							fn.visitCrossReference(book, bookID, ch, vs, book, bookID, ch, vs).visitText(ref);
 						} else {
 							printWarning("WARNING: Malformed cross reference: " + ref);
 							fn.visitText(ref.replaceAll("[\r\n\t ]+", " ").trim());
@@ -775,7 +777,7 @@ public class OSIS implements RoundtripFormat {
 					fn.visitText("-");
 				}
 			} else if (elem.getFirstChild() != null) {
-				Visitor<RuntimeException> v = vv.visitFootnote();
+				Visitor<RuntimeException> v = vv.visitFootnote(false);
 				parseStructuredTextChildren(v, elem);
 			}
 		} else if (elem.getNodeName().equals("w")) {
@@ -785,8 +787,9 @@ public class OSIS implements RoundtripFormat {
 			Visitor<RuntimeException> v = vv;
 			List<String[]> grammarTags = new ArrayList<>();
 			int[] strong = null, idx = null;
-			char[] strongPfx = null;
+			char[] strongPfx = null, strongSfx = null;
 			StringBuilder strongPrefixes = new StringBuilder();
+			StringBuilder strongSuffixes = new StringBuilder();
 			List<Integer> strongList = new ArrayList<Integer>();
 			for (String lemma : elem.getAttribute("lemma").trim().split(" +")) {
 				if (!lemma.startsWith("strong:G") && !lemma.startsWith("strong:H")) {
@@ -795,20 +798,22 @@ public class OSIS implements RoundtripFormat {
 				}
 				String rawStrong = lemma.substring(8);
 				String[] strs = rawStrong.split("-");
-				char[] prefixHolder = new char[1];
+				char[] prefixSuffixHolder = new char[2];
 				for (String str : strs) {
-					int number = Utils.parseStrongs(lemma.charAt(7) + str, '\0', prefixHolder);
+					int number = Utils.parseStrongs(lemma.charAt(7) + str, '\0', prefixSuffixHolder);
 					if (number == -1) {
 						printWarning("WARNING: Invalid strong dictionary entry: " + rawStrong);
 						continue;
 					}
-					strongPrefixes.append(prefixHolder[0]);
+					strongPrefixes.append(prefixSuffixHolder[0]);
 					strongList.add(number);
+					strongSuffixes.append(prefixSuffixHolder[1]);
 				}
 			}
 			if (!strongList.isEmpty()) {
 				strong = strongList.stream().mapToInt(s -> s).toArray();
 				strongPfx = strongPrefixes.toString().toCharArray();
+				strongSfx = strongSuffixes.toString().trim().isEmpty() ? null : strongSuffixes.toString().toCharArray();
 			}
 			List<String> rmac = new ArrayList<>();
 			for (String morph : elem.getAttribute("morph").trim().split(" +")) {
@@ -837,16 +842,41 @@ public class OSIS implements RoundtripFormat {
 					idx[i] = Integer.parseInt(strs[i]);
 				}
 			}
-			if (strong == null && rmac.isEmpty() && idx == null) {
-				printWarning("INFO: Skipped <w> tag without any usable information");
-			} else {
-				v = v.visitGrammarInformation(strongPfx, strong, rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), idx);
+			boolean grammarXattr = Boolean.getBoolean("biblemulticonverter.osis.grammar.xattr");
+			String[] attributeKeys = null, attributeValues = null;
+			if (!grammarXattr) {
+				List<String[]> attrPairs = new ArrayList<>();
 				for(String[] grammarTag : grammarTags) {
 					String[] parts = grammarTag[1].split(":", 2);
 					if (parts.length == 2 && parts[0].matches("[a-z0-9-]+")) {
-						Visitor<RuntimeException> vc = v.visitExtraAttribute(ExtraAttributePriority.SKIP, "osisgrammar", grammarTag[0], parts[0]);
-						vc.visitText(parts[1]);
-						vc.visitEnd();
+						String key = "osisgrammar:"+grammarTag[0]+":"+parts[0];
+						if (key.equals("osisgrammar:lemma:lemma")) {
+							key = "lemma";
+						}
+						attrPairs.add(new String[] {key, parts[1]});
+					}
+				}
+				if (!attrPairs.isEmpty()) {
+					attributeKeys = new String[attrPairs.size()];
+					attributeValues = new String[attrPairs.size()];
+					for (int i = 0; i < attributeKeys.length; i++) {
+						attributeKeys[i] = attrPairs.get(i)[0];
+						attributeValues[i] = attrPairs.get(i)[0];
+					}
+				}
+			}
+			if (strong == null && rmac.isEmpty() && idx == null && attributeKeys == null) {
+				printWarning("INFO: Skipped <w> tag without any usable information");
+			} else {
+				v = v.visitGrammarInformation(strongPfx, strong, strongSfx, rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), idx, attributeKeys, attributeValues);
+				if (grammarXattr) {
+					for(String[] grammarTag : grammarTags) {
+						String[] parts = grammarTag[1].split(":", 2);
+						if (parts.length == 2 && parts[0].matches("[a-z0-9-]+")) {
+							Visitor<RuntimeException> vc = v.visitExtraAttribute(ExtraAttributePriority.SKIP, "osisgrammar", grammarTag[0], parts[0]);
+							vc.visitText(parts[1]);
+							vc.visitEnd();
+						}
 					}
 				}
 			}
@@ -908,7 +938,9 @@ public class OSIS implements RoundtripFormat {
 				String[] osisRefParts = osisRef.split("\\.");
 				int chapter = Integer.parseInt(osisRefParts[1]);
 				try {
-					v = v.visitCrossReference(osisRefParts[0], BookID.fromOsisId(osisRefParts[0]), chapter, osisRefParts[2], chapter, osisRefParts[2]);
+					String bookAbbr = osisRefParts[0];
+					BookID book = BookID.fromOsisId(osisRefParts[0]);
+					v = v.visitCrossReference(bookAbbr, book, chapter, osisRefParts[2], bookAbbr, book, chapter, osisRefParts[2]);
 				} catch (IllegalArgumentException ex) {
 					printWarning("WARNING: " + ex.getMessage());
 				}
@@ -917,7 +949,9 @@ public class OSIS implements RoundtripFormat {
 				int firstChapter = Integer.parseInt(osisRefParts[1]);
 				int lastChapter = Integer.parseInt(osisRefParts[4]);
 				try {
-					v = v.visitCrossReference(osisRefParts[0], BookID.fromOsisId(osisRefParts[0]), firstChapter, osisRefParts[2], lastChapter, osisRefParts[5]);
+					String bookAbbr = osisRefParts[0];
+					BookID book = BookID.fromOsisId(osisRefParts[0]);
+					v = v.visitCrossReference(bookAbbr, book, firstChapter, osisRefParts[2], bookAbbr, book, lastChapter, osisRefParts[5]);
 				} catch (IllegalArgumentException ex) {
 					printWarning("WARNING: " + ex.getMessage());
 				}
@@ -1092,7 +1126,14 @@ public class OSIS implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() throws RuntimeException {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
+			Visitor<RuntimeException> result = visitFootnote0();
+			if (ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<RuntimeException> visitFootnote0() throws RuntimeException {
 			Element note = target.getOwnerDocument().createElement("note");
 			target.appendChild(note);
 			note.setAttribute("type", "x-footnote");
@@ -1100,7 +1141,15 @@ public class OSIS implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
+		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
+			if (firstBook == lastBook  && !lastVerse.equals("*")) {
+				return visitCrossReference0(firstBookAbbr, firstBook, firstChapter, firstVerse, lastChapter, lastVerse);
+			} else {
+				return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "cross", "reference");
+			}
+		}
+
+		public Visitor<RuntimeException> visitCrossReference0(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
 			String ref = book.getOsisID() + "." + firstChapter + "." + firstVerse;
 			if (firstChapter != lastChapter || firstVerse != lastVerse)
 				ref += "-" + book.getOsisID() + "." + lastChapter + "." + lastVerse;
@@ -1126,7 +1175,11 @@ public class OSIS implements RoundtripFormat {
 				hiType = "x-footnote-link";
 				break;
 			case ITALIC:
+			case PSALM_DESCRIPTIVE_TITLE:
 				hiType = "italic";
+				break;
+			case ADDITION:
+				hiType = "emphasis";
 				break;
 			case LINK:
 				hiType = "x-link";
@@ -1169,13 +1222,13 @@ public class OSIS implements RoundtripFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws RuntimeException {
 			Element lb = target.getOwnerDocument().createElement("lb");
 			target.appendChild(lb);
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			Element w = target.getOwnerDocument().createElement("w");
 			target.appendChild(w);
 			if (strongs != null) {
@@ -1183,7 +1236,7 @@ public class OSIS implements RoundtripFormat {
 				for (int i = 0; i < strongs.length; i++) {
 					if (lemma.length() > 0)
 						lemma.append(' ');
-					lemma.append("strong:" + Utils.formatStrongs(nt, i, strongsPrefixes, strongs));
+					lemma.append("strong:" + Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, ""));
 				}
 				w.setAttribute("lemma", lemma.toString());
 			}
@@ -1213,6 +1266,22 @@ public class OSIS implements RoundtripFormat {
 				w.setAttribute("src", src.toString());
 			}
 
+			if (attributeKeys != null) {
+				for(int i=0; i<attributeKeys.length; i++) {
+					String fullKey = attributeKeys[i];
+					if (fullKey.equals("lemma")) {
+						fullKey = "osisgrammar:lemma:lemma";
+					}
+					if (fullKey.startsWith("osisgrammar:")) {
+						String[] keyParts = fullKey.split(":", 3);
+						String attrName = keyParts[1], valueKey = keyParts[2];
+						String attr = target.getAttribute(attrName);
+						if (!attr.isEmpty())
+							attr += " ";
+						target.setAttribute(attrName, attr + valueKey + ":" + attributeValues[i]);
+					}
+				}
+			}
 			return new OSISVisitor(w, nt);
 		}
 
@@ -1230,6 +1299,16 @@ public class OSIS implements RoundtripFormat {
 		@Override
 		public Visitor<RuntimeException> visitVariationText(String[] variations) throws RuntimeException {
 			throw new RuntimeException("Variations not supported");
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitSpeaker(String labelOrStrongs) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitHyperlink(HyperlinkType type, String target) {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 		}
 
 		@Override

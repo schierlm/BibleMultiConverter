@@ -16,8 +16,11 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -123,14 +126,14 @@ public class SwordSearcher implements ExportFormat {
 						}
 
 						@Override
-						public Visitor<RuntimeException> visitFootnote() {
+						public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) {
 							features.hasFootnotes = true;
 							return null;
 						}
 
 						@Override
 						public Visitor<RuntimeException> visitFormattingInstruction(FormattingInstructionKind kind) {
-							if (kind == FormattingInstructionKind.ITALIC || kind == FormattingInstructionKind.BOLD) {
+							if (kind == FormattingInstructionKind.ITALIC || kind == FormattingInstructionKind.BOLD || kind == FormattingInstructionKind.ADDITION || kind == FormattingInstructionKind.PSALM_DESCRIPTIVE_TITLE) {
 								features.hasItalics = true;
 								return null;
 							} else if (kind == FormattingInstructionKind.WORDS_OF_JESUS) {
@@ -240,7 +243,14 @@ public class SwordSearcher implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitFootnote() throws IOException {
+		public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
+			Visitor<IOException> result = visitFootnote0();
+			if (result != null && ofCrossReferences)
+				result.visitText(FormattedText.XREF_MARKER);
+			return result;
+		}
+
+		public Visitor<IOException> visitFootnote0() throws IOException {
 			if (!allowFormatting && suffix.equals("]")) {
 				bw.write("]{");
 				return new SwordSearcherVisitor(bw, features, false, "}[");
@@ -254,13 +264,13 @@ public class SwordSearcher implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
+		public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
 			return new SwordSearcherVisitor(bw, features, allowFormatting, "");
 		}
 
 		@Override
 		public Visitor<IOException> visitFormattingInstruction(FormattingInstructionKind kind) throws IOException {
-			if (allowFormatting && (kind == FormattingInstructionKind.BOLD || kind == FormattingInstructionKind.ITALIC)) {
+			if (allowFormatting && (kind == FormattingInstructionKind.BOLD || kind == FormattingInstructionKind.ITALIC || kind == FormattingInstructionKind.ADDITION || kind == FormattingInstructionKind.PSALM_DESCRIPTIVE_TITLE)) {
 				bw.write("[");
 				return new SwordSearcherVisitor(bw, features, false, "]");
 			}
@@ -294,11 +304,11 @@ public class SwordSearcher implements ExportFormat {
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) throws IOException {
+		public void visitLineBreak(ExtendedLineBreakKind lbk, int indent) throws IOException {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			return new SwordSearcherVisitor(bw, features, allowFormatting, "");
 		}
 
@@ -314,6 +324,16 @@ public class SwordSearcher implements ExportFormat {
 		@Override
 		public Visitor<IOException> visitVariationText(String[] variations) throws IOException {
 			throw new RuntimeException("Variations are not supported");
+		}
+
+		@Override
+		public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "speaker", labelOrStrongs);
+		}
+
+		@Override
+		public Visitor<IOException> visitHyperlink(HyperlinkType type, String target) throws IOException {
+			return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "hyperlink", type.toString());
 		}
 
 		@Override

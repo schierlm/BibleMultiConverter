@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.FormattingInstructionKind;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -128,11 +129,11 @@ public class MetadataBook {
 		visitor.visitText(" " + value);
 		if (restValue.length() > 0) {
 			for (String part : restValue.split("\n")) {
-				visitor.visitLineBreak(LineBreakKind.NEWLINE_WITH_INDENT);
+				visitor.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 1);
 				visitor.visitText(part);
 			}
 		}
-		visitor.visitLineBreak(LineBreakKind.PARAGRAPH);
+		visitor.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 	}
 
 	private void parseValues(FormattedText prolog) {
@@ -145,7 +146,7 @@ public class MetadataBook {
 			}
 
 			@Override
-			public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
+			public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws RuntimeException {
 				throw new IllegalStateException();
 			}
 
@@ -173,11 +174,11 @@ public class MetadataBook {
 			}
 
 			@Override
-			public void visitLineBreak(LineBreakKind kind) throws RuntimeException {
-				if (kind == LineBreakKind.NEWLINE_WITH_INDENT) {
+			public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws RuntimeException {
+				if (kind == ExtendedLineBreakKind.NEWLINE && indent == 1) {
 					keyVisitor.advanceState(3, 4);
 					currentText.append('\n');
-				} else if (kind == LineBreakKind.PARAGRAPH) {
+				} else if (kind == ExtendedLineBreakKind.PARAGRAPH && indent == 0) {
 					keyVisitor.advanceState(3, 0);
 					String key = keyVisitor.keyText;
 					if (!key.endsWith(":"))
@@ -188,7 +189,7 @@ public class MetadataBook {
 						throw new IllegalArgumentException("Duplicate key: " + key);
 					currentText.setLength(0);
 				} else {
-					throw new IllegalArgumentException("" + kind);
+					throw new IllegalArgumentException(kind + "@" + indent);
 				}
 			}
 

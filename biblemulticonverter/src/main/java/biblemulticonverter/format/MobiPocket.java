@@ -17,6 +17,8 @@ import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
 import biblemulticonverter.data.FormattedText;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
+import biblemulticonverter.data.FormattedText.HyperlinkType;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -187,22 +189,22 @@ public class MobiPocket implements ExportFormat {
 			}
 
 			@Override
-			public Visitor<IOException> visitFootnote() throws IOException {
+			public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
 				final Writer outerWriter = writer;
 				return new AbstractHTMLVisitor(new StringWriter(), "") {
 
 					@Override
-					public void visitLineBreak(LineBreakKind kind) throws IOException {
+					public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws IOException {
 						writer.append("<br>");
 					}
 
 					@Override
-					public Visitor<IOException> visitFootnote() throws IOException {
+					public Visitor<IOException> visitFootnote(boolean ofCrossReferences) throws IOException {
 						throw new IllegalStateException("Footnote in footnote");
 					}
 
 					@Override
-					public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+					public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 						pushSuffix("");
 						return this;
 					}
@@ -227,9 +229,9 @@ public class MobiPocket implements ExportFormat {
 					}
 
 					@Override
-					public Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
-						if (checkBXR(bookRef(bookAbbr, book), lastChapter)) {
-							writer.write("<a href=\"oeb:redirect?title=BibleNavigation#b" + bookRef(bookAbbr, book) + "c" + firstChapter + "\">");
+					public Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
+						if (checkBXR(bookRef(firstBookAbbr, firstBook), firstChapter)) {
+							writer.write("<a href=\"oeb:redirect?title=BibleNavigation#b" + bookRef(firstBookAbbr, firstBook) + "c" + firstChapter + "\">");
 							pushSuffix("</a>");
 						} else {
 							pushSuffix("");
@@ -238,14 +240,20 @@ public class MobiPocket implements ExportFormat {
 					}
 
 					@Override
+					public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
+						pushSuffix("");
+						return this;
+					}
+
+					@Override
 					public boolean visitEnd() throws IOException {
 						super.visitEnd();
 						if (suffixStack.size() == 0) {
-							if (writer.toString().startsWith(FormattedText.XREF_MARKER)) {
+							if (ofCrossReferences) {
 								// this is a cross reference!
 								if (crossRefs.length() > 0)
 									crossRefs.append("<br>");
-								String xref = writer.toString().substring(FormattedText.XREF_MARKER.length()).trim();
+								String xref = writer.toString().trim();
 								if (!xref.startsWith("<b>"))
 									xref = versePrefix + xref;
 								crossRefs.append(xref);
@@ -269,9 +277,9 @@ public class MobiPocket implements ExportFormat {
 			}
 
 			@Override
-			public FormattedText.Visitor<IOException> visitCrossReference(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws IOException {
-				if (checkBXR(bookRef(bookAbbr, book), lastChapter)) {
-					writer.write("<a href=\"oeb:redirect?title=BibleNavigation#b" + bookRef(bookAbbr, book) + "c" + firstChapter + "\">");
+			public FormattedText.Visitor<IOException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) throws IOException {
+				if (checkBXR(bookRef(firstBookAbbr, firstBook), firstChapter)) {
+					writer.write("<a href=\"oeb:redirect?title=BibleNavigation#b" + bookRef(firstBookAbbr, firstBook) + "c" + firstChapter + "\">");
 					pushSuffix("</a>");
 				} else {
 					pushSuffix("");
@@ -280,12 +288,18 @@ public class MobiPocket implements ExportFormat {
 			};
 
 			@Override
-			public void visitLineBreak(LineBreakKind kind) throws IOException {
+			public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws IOException {
 				writer.write("<br>");
 			}
 
 			@Override
-			public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, String[] rmac, int[] sourceIndices) throws IOException {
+			public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKEys, String[] attributeValues) throws IOException {
+				pushSuffix("");
+				return this;
+			}
+
+			@Override
+			public Visitor<IOException> visitSpeaker(String labelOrStrongs) throws IOException {
 				pushSuffix("");
 				return this;
 			}

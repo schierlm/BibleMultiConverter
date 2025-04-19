@@ -28,6 +28,7 @@ import biblemulticonverter.data.Bible;
 import biblemulticonverter.data.Book;
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Chapter;
+import biblemulticonverter.data.FormattedText.ExtendedLineBreakKind;
 import biblemulticonverter.data.FormattedText.ExtraAttributePriority;
 import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.Visitor;
@@ -281,12 +282,12 @@ public class BebliaXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitFootnote() {
+		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) {
 			return null;
 		}
 
 		@Override
-		public void visitLineBreak(LineBreakKind kind) {
+		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) {
 			visitText(" ");
 		}
 

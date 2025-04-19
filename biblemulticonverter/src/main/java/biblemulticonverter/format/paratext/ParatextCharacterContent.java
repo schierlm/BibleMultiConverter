@@ -214,7 +214,7 @@ public class ParatextCharacterContent implements ParatextBookContentPart, Parate
 		// https://ubsicap.github.io/usfm/master/notes_basic/fnotes.html#fdc-fdc
 		XREF_DEUTEROCANONICAL_CONTENT(Version.V1, "xdc", KeepIf.DC),
 
-		ADDITION(Version.V1, "add", FormattingInstructionKind.ITALIC),
+		ADDITION(Version.V1, "add", FormattingInstructionKind.ADDITION, true),
 		QUOTED_BOOK_TITLE(Version.V1, "bk", FormattingInstructionKind.ITALIC),
 		DEUTEROCANONICAL_CONTENT(Version.V1, "dc", KeepIf.DC),
 		KEYWORD(Version.V1, "k"),
