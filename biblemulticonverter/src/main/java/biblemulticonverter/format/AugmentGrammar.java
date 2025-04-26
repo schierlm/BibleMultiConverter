@@ -169,7 +169,7 @@ public class AugmentGrammar implements ExportFormat {
 				}
 
 				private void analyzeAttr(Versification.Reference reference, char separator, String[] srcVals, String[] attributeKeys, String[] attributeValues) {
-					if (attributeKeys == null)
+					if (attributeKeys == null || srcVals == null)
 						return;
 					if (normalSeparator != null) {
 						Map<String, String> newAttr = new LinkedHashMap<>();
@@ -626,7 +626,7 @@ public class AugmentGrammar implements ExportFormat {
 						newAttributeKeys[attributeKeys.length + i] = kv[0];
 						newAttributeValues[attributeKeys.length + i] = kv[1];
 					}
-					return next.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, new int[] { counter }, newAttributeKeys, newAttributeValues);
+					return next.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, newAttributeKeys, newAttributeValues);
 				}
 			});
 			Module<ExportFormat> exportModule = Main.exportFormats.get(exportArgs[2]);
