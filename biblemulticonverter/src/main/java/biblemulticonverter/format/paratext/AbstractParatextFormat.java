@@ -579,7 +579,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			if (cnum > 1)
 				ctx.startChapter(cnum);
 			if (ch.getProlog() != null) {
-				ch.getProlog().accept(new ParatextExportVisitor("in prolog", bk.getId().isNT(), ctx, null, cnum == 1 ? ParagraphKind.INTRO_PARAGRAPH_P : ParagraphKind.CHAPTER_DESCRIPTION));
+				ch.getProlog().accept(new ParatextExportVisitor("in prolog", bk.getId().isNT(), null, ctx, null, cnum == 1 ? ParagraphKind.INTRO_PARAGRAPH_P : ParagraphKind.CHAPTER_DESCRIPTION));
 			}
 			if (cnum == 1)
 				ctx.startChapter(cnum);
@@ -590,7 +590,8 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				}
 				VerseIdentifier location = VerseIdentifier.fromVerseNumberRangeOrThrow(pid, cnum, verseNumber);
 				ctx.startVerse(location);
-				v.accept(new ParatextExportVisitor("in verse", bk.getId().isNT(), ctx, null, ParagraphKind.PARAGRAPH_P));
+				String srclocLongPrefix = srclocPrefixes[0] + ":" + ctx.book.getId().getNumber() + "." + location.chapter + "." + location.verse() + ".";
+				v.accept(new ParatextExportVisitor("in verse", bk.getId().isNT(), srclocLongPrefix, ctx, null, ParagraphKind.PARAGRAPH_P));
 				ctx.endVerse(location);
 			}
 			ctx.endChapter(cnum);
@@ -1088,13 +1089,15 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		private final String location;
 		private final boolean nt;
+		private final String srclocLongPrefix;
 		private final ParatextExportContext ctx;
 		private final ParatextCharacterContentContainer ccnt;
 		private final ParagraphKind paragraphKind;
 
-		public ParatextExportVisitor(String location, boolean nt, ParatextExportContext ctx, ParatextCharacterContentContainer ccnt, ParagraphKind paragraphKind) {
+		public ParatextExportVisitor(String location, boolean nt, String srclocLongPrefix, ParatextExportContext ctx, ParatextCharacterContentContainer ccnt, ParagraphKind paragraphKind) {
 			this.location = location;
 			this.nt = nt;
+			this.srclocLongPrefix = srclocLongPrefix;
 			this.ctx = ctx;
 			this.ccnt = ccnt;
 			this.paragraphKind = paragraphKind;
@@ -1150,7 +1153,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				};
 			}
 			ctx.closeParagraph();
-			return new ParatextExportVisitor("in headline", nt, null, ctx.getCharContent(headlineKinds[depth - 1]), null);
+			return new ParatextExportVisitor("in headline", nt, null, null, ctx.getCharContent(headlineKinds[depth - 1]), null);
 		}
 
 		@Override
@@ -1170,7 +1173,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			final FootnoteXref footnote = new FootnoteXref(ofCrossReferences ? FootnoteXrefKind.XREF : FootnoteXrefKind.FOOTNOTE, "+", new String[0]);
 			getCharContent().getContent().add(footnote);
 
-			return new VisitorAdapter<RuntimeException>(new ParatextExportVisitor("in footnote", nt, null, footnote, null)) {
+			return new VisitorAdapter<RuntimeException>(new ParatextExportVisitor("in footnote", nt, srclocLongPrefix, null, footnote, null)) {
 				boolean start = !ofCrossReferences;
 
 				@Override
@@ -1296,11 +1299,11 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			}
 			if (kind == null) {
 				System.out.println("WARNING: No tag found for formatting: " + css);
-				return new ParatextExportVisitor(location, nt, ctx, ccnt, paragraphKind);
+				return new ParatextExportVisitor(location, nt, srclocLongPrefix, ctx, ccnt, paragraphKind);
 			}
 			final AutoClosingFormatting formatting = new AutoClosingFormatting(kind);
 			getCharContent().getContent().add(formatting);
-			return new ParatextExportVisitor("in formatting", nt, null, formatting, null);
+			return new ParatextExportVisitor("in formatting", nt, srclocLongPrefix, null, formatting, null);
 		}
 
 		@Override
@@ -1409,10 +1412,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					throw new IllegalStateException("Invalid morph format: "+rmac[0]);
 				formatting.getAttributes().put("x-morph", prefix + String.join(",", Arrays.asList(rmac)));
 			}
-			if (sourceIndices != null) {
-				String srclocLongPrefix = ctx.currentVerse == null ? null :
-					srclocPrefixes[0] + ":" + ctx.book.getId().getNumber() + "." +
-						ctx.currentVerse.chapter + "." + ctx.currentVerse.verse() + ".";
+			if (sourceIndices != null && srclocLongPrefix != null) {
 				StringBuilder sb = new StringBuilder();
 				for (int i = 0; i < sourceIndices.length; i++) {
 					if (sb.length() != 0)
@@ -1438,12 +1438,12 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				}
 			}
 			getCharContent().getContent().add(formatting);
-			return new ParatextExportVisitor("in formatting", nt, null, formatting, null);
+			return new ParatextExportVisitor("in formatting", nt, srclocLongPrefix, null, formatting, null);
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitDictionaryEntry(String dictionary, String entry) {
-			return new ParatextExportVisitor(location, nt, ctx, ccnt, paragraphKind);
+			return new ParatextExportVisitor(location, nt, srclocLongPrefix, ctx, ccnt, paragraphKind);
 		}
 
 		@Override
@@ -1459,7 +1459,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 			getCharContent().getContent().add(start);
 			getCharContent().getContent().add(formatting);
 			getCharContent().getContent().add(new Milestone("qt-e"));
-			return new ParatextExportVisitor("in formatting", nt, null, formatting, null);
+			return new ParatextExportVisitor("in formatting", nt, srclocLongPrefix, null, formatting, null);
 		}
 
 		@Override
@@ -1504,7 +1504,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				throw new UnsupportedOperationException("Link type not supported: "+type);
 			}
 			getCharContent().getContent().add(formatting);
-			return new ParatextExportVisitor("in formatting", nt, null, formatting, null);
+			return new ParatextExportVisitor("in formatting", nt, srclocLongPrefix, null, formatting, null);
 		}
 
 		@Override
