@@ -235,7 +235,7 @@ public class Accordance implements RoundtripFormat {
 			Verse v = null;
 			int chapterNumber = -1, verseNumber = -1;
 			while ((line = br.readLine()) != null) {
-				String rest = line.replaceAll("(?U)\\p{Cntrl}", " ").replaceAll("  +", " ").trim();
+				String rest = line.replace("\u001B", "\uE123").replaceAll("(?U)\\p{Cntrl}", " ").replace("\uE123", "\u001B").replaceAll("  +", " ").trim();
 				if (rest.isEmpty())
 					continue;
 				int pos = rest.indexOf(' ');
@@ -314,14 +314,14 @@ public class Accordance implements RoundtripFormat {
 				if (pos1 == -1)
 					pos1 = text.length();
 				while (pos2 != -1 && pos2 < pos1) {
-					vv.visitText(text.substring(start, pos2).replaceAll(" +$", ""));
+					visitTaggedText(vv, text.substring(start, pos2).replaceAll(" +$", ""));
 					vv.visitLineBreak(ExtendedLineBreakKind.PARAGRAPH, 0);
 					start = pos2 + 1;
 					while (start < text.length() && text.charAt(start) == ' ')
 						start++;
 					pos2 = text.indexOf('¶', start);
 				}
-				vv.visitText(text.substring(start, pos1));
+				visitTaggedText(vv, text.substring(start, pos1));
 				start = pos1;
 				continue;
 			}
@@ -379,6 +379,26 @@ public class Accordance implements RoundtripFormat {
 			}
 		}
 		return start;
+	}
+
+	private void visitTaggedText(Visitor<RuntimeException> vv, String text) {
+		int pos = text.indexOf("\u001B");
+		while (pos != -1) {
+			vv.visitText(text.substring(0, pos));
+			int len = 0;
+			if (pos + 1 < text.length()) {
+				len++;
+				if (text.charAt(pos + 1) == '(' || (pos + 2 < text.length() && text.charAt(pos + 2) == '(')) {
+					int endPos = text.indexOf(')', pos + 1);
+					if (endPos != -1)
+						len = endPos - pos;
+				}
+			}
+			vv.visitExtraAttribute(ExtraAttributePriority.SKIP, "accordance", "escape", "1").visitText(text.substring(pos + 1, pos + len + 1));
+			text = text.substring(pos + len + 1);
+			pos = text.indexOf("\u001B");
+		}
+		vv.visitText(text);
 	}
 
 	@Override
@@ -1280,6 +1300,11 @@ public class Accordance implements RoundtripFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitExtraAttribute(ExtraAttributePriority prio, String category, String key, String value) {
+			if (category.equals("accordance") && key.equals("escape") && value.equals("1")) {
+				sb.appendText("\u001B");
+				pushSuffix("");
+				return this;
+			}
 			Visitor<RuntimeException> next = prio.handleVisitor(category, this);
 			if (next != null)
 				pushSuffix("");
