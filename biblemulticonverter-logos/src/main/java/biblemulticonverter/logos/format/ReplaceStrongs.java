@@ -137,7 +137,7 @@ public class ReplaceStrongs implements ExportFormat {
 					oneStrongsPrefix[0] = strongsPrefixes == null ? '?' : strongsPrefixes[i];
 					oneStrongsSuffix[0] = strongsSuffixes == null ? '?' : strongsSuffixes[i];
 					List<String> links = linksGenerator.generateLinks(reference.getBook().isNT(), reference, strongsPrefixes == null ? null : oneStrongsPrefix, oneStrongs, strongsSuffixes == null ? null : oneStrongsSuffix, rmac, sourceIndices, attributeKeys, attributeValues);
-					links.add(Utils.formatStrongs(reference.getBook().isNT(), strongsPrefixes == null ? null : strongsPrefixes[i], strongs[i], strongsSuffixes == null ? null : strongsSuffixes[i], ""));
+					links.add(Utils.formatStrongs(reference.getBook().isNT(), strongsPrefixes == null ? '\0' : strongsPrefixes[i], strongs[i], strongsSuffixes == null ? ' ' : strongsSuffixes[i], ""));
 					outer: for (PatternRule rule : rules) {
 						for (String link : links) {
 							Matcher m = rule.pattern.matcher(link);
@@ -153,6 +153,7 @@ public class ReplaceStrongs implements ExportFormat {
 				if (newStrongs.isEmpty()) {
 					strongs = null;
 					strongsPrefixes = null;
+					strongsSuffixes = null;
 				} else {
 					strongs = new int[newStrongs.size()];
 					strongsPrefixes = new char[newStrongs.size()];
