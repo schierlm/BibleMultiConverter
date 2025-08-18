@@ -155,6 +155,8 @@ public class AugmentGrammar implements ExportFormat {
 				private final String firstSeparator = System.getProperty("biblemulticonverter.concatattributes.firstseparator", normalSeparator);
 				private final String partialPattern = System.getProperty("biblemulticonverter.concatattributes.partialpattern", "${value}");
 
+				Set<String> seenStrongRefs = new HashSet<>();
+
 				private void analyze(Reference reference, char separator, String[] srcVals, String suffix, String[] dstVals) {
 					if (srcVals != null && dstVals != null && srcVals.length == dstVals.length) {
 						for (int i = 0; i < srcVals.length; i++) {
@@ -233,8 +235,11 @@ public class AugmentGrammar implements ExportFormat {
 						case STRONGSLIST2INDEX:
 							if (idxStrings != null && fullStrongs != null && idxStrings.length == fullStrongs.length) {
 								for (int i = 0; i < idxStrings.length; i++) {
-									String key = reference.getBook().getOsisID() + "." + reference.getChapter() + "." + reference.getVerse() + '*' + fullStrongs[i] + "@L";
-									strongsLists.computeIfAbsent(key, x -> new ArrayList<>()).add(idxStrings[i]);
+									String strongRefKey = getStrongRefKey(reference, fullStrongs[i], attributeKeys, attributeValues);
+									if (strongRefKey == null || seenStrongRefs.add(strongRefKey)) {
+										String key = reference.getBook().getOsisID() + "." + reference.getChapter() + "." + reference.getVerse() + '*' + fullStrongs[i] + "@L";
+										strongsLists.computeIfAbsent(key, x -> new ArrayList<>()).add(idxStrings[i]);
+									}
 								}
 							}
 							break;
@@ -332,9 +337,13 @@ public class AugmentGrammar implements ExportFormat {
 			GrammarOperation prepare = null;
 			if (modes.contains(Mode.STRONGSLIST2INDEX)) {
 				prepare = new GrammarOperation() {
+
+					Set<String> seenStrongRefs = new HashSet<>();
+
 					@Override
 					public void reset() {
 						strongsCounters.clear();
+						seenStrongRefs.clear();
 					}
 
 					@Override
@@ -342,7 +351,10 @@ public class AugmentGrammar implements ExportFormat {
 						String[] fullStrongs = buildFullStrongs(reference, strongsPrefixes, strongs, strongsSuffixes, false);
 						if (fullStrongs != null) {
 							for (String entry : fullStrongs) {
-								strongsCounters.computeIfAbsent(entry, x -> new int[2])[0]++;
+								String strongRefKey = getStrongRefKey(reference, entry, attributeKeys, attributeValues);
+								if (strongRefKey == null || seenStrongRefs.add(strongRefKey)) {
+									strongsCounters.computeIfAbsent(entry, x -> new int[2])[0]++;
+								}
 							}
 						}
 						return null;
@@ -354,6 +366,8 @@ public class AugmentGrammar implements ExportFormat {
 				private final String normalSeparator = System.getProperty("biblemulticonverter.concatattributes.separator");
 				private final String firstSeparator = System.getProperty("biblemulticonverter.concatattributes.firstseparator", normalSeparator);
 				private final String ellipsisSeparator = System.getProperty("biblemulticonverter.concatattributes.ellipsisseparator", normalSeparator);
+
+				Map<String, Integer> seenStrongRefValues = new HashMap<>();
 
 				private void augmentAttr(String[][] attrKeyVals, Properties props, String keyPrefix, String separator, String[] srcVals, boolean[] useEllipsis) {
 					if (attrKeyVals[0] == null || normalSeparator != null) {
@@ -460,6 +474,14 @@ public class AugmentGrammar implements ExportFormat {
 							if (fullStrongs != null && sourceIndices == null) {
 								sourceIndices = new int[fullStrongs.length];
 								for (int i = 0; i < fullStrongs.length; i++) {
+									String strongRefKey = getStrongRefKey(reference, fullStrongs[i], attributeKeys, attributeValues);
+									if (strongRefKey != null) {
+										Integer value = seenStrongRefValues.get(strongRefKey);
+										if (value != null) {
+											sourceIndices[i] = value;
+											continue;
+										}
+									}
 									String value = props.getProperty(keyPrefix + "*" + fullStrongs[i] + "@L", "*");
 									String[] parts = value.equals("*") ? null : value.split(",");
 									int[] cnt = strongsCounters.get(fullStrongs[i]);
@@ -469,6 +491,9 @@ public class AugmentGrammar implements ExportFormat {
 									}
 									sourceIndices[i] = Integer.parseInt(parts[cnt[1]]);
 									cnt[1]++;
+									if (strongRefKey != null) {
+										seenStrongRefValues.put(strongRefKey, sourceIndices[i]);
+									}
 								}
 							}
 							break;
@@ -676,6 +701,19 @@ public class AugmentGrammar implements ExportFormat {
 			return result;
 		}
 		return null;
+	}
+
+	private static String getStrongRefKey(Versification.Reference reference, String fullStrongs, String[] attributeKeys, String[] attributeValues) {
+		String refKey = null;
+		if (attributeKeys != null) {
+			for (int i = 0; i < attributeKeys.length; i++) {
+				if (attributeKeys[i].equals("strong:ref") && !attributeValues[i].isEmpty()) {
+					refKey = fullStrongs + ":" + attributeValues[i] + "@" + reference.getBook().getOsisID() + "." + reference.getChapter() + "." + reference.getVerse();
+					break;
+				}
+			}
+		}
+		return refKey;
 	}
 
 	protected <T extends Throwable> void runOperation(Bible bible, GrammarOperation prepare, boolean useResult, GrammarOperation operation) throws T {
