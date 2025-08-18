@@ -143,7 +143,12 @@ public class ReplaceStrongs implements ExportFormat {
 							Matcher m = rule.pattern.matcher(link);
 							if (m.matches()) {
 								m.reset();
-								newStrongs.add(m.replaceFirst(rule.replacement));
+								String newStrong = m.replaceFirst(rule.replacement);
+								if (newStrong.matches("[A-Z]?0*[1-9][0-9]*[a-zA-Z]?")) {
+									newStrongs.add(newStrong);
+								} else {
+									System.out.println("WARNING: Skipping malformed replaced Strong number: " + newStrong);
+								}
 								break outer;
 							}
 						}
@@ -160,16 +165,31 @@ public class ReplaceStrongs implements ExportFormat {
 					strongsSuffixes = new char[newStrongs.size()];
 					char[] prefixSuffixHolder = new char[2];
 					for (int i = 0; i < strongs.length; i++) {
-						strongs[i] = Utils.parseStrongs(newStrongs.get(i), '\0', prefixSuffixHolder);
-						strongsPrefixes[i] = prefixSuffixHolder[0];
+						String newStrong = newStrongs.get(i);
+						if (newStrong.matches("[A-Z]-*")) {
+							strongs[i] = Utils.parseStrongs(newStrong, '\0', prefixSuffixHolder);
+							strongsPrefixes[i] = prefixSuffixHolder[0];
+						} else {
+							strongs[i] = Utils.parseStrongs(newStrong, 'X', prefixSuffixHolder);
+							strongsPrefixes[i] = ' ';
+						}
 						strongsSuffixes[i] = prefixSuffixHolder[1];
+					}
+					if (new String(strongsPrefixes).trim().isEmpty()) {
+						strongsPrefixes = null;
+					} else {
+						for (int i = 0; i < strongsPrefixes.length; i++) {
+							if (strongsPrefixes[i] == ' ') {
+								strongsPrefixes[i] = reference.getBook().isNT() ? 'G' : 'H';
+							}
+						}
 					}
 					if (new String(strongsSuffixes).trim().isEmpty()) {
 						strongsSuffixes = null;
 					}
 				}
 			}
-			if (strongs == null && rmac == null && sourceIndices == null) {
+			if (strongs == null && rmac == null && sourceIndices == null && attributeKeys == null) {
 				return this;
 			}
 			return wrapChildVisitor(getVisitor().visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues));
