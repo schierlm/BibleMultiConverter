@@ -53,6 +53,7 @@ public class StrippedDiffable implements ExportFormat {
 			"- ExtractPrologs",
 			"- MergeIntroductionPrologs",
 			"- ExtractFootnotes",
+			"- ExtractFootnotesWithMarkers",
 			"- RearrangeChapterBoundaries",
 			"- AddStrongsPrefixes",
 			"- RemoveStrongsPrefixes",
@@ -84,6 +85,9 @@ public class StrippedDiffable implements ExportFormat {
 			out.println("Introduction prologs merged.");
 		} else if (exportArgs.length == 2 && exportArgs[1].equals("ExtractFootnotes")) {
 			extractFootnotes(bible);
+			out.println("Footnotes extracted.");
+		} else if (exportArgs.length == 2 && exportArgs[1].equals("ExtractFootnotesWithMarkers")) {
+			extractFootnotesWithMarkers(bible);
 			out.println("Footnotes extracted.");
 		} else if (exportArgs.length == 2 && exportArgs[1].equals("RearrangeChapterBoundaries")) {
 			rearrangeChapterBoundaries(bible);
@@ -365,7 +369,6 @@ public class StrippedDiffable implements ExportFormat {
 	private void extractFootnotes(Bible bible) {
 		for (Book book : bible.getBooks()) {
 			for (Chapter chapter : book.getChapters()) {
-				chapter.getVerses().clear();
 				if (chapter.getProlog() != null) {
 					chapter.setProlog(extractFootnotes(chapter.getProlog()));
 				}
@@ -437,6 +440,52 @@ public class StrippedDiffable implements ExportFormat {
 			});
 		}
 		return result;
+	}
+
+	private void extractFootnotesWithMarkers(Bible bible) {
+		for (Book book : bible.getBooks()) {
+			for (Chapter chapter : book.getChapters()) {
+				if (chapter.getProlog() != null) {
+					chapter.setProlog(extractFootnotesWithMarkers(chapter.getProlog()));
+				}
+				List<Verse> verses = chapter.getVerses();
+				for (int i = 0; i < verses.size(); i++) {
+					Verse v = verses.get(i);
+					FormattedText extracted = extractFootnotesWithMarkers(v);
+					if (extracted == null) {
+						verses.remove(i);
+						i--;
+					} else {
+						Verse vv = new Verse(v.getNumber());
+						extracted.accept(vv.getAppendVisitor());
+						verses.set(i, vv);
+					}
+				}
+			}
+		}
+	}
+
+	private FormattedText extractFootnotesWithMarkers(FormattedText text) {
+		final FormattedText result = new FormattedText();
+		final Visitor<RuntimeException> vv = result.getAppendVisitor();
+		final int[] counter = {0};
+		text.accept(new FormattedText.VisitorAdapter<RuntimeException>(null) {
+			@Override
+			protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
+				return this;
+			}
+			@Override
+			public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
+				counter[0]++;
+				if(counter[0] > 1) {
+					vv.visitLineBreak(ExtendedLineBreakKind.NEWLINE, 0);
+				}
+				vv.visitFormattingInstruction(FormattingInstructionKind.SUPERSCRIPT).visitText(""+counter[0]);
+				vv.visitText(" ");
+				return vv;
+			}
+		});
+		return counter[0] > 0 ? result : null;
 	}
 
 	protected void rearrangeChapterBoundaries(Bible bible) {
