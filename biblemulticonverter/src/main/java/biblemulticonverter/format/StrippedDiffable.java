@@ -53,7 +53,7 @@ public class StrippedDiffable implements ExportFormat {
 			"- ExtractPrologs",
 			"- MergeIntroductionPrologs",
 			"- ExtractFootnotes",
-			"- ExtractFootnotesWithMarkers",
+			"- ExtractFootnotesWithMarkers [<HeadlineLevel> [<MaxHeadlineLevel>]]",
 			"- RearrangeChapterBoundaries",
 			"- AddStrongsPrefixes",
 			"- RemoveStrongsPrefixes",
@@ -86,8 +86,10 @@ public class StrippedDiffable implements ExportFormat {
 		} else if (exportArgs.length == 2 && exportArgs[1].equals("ExtractFootnotes")) {
 			extractFootnotes(bible);
 			out.println("Footnotes extracted.");
-		} else if (exportArgs.length == 2 && exportArgs[1].equals("ExtractFootnotesWithMarkers")) {
-			extractFootnotesWithMarkers(bible);
+		} else if (exportArgs.length >= 2 && exportArgs.length <= 4 && exportArgs[1].equals("ExtractFootnotesWithMarkers")) {
+			int minHeadline = exportArgs.length == 2 ? -1 : Integer.parseInt(exportArgs[2]);
+			int maxHeadline = exportArgs.length == 4 ? Integer.parseInt(exportArgs[3]) : minHeadline;
+			extractFootnotesWithMarkers(bible, minHeadline, maxHeadline);
 			out.println("Footnotes extracted.");
 		} else if (exportArgs.length == 2 && exportArgs[1].equals("RearrangeChapterBoundaries")) {
 			rearrangeChapterBoundaries(bible);
@@ -442,16 +444,16 @@ public class StrippedDiffable implements ExportFormat {
 		return result;
 	}
 
-	private void extractFootnotesWithMarkers(Bible bible) {
+	private void extractFootnotesWithMarkers(Bible bible, int minHeadline, int maxHeadline) {
 		for (Book book : bible.getBooks()) {
 			for (Chapter chapter : book.getChapters()) {
 				if (chapter.getProlog() != null) {
-					chapter.setProlog(extractFootnotesWithMarkers(chapter.getProlog()));
+					chapter.setProlog(extractFootnotesWithMarkers(chapter.getProlog(), minHeadline, maxHeadline));
 				}
 				List<Verse> verses = chapter.getVerses();
 				for (int i = 0; i < verses.size(); i++) {
 					Verse v = verses.get(i);
-					FormattedText extracted = extractFootnotesWithMarkers(v);
+					FormattedText extracted = extractFootnotesWithMarkers(v, minHeadline, maxHeadline);
 					if (extracted == null) {
 						verses.remove(i);
 						i--;
@@ -465,7 +467,7 @@ public class StrippedDiffable implements ExportFormat {
 		}
 	}
 
-	private FormattedText extractFootnotesWithMarkers(FormattedText text) {
+	private FormattedText extractFootnotesWithMarkers(FormattedText text, final int minHeadline, final int maxHeadline) {
 		final FormattedText result = new FormattedText();
 		final Visitor<RuntimeException> vv = result.getAppendVisitor();
 		final int[] counter = {0};
@@ -473,6 +475,14 @@ public class StrippedDiffable implements ExportFormat {
 			@Override
 			protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
 				return this;
+			}
+			@Override
+			public Visitor<RuntimeException> visitHeadline(int depth) throws RuntimeException {
+				if (depth >= minHeadline && depth <= maxHeadline) {
+					return vv.visitHeadline(depth);
+				} else {
+					return super.visitHeadline(depth);
+				}
 			}
 			@Override
 			public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
