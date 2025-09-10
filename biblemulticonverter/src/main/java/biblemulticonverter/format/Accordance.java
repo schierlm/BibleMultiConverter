@@ -1217,7 +1217,7 @@ public class Accordance implements RoundtripFormat {
 		}
 
 		@Override
-		public FormattedText.Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+		public FormattedText.Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			Visitor<RuntimeException> next = visitElement("GRAMMAR", DEFAULT_KEEP);
 			if (next == null)
 				return null;
@@ -1246,8 +1246,12 @@ public class Accordance implements RoundtripFormat {
 				String[] rule = getElementRule("SOURCEIDX", DEFAULT_SKIP);
 				if (rule.length > 0) {
 					StringBuilder sb = new StringBuilder();
-					for (int idx : sourceIndices) {
-						sb.append(" ").append(idx);
+					for (int i = 0; i < sourceIndices.length; i++) {
+						sb.append(" ");
+						if (sourceVerses != null && sourceVerses[i] != null) {
+							sb.append("[" + BOOK_NAME_MAP.getOrDefault(sourceVerses[i].getBook(), sourceVerses[i].getBook().getOsisID()) + " " + sourceVerses[i].getChapter() + ":" + sourceVerses[i].getVerse() + "]");
+						}
+						sb.append(sourceIndices[i]);
 					}
 					appendRule(suffixes, rule, sb.toString().trim());
 				}

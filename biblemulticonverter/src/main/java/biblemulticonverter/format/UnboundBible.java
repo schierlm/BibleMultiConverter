@@ -32,6 +32,7 @@ import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.MetadataBook.MetadataBookKey;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 
 /**
  * Importer and exporter for Unbound Bible.
@@ -305,7 +306,7 @@ public class UnboundBible implements RoundtripFormat {
 							rmacs[rmacCount++] = words[i];
 						} else {
 							if (strongCount > 0 || rmacCount > 0) {
-								vvv.visitGrammarInformation(strongCount > 0 ? Arrays.copyOf(strongsPrefixes, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongs, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongsSuffixes, strongCount) : null, rmacCount > 0 ? Arrays.copyOf(rmacs, rmacCount) : null, null, null, null).visitText(word);
+								vvv.visitGrammarInformation(strongCount > 0 ? Arrays.copyOf(strongsPrefixes, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongs, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongsSuffixes, strongCount) : null, rmacCount > 0 ? Arrays.copyOf(rmacs, rmacCount) : null, null, null, null, null).visitText(word);
 								strongCount = rmacCount = 0;
 							} else {
 								vvv.visitText(word);
@@ -315,7 +316,7 @@ public class UnboundBible implements RoundtripFormat {
 						}
 					}
 					if (strongCount > 0 || rmacCount > 0) {
-						vvv.visitGrammarInformation(strongCount > 0 ? Arrays.copyOf(strongsPrefixes, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongs, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongsSuffixes, strongCount) : null, rmacCount > 0 ? Arrays.copyOf(rmacs, rmacCount) : null, null, null, null).visitText(word);
+						vvv.visitGrammarInformation(strongCount > 0 ? Arrays.copyOf(strongsPrefixes, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongs, strongCount) : null, strongCount > 0 ? Arrays.copyOf(strongsSuffixes, strongCount) : null, rmacCount > 0 ? Arrays.copyOf(rmacs, rmacCount) : null, null, null, null, null).visitText(word);
 						strongCount = rmacCount = 0;
 					} else {
 						vvv.visitText(word);
@@ -659,7 +660,7 @@ public class UnboundBible implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			if (useParsedFormat) {
 				StringBuilder suffix = new StringBuilder();
 				if (strongs != null) {

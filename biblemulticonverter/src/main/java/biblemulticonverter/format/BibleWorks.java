@@ -34,6 +34,7 @@ import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.VirtualVerse;
 
 public class BibleWorks implements RoundtripFormat {
@@ -315,12 +316,12 @@ public class BibleWorks implements RoundtripFormat {
 				String[] rmac = morph2RMAC(morph);
 				Visitor<RuntimeException> vvv = vv.visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "bibleworks", "morph", safeMorph);
 				if (rmac != null)
-					vvv = vvv.visitGrammarInformation(null,  null, null, rmac,  null, null, null);
+					vvv = vvv.visitGrammarInformation(null,  null, null, rmac,  null, null, null, null);
 				vvv.visitText(preText.substring(wPos));
 				start = pos;
 			} else if (tag.matches("[0-9]+")) {
 				vv.visitText(preText.substring(0, wPos));
-				vv.visitGrammarInformation((char[]) null, new int[] { Integer.parseInt(tag) }, null, (String[]) null, (int[]) null, null, null).visitText(preText.substring(wPos));
+				vv.visitGrammarInformation((char[]) null, new int[] { Integer.parseInt(tag) }, null, (String[]) null, null, (int[]) null, null, null).visitText(preText.substring(wPos));
 			} else if (tag.matches("[NR][0-9a-z*]+")) {
 				vv.visitText(preText);
 				if (footnoteMap == null)
@@ -599,7 +600,7 @@ public class BibleWorks implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			String suffix = "";
 			if (rmac != null && !suffixStack.get(suffixStack.size() - 1).startsWith("@")) {
 				for (String r : rmac) {
@@ -771,7 +772,7 @@ public class BibleWorks implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			skipFeature("Grammar information in footnote");
 			suffixStack.add("");
 			return this;

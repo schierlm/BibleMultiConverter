@@ -45,6 +45,7 @@ import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.format.Diffable.DiffableVisitor;
 
 public class RoundtripODT implements RoundtripFormat {
@@ -409,6 +410,7 @@ public class RoundtripODT implements RoundtripFormat {
 				boolean emptySuffixes = false;
 				List<Integer> strongs = new ArrayList<>(), sourceIndices = new ArrayList<>();
 				List<String> rmac = new ArrayList<>(), attrKeys = new ArrayList<>(), attrVals = new ArrayList<>();
+				List<Versification.Reference> sourceVerses = new ArrayList<Versification.Reference>();
 				for (String part : endContent.substring(1).split("'")) {
 					if (part.equals("@")) {
 						emptySuffixes = true;
@@ -447,10 +449,17 @@ public class RoundtripODT implements RoundtripFormat {
 						rmac.add(subparts[1]);
 					}
 					if (subparts.length > 2 && !subparts[2].isEmpty()) {
+						Versification.Reference ref = null;
+						String[] iparts = subparts[2].split("\\.");
+						if (iparts.length == 4) {
+							ref = new Versification.Reference(BookID.fromOsisId(iparts[0]), Integer.parseInt(iparts[1]), iparts[2]);
+							subparts[2] = iparts[3];
+						}
 						sourceIndices.add(Integer.parseInt(subparts[2]));
+						sourceVerses.add(ref);
 					}
 				}
-				ic.pushVisitor(ic.getVisitor().visitGrammarInformation(strongPfx.length() == 0 ? null : strongPfx.toString().toCharArray(), strongs.isEmpty() ? null : strongs.stream().mapToInt(s -> s).toArray(), strongSfx.toString().trim().isEmpty() && !emptySuffixes ? null : strongSfx.toString().toCharArray(), rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), sourceIndices.isEmpty() ? null : sourceIndices.stream().mapToInt(s -> s).toArray(), attrKeys.isEmpty() ? null : attrKeys.toArray(new String[attrKeys.size()]), attrVals.isEmpty() ? null : attrVals.toArray(new String[attrKeys.size()])));
+				ic.pushVisitor(ic.getVisitor().visitGrammarInformation(strongPfx.length() == 0 ? null : strongPfx.toString().toCharArray(), strongs.isEmpty() ? null : strongs.stream().mapToInt(s -> s).toArray(), strongSfx.toString().trim().isEmpty() && !emptySuffixes ? null : strongSfx.toString().toCharArray(), rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), sourceVerses.isEmpty() || sourceVerses.stream().allMatch(r -> r == null) ? null : sourceVerses.toArray(new Versification.Reference[sourceVerses.size()]), sourceIndices.isEmpty() ? null : sourceIndices.stream().mapToInt(s -> s).toArray(), attrKeys.isEmpty() ? null : attrKeys.toArray(new String[attrKeys.size()]), attrVals.isEmpty() ? null : attrVals.toArray(new String[attrKeys.size()])));
 			} else if (!content.isEmpty()) {
 				throw new IOException("Invalid grammar value or nesting: " + content);
 			}
@@ -759,7 +768,7 @@ public class RoundtripODT implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses,int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			appendSpan(makeParagraph(), TEXT_STYLE_GRAMMAR, "[");
 			StringBuilder suffixBuilder = new StringBuilder("]");
 			int max = Math.max(Math.max(strongs == null ? 0 : strongs.length, rmac == null ? 0 : rmac.length), sourceIndices == null ? 0 : sourceIndices.length);
@@ -783,8 +792,12 @@ public class RoundtripODT implements RoundtripFormat {
 					suffixBuilder.append(":");
 					if (rmac != null && i < rmac.length)
 						suffixBuilder.append(rmac[i]);
-					if (sourceIndices != null && i < sourceIndices.length)
-						suffixBuilder.append(":" + sourceIndices[i]);
+					if (sourceIndices != null && i < sourceIndices.length) {
+						if (sourceVerses != null && sourceVerses[i] != null)
+							suffixBuilder.append(":" + sourceVerses[i].getBook().getOsisID() + "." + sourceVerses[i].getChapter() + "." + sourceVerses[i].getVerse() + "." + sourceIndices[i]);
+						else
+							suffixBuilder.append(":" + sourceIndices[i]);
+					}
 				}
 				suffixBuilder.append('\'');
 			}

@@ -16,6 +16,7 @@ import biblemulticonverter.data.FormattedText.Headline;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.format.BibleAnalyzerFormattedText;
 import biblemulticonverter.sqlite.SQLiteModuleRegistry;
@@ -59,12 +60,12 @@ public class BibleAnalyzerDatabase extends BibleAnalyzerFormattedText {
 							}
 
 							@Override
-							public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+							public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 								if (strongs != null)
 									hasGrammar[0] = true;
 								if (rmac != null)
 									hasGrammar[1] = true;
-								return super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
+								return super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues);
 							}
 						});
 						hasStrongs = hasGrammar[0];

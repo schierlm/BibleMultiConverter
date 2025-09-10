@@ -86,7 +86,7 @@ public class OSHB implements ImportFormat {
 					for (int j = 0; j < strong.length; j++) {
 						strong[j] = Integer.parseInt(snums.get(j));
 					}
-					vv.visitGrammarInformation((char[]) null, strong.length == 0 ? null : strong, null, new String[] { w.getAttribute("morph") }, (int[]) null, null, null).visitText(w.getTextContent());
+					vv.visitGrammarInformation((char[]) null, strong.length == 0 ? null : strong, null, new String[] { w.getAttribute("morph") }, null, (int[]) null, null, null).visitText(w.getTextContent());
 				}
 				v.finished();
 			}

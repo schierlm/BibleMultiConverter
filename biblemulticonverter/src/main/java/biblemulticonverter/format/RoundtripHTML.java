@@ -37,6 +37,7 @@ import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 
 public class RoundtripHTML implements RoundtripFormat {
 
@@ -560,7 +561,7 @@ public class RoundtripHTML implements RoundtripFormat {
 						boolean strongSfxE = false;
 						List<Integer> strongL = new ArrayList<Integer>();
 						List<String> rmacL = new ArrayList<String>();
-						List<Integer> sourceIndexL = new ArrayList<Integer>();
+						List<String> sourceIndexL = new ArrayList<String>();
 						List<String> attrPairsL = new ArrayList<String>();
 						for (String part : line.substring(pos + 15, endPos - 1).split(" ")) {
 							if (part.startsWith("gs")) {
@@ -589,7 +590,7 @@ public class RoundtripHTML implements RoundtripFormat {
 							} else if (part.startsWith("gw-!")) {
 								rmacL.add(part.substring(4));
 							} else if (part.startsWith("gi")) {
-								sourceIndexL.add(Integer.parseInt(part.substring(2)));
+								sourceIndexL.add(part.substring(2));
 							} else if (part.equals("ge")) {
 								strongSfxE = true;
 							} else if (part.startsWith("ga-")) {
@@ -608,9 +609,17 @@ public class RoundtripHTML implements RoundtripFormat {
 						char[] strongSfx = strongSfxL.toString().trim().isEmpty() && !strongSfxE ? null : strongSfxL.toString().toCharArray();
 						String[] rmacs = rmacL.size() == 0 ? null : (String[]) rmacL.toArray(new String[rmacL.size()]);
 						int[] sourceIndices = sourceIndexL.size() == 0 ? null : new int[sourceIndexL.size()];
+						Versification.Reference[] sourceVerses = null;
 						if (sourceIndices != null) {
 							for (int i = 0; i < sourceIndices.length; i++) {
-								sourceIndices[i] = sourceIndexL.get(i);
+								String[] iparts = sourceIndexL.get(i).split("\\.");
+								if (iparts.length == 4) {
+									if (sourceVerses == null)
+										sourceVerses = new Versification.Reference[sourceIndexL.size()];
+									sourceVerses[i] = new Versification.Reference(BookID.fromOsisId(iparts[0]), Integer.parseInt(iparts[1]), iparts[2]);
+									sourceIndexL.set(i, iparts[3]);
+								}
+								sourceIndices[i] = Integer.parseInt(sourceIndexL.get(i));
 							}
 						}
 						String[] attrKeys = attrPairsL.isEmpty() ? null : new String[attrPairsL.size()];
@@ -622,7 +631,7 @@ public class RoundtripHTML implements RoundtripFormat {
 								attrVals[i] = aparts[1];
 							}
 						}
-						childVisitor = visitor.visitGrammarInformation(strongPfx, strongs, strongSfx, rmacs, sourceIndices, attrKeys, attrVals);
+						childVisitor = visitor.visitGrammarInformation(strongPfx, strongs, strongSfx, rmacs, sourceVerses, sourceIndices, attrKeys, attrVals);
 					} else {
 						throw new IOException(line.substring(pos));
 					}
@@ -780,7 +789,7 @@ public class RoundtripHTML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			prepareForInlineOutput(false);
 			writer.write("<span class=\"g");
 			if (Diffable.writeStrongsSuffix && strongsPrefixes != null && strongs != null) {
@@ -809,8 +818,11 @@ public class RoundtripHTML implements RoundtripFormat {
 				}
 			}
 			if (sourceIndices != null) {
-				for (int idx : sourceIndices) {
-					writer.write(" gi" + idx);
+				for (int i = 0; i < sourceIndices.length; i++) {
+					if (sourceVerses != null && sourceVerses[i] != null)
+						writer.write(" gi" + sourceVerses[i].getBook().getOsisID() + "." + sourceVerses[i].getChapter() + "." + sourceVerses[i].getVerse() + "." + sourceIndices[i]);
+					else
+						writer.write(" gi" + sourceIndices[i]);
 				}
 			}
 			if (attributeKeys != null) {

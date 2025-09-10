@@ -32,6 +32,7 @@ import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.StandardVersification;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.VirtualVerse;
@@ -247,7 +248,7 @@ public class TheWord implements RoundtripFormat {
 						if (new String(strongNumberSuffixes).trim().isEmpty()) {
 							strongNumberSuffixes = null;
 						}
-						pos = parseLine(visitor.visitGrammarInformation(strongNumberPrefixes, strongNumbers, strongNumberSuffixes, null, null, null, null), line, closePos + 1, "<s%>");
+						pos = parseLine(visitor.visitGrammarInformation(strongNumberPrefixes, strongNumbers, strongNumberSuffixes, null, null, null, null, null), line, closePos + 1, "<s%>");
 						continue;
 					} catch (NumberFormatException ex) {
 						// malformed Strongs tag
@@ -262,7 +263,7 @@ public class TheWord implements RoundtripFormat {
 						suffix = new char[] { number.charAt(number.length()-1) };
 						number = number.substring(0, number.length()-1);
 					}
-					visitor.visitGrammarInformation(new char[] {line.charAt(pos+3)}, new int[] { Integer.parseInt(number) }, suffix, null, null, null, null);
+					visitor.visitGrammarInformation(new char[] {line.charAt(pos+3)}, new int[] { Integer.parseInt(number) }, suffix, null, null, null, null, null);
 					pos = closePos + 1;
 					continue;
 				} catch (NumberFormatException ex) {
@@ -520,7 +521,8 @@ public class TheWord implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {			StringBuilder suffix = new StringBuilder();
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+			StringBuilder suffix = new StringBuilder();
 			if (strongs != null) {
 				for (int i = 0; i < strongs.length; i++) {
 					String prefix = nt ? "G" : "H";

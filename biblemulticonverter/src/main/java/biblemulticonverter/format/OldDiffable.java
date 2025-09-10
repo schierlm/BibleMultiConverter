@@ -23,6 +23,7 @@ import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.format.StrippedDiffable.Feature;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 
 public class OldDiffable implements ExportFormat {
 
@@ -186,7 +187,7 @@ public class OldDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKey, String[] attributeValues) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKey, String[] attributeValues) throws IOException {
 			if (format < 9 && rmac != null) {
 				boolean changed = false;
 				for (int i = 0; i < rmac.length; i++) {
@@ -219,6 +220,9 @@ public class OldDiffable implements ExportFormat {
 			}
 			if (strongsSuffixes != null) {
 				System.out.println("WARNING: Dropping Strongs suffixes");
+			}
+			if (sourceVerses != null) {
+				System.out.println("WARNING: Dropping absolute source indices");
 			}
 			if (strongs == null && rmac == null && sourceIndices == null) {
 				System.out.println("WARNING: Dropping grammar tag without attributes");

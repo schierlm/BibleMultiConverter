@@ -91,8 +91,8 @@ public class AugmentLogosLinks implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
-			List<String> links = linksGenerator.generateLinks(reference.getBook().isNT(), reference, strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+			List<String> links = linksGenerator.generateLinks(reference.getBook().isNT(), reference, strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues);
 			if (!xattr) {
 				List<String> attrKeys = new ArrayList<>(Arrays.asList(attributeKeys));
 				List<String> attrVals = new ArrayList<>(Arrays.asList(attributeValues));
@@ -107,7 +107,7 @@ public class AugmentLogosLinks implements ExportFormat {
 				attributeKeys = attrKeys.toArray(new String[attrKeys.size()]);
 				attributeValues = attrVals.toArray(new String[attrVals.size()]);
 			}
-			Visitor<RuntimeException> vv = getVisitor().visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
+			Visitor<RuntimeException> vv = getVisitor().visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues);
 			if (xattr) {
 				for (String[] rule : mappingRules) {
 					for (String link : links) {

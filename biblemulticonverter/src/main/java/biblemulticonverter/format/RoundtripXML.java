@@ -32,6 +32,7 @@ import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.schema.roundtripxml.BibleType;
 import biblemulticonverter.schema.roundtripxml.ExtraAttributePrioType;
 import biblemulticonverter.schema.roundtripxml.FormattedTextType;
@@ -56,6 +57,8 @@ public class RoundtripXML implements RoundtripFormat {
 			"",
 			"Export into a XML file that contains all features supported by the import file."
 	};
+
+	public static final Versification.Reference NULL_MARKER_REFERENCE = new Versification.Reference(BookID.METADATA, 1, "1/n");
 
 	@Override
 	public Bible doImport(File inputFile) throws Exception {
@@ -199,6 +202,16 @@ public class RoundtripXML implements RoundtripFormat {
 							sidxs[i] = gi.getSourceIndices().get(i);
 						}
 					}
+					Versification.Reference[] svs = null;
+					if (!gi.getSourceVerseBooks().isEmpty()) {
+						svs = new Versification.Reference[sidxs.length];
+						for (int i = 0; i < sidxs.length; i++) {
+							svs[i] = new Versification.Reference(BookID.fromOsisId(gi.getSourceVerseBooks().get(i)), gi.getSourceVerseChapters().get(i), gi.getSourceVerseNumbers().get(i));
+							if (svs[i].equals(NULL_MARKER_REFERENCE))
+								svs[i] = null;
+
+						}
+					}
 					String[] attributeKeys = null, attributeValues = null;
 					if (!gi.getAttr().isEmpty()) {
 						attributeKeys = new String[gi.getAttr().size()];
@@ -209,7 +222,7 @@ public class RoundtripXML implements RoundtripFormat {
 							attributeValues[i] = parts[1];
 						}
 					}
-					next = visitor.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmacs, sidxs, attributeKeys, attributeValues);
+					next = visitor.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmacs, svs, sidxs, attributeKeys, attributeValues);
 				} else if (value instanceof FormattedTextType.Speaker) {
 					FormattedTextType.Speaker sp = (FormattedTextType.Speaker) value;
 					next = visitor.visitSpeaker(sp.getWho());
@@ -396,7 +409,7 @@ public class RoundtripXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			FormattedTextType.GrammarInformation gi = of.createFormattedTextTypeGrammarInformation();
 			if (strongs != null) {
 				boolean hasSuffix = false;
@@ -418,6 +431,16 @@ public class RoundtripXML implements RoundtripFormat {
 			if (sourceIndices != null)
 				for (int sidx : sourceIndices)
 					gi.getSourceIndices().add(sidx);
+			if (sourceVerses != null) {
+				for (Versification.Reference sv : sourceVerses) {
+					if (sv == null) {
+						sv = NULL_MARKER_REFERENCE;
+					}
+					gi.getSourceVerseBooks().add(sv.getBook().getOsisID());
+					gi.getSourceVerseChapters().add(sv.getChapter());
+					gi.getSourceVerseNumbers().add(sv.getVerse());
+				}
+			}
 			if (attributeKeys != null) {
 				for (int i = 0; i < attributeKeys.length; i++) {
 					gi.getAttr().add(attributeKeys[i]+"="+attributeValues[i]);

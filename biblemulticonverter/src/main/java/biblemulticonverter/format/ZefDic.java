@@ -39,6 +39,7 @@ import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.MetadataBook.MetadataBookKey;
 import biblemulticonverter.data.Utils;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.schema.zefdic1.BibLinkType;
 import biblemulticonverter.schema.zefdic1.Dictionary;
 import biblemulticonverter.schema.zefdic1.MyAnyType;
@@ -445,7 +446,7 @@ public class ZefDic implements RoundtripFormat {
 				}
 
 				@Override
-				public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+				public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 					System.out.println("WARNING: Grammar information is not supported");
 					return this;
 				}
@@ -564,7 +565,7 @@ public class ZefDic implements RoundtripFormat {
 				}
 
 				@Override
-				public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+				public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 					System.out.println("WARNING: Grammar information is not supported");
 					return null;
 				}

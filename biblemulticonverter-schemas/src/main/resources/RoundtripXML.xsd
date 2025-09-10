@@ -633,6 +633,21 @@
 									<list itemType="tns:RMACType" />
 								</simpleType>
 							</attribute>
+							<attribute name="sourceVerseBooks" use="optional">
+								<simpleType>
+									<list itemType="tns:BookIDType" />
+								</simpleType>
+							</attribute>
+							<attribute name="sourceVerseChapters" use="optional">
+								<simpleType>
+									<list itemType="tns:positiveIntType" />
+								</simpleType>
+							</attribute>
+							<attribute name="sourceVerseNumbers" use="optional">
+								<simpleType>
+									<list itemType="tns:VerseNumberType" />
+								</simpleType>
+							</attribute>
 							<attribute name="sourceIndices" use="optional">
 								<simpleType>
 									<list>

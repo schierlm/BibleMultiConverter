@@ -39,6 +39,7 @@ import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.format.AbstractHTMLVisitor;
 import biblemulticonverter.format.AbstractHTMLVisitor.HyperlinkParser;
@@ -541,7 +542,7 @@ public class MyBibleZone implements RoundtripFormat {
 				if (snum.length == 0 && rmac == null)
 					vv.visitText(cleanText(strongsWord));
 				else
-					vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, ssfx.length == 0 ? null : ssfx, rmac == null ? null : new String[] { rmac }, null, null, null).visitText(cleanText(strongsWord));
+					vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, ssfx.length == 0 ? null : ssfx, rmac == null ? null : new String[] { rmac }, null, null, null, null).visitText(cleanText(strongsWord));
 			} else if (text.startsWith("<n>")) {
 				Visitor<RuntimeException> vvv = noteAsFootnote ? vv.visitFootnote(false) :  vv.visitFormattingInstruction(FormattingInstructionKind.ADDITION);
 				text = convertFromVerse(text.substring(3), vvv, hp, footnoteDB, vnums, nt, strongsPrefix);
@@ -1032,7 +1033,7 @@ public class MyBibleZone implements RoundtripFormat {
 				writer.write("<br>");
 		}
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			unsupportedFeatures.add("grammar information " + locationText);
 			pushSuffix("");
 			return this;
@@ -1211,7 +1212,7 @@ public class MyBibleZone implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			int cnt = 0;
 			String suffix = "";
 			if (strongs != null)

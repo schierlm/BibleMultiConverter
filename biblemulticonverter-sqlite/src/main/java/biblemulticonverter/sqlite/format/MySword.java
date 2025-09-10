@@ -35,6 +35,7 @@ import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.StandardVersification;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.format.AbstractHTMLVisitor;
 import biblemulticonverter.format.RoundtripFormat;
@@ -215,7 +216,7 @@ public class MySword implements RoundtripFormat {
 				if (snum.length == 0 && rmacs == null)
 					decodeEntities(vv, strongsWord);
 				else
-					decodeEntities(vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, ssfx.length == 0 ? null: ssfx, rmacs, null, null, null), strongsWord);
+					decodeEntities(vv.visitGrammarInformation(spfx.length == 0 ? null : spfx, snum.length == 0 ? null : snum, ssfx.length == 0 ? null: ssfx, rmacs, null, null, null, null), strongsWord);
 			} else if (text.startsWith("<Fi>") || text.startsWith("<Fo>") || text.startsWith("<Fr>") || text.startsWith("<Fu>") || text.startsWith("<Rf>") || text.startsWith("<Ts>")) {
 				return text;
 			} else if (text.startsWith("<CM>")) {
@@ -544,7 +545,7 @@ public class MySword implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			int cnt = 0;
 			String suffix = "";
 			if (strongs != null)

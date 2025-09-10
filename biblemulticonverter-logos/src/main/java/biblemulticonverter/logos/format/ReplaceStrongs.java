@@ -126,7 +126,7 @@ public class ReplaceStrongs implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			if (strongs != null) {
 				List<String> newStrongs = new ArrayList<>();
 				char[] oneStrongsPrefix = new char[1];
@@ -136,7 +136,7 @@ public class ReplaceStrongs implements ExportFormat {
 					oneStrongs[0] = strongs[i];
 					oneStrongsPrefix[0] = strongsPrefixes == null ? '?' : strongsPrefixes[i];
 					oneStrongsSuffix[0] = strongsSuffixes == null ? '?' : strongsSuffixes[i];
-					List<String> links = linksGenerator.generateLinks(reference.getBook().isNT(), reference, strongsPrefixes == null ? null : oneStrongsPrefix, oneStrongs, strongsSuffixes == null ? null : oneStrongsSuffix, rmac, sourceIndices, attributeKeys, attributeValues);
+					List<String> links = linksGenerator.generateLinks(reference.getBook().isNT(), reference, strongsPrefixes == null ? null : oneStrongsPrefix, oneStrongs, strongsSuffixes == null ? null : oneStrongsSuffix, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues);
 					links.add(Utils.formatStrongs(reference.getBook().isNT(), strongsPrefixes == null ? '\0' : strongsPrefixes[i], strongs[i], strongsSuffixes == null ? ' ' : strongsSuffixes[i], ""));
 					outer: for (PatternRule rule : rules) {
 						for (String link : links) {
@@ -192,7 +192,7 @@ public class ReplaceStrongs implements ExportFormat {
 			if (strongs == null && rmac == null && sourceIndices == null && attributeKeys == null) {
 				return this;
 			}
-			return wrapChildVisitor(getVisitor().visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues));
+			return wrapChildVisitor(getVisitor().visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues));
 		}
 	}
 }

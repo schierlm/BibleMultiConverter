@@ -38,6 +38,7 @@ import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VerseRange;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.Versification.Reference;
 import biblemulticonverter.format.AbstractHTMLVisitor;
 import biblemulticonverter.format.AbstractStructuredHTMLVisitor;
@@ -936,8 +937,8 @@ public class LogosHTML implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
-			List<String> links = linksGenerator.generateLinks(nt, verseReference, strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+			List<String> links = linksGenerator.generateLinks(nt, verseReference, strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues);
 			prepareForInlineOutput(false);
 			if (links.size() == 0) {
 				pushSuffix("");

@@ -37,6 +37,7 @@ import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.format.RoundtripFormat;
 import biblemulticonverter.format.paratext.ParatextBook.ChapterStart;
 import biblemulticonverter.format.paratext.ParatextBook.Figure;
@@ -894,11 +895,12 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 					}
 				}
 				List<Integer> srclocs = new ArrayList<>();
+				List<Versification.Reference> srcVerses = new ArrayList<>();
 				String srclocAttribute = attributes.get("srcloc");
 				if (srclocAttribute != null) {
-					Pattern srclocPattern = null;
+					Pattern srclocPattern = null, srclocAbsPattern = null;
 					if (ctx.currentVerse != null && ctx.bk != null && srclocPrefixes.length > 0) {
-						StringBuilder prefixes = new StringBuilder("(");
+						StringBuilder prefixes = new StringBuilder("(?:");
 						for(String pfx : srclocPrefixes) {
 							if (prefixes.length() > 1)
 								prefixes.append('|');
@@ -908,12 +910,22 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 						srclocPattern = Pattern.compile(prefixes.toString() + Pattern.quote(
 							 ":" + ParatextID.fromBookID(ctx.bk.getId()).getNumber() + "." +
 									ctx.cnum + "." + ctx.currentVerse.getNumber() + ".") + "[0-9]+");
+						srclocAbsPattern = Pattern.compile(prefixes.toString() +
+								":([0-9A-C][0-9])\\.([0-9]+)\\.(" + Utils.VERSE_REGEX + ")\\.([0-9]+)");
 					}
 					for (String srcloc : srclocAttribute.split("[, ]")) {
 						if (srcloc.matches("[0-9]+")) {
+							srcVerses.add(null);
 							srclocs.add(Integer.parseInt(srcloc));
 						} else if (srclocPattern != null && srclocPattern.matcher(srcloc).matches()) {
+							srcVerses.add(null);
 							srclocs.add(Integer.parseInt(srcloc.replaceFirst(".*\\.", "")));
+						} else if (srclocAbsPattern != null && srclocAbsPattern.matcher(srcloc).matches()) {
+							Matcher m = srclocAbsPattern.matcher(srcloc);
+							m.matches();
+							ParatextID id = Arrays.stream(ParatextID.values()).filter(pi ->pi.getNumber().equals(m.group(0))).findFirst().orElse(ParatextID.fromBookID(ctx.bk.getId()));
+							srcVerses.add(new Versification.Reference(id.getId(), Integer.parseInt(m.group(2)), m.group(3)));
+							srclocs.add(Integer.parseInt(m.group(4)));
 						} else if (srcloc.contains(":")) {
 							int pos = srcloc.lastIndexOf(":");
 							grammarAttributeKeys.add("srcloc:" + srcloc.substring(0, pos));
@@ -935,10 +947,12 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				}
 				int[] strongsArray = strongs.isEmpty() ? null : strongs.stream().mapToInt(s -> s).toArray();
 				int[] srclocArray = srclocs.isEmpty() ? null : srclocs.stream().mapToInt(s -> s).toArray();
+				Versification.Reference[] srcVerseArray = srcVerses.stream().allMatch(r -> r == null) ? null : srcVerses.toArray(new Versification.Reference[srcVerses.size()]);
+
 				if (rmacs.isEmpty() && strongsArray == null) {
 					newVisitor = newVisitor.visitCSSFormatting(kind.getCss());
 				} else {
-					newVisitor = newVisitor.visitGrammarInformation(strongsPrefixes.toString().isEmpty() ? null : strongsPrefixes.toString().toCharArray(), strongsArray, strongsSuffixes.toString().trim().isEmpty() ? null : strongsSuffixes.toString().toCharArray(), rmacs.isEmpty() ? null : rmacs.toArray(new String[rmacs.size()]), srclocArray, grammarAttributeKeys.isEmpty() ? null : grammarAttributeKeys.toArray(new String[grammarAttributeKeys.size()]), grammarAttributeValues.isEmpty() ? null : grammarAttributeValues.toArray(new String[grammarAttributeValues.size()]));
+					newVisitor = newVisitor.visitGrammarInformation(strongsPrefixes.toString().isEmpty() ? null : strongsPrefixes.toString().toCharArray(), strongsArray, strongsSuffixes.toString().trim().isEmpty() ? null : strongsSuffixes.toString().toCharArray(), rmacs.isEmpty() ? null : rmacs.toArray(new String[rmacs.size()]), srcVerseArray, srclocArray, grammarAttributeKeys.isEmpty() ? null : grammarAttributeKeys.toArray(new String[grammarAttributeKeys.size()]), grammarAttributeValues.isEmpty() ? null : grammarAttributeValues.toArray(new String[grammarAttributeValues.size()]));
 					if (exportAllTags) {
 						newVisitor = newVisitor.visitCSSFormatting("-bmc-usfm-tag: " + kind.getTag());
 					}
@@ -1391,7 +1405,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			final AutoClosingFormatting formatting = new AutoClosingFormatting(AutoClosingFormattingKind.WORDLIST);
 			if (strongs != null) {
 				StringBuilder sb = new StringBuilder();
@@ -1417,7 +1431,11 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 				for (int i = 0; i < sourceIndices.length; i++) {
 					if (sb.length() != 0)
 						sb.append(",");
-					sb.append(srclocLongPrefix + sourceIndices[i]);
+					if (sourceVerses != null && sourceVerses[i] != null) {
+						sb.append(srclocPrefixes[0] + ":" + ParatextID.fromBookID(sourceVerses[i].getBook()).getNumber() + "." + sourceVerses[i].getChapter() + "." + sourceVerses[i].getVerse() + "." +  sourceIndices[i]);
+					} else {
+						sb.append(srclocLongPrefix + sourceIndices[i]);
+					}
 				}
 				formatting.getAttributes().put("srcloc", sb.toString());
 			}

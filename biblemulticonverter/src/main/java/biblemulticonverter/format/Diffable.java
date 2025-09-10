@@ -31,6 +31,7 @@ import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 
 public class Diffable implements RoundtripFormat {
 
@@ -295,7 +296,8 @@ public class Diffable implements RoundtripFormat {
 				validateTagArgs(tag, tagArgs, "strong", "rmac", "idx");
 				visitorStack.add(visitor);
 				char[] pfx, sfx;
-				int[] strongs;
+				int[] strongs, idx;
+				Versification.Reference[] refs = null;
 				String[] attrKeys, attrVals;
 				if (parseStrongsSuffix && !tagArgs.get("strong").isEmpty() && !tagArgs.containsKey("strongpfx")) {
 					String[] formattedStrongs = tagArgs.get("strong").split(",");
@@ -365,7 +367,23 @@ public class Diffable implements RoundtripFormat {
 				} else {
 					attrKeys = attrVals = null;
 				}
-				visitor = visitor.visitGrammarInformation(pfx, strongs, sfx, tagArgs.get("rmac").length() == 0 ? null : tagArgs.get("rmac").split(","), intArray(tagArgs.get("idx")), attrKeys, attrVals);
+				if (tagArgs.get("idx").isEmpty()) {
+					idx = null;
+				} else {
+					String[] parts = tagArgs.get("idx").split(",");
+					idx = new int[parts.length];
+					for (int i = 0; i < parts.length; i++) {
+						String[] iparts = parts[i].split("\\.");
+						if (iparts.length == 4) {
+							if (refs == null)
+								refs = new Versification.Reference[parts.length];
+							refs[i] = new Versification.Reference(BookID.fromOsisId(iparts[0]), Integer.parseInt(iparts[1]), iparts[2]);
+							parts[i] = iparts[3];
+						}
+						idx[i] = Integer.parseInt(parts[i]);
+					}
+				}
+				visitor = visitor.visitGrammarInformation(pfx, strongs, sfx, tagArgs.get("rmac").length() == 0 ? null : tagArgs.get("rmac").split(","), refs, idx, attrKeys, attrVals);
 				break;
 			case "dict":
 				validateTagArgs(tag, tagArgs, "dictionary", "entry");
@@ -535,7 +553,7 @@ public class Diffable implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			checkLine();
 			w.write("<grammar strong=\"");
 			if (writeStrongsSuffix && (strongsPrefixes != null || strongsSuffixes == null) && strongs != null) {
@@ -587,6 +605,8 @@ public class Diffable implements RoundtripFormat {
 				for (int i = 0; i < sourceIndices.length; i++) {
 					if (i > 0)
 						w.write(',');
+					if (sourceVerses != null && sourceVerses[i] != null)
+						w.write(sourceVerses[i].getBook().getOsisID() + "." + sourceVerses[i].getChapter() + "." + sourceVerses[i].getVerse() + ".");
 					w.write("" + sourceIndices[i]);
 				}
 			}

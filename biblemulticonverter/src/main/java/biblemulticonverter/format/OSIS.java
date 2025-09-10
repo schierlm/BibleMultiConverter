@@ -46,6 +46,7 @@ import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.MetadataBook.MetadataBookKey;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.schema.roundtripxml.ObjectFactory;
 import biblemulticonverter.tools.ValidateXML;
@@ -868,7 +869,7 @@ public class OSIS implements RoundtripFormat {
 			if (strong == null && rmac.isEmpty() && idx == null && attributeKeys == null) {
 				printWarning("INFO: Skipped <w> tag without any usable information");
 			} else {
-				v = v.visitGrammarInformation(strongPfx, strong, strongSfx, rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), idx, attributeKeys, attributeValues);
+				v = v.visitGrammarInformation(strongPfx, strong, strongSfx, rmac.isEmpty() ? null : rmac.toArray(new String[rmac.size()]), null, idx, attributeKeys, attributeValues);
 				if (grammarXattr) {
 					for(String[] grammarTag : grammarTags) {
 						String[] parts = grammarTag[1].split(":", 2);
@@ -1228,7 +1229,7 @@ public class OSIS implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			Element w = target.getOwnerDocument().createElement("w");
 			target.appendChild(w);
 			if (strongs != null) {
@@ -1258,12 +1259,16 @@ public class OSIS implements RoundtripFormat {
 
 			if (sourceIndices != null) {
 				StringBuilder src = new StringBuilder();
-				for (int idx : sourceIndices) {
+				for (int i = 0; i < sourceIndices.length; i++) {
+					if (sourceVerses != null && sourceVerses[i] != null)
+						continue;
+					int idx = sourceIndices[i];
 					if (src.length() > 0)
 						src.append(' ');
 					src.append(String.format("%02d", idx));
 				}
-				w.setAttribute("src", src.toString());
+				if (src.length() > 0)
+					w.setAttribute("src", src.toString());
 			}
 
 			if (attributeKeys != null) {

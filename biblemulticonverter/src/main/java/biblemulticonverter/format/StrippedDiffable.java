@@ -36,6 +36,7 @@ import biblemulticonverter.data.FormattedText.VisitorAdapter;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
 import biblemulticonverter.data.VerseRange;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.VersificationSet;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.format.paratext.ParatextBook.ParatextID;
@@ -59,6 +60,8 @@ public class StrippedDiffable implements ExportFormat {
 			"- RemoveStrongsPrefixes",
 			"- AddXrefMarkers",
 			"- ParseXrefMarkers",
+			"- AbsoluteSourceIndexes",
+			"- RelativeSourceIndexes",
 			"- SelectVariation <Name>",
 			"- ChangeVerseStructure {Raw|Virtual|Virtual_ignoring_Headlines|Range|Range_Ascending} [<VersificationFile> <VersificationName>]",
 			"- RenameBook <OldAbbr> <NewAbbr>",
@@ -106,6 +109,12 @@ public class StrippedDiffable implements ExportFormat {
 		} else if (exportArgs.length == 2&&exportArgs[1].equals("ParseXrefMarkers")) {
 			parseXrefMarkers(bible);
 			out.println("Xref markers parsed and removed.");
+		} else if (exportArgs.length == 2 && exportArgs[1].equals("AbsoluteSourceIndexes")) {
+			changeSourceIndexes(bible, true);
+			out.println("Converted source indexes to absolute.");
+		} else if (exportArgs.length == 2 && exportArgs[1].equals("RelativeSourceIndexes")) {
+			changeSourceIndexes(bible, false);
+			out.println("Converted source indexes to relative.");
 		} else if (exportArgs.length == 3 && exportArgs[1].equals("SelectVariation")) {
 			selectVariation(bible, exportArgs[2]);
 			out.println("Variation " + exportArgs[2] + " kept.");
@@ -568,6 +577,23 @@ public class StrippedDiffable implements ExportFormat {
 		}
 	}
 
+	private void changeSourceIndexes(Bible bible, boolean absolute) {
+		for (Book book : bible.getBooks()) {
+			int cnum = 0;
+			for (Chapter chapter : book.getChapters()) {
+				cnum++;
+				List<Verse> verses = chapter.getVerses();
+				for (int i = 0; i < verses.size(); i++) {
+					Verse v1 = verses.get(i);
+					Verse v2 = new Verse(v1.getNumber());
+					v1.accept(new ChangeSourceIndexesVisitor(v2.getAppendVisitor(), new Versification.Reference(book.getId(), cnum, v1.getNumber()), absolute));
+					v2.finished();
+					verses.set(i, v2);
+				}
+			}
+		}
+	}
+
 	protected void selectVariation(Bible bible, String variation) {
 		for (Book book : bible.getBooks()) {
 			for (Chapter chapter : book.getChapters()) {
@@ -740,7 +766,7 @@ public class StrippedDiffable implements ExportFormat {
 		StripRawHTML, StripExtraAttributes, StripOrKeepExtraAttributes, StripLineBreaks, StripVariations,
 		StripStrongs, StripStrongsWithPrefixes, StripRMAC, StripMorph, StripWIVU, StripSourceIndexes,
 		StripStrongsSuffixes, StripGrammarAttributes, StripExtendedLineBreaks, StripFootnoteTypes,
-		StripSpeakers, StripHyperlinks,
+		StripSpeakers, StripHyperlinks, StripAbsoluteSourceIndexes, StripVerseFromSourceIndexes,
 		StripOldTestament, StripNewTestament, StripDeuterocanonicalBooks,
 		StripMetadataBook, StripIntroductionBooks, StripDictionaryEntries, StripAppendixBook
 	}
@@ -888,8 +914,8 @@ public class StrippedDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
-			final Visitor<RuntimeException> result = super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+			final Visitor<RuntimeException> result = super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues);
 			final Visitor<RuntimeException> nv = getVisitor();
 			CopyToFootnoteRule rule = rules.get("Strongs");
 			if (rule != null && strongs != null) {
@@ -911,6 +937,9 @@ public class StrippedDiffable implements ExportFormat {
 				for (int i = 0; i < sourceIndices.length; i++) {
 					if (i != 0)
 						sb.append(", ");
+					if (sourceVerses != null && sourceVerses[i] != null) {
+						sb.append(sourceVerses[i].getBook().getOsisID() + " " + sourceVerses[i].getChapter() + ":" + sourceVerses[i].getVerse() + "@");
+					}
 					sb.append(sourceIndices[i]);
 				}
 				rule.addFootnote(nv).visitText(sb.toString());
@@ -1118,7 +1147,7 @@ public class StrippedDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			if (isEnabled(Feature.StripGrammar, chosenFeatures, foundFeatures)) {
 				return this;
 			} else {
@@ -1155,8 +1184,27 @@ public class StrippedDiffable implements ExportFormat {
 						}
 					}
 				}
-				if (sourceIndices != null && isEnabled(Feature.StripSourceIndexes, chosenFeatures, foundFeatures))
+				if (sourceIndices != null && isEnabled(Feature.StripSourceIndexes, chosenFeatures, foundFeatures)) {
 					sourceIndices = null;
+					sourceVerses = null;
+				}
+				if (sourceVerses != null) {
+					boolean stripVerse = isEnabled(Feature.StripVerseFromSourceIndexes, chosenFeatures, foundFeatures);
+					boolean stripAbsolute = isEnabled(Feature.StripAbsoluteSourceIndexes, chosenFeatures, foundFeatures);
+					if (stripVerse) {
+						sourceVerses = null;
+					} else if (stripAbsolute) {
+						int ni = 0;
+						for (int i = 0; i < sourceIndices.length; i++) {
+							if (sourceVerses[i] == null) {
+								sourceIndices[ni] = sourceIndices[i];
+								ni++;
+							}
+						}
+						sourceVerses = null;
+						sourceIndices = ni == 0 ? null : Arrays.copyOf(sourceIndices, ni);
+					}
+				}
 				if (attributeKeys != null && attributeValues != null && isEnabled(Feature.StripGrammarAttributes, chosenFeatures, foundFeatures)) {
 					attributeKeys = null;
 					attributeValues = null;
@@ -1164,7 +1212,7 @@ public class StrippedDiffable implements ExportFormat {
 				if (strongs == null && rmac == null && sourceIndices == null && attributeKeys == null) {
 					return this;
 				}
-				return new StripVisitor(next.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues), chosenFeatures, foundFeatures);
+				return new StripVisitor(next.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues), chosenFeatures, foundFeatures);
 			}
 		}
 
@@ -1558,7 +1606,7 @@ public class StrippedDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			if (add && strongsPrefixes == null && strongs != null) {
 				strongsPrefixes = new char[strongs.length];
 				Arrays.fill(strongsPrefixes, defaultPrefix);
@@ -1573,7 +1621,7 @@ public class StrippedDiffable implements ExportFormat {
 				if (allDefault)
 					strongsPrefixes = null;
 			}
-			return super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
+			return super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues);
 		}
 	}
 
@@ -1651,6 +1699,48 @@ public class StrippedDiffable implements ExportFormat {
 		}
 	}
 
+	private static class ChangeSourceIndexesVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
+
+		private final Versification.Reference thisVerse;
+		private final boolean absolute;
+
+		private ChangeSourceIndexesVisitor(Visitor<RuntimeException> next, Versification.Reference thisVerse, boolean absolute) throws RuntimeException {
+			super(next);
+			this.thisVerse = thisVerse;
+			this.absolute = absolute;
+		}
+
+		@Override
+		protected Visitor<RuntimeException> wrapChildVisitor(Visitor<RuntimeException> childVisitor) throws RuntimeException {
+			return new ChangeSourceIndexesVisitor(childVisitor, thisVerse, absolute);
+		}
+
+		@Override
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+			if (absolute && sourceIndices != null) {
+				if (sourceVerses == null)
+					sourceVerses = new Versification.Reference[sourceIndices.length];
+				for (int i = 0; i < sourceIndices.length; i++) {
+					if (sourceVerses[i] == null)
+						sourceVerses[i] = thisVerse;
+				}
+			} else if (!absolute && sourceVerses != null) {
+				boolean allEmpty = true;
+				for (int i = 0; i < sourceIndices.length; i++) {
+					if (sourceVerses[i] != null) {
+						if (sourceVerses[i].equals(thisVerse))
+							sourceVerses[i] = null;
+						else
+							allEmpty = false;
+					}
+				}
+				if (allEmpty)
+					sourceVerses = null;
+			}
+			return super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues);
+		}
+	}
+
 	private static class RenameGrammarAttributesVisitor extends FormattedText.VisitorAdapter<RuntimeException> {
 
 		private final List<String[]> mappings;
@@ -1678,7 +1768,7 @@ public class StrippedDiffable implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			if (attributeKeys != null) {
 				boolean removeSome = false;
 				for (int i = 0; i < attributeKeys.length; i++) {
@@ -1704,7 +1794,7 @@ public class StrippedDiffable implements ExportFormat {
 					}
 				}
 			}
-			return super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
+			return super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues);
 		}
 	}
 }

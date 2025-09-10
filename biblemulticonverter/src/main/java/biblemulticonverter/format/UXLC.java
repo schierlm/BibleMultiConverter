@@ -146,11 +146,11 @@ public class UXLC implements ImportFormat {
 								Visitor<RuntimeException> vf = v.visitFootnote(false);
 								vf.visitText("Q: ");
 								kqvals[0] = "q";
-								vv = vf.visitGrammarInformation(null, null, null, null, null, kqkeys, Arrays.copyOf(kqvals, kqvals.length));
+								vv = vf.visitGrammarInformation(null, null, null, null, null, null, kqkeys, Arrays.copyOf(kqvals, kqvals.length));
 							} else if (o instanceof K) {
 								content = ((K) o).getContent();
 								kqvals[0] = "k";
-								vv = v.visitGrammarInformation(null, null, null, null, new int[] { nextIdx }, kqkeys, Arrays.copyOf(kqvals, kqvals.length));
+								vv = v.visitGrammarInformation(null, null, null, null, null, new int[] { nextIdx }, kqkeys, Arrays.copyOf(kqvals, kqvals.length));
 								nextIdx++;
 							} else {
 								content = ((W) o).getContent();
@@ -159,7 +159,7 @@ public class UXLC implements ImportFormat {
 										throw new IOException("Placeholder word");
 									continue;
 								}
-								vv = v.visitGrammarInformation(null, null, null, null, new int[] { nextIdx }, akeys, avals);
+								vv = v.visitGrammarInformation(null, null, null, null, null, new int[] { nextIdx }, akeys, avals);
 								nextIdx++;
 							}
 							for (Object oo : content) {

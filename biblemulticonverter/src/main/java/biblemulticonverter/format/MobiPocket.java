@@ -23,6 +23,7 @@ import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.tools.MobiPocketBXR;
 import biblemulticonverter.tools.MobiPocketBXR.BookInfo;
 
@@ -204,7 +205,7 @@ public class MobiPocket implements ExportFormat {
 					}
 
 					@Override
-					public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+					public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 						pushSuffix("");
 						return this;
 					}
@@ -293,7 +294,7 @@ public class MobiPocket implements ExportFormat {
 			}
 
 			@Override
-			public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKEys, String[] attributeValues) throws IOException {
+			public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKEys, String[] attributeValues) throws IOException {
 				pushSuffix("");
 				return this;
 			}

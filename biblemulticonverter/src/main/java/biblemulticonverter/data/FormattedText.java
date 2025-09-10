@@ -3,6 +3,7 @@ package biblemulticonverter.data;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
@@ -330,15 +331,17 @@ public class FormattedText {
 		private final int[] strongs;
 		private final char[] strongsSuffixes;
 		private final String[] rmac;
+		private final Versification.Reference[] sourceVerses;
 		private final int[] sourceIndices;
 		private final String[] attributeKeys;
 		private final String[] attributeValues;
 
-		private GrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		private GrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			this.strongsPrefixes = strongsPrefixes;
 			this.strongs = strongs;
 			this.strongsSuffixes = strongsSuffixes;
 			this.rmac = rmac;
+			this.sourceVerses = sourceVerses;
 			this.sourceIndices = sourceIndices;
 			this.attributeKeys = attributeKeys;
 			this.attributeValues = attributeValues;
@@ -390,6 +393,14 @@ public class FormattedText {
 						throw new IllegalArgumentException("Source index out of range: " + idx);
 				}
 			}
+			if (sourceVerses != null) {
+				if (sourceIndices == null)
+					throw new IllegalArgumentException("Source verses without source indices are not supported!");
+				if (sourceVerses.length != sourceIndices.length)
+					throw new IllegalArgumentException("Source verses to be same length as source indices");
+				if (Arrays.stream(sourceVerses).allMatch(r -> r == null))
+						throw new IllegalArgumentException("At least one source verse must be set");
+			}
 			if (attributeKeys != null || attributeValues != null) {
 				if (attributeKeys == null || attributeValues == null)
 					throw new IllegalArgumentException("Attribute keys and values must both be present");
@@ -405,7 +416,7 @@ public class FormattedText {
 		}
 
 		public <T extends Throwable> void acceptThis(Visitor<T> visitor) throws T {
-			accept(visitor.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues));
+			accept(visitor.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues));
 		}
 	}
 
@@ -653,7 +664,7 @@ public class FormattedText {
 
 		public void visitLineBreak(ExtendedLineBreakKind kind, int indent) throws T;
 
-		public Visitor<T> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws T;
+		public Visitor<T> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws T;
 
 		public Visitor<T> visitDictionaryEntry(String dictionary, String entry) throws T;
 
@@ -755,9 +766,9 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<T> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws T {
+		public Visitor<T> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws T {
 			beforeVisit();
-			return wrapChildVisitor(getVisitor() == null ? null : getVisitor().visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues));
+			return wrapChildVisitor(getVisitor() == null ? null : getVisitor().visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues));
 		}
 
 		@Override
@@ -873,8 +884,8 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
-			return addAndVisit(new GrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues));
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+			return addAndVisit(new GrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues));
 		}
 
 		@Override
@@ -1095,7 +1106,7 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			if (context.ordinal() >= ValidationContext.LINK.ordinal())
 				violation(ValidationCategory.NESTED_LINK, "");
 			visitInlineElement();
@@ -1235,7 +1246,7 @@ public class FormattedText {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			return visitNestedType('g');
 		}
 

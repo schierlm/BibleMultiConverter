@@ -48,6 +48,7 @@ import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.MetadataBook.MetadataBookKey;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.schema.haggai.BIBLEBOOK;
 import biblemulticonverter.schema.haggai.CAPTION;
@@ -437,7 +438,7 @@ public class HaggaiXML implements RoundtripFormat {
 					if (rmac != null && rmac.length == 0)
 						rmac = null;
 					if (strongs != null || rmac != null)
-						strongVisitor = strongVisitor.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, null, null, null);
+						strongVisitor = strongVisitor.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, null, null, null, null);
 					if (!parseContent(strongVisitor, gram.getContent(), abbrMap) && strongVisitor != visitor) {
 						visitEmptyMarker(strongVisitor);
 					}
@@ -743,7 +744,7 @@ public class HaggaiXML implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			final GRAM gram = of.createGRAM();
 			result.add(new JAXBElement<GRAM>(new QName("GRAM"), GRAM.class, gram));
 			Visitor<IOException> nextVisitor = new CreateContentVisitor(of, gram.getContent(), null);

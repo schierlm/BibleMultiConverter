@@ -108,7 +108,7 @@ public class LogosLinksGenerator {
 		}
 	}
 
-	public List<String> generateLinks(boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+	public List<String> generateLinks(boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 		List<String> allLinks = new ArrayList<String>();
 		String[] expandedStrongs = strongs == null ? null : new String[strongs.length];
 		if (strongs != null) {
@@ -170,7 +170,7 @@ public class LogosLinksGenerator {
 				}
 			}
 			if (sourceIndices != null && i < sourceIndices.length) {
-				String[] wordNums = wordNumbers.get(verseReference);
+				String[] wordNums = wordNumbers.get(sourceVerses != null && sourceVerses[i] != null ? sourceVerses[i] : verseReference);
 				if (wordNums != null && sourceIndices[i] <= wordNums.length)
 					links.add("WordNumber:" + wordNums[sourceIndices[i] - 1]);
 			}

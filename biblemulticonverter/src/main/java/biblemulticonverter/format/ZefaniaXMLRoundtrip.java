@@ -48,6 +48,7 @@ import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.MetadataBook.MetadataBookKey;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.schema.zef2005.BIBLEBOOK;
 import biblemulticonverter.schema.zef2005.BR;
@@ -533,7 +534,7 @@ public class ZefaniaXMLRoundtrip implements RoundtripFormat {
 						String rmac = gram.getRmac();
 						rmacs = rmac.split(" ");
 					}
-					strongVisitor = strongVisitor.visitGrammarInformation(realPrefixes ? strongsPrefixes : null, strongs, realSuffixes ? strongsSuffixes : null, rmacs, null, null, null);
+					strongVisitor = strongVisitor.visitGrammarInformation(realPrefixes ? strongsPrefixes : null, strongs, realSuffixes ? strongsSuffixes : null, rmacs, null, null, null, null);
 					if (!parseContent(strongVisitor, gram.getContent(), abbrMap)) {
 						visitEmptyMarker(strongVisitor);
 					}
@@ -871,7 +872,7 @@ public class ZefaniaXMLRoundtrip implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			final GRAM gram = of.createGRAM();
 			String gramName = "GRAM", prefix = "";
 			if (footnoteSource != null) {

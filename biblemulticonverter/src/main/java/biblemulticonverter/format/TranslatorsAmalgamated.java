@@ -156,7 +156,7 @@ public class TranslatorsAmalgamated implements ImportFormat {
 							}
 							String[] keys = {"tahot:transliteration", "tahot:translation"};
 							String[] values = {fields[2], fields[3].replaceAll("  +", " ")};
-							v = v.visitGrammarInformation(strongPfx, strongNum, strongSfx, wivu, null, keys, values);
+							v = v.visitGrammarInformation(strongPfx, strongNum, strongSfx, wivu, null, null, keys, values);
 						}
 						v.visitText(fields[1]);
 						v.visitEnd();
@@ -355,7 +355,7 @@ public class TranslatorsAmalgamated implements ImportFormat {
 				values.add(wi.greek.substring(pos + 2, wi.greek.length() - 1));
 				wi.greek = wi.greek.substring(0, pos);
 			}
-			v = v.visitGrammarInformation(strongPfx, strongNum, strongSfx, wi.rmac, null, keys.toArray(new String[keys.size()]), values.toArray(new String[values.size()]));
+			v = v.visitGrammarInformation(strongPfx, strongNum, strongSfx, wi.rmac, null, null, keys.toArray(new String[keys.size()]), values.toArray(new String[values.size()]));
 			boolean addPara = false;
 			if (wi.greek.endsWith("¶")) {
 				addPara = true;

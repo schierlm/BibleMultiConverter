@@ -38,6 +38,7 @@ import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.MetadataBook.MetadataBookKey;
 import biblemulticonverter.data.MetadataBook;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.data.VirtualVerse;
 import biblemulticonverter.schema.zef2005.BIBLEBOOK;
 import biblemulticonverter.schema.zef2005.BR;
@@ -204,7 +205,7 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 						}
 
 						@Override
-						public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+						public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 							throw new RuntimeException("Grammar tags in prologs not supported");
 						}
 
@@ -439,7 +440,7 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 									}
 
 									@Override
-									public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+									public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 										GRAM gram = f.createGRAM();
 										if (strongs != null) {
 											StringBuilder entryBuilder = new StringBuilder();
@@ -587,7 +588,7 @@ public class ZefaniaXMLMyBible implements ExportFormat {
 							}
 
 							@Override
-							public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+							public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 								GRAM gram = f.createGRAM();
 								if (strongs != null) {
 									StringBuilder entryBuilder = new StringBuilder();

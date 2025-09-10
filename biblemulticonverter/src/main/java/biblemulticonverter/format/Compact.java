@@ -29,6 +29,7 @@ import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Utils;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 import biblemulticonverter.schema.haggai.PARAGRAPH;
 
 public class Compact implements RoundtripFormat {
@@ -265,6 +266,7 @@ public class Compact implements RoundtripFormat {
 					int[] strongs = new int[args.length];
 					String[] rmacs = new String[args.length];
 					int[] idxs = new int[args.length];
+					Versification.Reference[] refs = new Versification.Reference[args.length];
 					String[] attributeKeys = new String[args.length];
 					String[] attributeValues = new String[args.length];
 					int scount = 0, rcount = 0, icount = 0, acount = 0;
@@ -314,10 +316,16 @@ public class Compact implements RoundtripFormat {
 							rmacs[i] = parts[1];
 						else
 							rmacs[i] = null;
-						if (parts.length > 2)
+						if (parts.length > 2) {
+							String[] iparts = parts[2].split("\\.");
+							if (iparts.length == 4) {
+								refs[i] = new Versification.Reference(BookID.fromOsisId(iparts[0]), Integer.parseInt(iparts[1]), iparts[2]);
+								parts[2] = iparts[3];
+							}
 							idxs[i] = Integer.parseInt(parts[2]);
-						else
+						} else {
 							idxs[i] = -1;
+						}
 						if (strongs[i] != -1)
 							scount = i + 1;
 						if (rmacs[i] != null)
@@ -330,10 +338,11 @@ public class Compact implements RoundtripFormat {
 					strongs = scount == 0 ? null : Arrays.copyOf(strongs, scount);
 					rmacs = rcount == 0 ? null : Arrays.copyOf(rmacs, rcount);
 					idxs = icount == 0 ? null : Arrays.copyOf(idxs, icount);
+					refs = Arrays.stream(refs).allMatch(r -> r == null) ? null : Arrays.copyOf(refs, icount);
 					attributeKeys = acount == 0 ? null : Arrays.copyOf(attributeKeys, acount);
 					attributeValues = acount == 0 ? null : Arrays.copyOf(attributeValues, acount);
 					visitorStack.add(visitor);
-					visitor = visitor.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmacs, idxs, attributeKeys, attributeValues);
+					visitor = visitor.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmacs, refs, idxs, attributeKeys, attributeValues);
 					break;
 				case 'D':
 					lastPos = line.indexOf('>', pos) + 1;
@@ -484,7 +493,7 @@ public class Compact implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			w.write("<G");
 			int max = Math.max(Math.max(strongs == null ? 0 : strongs.length, rmac == null ? 0 : rmac.length), sourceIndices == null ? 0 : sourceIndices.length);
 			boolean hasSuffix = false;
@@ -508,8 +517,12 @@ public class Compact implements RoundtripFormat {
 					w.write(":");
 					if (r)
 						w.write(rmac[i]);
-					if (si)
-						w.write(":" + sourceIndices[i]);
+					if (si) {
+						if (sourceVerses != null && sourceVerses[i] != null)
+							w.write(":" + sourceVerses[i].getBook().getOsisID() + "." + sourceVerses[i].getChapter() + "." + sourceVerses[i].getVerse() + "." + sourceIndices[i]);
+						else
+							w.write(":" + sourceIndices[i]);
+					}
 				}
 			}
 			if (strongsSuffixes != null && !hasSuffix) {

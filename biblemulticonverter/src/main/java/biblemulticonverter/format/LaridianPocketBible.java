@@ -232,7 +232,7 @@ public class LaridianPocketBible implements ExportFormat {
 								}
 
 								@Override
-								public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+								public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 									if (strongs != null) {
 										for (int i = 0; i < strongs.length; i++) {
 											String formatted = Utils.formatStrongs(nt, i, strongsPrefixes, strongs, strongsSuffixes, "");
@@ -242,7 +242,7 @@ public class LaridianPocketBible implements ExportFormat {
 												strongsFlags[1] = true;
 										}
 									}
-									return super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues);
+									return super.visitGrammarInformation(strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues);
 								}
 							});
 							hasStrongsGreek |= strongsFlags[0];
@@ -376,7 +376,7 @@ public class LaridianPocketBible implements ExportFormat {
 
 		public static InterlinearTypePrecalculator<Void> NO_PRECALCULATOR = new InterlinearTypePrecalculator<Void>() {
 			@Override
-			public Void precalculate(boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+			public Void precalculate(boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 				return null;
 			}
 		};
@@ -390,17 +390,17 @@ public class LaridianPocketBible implements ExportFormat {
 			this.metaValue = metaValue;
 		}
 
-		protected abstract List<String> determineValues(C precalculatedValue, boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues);
+		protected abstract List<String> determineValues(C precalculatedValue, boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues);
 	}
 
 	protected static interface InterlinearTypePrecalculator<C> {
-		public abstract C precalculate(boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues);
+		public abstract C precalculate(boolean nt, Versification.Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues);
 	}
 
 	private static class StrongsInterlinearType extends InterlinearType<List<String>> {
 
 		private static final InterlinearTypePrecalculator<List<String>> STRONGS_PRECALCULATOR = new InterlinearTypePrecalculator<List<String>>() {
-			public List<String> precalculate(boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+			public List<String> precalculate(boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 				List<String> result = new ArrayList<>();
 				if (strongs != null) {
 					for (int i = 0; i < strongs.length; i++) {
@@ -420,7 +420,7 @@ public class LaridianPocketBible implements ExportFormat {
 		}
 
 		@Override
-		protected List<String> determineValues(List<String> formattedStrongs, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		protected List<String> determineValues(List<String> formattedStrongs, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			return formattedStrongs.stream().filter(s -> s.startsWith(greek ? "G" : "H")).map(s -> s.substring(1)).collect(Collectors.toList());
 		}
 	}
@@ -435,7 +435,7 @@ public class LaridianPocketBible implements ExportFormat {
 		}
 
 		@Override
-		protected List<String> determineValues(Void precalculatedValue, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		protected List<String> determineValues(Void precalculatedValue, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			List<String> result = new ArrayList<>();
 			if (rmac != null) {
 				for (int i = 0; i < rmac.length; i++) {
@@ -453,11 +453,15 @@ public class LaridianPocketBible implements ExportFormat {
 		}
 
 		@Override
-		protected List<String> determineValues(Void precalculatedValue, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		protected List<String> determineValues(Void precalculatedValue, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			List<String> result = new ArrayList<>();
 			if (sourceIndices != null) {
 				for (int i = 0; i < sourceIndices.length; i++) {
-					result.add("" + sourceIndices[i]);
+					if (sourceVerses != null && sourceVerses[i] != null && !sourceVerses[i].equals(verseReference)) {
+						result.add(sourceIndices[i] + "@" + sourceVerses[i]);
+					} else {
+						result.add("" + sourceIndices[i]);
+					}
 				}
 			}
 			return result;
@@ -473,7 +477,7 @@ public class LaridianPocketBible implements ExportFormat {
 		}
 
 		@Override
-		protected List<String> determineValues(Void precalculatedValue, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		protected List<String> determineValues(Void precalculatedValue, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			List<String> result = new ArrayList<>();
 			if (attributeKeys != null) {
 				for (int i = 0; i < attributeKeys.length; i++) {
@@ -494,7 +498,7 @@ public class LaridianPocketBible implements ExportFormat {
 		}
 
 		@Override
-		protected List<String> determineValues(Void precalculatedValue, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
+		protected List<String> determineValues(Void precalculatedValue, boolean nt, Reference verseReference, char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) {
 			List<String> result = new ArrayList<>();
 			if (attributeKeys != null) {
 				StringBuilder curval = new StringBuilder();
@@ -822,15 +826,15 @@ public class LaridianPocketBible implements ExportFormat {
 		}
 
 		@Override
-		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
+		public Visitor<RuntimeException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws RuntimeException {
 			ensureInParagraph();
 			StringBuilder suffixBuilder = new StringBuilder();
 			if (interlinearTypes != null) {
 				Map<InterlinearTypePrecalculator<?>, Object> precalculatedCache = new IdentityHashMap<>();
 				for (InterlinearType<?> it : interlinearTypes) {
 					if (!precalculatedCache.containsKey(it.precalculator))
-						precalculatedCache.put(it.precalculator, it.precalculator.precalculate(reference.getBook().isNT(), reference, strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues));
-					for (String value : ((InterlinearType<Object>) it).determineValues(precalculatedCache.get(it.precalculator), reference.getBook().isNT(), reference, strongsPrefixes, strongs, strongsSuffixes, rmac, sourceIndices, attributeKeys, attributeValues)) {
+						precalculatedCache.put(it.precalculator, it.precalculator.precalculate(reference.getBook().isNT(), reference, strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues));
+					for (String value : ((InterlinearType<Object>) it).determineValues(precalculatedCache.get(it.precalculator), reference.getBook().isNT(), reference, strongsPrefixes, strongs, strongsSuffixes, rmac, sourceVerses, sourceIndices, attributeKeys, attributeValues)) {
 						suffixBuilder.append("<pb_attr name=\"" + it.name + "\" value=\"" + value + "\" />");
 					}
 				}

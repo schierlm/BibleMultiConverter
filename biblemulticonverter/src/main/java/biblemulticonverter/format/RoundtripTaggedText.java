@@ -32,6 +32,7 @@ import biblemulticonverter.data.FormattedText.LineBreakKind;
 import biblemulticonverter.data.FormattedText.RawHTMLMode;
 import biblemulticonverter.data.FormattedText.Visitor;
 import biblemulticonverter.data.Verse;
+import biblemulticonverter.data.Versification;
 
 public class RoundtripTaggedText implements RoundtripFormat {
 
@@ -301,7 +302,20 @@ public class RoundtripTaggedText implements RoundtripFormat {
 						}
 					}
 					String[] rmac = parsedMultiContent.get(1).isEmpty() ? null : parsedMultiContent.get(1).toArray(new String[0]);
-					int[] idx = parsedMultiContent.get(2).isEmpty() ? null : parsedMultiContent.get(2).stream().mapToInt(Integer::parseInt).toArray();
+					List<String> ii = parsedMultiContent.get(2);
+					int[] idx = ii.isEmpty() ? null : new int[ii.size()];
+					Versification.Reference[] ref = null;
+					for (int i = 0; i < ii.size(); i++) {
+						String[] iparts = ii.get(i).split("\\.");
+						if (iparts.length == 4) {
+							if (ref == null) {
+								ref = new Versification.Reference[idx.length];
+							}
+							ref[i] = new Versification.Reference(BookID.fromOsisId(iparts[0]), Integer.parseInt(iparts[1]), iparts[2]);
+							ii.set(i, iparts[3]);
+						}
+						idx[i] = Integer.parseInt(ii.get(i));
+					}
 					String[] attrKey = null, attrVal = null;
 					List<String> attrkey = parsedMultiContent.get(3);
 					List<String> attrval = parsedMultiContent.get(4);
@@ -321,7 +335,7 @@ public class RoundtripTaggedText implements RoundtripFormat {
 						Arrays.fill(strongSfx, ' ');
 					}
 					parseText(parsedMultiContent.get(6).isEmpty() ? null : parsedMultiContent.get(6).get(0),
-							vv.visitGrammarInformation(strongPfx, strong, strongSfx, rmac, idx, attrKey, attrVal));
+							vv.visitGrammarInformation(strongPfx, strong, strongSfx, rmac, ref, idx, attrKey, attrVal));
 					break;
 				case "dictentry":
 					parsedContent = parseTags(tagContent, "dictionaryname", "entry", "");
@@ -509,7 +523,7 @@ public class RoundtripTaggedText implements RoundtripFormat {
 		}
 
 		@Override
-		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
+		public Visitor<IOException> visitGrammarInformation(char[] strongsPrefixes, int[] strongs, char[] strongsSuffixes, String[] rmac, Versification.Reference[] sourceVerses, int[] sourceIndices, String[] attributeKeys, String[] attributeValues) throws IOException {
 			String[] attrValuePairs = new String[(strongs == null ? 0 : strongs.length * 2) + (rmac == null ? 0 : rmac.length * 2) + (sourceIndices == null ? 0 : sourceIndices.length * 2) + (attributeKeys == null ? 0 : attributeKeys.length * 4)];
 			int idx = 0;
 
@@ -540,7 +554,11 @@ public class RoundtripTaggedText implements RoundtripFormat {
 			if (sourceIndices != null) {
 				for (int i = 0; i < sourceIndices.length; i++) {
 					attrValuePairs[idx++] = "idx";
-					attrValuePairs[idx++] = "" + sourceIndices[i];
+					if (sourceVerses != null && sourceVerses[i] != null) {
+						attrValuePairs[idx++] = sourceVerses[i].getBook().getOsisID() + "." + sourceVerses[i].getChapter() + "." + sourceVerses[i].getVerse() + "." + sourceIndices[i];
+					} else {
+						attrValuePairs[idx++] = "" + sourceIndices[i];
+					}
 				}
 			}
 			if (attributeKeys != null) {
