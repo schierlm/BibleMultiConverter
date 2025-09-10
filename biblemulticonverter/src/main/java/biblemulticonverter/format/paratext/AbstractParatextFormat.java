@@ -1054,6 +1054,7 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		private ParagraphKind currentParagraph;
 		private ParatextCharacterContent charContent;
 		private VerseIdentifier currentVerse;
+		private boolean verseStartWritten;
 
 		public ParatextExportContext(ParatextBook book) {
 			this.book = book;
@@ -1070,12 +1071,21 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 		}
 
 		public void startVerse(VerseIdentifier verse) {
-			book.getContent().add(new ParatextBook.VerseStart(verse, verse.verse()));
 			currentVerse = verse;
+			verseStartWritten = false;
 			charContent = null;
 		}
 
+		public void ensureVerseStart() {
+			if (!verseStartWritten) {
+				charContent = null;
+				book.getContent().add(new ParatextBook.VerseStart(currentVerse, currentVerse.verse()));
+				verseStartWritten = true;
+			}
+		}
+
 		public void endVerse(VerseIdentifier verse) {
+			ensureVerseStart();
 			book.getContent().add(new ParatextBook.VerseEnd(verse));
 			charContent = null;
 		}
@@ -1172,6 +1182,10 @@ public abstract class AbstractParatextFormat implements RoundtripFormat {
 
 		@Override
 		public void visitStart() {
+			if (location.equals("in verse") && !ctx.verseStartWritten) {
+				getCharContent();
+				ctx.ensureVerseStart();
+			}
 		}
 
 		@Override
