@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.data.Versification;
@@ -54,6 +55,8 @@ public class AccordanceReferenceList implements VersificationFormat {
 		BOOK_NAME_MAP.put("Judge", BookID.BOOK_Judg);
 		BOOK_NAME_MAP.put("1Thess", BookID.BOOK_1Thess);
 		BOOK_NAME_MAP.put("2Thess", BookID.BOOK_2Thess);
+		BOOK_NAME_MAP.put("Cant", BookID.BOOK_Song);
+		BOOK_NAME_MAP.put("Apoc.", BookID.BOOK_Rev);
 		// long names
 		BOOK_NAME_MAP.put("Genesis", BookID.BOOK_Gen);
 		BOOK_NAME_MAP.put("Exodus", BookID.BOOK_Exod);
@@ -87,7 +90,8 @@ public class AccordanceReferenceList implements VersificationFormat {
 		BOOK_NAME_MAP.put("Malachi", BookID.BOOK_Mal);
 		BOOK_NAME_MAP.put("Manasse", BookID.BOOK_PrMan);
 		BOOK_NAME_MAP.put("Susanna", BookID.BOOK_Sus);
-		BOOK_NAME_MAP.put("LetterJ", BookID.BOOK_EpJer);
+		BOOK_NAME_MAP.put("LetterJ.", BookID.BOOK_EpJer);
+		BOOK_NAME_MAP.put("LetterJeremiah", BookID.BOOK_EpJer);
 		BOOK_NAME_MAP.put("Matthew", BookID.BOOK_Matt);
 		BOOK_NAME_MAP.put("Romans", BookID.BOOK_Rom);
 		BOOK_NAME_MAP.put("1Corinthians", BookID.BOOK_1Cor);
@@ -109,9 +113,14 @@ public class AccordanceReferenceList implements VersificationFormat {
 		BOOK_NAME_MAP.put("Tobit", BookID.BOOK_Tob);
 		BOOK_NAME_MAP.put("1Maccabees", BookID.BOOK_1Macc);
 		BOOK_NAME_MAP.put("2Maccabees", BookID.BOOK_2Macc);
+		BOOK_NAME_MAP.put("3Maccabees", BookID.BOOK_3Macc);
+		BOOK_NAME_MAP.put("4Maccabees", BookID.BOOK_4Macc);
 		BOOK_NAME_MAP.put("Wisdom", BookID.BOOK_Wis);
 		BOOK_NAME_MAP.put("Sirach", BookID.BOOK_Sir);
 		BOOK_NAME_MAP.put("Baruch", BookID.BOOK_Bar);
+		BOOK_NAME_MAP.put("1Esdras", BookID.BOOK_1Esd);
+		BOOK_NAME_MAP.put("2Esdras", BookID.BOOK_2Esd);
+		BOOK_NAME_MAP.put("Manasseh", BookID.BOOK_PrMan);
 	}
 
 	@Override
