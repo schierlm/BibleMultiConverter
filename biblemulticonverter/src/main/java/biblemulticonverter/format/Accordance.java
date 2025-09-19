@@ -138,13 +138,16 @@ public class Accordance implements RoundtripFormat {
 		BOOK_NAME_MAP.put(BookID.BOOK_PrMan, "Man.");
 		BOOK_NAME_MAP.put(BookID.BOOK_3Macc, "3Mac.");
 		BOOK_NAME_MAP.put(BookID.BOOK_2Esd, "2Esdr.");
+		BOOK_NAME_MAP.put(BookID.BOOK_Jub, "Jub.");
+		BOOK_NAME_MAP.put(BookID.BOOK_2Bar, "2Bar.");
+		BOOK_NAME_MAP.put(BookID.BOOK_4Bar, "2Bar.");
 		BOOK_NAME_MAP.put(BookID.BOOK_4Ezra, "4Ezra");
 		BOOK_NAME_MAP.put(BookID.BOOK_4Macc, "4Mac.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Sus, "Sus.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Bel, "Bel");
 		BOOK_NAME_MAP.put(BookID.BOOK_EpJer, "Let.");
 		BOOK_NAME_MAP.put(BookID.BOOK_PssSol, "Sol.");
-		BOOK_NAME_MAP.put(BookID.BOOK_1En, "Enoch");
+		BOOK_NAME_MAP.put(BookID.BOOK_1En, "1Enoch");
 		BOOK_NAME_MAP.put(BookID.BOOK_Odes, "Ode.");
 		BOOK_NAME_MAP.put(BookID.BOOK_EpLao, "Laod.");
 		BOOK_NAME_MAP.put(BookID.BOOK_Matt, "Matt.");

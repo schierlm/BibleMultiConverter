@@ -121,6 +121,9 @@ public class AccordanceReferenceList implements VersificationFormat {
 		BOOK_NAME_MAP.put("1Esdras", BookID.BOOK_1Esd);
 		BOOK_NAME_MAP.put("2Esdras", BookID.BOOK_2Esd);
 		BOOK_NAME_MAP.put("Manasseh", BookID.BOOK_PrMan);
+		BOOK_NAME_MAP.put("Jubilees", BookID.BOOK_Jub);
+		BOOK_NAME_MAP.put("2Baruch", BookID.BOOK_2Bar);
+		BOOK_NAME_MAP.put("4Baruch", BookID.BOOK_4Bar);
 	}
 
 	@Override
