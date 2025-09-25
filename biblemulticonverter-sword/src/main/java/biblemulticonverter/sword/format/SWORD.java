@@ -55,7 +55,7 @@ public class SWORD implements ImportFormat {
 
 	protected Bible doImport(Book book) throws Exception {
 		OSISHelper helper = new OSISHelper();
-		Bible result = new Bible(book.getName());
+		Bible result = new Bible(book.getName().replaceAll("\\p{Cntrl}+", " ").replaceAll("\\s+", " ").trim());
 		TransformerHandler th = ((SAXTransformerFactory) SAXTransformerFactory.newInstance()).newTransformerHandler();
 		Map<BookID, biblemulticonverter.data.Book> parsedBooks = new EnumMap<>(BookID.class);
 		Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
