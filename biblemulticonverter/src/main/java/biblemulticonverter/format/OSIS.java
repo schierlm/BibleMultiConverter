@@ -654,18 +654,30 @@ public class OSIS implements RoundtripFormat {
 			parseStructuredTextChildren(vv.visitCSSFormatting("osis-style: catchWord; font-style:italic;"), elem);
 		} else if (elem.getNodeName().equals("hi")) {
 			FormattingInstructionKind kind;
+			String css = null;
 			if (elem.getAttribute("type").equals("italic")) {
 				kind = FormattingInstructionKind.ITALIC;
 			} else if (elem.getAttribute("type").equals("bold")) {
 				kind = FormattingInstructionKind.BOLD;
 			} else if (elem.getAttribute("type").equals("emphasis")) {
 				kind = FormattingInstructionKind.ITALIC;
+			} else if (elem.getAttribute("type").equals("super")) {
+				kind = FormattingInstructionKind.SUPERSCRIPT;
+			} else if (elem.getAttribute("type").equals("sub")) {
+				kind = FormattingInstructionKind.SUBSCRIPT;
+			} else if (elem.getAttribute("type").equals("line-through")) {
+				kind = FormattingInstructionKind.STRIKE_THROUGH;
+			} else if (elem.getAttribute("type").equals("underline")) {
+				kind = FormattingInstructionKind.UNDERLINE;
+			} else if (elem.getAttribute("type").equals("small-caps")) {
+				kind = null;
+				css = "font-variant: small-caps;";
 			} else {
 				kind = null;
 				printWarning("WARNING: Invalid hi type: " + elem.getAttribute("type"));
 			}
 			if (elem.getChildNodes().getLength() != 0) {
-				Visitor<RuntimeException> vv1 = kind == null ? vv : vv.visitFormattingInstruction(kind);
+				Visitor<RuntimeException> vv1 = css != null ? vv.visitCSSFormatting(css) : kind == null ? vv : vv.visitFormattingInstruction(kind);
 				parseStructuredTextChildren(vv1, elem);
 			}
 		} else if (elem.getNodeName().equals("seg") || elem.getNodeName().equals("transChange") || elem.getNodeName().equals("rdg")) {
@@ -702,8 +714,7 @@ public class OSIS implements RoundtripFormat {
 			}
 		} else if (elem.getNodeName().equals("note")) {
 			if (elem.getAttribute("type").equals("crossReference")) {
-				Visitor<RuntimeException> fn = vv.visitFootnote(false);
-				fn.visitText(FormattedText.XREF_MARKER);
+				Visitor<RuntimeException> fn = vv.visitFootnote(true);
 				if (elem.getFirstChild() != null && elem.getFirstChild().getNodeName().equals("reference")) {
 					for (Node n = elem.getFirstChild(); n != null; n = n.getNextSibling()) {
 						if (n instanceof Text) {
@@ -945,14 +956,57 @@ public class OSIS implements RoundtripFormat {
 				} catch (IllegalArgumentException ex) {
 					printWarning("WARNING: " + ex.getMessage());
 				}
-			} else if (osisRef.matches("([A-Z0-9][A-Z0-9a-z]+)\\.[0-9]+\\.[0-9]+-\\1\\.[0-9]+\\.[0-9]+")) {
+			} else if (osisRef.matches("[A-Z0-9][A-Z0-9a-z]+\\.[0-9]+\\.[0-9]+-[A-Z0-9][A-Z0-9a-z]+\\.[0-9]+\\.[0-9]+")) {
 				String[] osisRefParts = osisRef.split("[.-]");
 				int firstChapter = Integer.parseInt(osisRefParts[1]);
 				int lastChapter = Integer.parseInt(osisRefParts[4]);
 				try {
+					String firstBookAbbr = osisRefParts[0];
+					BookID firstBook = BookID.fromOsisId(osisRefParts[0]);
+					String lastBookAbbr = osisRefParts[3];
+					BookID lastBook = BookID.fromOsisId(osisRefParts[3]);
+					v = v.visitCrossReference(firstBookAbbr, firstBook, firstChapter, osisRefParts[2], lastBookAbbr, lastBook, lastChapter, osisRefParts[5]);
+				} catch (IllegalArgumentException ex) {
+					printWarning("WARNING: " + ex.getMessage());
+				}
+			} else if (osisRef.matches("[A-Z0-9][A-Z0-9a-z]+\\.[0-9]+")) {
+				String[] osisRefParts = osisRef.split("\\.");
+				int chapter = Integer.parseInt(osisRefParts[1]);
+				try {
 					String bookAbbr = osisRefParts[0];
 					BookID book = BookID.fromOsisId(osisRefParts[0]);
-					v = v.visitCrossReference(bookAbbr, book, firstChapter, osisRefParts[2], bookAbbr, book, lastChapter, osisRefParts[5]);
+					v = v.visitCrossReference(bookAbbr, book, chapter, "1", bookAbbr, book, chapter, "*");
+				} catch (IllegalArgumentException ex) {
+					printWarning("WARNING: " + ex.getMessage());
+				}
+			} else if (osisRef.matches("[A-Z0-9][A-Z0-9a-z]+\\.[0-9]+-[A-Z0-9][A-Z0-9a-z]+\\.[0-9]+")) {
+				String[] osisRefParts = osisRef.split("[.-]");
+				int firstChapter = Integer.parseInt(osisRefParts[1]);
+				int lastChapter = Integer.parseInt(osisRefParts[3]);
+				try {
+					String firstBookAbbr = osisRefParts[0];
+					BookID firstBook = BookID.fromOsisId(osisRefParts[0]);
+					String lastBookAbbr = osisRefParts[2];
+					BookID lastBook = BookID.fromOsisId(osisRefParts[2]);
+					v = v.visitCrossReference(firstBookAbbr, firstBook, firstChapter, "1", lastBookAbbr, lastBook, lastChapter, "*");
+				} catch (IllegalArgumentException ex) {
+					printWarning("WARNING: " + ex.getMessage());
+				}
+			} else if (osisRef.matches("[A-Z0-9][A-Z0-9a-z]+")) {
+				try {
+					BookID book = BookID.fromOsisId(osisRef);
+					v = v.visitCrossReference(osisRef, book, 1, "1", osisRef, book, -1, "*");
+				} catch (IllegalArgumentException ex) {
+					printWarning("WARNING: " + ex.getMessage());
+				}
+			} else if (osisRef.matches("[A-Z0-9][A-Z0-9a-z]+-[A-Z0-9][A-Z0-9a-z]")) {
+				String[] osisRefParts = osisRef.split("-");
+				try {
+					String firstBookAbbr = osisRefParts[0];
+					BookID firstBook = BookID.fromOsisId(osisRefParts[0]);
+					String lastBookAbbr = osisRefParts[1];
+					BookID lastBook = BookID.fromOsisId(osisRefParts[1]);
+					v = v.visitCrossReference(firstBookAbbr, firstBook, 1, "1", lastBookAbbr, lastBook, -1, "*");
 				} catch (IllegalArgumentException ex) {
 					printWarning("WARNING: " + ex.getMessage());
 				}
@@ -1128,32 +1182,27 @@ public class OSIS implements RoundtripFormat {
 
 		@Override
 		public Visitor<RuntimeException> visitFootnote(boolean ofCrossReferences) throws RuntimeException {
-			Visitor<RuntimeException> result = visitFootnote0();
-			if (ofCrossReferences)
-				result.visitText(FormattedText.XREF_MARKER);
-			return result;
-		}
-
-		public Visitor<RuntimeException> visitFootnote0() throws RuntimeException {
 			Element note = target.getOwnerDocument().createElement("note");
 			target.appendChild(note);
-			note.setAttribute("type", "x-footnote");
+			note.setAttribute("type", ofCrossReferences ? "crossReference" : "x-footnote");
 			return new OSISVisitor(note, nt);
 		}
 
 		@Override
 		public Visitor<RuntimeException> visitCrossReference(String firstBookAbbr, BookID firstBook, int firstChapter, String firstVerse, String lastBookAbbr, BookID lastBook, int lastChapter, String lastVerse) {
-			if (firstBook == lastBook  && !lastVerse.equals("*")) {
-				return visitCrossReference0(firstBookAbbr, firstBook, firstChapter, firstVerse, lastChapter, lastVerse);
+			String ref = firstBook.getOsisID();
+			if (lastChapter == -1) {
+				if (!firstBook.equals(lastBook))
+					ref += "-" + lastBook.getOsisID();
+			} else if (lastVerse.equals("*")) {
+				ref += "." + firstChapter;
+				if (!firstBook.equals(lastBook) || firstChapter != lastChapter)
+					ref += "-" + lastBook.getOsisID() + "." + lastChapter;
 			} else {
-				return visitExtraAttribute(ExtraAttributePriority.KEEP_CONTENT, "unsupported", "cross", "reference");
+				ref += "." + firstChapter + "." + firstVerse;
+				if (!firstBook.equals(lastBook) || firstChapter != lastChapter || !firstVerse.equals(lastVerse))
+					ref += "-" + lastBook.getOsisID() + "." + lastChapter + "." + lastVerse;
 			}
-		}
-
-		public Visitor<RuntimeException> visitCrossReference0(String bookAbbr, BookID book, int firstChapter, String firstVerse, int lastChapter, String lastVerse) throws RuntimeException {
-			String ref = book.getOsisID() + "." + firstChapter + "." + firstVerse;
-			if (firstChapter != lastChapter || firstVerse != lastVerse)
-				ref += "-" + book.getOsisID() + "." + lastChapter + "." + lastVerse;
 			Element reference = target.getOwnerDocument().createElement("reference");
 			target.appendChild(reference);
 			reference.setAttribute("osisRef", ref);
@@ -1163,7 +1212,6 @@ public class OSIS implements RoundtripFormat {
 		@Override
 		public Visitor<RuntimeException> visitFormattingInstruction(FormattingInstructionKind kind) throws RuntimeException {
 			String hiType;
-
 			switch (kind) {
 			case DIVINE_NAME:
 				Element divineName = target.getOwnerDocument().createElement("divineName");
