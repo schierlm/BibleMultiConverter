@@ -4,8 +4,12 @@ import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamReader;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 
@@ -24,6 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
 import biblemulticonverter.data.Utils;
@@ -138,6 +145,29 @@ public class USX3 extends AbstractUSXFormat<ParaStyle, CharStyle> {
 	protected ParatextBook doImportBook(File inputFile) throws Exception {
 		if (!inputFile.getName().toLowerCase().endsWith(".usx"))
 			return null;
+		if (Boolean.getBoolean("biblemulticonverter.usx3.unmilestonedchapters")) {
+			// NOTE: This is not valid USX3 - yet there exist USX3 bibles that
+			// nest the chapter contents inside the chapter tags, which would
+			// result in empty imports without this workaround.
+			Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(inputFile);
+			for (Node child = doc.getDocumentElement().getFirstChild(); child != null; child = child.getNextSibling()) {
+				if (child instanceof Element && child.getNodeName().equals("chapter")) {
+					Element startElem = (Element) child;
+					Element endElem = doc.createElement("chapter");
+					endElem.setAttribute("style", startElem.getAttribute("style"));
+					endElem.setAttribute("number", startElem.getAttribute("number"));
+					endElem.setAttribute("eid", startElem.getAttribute("sid"));
+					doc.getDocumentElement().insertBefore(endElem, startElem.getNextSibling());
+					while (startElem.getLastChild() != null) {
+						doc.getDocumentElement().insertBefore(startElem.getLastChild(), startElem.getNextSibling());
+					}
+					child = endElem;
+				}
+			}
+			inputFile = File.createTempFile("~bmc", ".usx");
+			inputFile.deleteOnExit();
+			TransformerFactory.newInstance().newTransformer().transform(new DOMSource(doc), new StreamResult(inputFile));
+		}
 		ValidateXML.validateFileBeforeParsing(getSchema(), inputFile);
 		JAXBContext ctx = JAXBContext.newInstance(ObjectFactory.class.getPackage().getName());
 
