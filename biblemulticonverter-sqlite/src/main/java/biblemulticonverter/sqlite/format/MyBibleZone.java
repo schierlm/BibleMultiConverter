@@ -498,7 +498,11 @@ public class MyBibleZone implements RoundtripFormat {
 			}
 			if (text.startsWith("<S>")) {
 				pos = text.indexOf("</S>");
-				String[] txt = cleanText(text.substring(3, pos)).split(",");
+				while (text.startsWith("</S><S>", pos)) {
+					text = text.substring(0, pos) + "," + text.substring(pos + 7);
+					pos = text.indexOf("</S>");
+				}
+				String[] txt = cleanText(text.substring(3, pos).replaceAll("<", "〈")).split(",");
 				char[] spfx = new char[txt.length];
 				char[] ssfx = new char[txt.length];
 				int[] snum = new int[txt.length];
