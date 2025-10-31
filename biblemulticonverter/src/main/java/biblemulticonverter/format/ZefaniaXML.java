@@ -782,7 +782,7 @@ public class ZefaniaXML implements RoundtripFormat {
 				br.setArt(EnumBreak.X_P);
 			else
 				br.setArt(EnumBreak.X_NL);
-			if (containingVerse.getContent() == result) {
+			if (containingVerse == null || containingVerse.getContent() == result) {
 				result.add(br);
 			} else {
 				List<Object> currResult = containingVerse.getContent();
