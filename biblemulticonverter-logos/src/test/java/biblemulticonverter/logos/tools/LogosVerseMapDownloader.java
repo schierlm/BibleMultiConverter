@@ -10,6 +10,7 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,6 +22,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import biblemulticonverter.data.BookID;
 import biblemulticonverter.logos.format.LogosHTML;
@@ -65,6 +68,7 @@ public class LogosVerseMapDownloader {
 			"BibleLEXOTAPOC", "BibleLH", "BibleLU1545CRED", "BibleLU1545DC", "BibleLUTHER21", "BibleLXXGAT", "BibleLXXGIGUET", "BibleMENGE20",
 			"BibleNAVARRA", "BibleNBV2021", "BibleNVT", "BiblePATTLOCH", "BibleSACY", "BibleSB", "BibleTXT", "BibleVGRX", "BibleZB",
 			"BibleSHNJP", "BibleTBH", "BibleTOL",
+			"BibleBGT", "BibleHETBOEk", "BibleKONCTB2", "BibleNOVA", "BiblePDT", "BibleSAAS", "BibleSKY", "BibleUBS6", "BibleUNCAP", "BibleWV2012",
 	};
 
 	public static String[] ALL_BOOK_NAMES = {
@@ -96,30 +100,11 @@ public class LogosVerseMapDownloader {
 		if (versemap.exists())
 			return;
 		System.out.println("Downloading Logos verse map...");
-		final String PREFIX = "<a href=\"https://community.logos.com/home/leaving?allowTrusted=1&amp;target=https%3A%2F%2Fhtmlpreview.github.io%2F%3F";
-		String url = "https://us.v-cdn.net/6038263/uploads/JKPR7XLDQ7B1/bible-verse-maps-html.txt";
-		HttpURLConnection uc;
-		try {
-			uc = (HttpURLConnection) new URL("https://community.logos.com/kb/articles/549-bible-verse-maps").openConnection();
-			uc.setRequestProperty("User-Agent", "BibleMultiConverter/1.0");
-			try (BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream(), StandardCharsets.UTF_8))) {
-				String line;
-				while ((line = br.readLine()) != null) {
-					if (line.contains(PREFIX)) {
-						line = line.substring(line.indexOf(PREFIX) + PREFIX.length());
-						line = line.substring(0, line.indexOf('"'));
-						url = URLDecoder.decode(line, "UTF-8");
-						break;
-					}
-				}
-			}
-		} catch (IOException ex) {
-			System.err.println("Determining dynamic URL failed, using static one");
-			ex.printStackTrace();
-		}
+		// cannot download from the wiki, as it uses Cloudflare's JavaScript protection; use a local copy instead
+		// see: https://community.logos.com/wiki/logos-user-wiki/personal-books/list-of-datatypes/bible-datatypes/bible-verse-maps/
+		String url = new File(basedir, "Bible_Verse_Maps_2026.html").toURI().toURL().toString();
 		System.out.println("Using URL: " + url);
-		uc = (HttpURLConnection) new URL(url).openConnection();
-		uc.setRequestProperty("User-Agent", "BibleMultiConverter/1.0");
+		URLConnection uc = new URL(url).openConnection();
 		try (BufferedReader br = new BufferedReader(new InputStreamReader(uc.getInputStream(), StandardCharsets.UTF_8));
 				Writer w = new OutputStreamWriter(new FileOutputStream(versemap), StandardCharsets.ISO_8859_1)) {
 			String line;
